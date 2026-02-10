@@ -23,7 +23,7 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleOAuthLogin = async (provider: 'google' | 'azure') => {
+  const handleOAuthLogin = async (provider: 'google') => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -161,16 +161,6 @@ export default function LoginPage() {
               Google ile devam et
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleOAuthLogin('azure')}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-black text-white border border-white/10 rounded-lg hover:bg-white/5 transition font-semibold"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z"/>
-              </svg>
-              Microsoft ile devam et
-            </button>
           </div>
 
           <p className="text-center text-gray-400 text-sm mt-6">
