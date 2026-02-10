@@ -1,0 +1,72 @@
+# Forilove Robots.txt
+User-agent: *
+
+# Allow public pages
+Allow: /
+Allow: /p/
+Allow: /about
+Allow: /contact
+Allow: /terms
+Allow: /privacy
+Allow: /kvkk
+Allow: /disclaimer
+Allow: /refund-policy
+Allow: /distance-sales-contract
+Allow: /pre-information-form
+Allow: /payment-security
+Allow: /fl-coins
+Allow: /templates
+Allow: /help
+Allow: /blog
+Allow: /blog/
+
+# Disallow authentication pages
+Disallow: /login
+Disallow: /register
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /auth/
+
+# Disallow protected/private pages
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /creator
+Disallow: /creator/*
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /payment
+
+# Disallow API routes
+Disallow: /api/
+
+# Allow AI crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Sitemap
+Sitemap: https://forilove.com/sitemap.xml
