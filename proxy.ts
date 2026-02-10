@@ -32,7 +32,13 @@ export async function proxy(request: NextRequest) {
 
   if (tokenStr) {
     try {
-      const session = JSON.parse(tokenStr)
+      // @supabase/ssr v0.5+ prefixes cookie values with "base64-"
+      let jsonStr = tokenStr
+      if (jsonStr.startsWith('base64-')) {
+        jsonStr = atob(jsonStr.slice(7))
+      }
+
+      const session = JSON.parse(jsonStr)
       accessToken = session.access_token || ''
 
       if (accessToken) {
