@@ -161,8 +161,8 @@ export default function CreatorDashboard() {
         {templates.length === 0 ? (
           <div className="text-center py-20">
             <Heart className="h-16 w-16 text-white mx-auto mb-4 opacity-20" />
-            <h2 className="text-xl font-bold mb-2">Henuz sablon yok</h2>
-            <p className="text-gray-400 mb-6">Ilk sablonunuzu olusturun</p>
+            <h2 className="text-xl font-bold mb-2">Henüz şablon yok</h2>
+            <p className="text-gray-400 text-sm mb-6">İlk şablonunuzu oluşturun.</p>
           </div>
         ) : (
           <>

@@ -86,7 +86,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout title="Giriş yap" subtitle="Hesabınıza giriş yapın">
+    <AuthLayout title="Giriş Yap" subtitle="E-posta adresinizi kullanarak giriş yapın.">
       <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <input

@@ -145,7 +145,7 @@ function RegisterForm() {
   };
 
   return (
-    <AuthLayout title="Hesap Oluştur" subtitle="Forilove oluşturmaya başlayın">
+    <AuthLayout title="Hesap Oluştur" subtitle="Hemen ücretsiz bir hesap oluşturun.">
       <form onSubmit={handleRegister} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>

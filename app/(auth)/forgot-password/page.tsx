@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout
       title="Şifre Sıfırlama"
-      subtitle={sent ? "Sıfırlama bağlantısı için e-postanızı kontrol edin" : "E-postanızı girin ve sıfırlama bağlantısı alın"}
+      subtitle={sent ? "Sıfırlama bağlantısı için e-postanızı kontrol edin." : "E-postanızı girin ve sıfırlama bağlantısı alın."}
     >
       {!sent ? (
         <form onSubmit={handleReset} className="space-y-4">
