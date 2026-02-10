@@ -181,7 +181,7 @@ export default function MyPagesPage() {
         ) : (
           <EmptyState
             title="Henüz sayfa yok"
-            description="Şablonlara göz atın ve özel bir sayfa oluşturun"
+            description="Şablonlara göz atın ve özel bir sayfa oluşturun."
             action={
               <Link href="/dashboard">
                 <button className="btn-primary">

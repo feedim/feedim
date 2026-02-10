@@ -827,6 +827,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     {/* Play/Pause */}
                     <button
                       onClick={() => setEditorMusicPlaying(!editorMusicPlaying)}
+                      aria-label={editorMusicPlaying ? "Müziği durdur" : "Müziği oynat"}
                       className="flex items-center justify-center px-1.5"
                       style={{ height: 38 }}
                       title={editorMusicPlaying ? "Durdur" : "Oynat"}
@@ -838,6 +839,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     {/* Thumbnail */}
                     <button
                       onClick={() => setShowMusicModal(true)}
+                      aria-label="Müzik ayarları"
                       className="relative shrink-0 flex items-center justify-center"
                       style={{ width: 36, height: 38 }}
                     >
@@ -903,8 +905,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                   </div>
                   <button
                     onClick={closeEditModal}
-                    className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
                     aria-label="Kapat"
+                    className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
                   >
                     <X className="h-5 w-5" aria-hidden="true" />
                   </button>
@@ -1113,6 +1115,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               </div>
               <button
                 onClick={() => setShowMusicModal(false)}
+                aria-label="Kapat"
                 className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
               >
                 <X className="h-5 w-5" />
