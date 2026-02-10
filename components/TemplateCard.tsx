@@ -58,7 +58,7 @@ export default function TemplateCard({
           />
         ) : template.html_content ? (
           <iframe
-            srcDoc={DOMPurify.sanitize(template.html_content)}
+            srcDoc={DOMPurify.sanitize(template.html_content, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
             className="w-full h-full pointer-events-none scale-[0.3] origin-top-left"
             style={{ width: '333%', height: '333%' }}
             sandbox=""

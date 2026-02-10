@@ -39,7 +39,7 @@ export default function ProjectCard({
           <div className="w-24 h-32 bg-zinc-900 rounded-xl overflow-hidden">
             {htmlContent ? (
               <iframe
-                srcDoc={DOMPurify.sanitize(htmlContent)}
+                srcDoc={DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
                 className="w-full h-full pointer-events-none scale-[0.2] origin-top-left"
                 style={{ width: '500%', height: '500%' }}
                 sandbox=""
@@ -55,7 +55,7 @@ export default function ProjectCard({
         <div className="shrink-0 w-24 h-32 bg-zinc-900 rounded-xl overflow-hidden">
           {htmlContent ? (
             <iframe
-              srcDoc={DOMPurify.sanitize(htmlContent)}
+              srcDoc={DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
               className="w-full h-full pointer-events-none scale-[0.2] origin-top-left"
               style={{ width: '500%', height: '500%' }}
               sandbox=""
