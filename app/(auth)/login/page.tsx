@@ -119,7 +119,7 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 accent-pink-500 cursor-pointer"
+                  className="cursor-pointer"
                 />
                 <span className="text-sm text-gray-400">Beni hatırla</span>
               </label>

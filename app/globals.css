@@ -303,6 +303,49 @@ textarea.input-modern {
   min-height: 120px;
 }
 
+/* Custom Checkbox - Forilove Pink */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+input[type="checkbox"]:hover {
+  border-color: lab(49.5493% 79.8381 2.31768);
+  background: rgba(230, 62, 122, 0.1);
+}
+
+input[type="checkbox"]:checked {
+  background: lab(49.5493% 79.8381 2.31768);
+  border-color: lab(49.5493% 79.8381 2.31768);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 6px;
+  height: 11px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 3px rgba(230, 62, 122, 0.3);
+  outline: none;
+}
+
 /* Form Elements - Consistent Styling */
 input[type="range"] {
   cursor: pointer;

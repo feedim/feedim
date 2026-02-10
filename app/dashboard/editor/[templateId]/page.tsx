@@ -1337,7 +1337,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-pink-500 rounded cursor-pointer shrink-0"
+                className="mt-0.5 cursor-pointer shrink-0"
               />
               <span className="text-xs text-gray-400 leading-relaxed">
                 <a href="/terms" target="_blank" className="text-white underline">Kullanım Koşulları</a> ve{' '}

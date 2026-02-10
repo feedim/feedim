@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Forilove" }],
   verification: {
     google: "OjIpCYctpEjVJTVuZrDFEDO6_xhboIhR4rG87s7K7og",
+    yandex: "e8b54ef0d0f19431",
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   openGraph: {

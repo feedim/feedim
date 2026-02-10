@@ -202,7 +202,7 @@ function RegisterForm() {
                 type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-white/20 accent-pink-500 cursor-pointer"
+                className="mt-0.5 cursor-pointer"
               />
               <span className="text-sm text-gray-400 leading-snug">
                 <Link href="/terms" target="_blank" className="text-pink-500 hover:text-pink-400 underline">
