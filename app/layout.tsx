@@ -53,9 +53,9 @@ export default function RootLayout({
               "@graph": [
                 {
                   "@type": "Organization",
-                  "@id": "https://forilove.com/#organization",
+                  "@id": "https://www.forilove.com/#organization",
                   name: "Forilove",
-                  url: "https://forilove.com",
+                  url: "https://www.forilove.com",
                   description: "Sevdiklerinize özel kişiselleştirilmiş aşk sayfaları oluşturun.",
                   contactPoint: {
                     "@type": "ContactPoint",
@@ -66,10 +66,10 @@ export default function RootLayout({
                 },
                 {
                   "@type": "WebSite",
-                  "@id": "https://forilove.com/#website",
-                  url: "https://forilove.com",
+                  "@id": "https://www.forilove.com/#website",
+                  url: "https://www.forilove.com",
                   name: "Forilove",
-                  publisher: { "@id": "https://forilove.com/#organization" },
+                  publisher: { "@id": "https://www.forilove.com/#organization" },
                   inLanguage: "tr-TR",
                 },
               ],

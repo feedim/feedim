@@ -69,4 +69,4 @@ User-agent: cohere-ai
 Allow: /
 
 # Sitemap
-Sitemap: https://forilove.com/sitemap.xml
+Sitemap: https://www.forilove.com/sitemap.xml
