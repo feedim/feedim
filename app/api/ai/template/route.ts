@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  assembleTemplate,
+  validateAIResponse,
+  FALLBACK_RESPONSE,
+  type AITemplateResponse,
+} from "@/lib/constants/template-sections";
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -36,107 +42,6 @@ async function callGeminiWithRetry(
     }
   }
 }
-
-const EXAMPLE_TEMPLATE = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Bizim Hikayemiz</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--primary:#e8496a;--primary-light:#fdf2f4;--dark:#1a1a2e;--text:#2d2d3a;--text-light:#6b7280;--gold:#d4a853}
-html{scroll-behavior:smooth}
-body{font-family:'Inter',sans-serif;color:var(--text);background:#fff;overflow-x:hidden}
-.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center}
-.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(26,26,46,0.3),rgba(26,26,46,0.7))}
-.hero-content{position:relative;z-index:1;text-align:center;padding:2rem;max-width:700px}
-.hero-content h1{font-family:'Playfair Display',serif;font-size:clamp(2.5rem,7vw,5rem);color:#fff;margin-bottom:0.75rem;line-height:1.1;text-shadow:0 2px 20px rgba(0,0,0,0.3)}
-.hero-content p{font-size:clamp(1rem,2.5vw,1.25rem);color:rgba(255,255,255,0.9);font-weight:300;letter-spacing:0.02em}
-.heart-divider{display:flex;align-items:center;justify-content:center;gap:1rem;padding:2rem 0}
-.heart-divider::before,.heart-divider::after{content:'';width:60px;height:1px;background:var(--primary)}
-.heart-divider span{color:var(--primary);font-size:1.25rem}
-.section{padding:clamp(3rem,8vw,6rem) clamp(1rem,4vw,2rem);max-width:900px;margin:0 auto}
-.section-title{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,4vw,2.25rem);text-align:center;margin-bottom:0.5rem;color:var(--dark)}
-.section-subtitle{text-align:center;color:var(--text-light);font-size:0.95rem;margin-bottom:2.5rem}
-.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(0.5rem,2vw,1rem)}
-.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:1rem;transition:transform 0.4s ease;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
-.photo-grid img:hover{transform:scale(1.03)}
-.letter-card{background:var(--primary-light);border-radius:1.5rem;padding:clamp(1.5rem,4vw,3rem);position:relative;overflow:hidden}
-.letter-card::before{content:'"';position:absolute;top:-20px;left:20px;font-size:8rem;color:var(--primary);opacity:0.1;font-family:'Playfair Display',serif;line-height:1}
-.letter-card p{font-size:clamp(1rem,2.5vw,1.15rem);line-height:1.9;color:var(--text);position:relative;white-space:pre-line}
-.date-badge{display:inline-flex;align-items:center;gap:0.5rem;background:var(--primary);color:#fff;padding:0.75rem 2rem;border-radius:999px;font-weight:500;font-size:0.95rem;box-shadow:0 4px 15px rgba(232,73,106,0.3)}
-.timeline{position:relative;padding-left:2rem}
-.timeline::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--primary),var(--gold))}
-.timeline-item{position:relative;padding:0 0 2.5rem 2rem}
-.timeline-item::before{content:'';position:absolute;left:-0.45rem;top:0.25rem;width:12px;height:12px;background:var(--primary);border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--primary)}
-.timeline-item h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:0.25rem;color:var(--dark)}
-.timeline-item p{color:var(--text-light);font-size:0.9rem;line-height:1.6}
-.footer{text-align:center;padding:3rem 1.5rem;background:var(--dark);color:rgba(255,255,255,0.6);font-size:0.875rem}
-.footer span{color:var(--primary)}
-@media(max-width:640px){
-.photo-grid{grid-template-columns:1fr 1fr;gap:0.5rem}
-.timeline{padding-left:1.5rem}
-.timeline-item{padding-left:1.5rem}
-}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-.hero-content{animation:fadeInUp 1s ease-out}
-</style>
-</head>
-<body>
-<div class="hero">
-<div class="hero-bg" data-editable="cover_photo" data-type="background-image" data-label="Kapak Fotoğrafı" style="background-image:url('https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=1400&q=80')"></div>
-<div class="hero-content">
-<h1 data-editable="title" data-type="text" data-label="Ana Başlık">Bizim Hikayemiz</h1>
-<p data-editable="subtitle" data-type="text" data-label="Alt Başlık">Her anımız bir masal gibi</p>
-</div>
-</div>
-<div class="heart-divider"><span>♥</span></div>
-<div class="section" style="text-align:center">
-<div class="date-badge">
-<span data-editable="special_date" data-type="date" data-label="Özel Tarih">14.02.2024</span>
-</div>
-</div>
-<section class="section" data-area="gallery" data-area-label="Fotoğraf Galerisi">
-<h2 class="section-title">Anılarımız</h2>
-<p class="section-subtitle" data-editable="gallery_subtitle" data-type="text" data-label="Galeri Alt Başlığı">Birlikte geçirdiğimiz en güzel anlar</p>
-<div class="photo-grid">
-<img data-editable="photo_1" data-type="image" data-label="Fotoğraf 1" src="https://images.unsplash.com/photo-1518568814500-bf0f8d125f46?w=600&q=80" alt="">
-<img data-editable="photo_2" data-type="image" data-label="Fotoğraf 2" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=600&q=80" alt="">
-<img data-editable="photo_3" data-type="image" data-label="Fotoğraf 3" src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=600&q=80" alt="">
-<img data-editable="photo_4" data-type="image" data-label="Fotoğraf 4" src="https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=600&q=80" alt="">
-</div>
-</section>
-<section class="section" data-area="love_letter" data-area-label="Aşk Mektubu">
-<h2 class="section-title">Sana Mektubum</h2>
-<div class="letter-card">
-<p data-editable="letter" data-type="textarea" data-label="Mektup">Sevgilim,
-
-Seninle geçirdiğim her an hayatımın en değerli hazinesi. Gülüşün güneş gibi aydınlatıyor dünyamı.
-
-Sonsuza kadar seninle...</p>
-</div>
-</section>
-<section class="section" data-area="timeline" data-area-label="Zaman Çizelgesi">
-<h2 class="section-title">Hikayemiz</h2>
-<div class="timeline">
-<div class="timeline-item">
-<h3 data-editable="milestone_1_title" data-type="text" data-label="Anı 1 Başlık">İlk Tanışma</h3>
-<p data-editable="milestone_1_text" data-type="text" data-label="Anı 1 Açıklama">Kaderimiz o gün birleşti</p>
-</div>
-<div class="timeline-item">
-<h3 data-editable="milestone_2_title" data-type="text" data-label="Anı 2 Başlık">İlk Buluşma</h3>
-<p data-editable="milestone_2_text" data-type="text" data-label="Anı 2 Açıklama">Kalbimin sana ait olduğunu anladım</p>
-</div>
-</div>
-</section>
-<div class="footer">
-<p data-editable="footer_text" data-type="text" data-label="Alt Yazı">Sonsuza kadar <span>♥</span></p>
-</div>
-</body>
-</html>`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -176,55 +81,71 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Konu geçersiz (max 200 karakter)" }, { status: 400 });
     }
 
-    const systemPrompt = `Sen dünya standartlarında bir web tasarımcısısın. Forilove platformu için görsel olarak çarpıcı, profesyonel HTML aşk/anı şablonları üretiyorsun.
+    // --- JSON-mode system prompt ---
+    const systemPrompt = `Sen bir tasarım direktörüsün. Forilove platformu için aşk/anı sayfası tasarım kararları üretiyorsun.
 
-## TASARIM KALİTESİ - ÇOK ÖNEMLİ
-Awwwards, Dribbble ve Pinterest'teki en iyi tasarımlar seviyesinde üret. Şunları MUTLAKA uygula:
-- Google Fonts kullan (Playfair Display, Cormorant Garamond, Dancing Script, Lora, Inter, Poppins gibi)
-- CSS custom properties (--primary, --dark, --text gibi) ile tutarlı renk sistemi
-- Gradient overlay'ler, box-shadow, border-radius ile derinlik kat
-- Smooth hover efektleri (transform, opacity transition)
-- @keyframes ile subtle giriş animasyonları (fadeInUp, fadeIn gibi)
-- clamp() ile responsive tipografi: başlıklar clamp(2rem, 6vw, 4rem), paragraflar clamp(0.95rem, 2vw, 1.15rem)
-- Minimum 100vh hero section, background-image cover + dark overlay
-- Bölümler arası dekoratif ayırıcılar (kalp, çizgi, süsleme)
-- letter-spacing, line-height ile mükemmel tipografi
-- Yeterli padding ve margin ile nefes alan tasarım
-- Mobil (320px) ve desktop'ta eşit güzel görünmeli
+SADECE JSON döndür. HTML üretme. Aşağıdaki yapıda JSON döndür:
 
-## ŞABLON KURALLARI
-- data-editable formatı kullan (data-editable, data-type, data-label attribute'ları)
-- Tipler: text, textarea, image, background-image, color, date, url, video
-- data-area ile kaldırılabilir bölümler (data-area-label ile Türkçe isim)
-- En az 8-12 düzenlenebilir alan
-- En az 3-4 kaldırılabilir bölüm
-- Tüm görseller için GERÇEK Unsplash URL'leri (https://images.unsplash.com/photo-... formatında, ?w=800&q=80 ile)
-- JavaScript YASAK
-- Tüm CSS <style> etiketinde
+{
+  "fonts": ["GoogleFontAdi:wght@400;700", "DigerFont:wght@300;400;500"],
+  "cssVariables": {
+    "--primary": "#hex",
+    "--primary-light": "#hex",
+    "--dark": "#hex",
+    "--text": "#hex",
+    "--text-light": "#hex",
+    "--accent": "#hex"
+  },
+  "sections": ["hero","date","gallery","love_letter","timeline","footer"],
+  "animations": { "hero": "fadeInUp", "sections": "fadeInUp" },
+  "bodyBackground": "#fff",
+  "customCSS": "",
+  "defaultTexts": {
+    "title": "Sayfa başlığı",
+    "subtitle": "Alt başlık",
+    "special_date": "14.02.2024",
+    "gallery_subtitle": "Galeri açıklaması",
+    "letter": "Mektup metni",
+    "milestone_1_title": "Anı 1 başlık",
+    "milestone_1_text": "Anı 1 açıklama",
+    "milestone_2_title": "Anı 2 başlık",
+    "milestone_2_text": "Anı 2 açıklama",
+    "footer_text": "Alt yazı",
+    "countdown_date": "2025-02-14",
+    "countdown_label": "Geri sayım etiketi",
+    "quote_text": "Alıntı metni",
+    "quote_author": "Alıntı yazarı",
+    "video_caption": "Video açıklaması"
+  }
+}
 
-## REFERANS ŞABLON
-Aşağıdaki şablonu kalite ve yapı referansı olarak kullan. KOPYALAMA, kendi orijinal tasarımını yap ama aynı kalite seviyesinde ol:
+## KURALLAR
+- fonts: 2 Google Font seç — ilki başlık fontu (Playfair Display, Cormorant Garamond, Dancing Script, Lora, Great Vibes, Parisienne, Cinzel, Bodoni Moda gibi), ikincisi gövde fontu (Inter, Poppins, Lato, Nunito, Open Sans, Montserrat gibi). Format: "FontAdi:wght@400;700"
+- cssVariables: 6 HEX renk. Temaya uygun, uyumlu palet seç. --primary ana vurgu rengi, --primary-light açık arka plan, --dark koyu ton, --text ana metin, --text-light ikincil metin, --accent ikincil vurgu.
+- sections: Mevcut bölümler: hero, date, gallery, love_letter, timeline, countdown, quotes, video, footer. Konuya göre 5-7 bölüm seç. hero ve footer hemen her zaman olmalı.
+- animations: hero ve sections için animasyon. Seçenekler: "fadeInUp", "fadeIn", "scaleIn". Konuya göre seç.
+- bodyBackground: Arka plan rengi veya gradient. Genellikle "#fff" veya çok açık bir ton.
+- customCSS: Ek CSS (max 3000 karakter). Bunu kullanarak şablona özel stil ekleyebilirsin. Örnek: .hero-bg::after gradient'ını değiştirme, bölümlere özel arka planlar, dekoratif kenarlıklar vb.
+- defaultTexts: Tüm bölümlerdeki editable alanların varsayılan metinleri. Türkçe, duygusal, konuya uygun olmalı.
 
-${EXAMPLE_TEMPLATE}
+## ÖNEMLİ
+- Farklı konular için FARKLI fontlar, renkler ve bölüm kombinasyonları seç
+- Renkler konuya uygun olmalı: Sevgililer günü=kırmızı/pembe, Yıldönümü=altın/bordo, Evlilik teklifi=beyaz/gül, Doğum günü=neşeli renkler
+- defaultTexts konuya özel, anlamlı Türkçe metinler içermeli`;
 
-## ÇIKTI
-SADECE HTML kodu döndür. \`\`\`html code block KULLANMA. Direkt <!DOCTYPE html> ile başla. Hiçbir açıklama ekleme.`;
-
-    const userPrompt = `Aşağıdaki bilgilere göre özgün, çarpıcı bir şablon tasarla:
-- Konu: ${topic.slice(0, 200)}
-${style ? `- Tasarım stili: ${style.slice(0, 100)}` : '- Tasarım stili: Modern, elegant'}
-${sections ? `- Bölümler: ${sections.slice(0, 200)}` : '- Bölümler: Hero kapak, tarih, fotoğraf galerisi, aşk mektubu, timeline, footer'}
-${colorScheme ? `- Renkler: ${colorScheme.slice(0, 100)}` : '- Renkler: Romantik pembe-bordo tonları'}
-${mood ? `- Atmosfer: ${mood.slice(0, 100)}` : '- Atmosfer: Duygusal ve romantik'}
-
-Her bölüme anlamlı data-editable ve data-area attribute'ları ekle. Varsayılan metinler Türkçe ve duygusal olsun.`;
+    const userPrompt = `Konu: ${topic.slice(0, 200)}
+${style ? `Stil: ${style.slice(0, 100)}` : "Stil: Modern, elegant"}
+${sections ? `İstenen bölümler: ${sections.slice(0, 200)}` : ""}
+${colorScheme ? `Renk tercihi: ${colorScheme.slice(0, 100)}` : ""}
+${mood ? `Atmosfer: ${mood.slice(0, 100)}` : "Atmosfer: Duygusal ve romantik"}`;
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 16000,
+        maxOutputTokens: 4000,
+        responseMimeType: "application/json",
       },
     });
 
@@ -234,17 +155,39 @@ Her bölüme anlamlı data-editable ve data-area attribute'ları ekle. Varsayıl
       3
     );
 
-    let html = result.response.text();
-    if (!html) {
-      return NextResponse.json({ error: "AI şablon üretemedi" }, { status: 500 });
+    const rawText = result.response.text();
+    if (!rawText) {
+      // AI returned nothing — use fallback with topic as title
+      const fallback: AITemplateResponse = {
+        ...FALLBACK_RESPONSE,
+        defaultTexts: { ...FALLBACK_RESPONSE.defaultTexts, title: topic.slice(0, 100) },
+      };
+      return NextResponse.json({ html: assembleTemplate(fallback) });
     }
 
-    html = html.replace(/^```html?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
-    if (!html.includes('<!DOCTYPE') && !html.includes('<html')) {
-      return NextResponse.json({ error: "Geçersiz HTML çıktısı" }, { status: 500 });
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      console.error("AI JSON parse error, using fallback. Raw:", rawText.slice(0, 500));
+      const fallback: AITemplateResponse = {
+        ...FALLBACK_RESPONSE,
+        defaultTexts: { ...FALLBACK_RESPONSE.defaultTexts, title: topic.slice(0, 100) },
+      };
+      return NextResponse.json({ html: assembleTemplate(fallback) });
     }
 
+    const validated = validateAIResponse(parsed);
+    if (!validated) {
+      console.error("AI response validation failed, using fallback");
+      const fallback: AITemplateResponse = {
+        ...FALLBACK_RESPONSE,
+        defaultTexts: { ...FALLBACK_RESPONSE.defaultTexts, title: topic.slice(0, 100) },
+      };
+      return NextResponse.json({ html: assembleTemplate(fallback) });
+    }
+
+    const html = assembleTemplate(validated);
     return NextResponse.json({ html });
   } catch (error: any) {
     console.error("AI template error:", error);
