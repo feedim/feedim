@@ -273,11 +273,11 @@ export default function ShareIconButton({
   const glassStyle: React.CSSProperties = {
     width: 44,
     height: 44,
-    background: "rgba(0,0,0,0.65)",
+    background: "rgba(0,0,0,0.75)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+    border: "none",
+    color: "#fff",
   };
 
   const btnClass =
