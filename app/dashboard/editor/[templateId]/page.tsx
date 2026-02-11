@@ -547,7 +547,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const finalValues = { ...values };
       const pendingKeys = Object.keys(pendingUploadsRef.current);
       if (pendingKeys.length > 0) {
-        toast('Yayımlanıyor…', { icon: '📤' });
+        toast('Yayımlanıyor…');
         for (const key of pendingKeys) {
           const file = pendingUploadsRef.current[key];
           const optimizedName = getOptimizedFileName(file.name);
