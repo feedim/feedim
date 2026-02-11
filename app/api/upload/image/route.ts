@@ -60,9 +60,10 @@ export async function POST(request: NextRequest) {
       CacheControl: 'public, max-age=31536000, immutable',
     }));
 
-    const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const imageUrl = `${siteUrl}/api/r2/${key}`;
 
-    return NextResponse.json({ success: true, url: publicUrl });
+    return NextResponse.json({ success: true, url: imageUrl });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Yükleme hatası' },
@@ -85,13 +86,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'URL gerekli' }, { status: 400 });
     }
 
-    // Extract key from R2 public URL
+    // Extract key from proxy URL (/api/r2/...) or legacy R2 public URL
+    let key = '';
+    const proxyPrefix = '/api/r2/';
     const publicUrl = process.env.R2_PUBLIC_URL || '';
-    if (!publicUrl || !url.startsWith(publicUrl)) {
+
+    if (url.includes(proxyPrefix)) {
+      key = url.substring(url.indexOf(proxyPrefix) + proxyPrefix.length);
+    } else if (publicUrl && url.startsWith(publicUrl)) {
+      key = url.replace(`${publicUrl}/`, '');
+    } else {
       return NextResponse.json({ error: 'Geçersiz URL' }, { status: 400 });
     }
-
-    const key = url.replace(`${publicUrl}/`, '');
 
     // Ensure user can only delete their own files
     if (!key.startsWith(`${user.id}/`)) {

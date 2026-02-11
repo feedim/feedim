@@ -50,8 +50,18 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewInitRef = useRef(false);
   const oldImageUrlRef = useRef<string>('');
-  // Ref to always access latest values (avoids stale closure in postMessage handler)
   const valuesRef = useRef<Record<string, string>>({});
+
+  const R2_PUBLIC_DOMAIN = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
+  const migrateR2Urls = (vals: Record<string, string>): Record<string, string> => {
+    const migrated: Record<string, string> = {};
+    for (const [k, v] of Object.entries(vals)) {
+      migrated[k] = typeof v === 'string' && v.includes(R2_PUBLIC_DOMAIN)
+        ? v.replace(`https://${R2_PUBLIC_DOMAIN}/`, '/api/r2/')
+        : v;
+    }
+    return migrated;
+  };
   valuesRef.current = values;
 
   useEffect(() => {
@@ -167,7 +177,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               console.log('Existing project found:', existingProject);
             }
             setProject(existingProject);
-            setValues(existingProject.hook_values || extractDefaults(parsedHooks));
+            setValues(migrateR2Urls(existingProject.hook_values || extractDefaults(parsedHooks)));
             setMusicUrl(existingProject.music_url || "");
           } else {
             // Create new project
@@ -635,7 +645,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
     // R2 cleanup: if image changed and old was on R2, delete it
     const oldUrl = oldImageUrlRef.current;
-    if (oldUrl && oldUrl !== finalValue && oldUrl.includes('.r2.dev/')) {
+    if (oldUrl && oldUrl !== finalValue && (oldUrl.includes('.r2.dev/') || oldUrl.includes('/api/r2/'))) {
       fetch('/api/upload/image', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -647,7 +657,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     if ((hook?.type === 'image' || hook?.type === 'background-image') &&
         finalValue &&
         /^https?:\/\//.test(finalValue) &&
-        !finalValue.includes('.r2.dev/')) {
+        !finalValue.includes('.r2.dev/') && !finalValue.includes('/api/r2/')) {
       setUploadingImage(true);
       try {
         const res = await fetch(finalValue);

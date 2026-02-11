@@ -105,7 +105,7 @@ export default function CreatorDashboard() {
           const hookValues = project.hook_values as Record<string, string> | null;
           if (hookValues) {
             const r2Urls = Object.values(hookValues).filter(
-              (v) => typeof v === 'string' && v.includes('.r2.dev/')
+              (v) => typeof v === 'string' && (v.includes('.r2.dev/') || v.includes('/api/r2/'))
             );
             for (const url of r2Urls) {
               fetch('/api/upload/image', {

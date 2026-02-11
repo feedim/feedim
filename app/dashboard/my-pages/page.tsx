@@ -128,7 +128,7 @@ export default function MyPagesPage() {
       const hookValues = project.hook_values as Record<string, string> | null;
       if (hookValues) {
         const r2Urls = Object.values(hookValues).filter(
-          (v) => typeof v === 'string' && v.includes('.r2.dev/')
+          (v) => typeof v === 'string' && (v.includes('.r2.dev/') || v.includes('/api/r2/'))
         );
         for (const url of r2Urls) {
           fetch('/api/upload/image', {
@@ -162,6 +162,9 @@ export default function MyPagesPage() {
   };
 
   // Apply hook_values to template HTML for preview
+  const R2_DOMAIN = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
+  const toProxy = (v: string) => v.includes(R2_DOMAIN) ? v.replace(`https://${R2_DOMAIN}/`, '/api/r2/') : v;
+
   const getRenderedHtml = (project: any) => {
     let html = project.templates?.html_content;
     if (!html) return undefined;
@@ -171,7 +174,7 @@ export default function MyPagesPage() {
     if (html.includes('HOOK_')) {
       Object.entries(hookValues).forEach(([key, value]) => {
         if (key.startsWith('__')) return;
-        html = html.replace(new RegExp(`HOOK_${key}`, 'g'), String(value) || '');
+        html = html.replace(new RegExp(`HOOK_${key}`, 'g'), toProxy(String(value)) || '');
       });
     } else {
       try {
@@ -182,7 +185,7 @@ export default function MyPagesPage() {
           const el = doc.querySelector(`[data-editable="${key}"]`);
           if (!el) return;
           const type = el.getAttribute('data-type') || 'text';
-          const strVal = String(value);
+          const strVal = toProxy(String(value));
           if (type === 'image') {
             el.setAttribute('src', strVal);
           } else if (type === 'background-image') {

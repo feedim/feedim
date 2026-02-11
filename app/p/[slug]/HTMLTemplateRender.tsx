@@ -33,9 +33,14 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
 
   let html = template.html_content;
 
+  // Convert legacy R2 public URLs to proxy URLs
+  const r2PublicDomain = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
+  const toProxyUrl = (val: string) =>
+    val.includes(r2PublicDomain) ? val.replace(`https://${r2PublicDomain}/`, '/api/r2/') : val;
+
   // Simple string replacement for rendering with XSS protection
   Object.entries(htmlData).forEach(([key, value]) => {
-    const stringValue = String(value);
+    const stringValue = toProxyUrl(String(value));
 
     // Match data-editable elements and replace their content/attributes
     const regex = new RegExp(`(<[^>]*data-editable="${key}"[^>]*>)(.*?)(<\\/[^>]+>)`, 'gs');
