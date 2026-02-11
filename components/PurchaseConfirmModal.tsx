@@ -71,8 +71,6 @@ export function PurchaseConfirmProvider({ children }: { children: React.ReactNod
 
 /* ─── Bottom Sheet ─── */
 
-const COIN_YELLOW = "var(--color-yellow-500)";
-
 interface SheetProps {
   options: ConfirmOptions;
   onClose: () => void;
@@ -118,66 +116,20 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
   return createPortal(
     <div
       onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999999,
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-      }}
+      className="fixed inset-0 z-[9999999] flex items-end justify-center bg-black/70 backdrop-blur-sm"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 500,
-          background: "#18181b",
-          borderRadius: "32px 32px 0 0",
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-          animation: "slideUp 0.25s ease-out",
-          boxSizing: "border-box",
-        }}
+        className="w-full max-w-[500px] bg-zinc-900 rounded-t-[32px] p-6 flex flex-col gap-5 animate-[slideUp_0.25s_ease-out]"
       >
         {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingBottom: 12,
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>
-            Satın Alma Onayı
-          </h3>
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <h3 className="text-lg font-bold text-white">Satın Alma Onayı</h3>
           <button
             onClick={onClose}
             disabled={loading}
             aria-label="Kapat"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 36,
-              height: 36,
-              borderRadius: 9999,
-              background: "rgba(255,255,255,0.1)",
-              border: "none",
-              color: "#9ca3af",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              transition: "background 0.15s, color 0.15s",
-              padding: 0,
-              flexShrink: 0,
-            }}
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6 6 18" />
@@ -187,75 +139,38 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
         </div>
 
         {/* Coin Cost */}
-        <div style={{ textAlign: "center", padding: "4px 0 0" }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#9ca3af" }}>{options.itemName}</p>
-          <p style={{ margin: "6px 0 0", fontSize: 32, fontWeight: 800, color: "#EAB308", letterSpacing: "-0.02em" }}>
+        <div className="text-center pt-1">
+          <p className="text-sm text-gray-400">{options.itemName}</p>
+          <p className="mt-1.5 text-[32px] font-extrabold text-yellow-500 tracking-tight">
             {options.coinCost} FL
           </p>
         </div>
 
         {/* Balance Info */}
-        <div
-          style={{
-            background: "rgba(234,179,8,0.06)",
-            border: "1px solid rgba(234,179,8,0.15)",
-            borderRadius: 12,
-            padding: 14,
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>Mevcut bakiye:</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#EAB308", margin: 0 }}>
-              {options.currentBalance} FL
-            </span>
+        <div className="bg-yellow-500/[0.06] border border-yellow-500/15 rounded-xl p-3.5 flex flex-col gap-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-[13px] text-gray-400">Mevcut bakiye:</span>
+            <span className="text-[13px] font-semibold text-yellow-500">{options.currentBalance} FL</span>
           </div>
-          <div style={{ height: 1, background: "rgba(234,179,8,0.1)", margin: 0 }} />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>İşlem sonrası:</span>
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: insufficientBalance ? "#ef4444" : "#EAB308",
-                margin: 0,
-              }}
-            >
+          <div className="h-px bg-yellow-500/10" />
+          <div className="flex justify-between items-center">
+            <span className="text-[13px] text-gray-400">İşlem sonrası:</span>
+            <span className={`text-[13px] font-semibold ${insufficientBalance ? "text-red-500" : "text-yellow-500"}`}>
               {insufficientBalance ? "Yetersiz bakiye" : `${balanceAfter} FL`}
             </span>
           </div>
         </div>
 
         {/* Buttons */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-2">
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className="btn-primary"
-            style={{
-              width: "100%",
-              background: COIN_YELLOW,
-              color: "black",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
+            className="btn-primary w-full"
+            style={{ background: "var(--color-yellow-500)", color: "black" }}
           >
             {loading ? (
-              <span
-                style={{
-                  width: 20,
-                  height: 20,
-                  border: "2px solid rgba(0,0,0,0.2)",
-                  borderTopColor: "#000",
-                  borderRadius: 9999,
-                  display: "inline-block",
-                  animation: "spin 0.6s linear infinite",
-                }}
-              />
+              <span className="inline-block w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
             ) : insufficientBalance ? (
               "Coin Al"
             ) : (
@@ -265,19 +180,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
           <button
             onClick={onClose}
             disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px 0",
-              borderRadius: 12,
-              border: "none",
-              background: "rgba(255,255,255,0.08)",
-              color: "#9ca3af",
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              transition: "opacity 0.15s",
-            }}
+            className="btn-secondary w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Vazgeç
           </button>
@@ -285,18 +188,9 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
 
         {/* Error */}
         {error && (
-          <p style={{ margin: 0, fontSize: 13, color: "#ef4444", textAlign: "center" }}>
-            {error}
-          </p>
+          <p className="text-[13px] text-red-500 text-center">{error}</p>
         )}
       </div>
-
-      {/* Keyframe animations */}
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>,
     document.body
   );
