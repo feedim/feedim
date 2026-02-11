@@ -163,7 +163,8 @@ export default function MyPagesPage() {
 
   // Apply hook_values to template HTML for preview
   const R2_DOMAIN = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
-  const toProxy = (v: string) => v.includes(R2_DOMAIN) ? v.replace(`https://${R2_DOMAIN}/`, '/api/r2/') : v;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const toProxy = (v: string) => v.includes(R2_DOMAIN) ? v.replace(`https://${R2_DOMAIN}/`, `${origin}/api/r2/`) : v;
 
   const getRenderedHtml = (project: any) => {
     let html = project.templates?.html_content;

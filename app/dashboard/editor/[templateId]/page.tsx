@@ -53,11 +53,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const valuesRef = useRef<Record<string, string>>({});
 
   const R2_PUBLIC_DOMAIN = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
+  const r2Proxy = typeof window !== 'undefined' ? `${window.location.origin}/api/r2/` : '/api/r2/';
   const migrateR2Urls = (vals: Record<string, string>): Record<string, string> => {
     const migrated: Record<string, string> = {};
     for (const [k, v] of Object.entries(vals)) {
       migrated[k] = typeof v === 'string' && v.includes(R2_PUBLIC_DOMAIN)
-        ? v.replace(`https://${R2_PUBLIC_DOMAIN}/`, '/api/r2/')
+        ? v.replace(`https://${R2_PUBLIC_DOMAIN}/`, r2Proxy)
         : v;
     }
     return migrated;
