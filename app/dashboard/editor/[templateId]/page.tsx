@@ -1296,7 +1296,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         {/* Mobile Bottom Bar — Purchased */}
         {isPurchased && project && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
-            <div className="flex items-center pl-3">
+            <div className="flex items-center">
               <div
                 className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto py-2"
                 style={{

@@ -153,8 +153,16 @@ export default function NewŞablonPage() {
   const handlePreview = () => {
     const previewWindow = window.open("", "_blank");
     if (previewWindow) {
-      const sanitized = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "meta", "title"], ADD_ATTR: ["target", "data-editable", "data-type", "data-label", "data-css-property", "data-hook", "data-area", "data-area-label"], ALLOW_DATA_ATTR: true });
-      previewWindow.document.write(sanitized);
+      // Extract scripts before DOMPurify strips them, then re-inject
+      const scripts: string[] = [];
+      const withoutScripts = htmlContent.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (_: string, content: string) => {
+        const trimmed = content.trim();
+        if (trimmed) scripts.push(trimmed);
+        return '';
+      });
+      const sanitized = DOMPurify.sanitize(withoutScripts, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "meta", "title"], ADD_ATTR: ["target", "data-editable", "data-type", "data-label", "data-css-property", "data-hook", "data-area", "data-area-label"], ALLOW_DATA_ATTR: true });
+      const scriptTags = scripts.map(s => `<script>${s}<\/script>`).join('\n');
+      previewWindow.document.write(sanitized + scriptTags);
       previewWindow.document.close();
     }
   };

@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Heart } from "lucide-react";
 import { escapeHtml, sanitizeUrl } from "@/lib/security/sanitize";
 import DOMPurify from 'isomorphic-dompurify';
 import MusicPlayer from "@/components/MusicPlayer";
 import ShareIconButton from "@/components/ShareIconButton";
 
+// Extract <script> contents from HTML before DOMPurify strips them
+function extractScripts(html: string): { cleanHtml: string; scripts: string[] } {
+  const scripts: string[] = [];
+  const cleanHtml = html.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (_, content) => {
+    const trimmed = content.trim();
+    if (trimmed) scripts.push(trimmed);
+    return '';
+  });
+  return { cleanHtml, scripts };
+}
+
 export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicUrl?: string }) {
   const template = project.templates;
   const htmlData = project.hook_values || {};
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Add error handling for template scripts
   useEffect(() => {
@@ -110,17 +122,36 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     html = areaDoc.documentElement.outerHTML;
   }
 
+  // Extract scripts before DOMPurify strips them
+  const { cleanHtml, scripts: templateScripts } = extractScripts(html);
+
   // Sanitize HTML with DOMPurify before rendering
-  const sanitizedHtml = DOMPurify.sanitize(html, {
+  const sanitizedHtml = DOMPurify.sanitize(cleanHtml, {
     WHOLE_DOCUMENT: true,
     ADD_TAGS: ['iframe', 'video', 'audio', 'source', 'style', 'link'],
     ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'data-editable', 'data-type', 'data-label', 'media'],
     ALLOW_DATA_ATTR: true,
   });
 
+  // Run extracted template scripts after DOM render
+  useEffect(() => {
+    if (!templateScripts.length) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    templateScripts.forEach((code, i) => {
+      const t = setTimeout(() => {
+        try { new Function(code)(); } catch (e) {
+          if (process.env.NODE_ENV === 'development') console.warn('Template script error:', e);
+        }
+      }, 100 * (i + 1));
+      timers.push(t);
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [sanitizedHtml]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <div
+        ref={containerRef}
         dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
         className="html-template-render"
         suppressHydrationWarning
