@@ -1,11 +1,28 @@
 // ════════════════════════════════════════════════════════════
-// ♥ Forilove — Structural JSON Assembly System
-// ♥ Premium section blocks + AI design decisions
-// ♥ Rich animation library, decorative elements, stagger system
-// ♥ AI customCSS transforms the look + animation level each time
+// ♥ Forilove — 2-Step AI Template System
+// ♥ Step 1: AI thinks (concept) → Step 2: AI implements (CSS+texts)
+// ♥ No hardcoded presets — every design is unique
 // ════════════════════════════════════════════════════════════
 
-// ♥ Forilove — AI Response Interface
+// ♥ Forilove — Step 1: Design Concept (AI thinks)
+export interface DesignConcept {
+  mood: string;
+  colorPalette: {
+    primary: string;
+    primaryLight: string;
+    dark: string;
+    text: string;
+    textLight: string;
+    accent: string;
+  };
+  fonts: string[];
+  sections: string[];
+  animationLevel: "sade" | "orta" | "premium";
+  bodyBackground: string;
+  architecture: string;
+}
+
+// ♥ Forilove — Step 2: Implementation (AI builds)
 export interface AITemplateResponse {
   fonts: string[];
   cssVariables: {
@@ -18,30 +35,27 @@ export interface AITemplateResponse {
   };
   sections: string[];
   animations: { hero?: string; sections?: string };
-  bodyBackground?: string;
-  customCSS?: string;
+  bodyBackground: string;
+  customCSS: string;
   defaultTexts: Record<string, string>;
 }
 
-// ♥ Forilove — Section Definition Type
+// ♥ Forilove — Section Definition
 type SectionDef = {
   html: (texts: Record<string, string>, headingFont: string) => string;
   css: (headingFont: string) => string;
 };
 
-// ♥ Forilove — HTML Escape Utility
+// ♥ Forilove — HTML Escape
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ════════════════════════════════════════════════════════════
-// ♥ Forilove — Section Registry (10 Sections)
-// ♥ Neutral structure with decorative hooks
-// ♥ AI customCSS controls appearance + animation intensity
+// ♥ Forilove — 10 Section Blocks (neutral structure)
 // ════════════════════════════════════════════════════════════
 
 const SECTION_REGISTRY: Record<string, SectionDef> = {
 
-  // ♥ Forilove — Hero Section
   hero: {
     html: (t) => `
 <!-- ♥ Forilove — Hero -->
@@ -57,7 +71,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <div class="fl-hero-scroll"><span>♥</span></div>
 </section>`,
     css: (hf) => `
-/* ♥ Forilove — Hero */
 .fl-hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .fl-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform 8s ease}
 .fl-hero:hover .fl-hero-bg{transform:scale(1.03)}
@@ -71,7 +84,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 .fl-hero-scroll span{display:block;animation:flBounce 2s ease-in-out infinite}`,
   },
 
-  // ♥ Forilove — Date Section
   date: {
     html: (t) => `
 <!-- ♥ Forilove — Date -->
@@ -81,13 +93,11 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-date-value" data-editable="special_date" data-type="date" data-label="Özel Tarih">${esc(t.special_date || "14.02.2024")}</p>
 </section>`,
     css: () => `
-/* ♥ Forilove — Date */
 .fl-date{padding:clamp(60px,10vw,100px) 24px;text-align:center}
 .fl-date-label{font-size:clamp(10px,1.2vw,12px);letter-spacing:4px;text-transform:uppercase;color:var(--text-light);margin-bottom:16px;font-weight:400}
 .fl-date-value{font-size:clamp(18px,3vw,28px);letter-spacing:2px;color:var(--primary);font-weight:500}`,
   },
 
-  // ♥ Forilove — Gallery Section
   gallery: {
     html: (t) => `
 <!-- ♥ Forilove — Gallery -->
@@ -104,7 +114,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   </div>
 </section>`,
     css: () => `
-/* ♥ Forilove — Gallery */
 .fl-gallery{padding:clamp(60px,10vw,120px) clamp(16px,4vw,48px);max-width:1100px;margin:0 auto}
 .fl-gallery-header{text-align:center;margin-bottom:clamp(24px,5vw,48px)}
 .fl-gallery-subtitle{font-size:clamp(14px,2vw,17px);color:var(--text-light);line-height:1.6;max-width:480px;margin:0 auto;font-weight:300}
@@ -114,7 +123,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 @media(max-width:480px){.fl-gallery-grid{grid-template-columns:1fr}.fl-gallery-img{height:clamp(220px,60vw,350px)}}`,
   },
 
-  // ♥ Forilove — Love Letter Section
   love_letter: {
     html: (t, hf) => `
 <!-- ♥ Forilove — Love Letter -->
@@ -123,18 +131,16 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-label">Mektup</p>
   <div class="fl-letter-body">
     <div class="fl-letter-deco"></div>
-    <p class="fl-letter-text" data-editable="letter" data-type="textarea" data-label="Mektup">${esc(t.letter || "Sevgilim,\n\nSeninle geçirdiğim her an hayatımın en değerli hazinesi. Gülüşün güneş gibi aydınlatıyor dünyamı. Seninle geçen her saniye, benim için sonsuzluk kadar değerli.\n\nSonsuza kadar seninle...")}</p>
+    <p class="fl-letter-text" data-editable="letter" data-type="textarea" data-label="Mektup">${esc(t.letter || "Sevgilim,\n\nSeninle geçirdiğim her an hayatımın en değerli hazinesi.\n\nSonsuza kadar seninle...")}</p>
   </div>
 </section>`,
     css: (hf) => `
-/* ♥ Forilove — Love Letter */
 .fl-letter{padding:clamp(60px,10vw,120px) clamp(16px,4vw,24px);max-width:650px;margin:0 auto}
 .fl-letter-body{text-align:center;position:relative}
 .fl-letter-deco{display:none}
 .fl-letter-text{font-family:${hf};font-size:clamp(16px,2.5vw,21px);line-height:2;color:var(--text);white-space:pre-line;font-weight:300}`,
   },
 
-  // ♥ Forilove — Timeline Section
   timeline: {
     html: (t, hf) => `
 <!-- ♥ Forilove — Timeline -->
@@ -159,7 +165,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   </div>
 </section>`,
     css: (hf) => `
-/* ♥ Forilove — Timeline */
 .fl-timeline{padding:clamp(60px,10vw,120px) clamp(16px,4vw,24px);max-width:650px;margin:0 auto}
 .fl-timeline-track{position:relative;padding-left:clamp(24px,4vw,36px)}
 .fl-timeline-track::before{content:'';position:absolute;left:5px;top:0;bottom:0;width:1px;background:var(--primary);opacity:0.3}
@@ -170,7 +175,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 .fl-timeline-desc{font-size:clamp(13px,1.8vw,15px);line-height:1.7;color:var(--text-light);font-weight:300}`,
   },
 
-  // ♥ Forilove — Countdown Section
   countdown: {
     html: (t, hf) => `
 <!-- ♥ Forilove — Countdown -->
@@ -181,13 +185,11 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-countdown-text" data-editable="countdown_label" data-type="text" data-label="Geri Sayım Etiketi">${esc(t.countdown_label || "Özel günümüze kalan süre")}</p>
 </section>`,
     css: (hf) => `
-/* ♥ Forilove — Countdown */
 .fl-countdown{padding:clamp(60px,10vw,120px) 24px;text-align:center;max-width:600px;margin:0 auto}
 .fl-countdown-date{font-family:${hf};font-size:clamp(32px,7vw,60px);color:var(--primary);margin-bottom:16px;font-weight:400}
 .fl-countdown-text{font-size:clamp(12px,1.5vw,14px);letter-spacing:3px;text-transform:uppercase;color:var(--text-light);font-weight:300}`,
   },
 
-  // ♥ Forilove — Quote Section
   quotes: {
     html: (t, hf) => `
 <!-- ♥ Forilove — Quote -->
@@ -198,14 +200,12 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-quote-author" data-editable="quote_author" data-type="text" data-label="Alıntı Yazarı">${esc(t.quote_author || "Bizim Hikayemiz")}</p>
 </section>`,
     css: (hf) => `
-/* ♥ Forilove — Quote */
 .fl-quote{padding:clamp(80px,12vw,160px) clamp(16px,4vw,24px);text-align:center;max-width:750px;margin:0 auto;position:relative}
 .fl-quote-deco{display:none}
 .fl-quote-text{font-family:${hf};font-style:italic;font-size:clamp(20px,4vw,38px);line-height:1.5;color:var(--dark);margin-bottom:clamp(24px,4vw,40px);font-weight:300}
 .fl-quote-author{font-size:clamp(10px,1.3vw,12px);letter-spacing:4px;text-transform:uppercase;color:var(--text-light);font-weight:400}`,
   },
 
-  // ♥ Forilove — Full Image Section
   full_image: {
     html: (t, hf) => `
 <!-- ♥ Forilove — Full Image -->
@@ -216,7 +216,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   </div>
 </section>`,
     css: (hf) => `
-/* ♥ Forilove — Full Image */
 .fl-fullimg{position:relative;overflow:hidden}
 .fl-fullimg-photo{width:100%;height:clamp(50vh,70vw,80vh);object-fit:cover;display:block;filter:brightness(0.65);transition:transform 8s ease}
 .fl-fullimg:hover .fl-fullimg-photo{transform:scale(1.05)}
@@ -224,7 +223,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 .fl-fullimg-text{font-family:${hf};font-size:clamp(28px,6vw,64px);text-align:center;color:#fff;font-weight:300}`,
   },
 
-  // ♥ Forilove — Video Section
   video: {
     html: (t) => `
 <!-- ♥ Forilove — Video -->
@@ -237,14 +235,12 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-video-caption" data-editable="video_caption" data-type="text" data-label="Video Açıklaması">${esc(t.video_caption || "Birlikte yaşadığımız özel an")}</p>
 </section>`,
     css: () => `
-/* ♥ Forilove — Video */
 .fl-video{padding:clamp(60px,10vw,120px) clamp(16px,4vw,24px);max-width:900px;margin:0 auto}
 .fl-video-wrap{overflow:hidden;margin-bottom:16px}
 .fl-video-player{width:100%;display:block;background:#000}
 .fl-video-caption{text-align:center;font-size:clamp(12px,1.5vw,14px);letter-spacing:2px;text-transform:uppercase;color:var(--text-light);font-weight:300}`,
   },
 
-  // ♥ Forilove — Footer Section
   footer: {
     html: (t, hf) => `
 <!-- ♥ Forilove — Footer -->
@@ -254,7 +250,6 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-footer-names" data-editable="footer_names" data-type="text" data-label="İsimler">${esc(t.footer_names || "♥")}</p>
 </footer>`,
     css: (hf) => `
-/* ♥ Forilove — Footer */
 .fl-footer{padding:clamp(80px,12vw,120px) 24px clamp(48px,6vw,80px);text-align:center}
 .fl-footer-message{font-family:${hf};font-size:clamp(17px,3vw,28px);line-height:1.6;color:var(--text-light);max-width:520px;margin:0 auto clamp(24px,4vw,48px);font-weight:300;white-space:pre-line}
 .fl-footer-names{font-size:clamp(10px,1.3vw,12px);letter-spacing:5px;text-transform:uppercase;color:var(--text-light);opacity:0.6;font-weight:300}`,
@@ -262,12 +257,10 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 };
 
 // ════════════════════════════════════════════════════════════
-// ♥ Forilove — Animation Library (CSS-only)
-// ♥ 15+ keyframes ready to use via customCSS
+// ♥ Forilove — Animation Library
 // ════════════════════════════════════════════════════════════
 
 const ANIMATION_LIBRARY = `
-/* ♥ Forilove — Animation Library */
 @keyframes flFadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
 @keyframes flFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes flScaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
@@ -278,21 +271,15 @@ const ANIMATION_LIBRARY = `
 @keyframes flGlow{0%,100%{box-shadow:0 0 5px var(--primary)}50%{box-shadow:0 0 20px var(--primary),0 0 40px var(--primary)}}
 @keyframes flFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes flShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-@keyframes flRotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes flGradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-@keyframes flRevealUp{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0)}}
 @keyframes flZoomSlow{from{transform:scale(1)}to{transform:scale(1.08)}}
 @keyframes flTextReveal{from{opacity:0;letter-spacing:12px;filter:blur(4px)}to{opacity:1;letter-spacing:inherit;filter:blur(0)}}
 @keyframes flLineGrow{from{width:0}to{width:40px}}
 @keyframes flDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:0.6}}
-
-/* ♥ Forilove — Stagger Delays */
 .fl-stagger-1{animation-delay:0.1s}
 .fl-stagger-2{animation-delay:0.25s}
 .fl-stagger-3{animation-delay:0.4s}
 .fl-stagger-4{animation-delay:0.55s}
-
-/* ♥ Forilove — Divider (hidden by default, AI enables via customCSS) */
 .fl-divider{display:none}`;
 
 // ════════════════════════════════════════════════════════════
@@ -300,9 +287,88 @@ const ANIMATION_LIBRARY = `
 // ════════════════════════════════════════════════════════════
 
 const HEX_RE = /^#[0-9a-fA-F]{3,8}$/;
+const COLOR_RE = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))$/;
 const VALID_SECTIONS = Object.keys(SECTION_REGISTRY);
 const SAFE_FONT_RE = /^[a-zA-Z0-9 :@;,]+$/;
 
+export function validateConcept(raw: unknown): DesignConcept | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+
+  const mood = typeof r.mood === "string" ? r.mood.slice(0, 100) : "romantic";
+  const architecture = typeof r.architecture === "string" ? r.architecture.slice(0, 100) : "warm";
+
+  const cp = (r.colorPalette && typeof r.colorPalette === "object" ? r.colorPalette : {}) as Record<string, string>;
+  const colorPalette = {
+    primary: (typeof cp.primary === "string" && COLOR_RE.test(cp.primary.trim())) ? cp.primary.trim() : "#c4697a",
+    primaryLight: (typeof cp.primaryLight === "string" && COLOR_RE.test(cp.primaryLight.trim())) ? cp.primaryLight.trim() : "#fdf2f4",
+    dark: (typeof cp.dark === "string" && COLOR_RE.test(cp.dark.trim())) ? cp.dark.trim() : "#1a1a2e",
+    text: (typeof cp.text === "string" && COLOR_RE.test(cp.text.trim())) ? cp.text.trim() : "#2d2d3a",
+    textLight: (typeof cp.textLight === "string" && COLOR_RE.test(cp.textLight.trim())) ? cp.textLight.trim() : "#6b7280",
+    accent: (typeof cp.accent === "string" && COLOR_RE.test(cp.accent.trim())) ? cp.accent.trim() : "#d4a853",
+  };
+
+  const fonts = Array.isArray(r.fonts)
+    ? (r.fonts as string[]).filter((f) => typeof f === "string" && SAFE_FONT_RE.test(f)).slice(0, 3)
+    : ["Playfair Display:wght@400;700", "Inter:wght@300;400;500"];
+
+  const rawSections = Array.isArray(r.sections) ? (r.sections as string[]) : [];
+  const sections = rawSections.filter((s) => VALID_SECTIONS.includes(s));
+  if (sections.length === 0) sections.push("hero", "gallery", "quotes", "love_letter", "timeline", "footer");
+
+  const validLevels = ["sade", "orta", "premium"];
+  const animationLevel = (typeof r.animationLevel === "string" && validLevels.includes(r.animationLevel))
+    ? r.animationLevel as DesignConcept["animationLevel"] : "orta";
+
+  const bodyBackground = typeof r.bodyBackground === "string" && r.bodyBackground.length < 200
+    ? r.bodyBackground : "#ffffff";
+
+  return { mood, colorPalette, fonts, sections, animationLevel, bodyBackground, architecture };
+}
+
+export function validateImplementation(raw: unknown): { customCSS: string; defaultTexts: Record<string, string> } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+
+  const customCSS = typeof r.customCSS === "string" ? sanitizeCustomCss(r.customCSS) : "";
+  if (!customCSS || customCSS.length < 50) return null;
+
+  const rawTexts = (r.defaultTexts && typeof r.defaultTexts === "object" ? r.defaultTexts : {}) as Record<string, string>;
+  const defaultTexts: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rawTexts)) {
+    if (typeof k === "string" && typeof v === "string") defaultTexts[k.slice(0, 50)] = v.slice(0, 1000);
+  }
+
+  return { customCSS, defaultTexts };
+}
+
+// ♥ Forilove — Merge concept + implementation into AITemplateResponse
+export function mergeToResponse(concept: DesignConcept, impl: { customCSS: string; defaultTexts: Record<string, string> }): AITemplateResponse {
+  const animMap: Record<string, { hero: string; sections: string }> = {
+    sade: { hero: "fadeIn", sections: "fadeIn" },
+    orta: { hero: "fadeInUp", sections: "fadeIn" },
+    premium: { hero: "fadeInUp", sections: "fadeInUp" },
+  };
+
+  return {
+    fonts: concept.fonts,
+    cssVariables: {
+      "--primary": concept.colorPalette.primary,
+      "--primary-light": concept.colorPalette.primaryLight,
+      "--dark": concept.colorPalette.dark,
+      "--text": concept.colorPalette.text,
+      "--text-light": concept.colorPalette.textLight,
+      "--accent": concept.colorPalette.accent,
+    },
+    sections: concept.sections,
+    animations: animMap[concept.animationLevel] || animMap.orta,
+    bodyBackground: concept.bodyBackground,
+    customCSS: impl.customCSS,
+    defaultTexts: impl.defaultTexts,
+  };
+}
+
+// ♥ Legacy single-step validation (fallback)
 export function validateAIResponse(raw: unknown): AITemplateResponse | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -313,13 +379,13 @@ export function validateAIResponse(raw: unknown): AITemplateResponse | null {
 
   const cv = (r.cssVariables && typeof r.cssVariables === "object" ? r.cssVariables : {}) as Record<string, string>;
   const defaults: AITemplateResponse["cssVariables"] = {
-    "--primary": "#e8496a", "--primary-light": "#fdf2f4", "--dark": "#1a1a2e",
+    "--primary": "#c4697a", "--primary-light": "#fdf2f4", "--dark": "#1a1a2e",
     "--text": "#2d2d3a", "--text-light": "#6b7280", "--accent": "#d4a853",
   };
   const cssVariables = { ...defaults };
   for (const key of Object.keys(defaults) as (keyof typeof defaults)[]) {
     const v = cv[key];
-    if (typeof v === "string" && HEX_RE.test(v.trim())) cssVariables[key] = v.trim();
+    if (typeof v === "string" && COLOR_RE.test(v.trim())) cssVariables[key] = v.trim();
   }
 
   const rawSections = Array.isArray(r.sections) ? (r.sections as string[]) : [];
@@ -332,9 +398,7 @@ export function validateAIResponse(raw: unknown): AITemplateResponse | null {
     sections: typeof rawAnim.sections === "string" ? rawAnim.sections.slice(0, 100) : "fadeInUp",
   };
 
-  const bodyBackground = typeof r.bodyBackground === "string" && r.bodyBackground.length < 200
-    ? r.bodyBackground : "#fff";
-
+  const bodyBackground = typeof r.bodyBackground === "string" && r.bodyBackground.length < 200 ? r.bodyBackground : "#fff";
   const customCSS = typeof r.customCSS === "string" ? sanitizeCustomCss(r.customCSS) : "";
 
   const rawTexts = (r.defaultTexts && typeof r.defaultTexts === "object" ? r.defaultTexts : {}) as Record<string, string>;
@@ -351,7 +415,7 @@ export function validateAIResponse(raw: unknown): AITemplateResponse | null {
 // ════════════════════════════════════════════════════════════
 
 export function sanitizeCustomCss(css: string): string {
-  let s = css.slice(0, 5000);
+  let s = css.slice(0, 8000);
   s = s.replace(/<\/?script[^>]*>/gi, "");
   s = s.replace(/javascript\s*:/gi, "");
   s = s.replace(/expression\s*\(/gi, "");
@@ -367,7 +431,6 @@ export function sanitizeCustomCss(css: string): string {
 // ════════════════════════════════════════════════════════════
 
 export function assembleTemplate(ai: AITemplateResponse): string {
-  // ♥ Google Fonts
   const fontFamilies = ai.fonts.map((f) => `family=${f.replace(/ /g, "+")}`).join("&");
   const fontsLink = ai.fonts.length > 0
     ? `<link href="https://fonts.googleapis.com/css2?${fontFamilies}&display=swap" rel="stylesheet">`
@@ -379,9 +442,7 @@ export function assembleTemplate(ai: AITemplateResponse): string {
 
   const rootVars = Object.entries(ai.cssVariables).map(([k, v]) => `${k}:${v}`).join(";");
 
-  // ♥ Base CSS
   const baseCSS = `
-/* ♥ Forilove — Base */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{${rootVars}}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -389,7 +450,6 @@ body{font-family:'${bodyFontName}',sans-serif;color:var(--text);background:${ai.
 img{max-width:100%;height:auto}
 .fl-label{font-size:clamp(10px,1.2vw,12px);letter-spacing:4px;text-transform:uppercase;color:var(--text-light);margin-bottom:clamp(24px,4vw,40px);text-align:center;font-weight:400}`;
 
-  // ♥ Section HTML + CSS
   let sectionsHTML = "";
   let sectionsCSS = "";
   for (const key of ai.sections) {
@@ -399,23 +459,21 @@ img{max-width:100%;height:auto}
     sectionsCSS += def.css(headingFont);
   }
 
-  // ♥ Hero + section entrance animations from AI choice
   const animMap: Record<string, string> = { fadeInUp: "flFadeInUp", fadeIn: "flFadeIn", scaleIn: "flScaleIn" };
-  let entranceCSS = "\n/* ♥ Forilove — Entrance Animations */";
+  let entranceCSS = "";
   if (ai.animations.hero) {
     const kf = animMap[ai.animations.hero] || "flFadeInUp";
-    entranceCSS += `\n.fl-hero-content{animation:${kf} 1.2s ease-out both}`;
-    entranceCSS += `\n.fl-hero-subtitle{animation:${kf} 1s ease-out 0.2s both}`;
-    entranceCSS += `\n.fl-hero-title{animation:${kf} 1s ease-out 0.4s both}`;
-    entranceCSS += `\n.fl-hero-date{animation:${kf} 1s ease-out 0.6s both}`;
+    entranceCSS += `.fl-hero-content{animation:${kf} 1.2s ease-out both}`;
+    entranceCSS += `.fl-hero-subtitle{animation:${kf} 1s ease-out 0.2s both}`;
+    entranceCSS += `.fl-hero-title{animation:${kf} 1s ease-out 0.4s both}`;
+    entranceCSS += `.fl-hero-date{animation:${kf} 1s ease-out 0.6s both}`;
   }
   if (ai.animations.sections) {
     const kf = animMap[ai.animations.sections] || "flFadeInUp";
-    entranceCSS += `\n.fl-gallery,.fl-letter,.fl-timeline,.fl-quote,.fl-countdown,.fl-video,.fl-date,.fl-fullimg,.fl-footer{animation:${kf} 0.8s ease-out both}`;
+    entranceCSS += `.fl-gallery,.fl-letter,.fl-timeline,.fl-quote,.fl-countdown,.fl-video,.fl-date,.fl-fullimg,.fl-footer{animation:${kf} 0.8s ease-out both}`;
   }
 
-  // ♥ AI Custom CSS
-  const custom = ai.customCSS ? `\n/* ♥ Forilove — Custom Theme */\n${ai.customCSS}` : "";
+  const custom = ai.customCSS ? `\n/* ♥ Forilove — AI Theme */\n${ai.customCSS}` : "";
 
   return `<!DOCTYPE html>
 <html lang="tr">
@@ -453,11 +511,11 @@ export const FALLBACK_RESPONSE: AITemplateResponse = {
   sections: ["hero", "gallery", "quotes", "love_letter", "timeline", "full_image", "footer"],
   animations: { hero: "fadeInUp", sections: "fadeIn" },
   bodyBackground: "#fafafa",
-  customCSS: `.fl-divider{display:block;width:40px;height:1px;background:var(--text-light);opacity:0.15;margin:0 auto 32px}.fl-gallery-grid{gap:8px}.fl-gallery-img{border-radius:4px}.fl-hero-overlay{background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,0.6) 100%)}.fl-quote{border-top:1px solid rgba(0,0,0,0.06)}.fl-footer{background:var(--dark)}.fl-footer-message{color:rgba(255,255,255,0.6)}.fl-footer-names{color:rgba(255,255,255,0.3)}`,
+  customCSS: `.fl-divider{display:block;width:40px;height:1px;background:var(--primary);opacity:0.2;margin:0 auto 32px}.fl-gallery-img{border-radius:4px;box-shadow:0 4px 20px rgba(0,0,0,0.06)}.fl-hero-overlay{background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,0.55) 100%)}.fl-quote{border-top:1px solid rgba(0,0,0,0.06)}.fl-quote-deco{display:block;font-size:48px;color:var(--primary);opacity:0.12;margin-bottom:16px;font-family:Georgia,serif}.fl-quote-deco::before{content:"\\201C"}.fl-letter-text{font-style:italic}.fl-footer{background:var(--dark)}.fl-footer-message{color:rgba(255,255,255,0.6)}.fl-footer-names{color:rgba(255,255,255,0.3)}`,
   defaultTexts: {
     title: "Bizim Hikayemiz", subtitle: "Sana olan sevgim", special_date: "14.02.2024",
     gallery_subtitle: "Birlikte geçirdiğimiz en güzel anlar",
-    letter: "Sevgilim,\n\nSeninle geçirdiğim her an hayatımın en değerli hazinesi. Gülüşün güneş gibi aydınlatıyor dünyamı.\n\nSonsuza kadar seninle...",
+    letter: "Sevgilim,\n\nSeninle geçirdiğim her an hayatımın en değerli hazinesi.\n\nSonsuza kadar seninle...",
     quote_text: "Seninle geçen her an, hayatımın en güzel sayfası oldu.", quote_author: "Bizim Hikayemiz",
     milestone_1_title: "İlk Tanışma", milestone_1_text: "Kaderimiz o gün birleşti",
     milestone_2_title: "İlk Buluşma", milestone_2_text: "Kalbimin sana ait olduğunu anladım",
