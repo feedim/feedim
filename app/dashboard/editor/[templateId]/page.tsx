@@ -344,12 +344,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             const btn = hookDoc.createElement('button');
             btn.className = 'forilove-area-remove';
             btn.setAttribute('data-remove-area', areaName);
-            btn.textContent = '\u2715';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>Kaldir</span>';
             el.appendChild(btn);
           }
         });
         const areaStyle = hookDoc.createElement('style');
-        areaStyle.textContent = '.forilove-area-remove{position:absolute;top:8px;right:8px;z-index:9999;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,0.6);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;backdrop-filter:blur(4px);opacity:0;transition:opacity 0.2s;} [data-area]:hover .forilove-area-remove{opacity:1;}';
+        areaStyle.textContent = '.forilove-area-remove{position:absolute;top:10px;right:10px;z-index:9999;height:36px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,0.65);color:white;border:1px solid rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:500;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0.85;transition:opacity 0.2s,background 0.2s;letter-spacing:0.01em;box-shadow:0 2px 8px rgba(0,0,0,0.3);} .forilove-area-remove:hover{opacity:1;background:rgba(0,0,0,0.8);} .forilove-area-remove:active{transform:scale(0.95);} @media(max-width:640px){.forilove-area-remove{height:40px;padding:0 16px;font-size:14px;}}';
         hookDoc.head.appendChild(areaStyle);
         const areaScript = hookDoc.createElement('script');
         areaScript.textContent = "document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.forilove-area-remove').forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();window.parent.postMessage({type:'HIDE_AREA',area:btn.getAttribute('data-remove-area')},'*');});});});";
@@ -424,14 +424,14 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           const btn = doc.createElement('button');
           btn.className = 'forilove-area-remove';
           btn.setAttribute('data-remove-area', areaName);
-          btn.textContent = '\u2715';
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>Kaldir</span>';
           el.appendChild(btn);
         }
       });
 
       // Add data-area styles
       const areaStyle = doc.createElement('style');
-      areaStyle.textContent = '.forilove-area-remove{position:absolute;top:8px;right:8px;z-index:9999;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,0.6);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;backdrop-filter:blur(4px);opacity:0;transition:opacity 0.2s;} [data-area]:hover .forilove-area-remove{opacity:1;}';
+      areaStyle.textContent = '.forilove-area-remove{position:absolute;top:10px;right:10px;z-index:9999;height:36px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,0.65);color:white;border:1px solid rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:500;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0.85;transition:opacity 0.2s,background 0.2s;letter-spacing:0.01em;box-shadow:0 2px 8px rgba(0,0,0,0.3);} .forilove-area-remove:hover{opacity:1;background:rgba(0,0,0,0.8);} .forilove-area-remove:active{transform:scale(0.95);} @media(max-width:640px){.forilove-area-remove{height:40px;padding:0 16px;font-size:14px;}}';
       doc.head.appendChild(areaStyle);
 
       // Add click event listener script
