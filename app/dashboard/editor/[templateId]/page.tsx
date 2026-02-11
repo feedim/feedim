@@ -915,10 +915,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       setCoinBalance(spendResult[0].new_balance);
 
       // Only send AI-fillable hooks (no images, no area toggles)
+      // Send current values (user edits) instead of original template defaults
       const fillableTypes = new Set(['text', 'textarea', 'color', 'date', 'url']);
+      const currentValues = valuesRef.current;
       const userHooks = hooks
         .filter(h => !h.key.startsWith('__') && fillableTypes.has(h.type))
-        .map(h => ({ key: h.key, type: h.type, label: h.label, defaultValue: h.defaultValue }));
+        .map(h => ({ key: h.key, type: h.type, label: h.label, defaultValue: currentValues[h.key] || h.defaultValue }));
 
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
