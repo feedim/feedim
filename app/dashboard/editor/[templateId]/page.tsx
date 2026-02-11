@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Eye, ChevronDown, ChevronUp, PanelLeftClose, PanelLeft, X, Heart, Coins, Upload, Music, Play, Pause, Globe, Lock } from "lucide-react";
+import { ArrowLeft, Eye, ChevronDown, ChevronUp, PanelLeftClose, PanelLeft, X, Heart, Coins, Upload, Music, Play, Pause, Globe, Lock, LayoutGrid } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { compressImage, validateImageFile, getOptimizedFileName } from '@/lib/utils/imageCompression';
@@ -41,6 +41,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const [editorMusicPlaying, setEditorMusicPlaying] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isChangingImage, setIsChangingImage] = useState(false);
+  const [areas, setAreas] = useState<{ key: string; label: string }[]>([]);
+  const [showSectionsModal, setShowSectionsModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
   // Deferred uploads: store File objects keyed by hook key, upload on publish
@@ -73,10 +75,6 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         setDraftValue(valuesRef.current[event.data.key] || '');
         oldImageUrlRef.current = valuesRef.current[event.data.key] || '';
         setEditingHook(event.data.key);
-      }
-      // data-area: hide a section
-      if (event.data?.type === 'HIDE_AREA' && typeof event.data.area === 'string' && /^[a-zA-Z0-9_-]+$/.test(event.data.area)) {
-        setValues(prev => ({ ...prev, [`__area_${event.data.area}`]: 'hidden' }));
       }
     };
 
@@ -119,6 +117,18 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         // Parse hooks for demo
         const parsedHooks = parseHooksFromHTML(htmlContent);
         const defaultValues = extractDefaults(parsedHooks);
+
+        // Parse removable areas
+        const areaParser = new DOMParser();
+        const areaDoc = areaParser.parseFromString(htmlContent, 'text/html');
+        const parsedAreas: { key: string; label: string }[] = [];
+        areaDoc.querySelectorAll('[data-area]').forEach(el => {
+          const key = el.getAttribute('data-area');
+          if (!key) return;
+          const label = el.getAttribute('data-area-label') || key.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          parsedAreas.push({ key, label });
+        });
+        setAreas(parsedAreas);
 
         // Show demo HTML with default values
         let demoHtml = htmlContent;
@@ -329,31 +339,16 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         html = html.replace(regex, value || '');
       });
 
-      // Process data-area removable sections
-      const hookParser = new DOMParser();
-      const hookDoc = hookParser.parseFromString(html, 'text/html');
-      const hookAreas = hookDoc.querySelectorAll('[data-area]');
-      if (hookAreas.length > 0) {
-        hookAreas.forEach(el => {
-          const areaName = el.getAttribute('data-area');
-          if (!areaName) return;
-          if (values[`__area_${areaName}`] === 'hidden') {
-            el.setAttribute('style', (el.getAttribute('style') || '') + ';display:none !important;');
-          } else {
-            el.setAttribute('style', (el.getAttribute('style') || '') + ';position:relative;');
-            const btn = hookDoc.createElement('button');
-            btn.className = 'forilove-area-remove';
-            btn.setAttribute('data-remove-area', areaName);
-            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>Kaldir</span>';
-            el.appendChild(btn);
-          }
+      // Process data-area hidden sections
+      const hiddenAreaKeys = Object.keys(values).filter(k => k.startsWith('__area_') && values[k] === 'hidden');
+      if (hiddenAreaKeys.length > 0) {
+        const hookParser = new DOMParser();
+        const hookDoc = hookParser.parseFromString(html, 'text/html');
+        hiddenAreaKeys.forEach(k => {
+          const areaName = k.replace('__area_', '');
+          const el = hookDoc.querySelector(`[data-area="${areaName}"]`);
+          if (el) el.setAttribute('style', (el.getAttribute('style') || '') + ';display:none !important;');
         });
-        const areaStyle = hookDoc.createElement('style');
-        areaStyle.textContent = '.forilove-area-remove{position:absolute;top:10px;right:10px;z-index:9999;height:36px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,0.65);color:white;border:1px solid rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:500;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0.85;transition:opacity 0.2s,background 0.2s;letter-spacing:0.01em;box-shadow:0 2px 8px rgba(0,0,0,0.3);} .forilove-area-remove:hover{opacity:1;background:rgba(0,0,0,0.8);} .forilove-area-remove:active{transform:scale(0.95);} @media(max-width:640px){.forilove-area-remove{height:40px;padding:0 16px;font-size:14px;}}';
-        hookDoc.head.appendChild(areaStyle);
-        const areaScript = hookDoc.createElement('script');
-        areaScript.textContent = "document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.forilove-area-remove').forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();window.parent.postMessage({type:'HIDE_AREA',area:btn.getAttribute('data-remove-area')},'*');});});});";
-        hookDoc.body.appendChild(areaScript);
         writeToPreview(hookDoc.documentElement.outerHTML);
       } else {
         writeToPreview(html);
@@ -413,26 +408,14 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         element.setAttribute('style', `${currentStyle}; cursor: pointer;`);
       });
 
-      // Process data-area removable sections
+      // Process data-area hidden sections
       doc.querySelectorAll('[data-area]').forEach(el => {
         const areaName = el.getAttribute('data-area');
         if (!areaName) return;
         if (values[`__area_${areaName}`] === 'hidden') {
           el.setAttribute('style', (el.getAttribute('style') || '') + ';display:none !important;');
-        } else {
-          el.setAttribute('style', (el.getAttribute('style') || '') + ';position:relative;');
-          const btn = doc.createElement('button');
-          btn.className = 'forilove-area-remove';
-          btn.setAttribute('data-remove-area', areaName);
-          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>Kaldir</span>';
-          el.appendChild(btn);
         }
       });
-
-      // Add data-area styles
-      const areaStyle = doc.createElement('style');
-      areaStyle.textContent = '.forilove-area-remove{position:absolute;top:10px;right:10px;z-index:9999;height:36px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,0.65);color:white;border:1px solid rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:500;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0.85;transition:opacity 0.2s,background 0.2s;letter-spacing:0.01em;box-shadow:0 2px 8px rgba(0,0,0,0.3);} .forilove-area-remove:hover{opacity:1;background:rgba(0,0,0,0.8);} .forilove-area-remove:active{transform:scale(0.95);} @media(max-width:640px){.forilove-area-remove{height:40px;padding:0 16px;font-size:14px;}}';
-      doc.head.appendChild(areaStyle);
 
       // Add click event listener script
       const script = doc.createElement('script');
@@ -458,15 +441,6 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             el.addEventListener('mouseleave', function() {
               el.style.outline = '2px solid transparent';
               el.style.boxShadow = 'none';
-            });
-          });
-
-          // data-area remove buttons
-          document.querySelectorAll('.forilove-area-remove').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              window.parent.postMessage({ type: 'HIDE_AREA', area: btn.getAttribute('data-remove-area') }, '*');
             });
           });
         });
@@ -901,6 +875,15 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         Müzik Ekle
                       </button>
                     )}
+                    {areas.length > 0 && (
+                      <button
+                        onClick={() => setShowSectionsModal(true)}
+                        className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                        Bölümler
+                      </button>
+                    )}
                     <button
                       onClick={handlePreview}
                       className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
@@ -1013,6 +996,15 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     Müzik Ekle
                   </button>
                 )}
+                {areas.length > 0 && (
+                  <button
+                    onClick={() => setShowSectionsModal(true)}
+                    className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm whitespace-nowrap"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    Bölümler
+                  </button>
+                )}
                 <button
                   onClick={handlePreview}
                   className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm whitespace-nowrap"
@@ -1035,26 +1027,88 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           </div>
         )}
 
-        {/* Hidden Areas Restoration Pill */}
-        {isPurchased && Object.keys(values).some(k => k.startsWith('__area_') && values[k] === 'hidden') && (
-          <div className="fixed bottom-[72px] md:bottom-4 left-1/2 -translate-x-1/2 z-40 bg-zinc-800/90 backdrop-blur-xl rounded-full px-4 py-2 flex items-center gap-3 border border-white/10 animate-scale-in">
-            <span className="text-sm text-gray-300">
-              {Object.keys(values).filter(k => k.startsWith('__area_') && values[k] === 'hidden').length} bölüm gizlendi
-            </span>
-            <button
-              onClick={() => {
-                setValues(prev => {
-                  const next = { ...prev };
-                  Object.keys(next).forEach(k => {
-                    if (k.startsWith('__area_')) delete next[k];
-                  });
-                  return next;
-                });
-              }}
-              className="text-pink-400 text-sm font-medium hover:text-pink-300 transition-colors"
+        {/* Sections Modal */}
+        {showSectionsModal && (
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowSectionsModal(false)}
+          >
+            <div
+              className="bg-zinc-900 w-full sm:w-[420px] rounded-4xl p-5 space-y-4 animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
             >
-              Geri Al
-            </button>
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <LayoutGrid className="h-5 w-5 text-pink-400" />
+                    Bölümler
+                  </h3>
+                  <p className="text-xs text-gray-400">Görünmesini istediğiniz bölümleri seçin</p>
+                </div>
+                <button
+                  onClick={() => setShowSectionsModal(false)}
+                  aria-label="Kapat"
+                  className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {areas.map((area) => {
+                  const isHidden = values[`__area_${area.key}`] === 'hidden';
+                  return (
+                    <button
+                      key={area.key}
+                      onClick={() => {
+                        setValues(prev => {
+                          const next = { ...prev };
+                          if (isHidden) {
+                            delete next[`__area_${area.key}`];
+                          } else {
+                            next[`__area_${area.key}`] = 'hidden';
+                          }
+                          return next;
+                        });
+                      }}
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                        isHidden
+                          ? 'border-white/5 bg-white/[0.02] opacity-50'
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      <span className={`text-sm font-medium ${isHidden ? 'text-gray-500 line-through' : 'text-white'}`}>
+                        {area.label}
+                      </span>
+                      <div
+                        className="relative shrink-0 rounded-full transition-colors"
+                        style={{
+                          width: 44,
+                          height: 24,
+                          background: isHidden ? 'rgba(255,255,255,0.1)' : 'lab(49.5493% 79.8381 2.31768)',
+                        }}
+                      >
+                        <div
+                          className="absolute top-1 rounded-full bg-white transition-transform"
+                          style={{
+                            width: 16,
+                            height: 16,
+                            left: isHidden ? 4 : 24,
+                          }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setShowSectionsModal(false)}
+                className="btn-primary w-full py-3"
+              >
+                Tamam
+              </button>
+            </div>
           </div>
         )}
 
