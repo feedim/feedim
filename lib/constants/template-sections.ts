@@ -1,12 +1,14 @@
 // ════════════════════════════════════════════════════════════
-// ♥ Forilove — 2-Step AI Template System
-// ♥ Step 1: AI thinks (concept) → Step 2: AI implements (CSS+texts)
-// ♥ No hardcoded presets — every design is unique
+// ♥ Forilove — 3-Step Agent Template System
+// ♥ Step 1: ANALYZE → Step 2: BUILD → Step 3: REVIEW & FIX
+// ♥ Dynamic cover photos, color conflict detection
+// ♥ Every design is unique — şablon canavarı
 // ════════════════════════════════════════════════════════════
 
-// ♥ Forilove — Step 1: Design Concept (AI thinks)
+// ♥ Forilove — Step 1: Design Concept
 export interface DesignConcept {
   mood: string;
+  architecture: string;
   colorPalette: {
     primary: string;
     primaryLight: string;
@@ -19,10 +21,11 @@ export interface DesignConcept {
   sections: string[];
   animationLevel: "sade" | "orta" | "premium";
   bodyBackground: string;
-  architecture: string;
+  coverPhotoMood: string;
+  isDarkTheme: boolean;
 }
 
-// ♥ Forilove — Step 2: Implementation (AI builds)
+// ♥ Forilove — Final Template Response
 export interface AITemplateResponse {
   fonts: string[];
   cssVariables: {
@@ -38,6 +41,8 @@ export interface AITemplateResponse {
   bodyBackground: string;
   customCSS: string;
   defaultTexts: Record<string, string>;
+  coverPhotoMood: string;
+  isDarkTheme: boolean;
 }
 
 // ♥ Forilove — Section Definition
@@ -51,16 +56,129 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ════════════════════════════════════════════════════════════
-// ♥ Forilove — 10 Section Blocks (neutral structure)
+// ♥ Forilove — Dynamic Cover Photos (mood-based)
+// ♥ Different images every time — never the same
 // ════════════════════════════════════════════════════════════
 
-const SECTION_REGISTRY: Record<string, SectionDef> = {
+const COVER_PHOTOS: Record<string, string[]> = {
+  romantic: [
+    "photo-1529634806980-85c3dd6d34ac",
+    "photo-1518568814500-bf0f8d125f46",
+    "photo-1474552226712-ac0f0961a954",
+    "photo-1494774157365-9e04c6720e47",
+  ],
+  cinematic: [
+    "photo-1469474968028-56623f02e42e",
+    "photo-1506748686214-e9df14d4d9d0",
+    "photo-1419242902214-272b3f66ee7a",
+    "photo-1470071459604-3b5ec3a7fe05",
+  ],
+  nature: [
+    "photo-1490750967868-88aa4f44baee",
+    "photo-1462275646964-a0e3c11f18a6",
+    "photo-1487530811176-3780de880c2d",
+    "photo-1518882224363-2c30e8cd4285",
+  ],
+  urban: [
+    "photo-1477959858617-67f85cf4f1df",
+    "photo-1519608487953-e999c86e7455",
+    "photo-1449034446853-66c86144b0ad",
+    "photo-1480714378408-67cf0d13bc1b",
+  ],
+  minimal: [
+    "photo-1557682250-33bd709cbe85",
+    "photo-1558591710-4b4a1ae0f04d",
+    "photo-1604076913837-52ab5f6b1df1",
+    "photo-1553356084-58ef4a67b2a7",
+  ],
+  nostalgic: [
+    "photo-1504198266287-1659872e6590",
+    "photo-1513151233558-d860c5398176",
+    "photo-1506744038136-46273834b3fb",
+    "photo-1416339306562-f3d12fefd36f",
+  ],
+  moody: [
+    "photo-1476673160081-cf065607f449",
+    "photo-1446776811953-b23d57bd21aa",
+    "photo-1499346030926-9a72daac6c63",
+    "photo-1508739773434-c26b3d09e071",
+  ],
+  luxury: [
+    "photo-1507003211169-0a1dd7228f2d",
+    "photo-1516589178581-6cd7833ae3b2",
+    "photo-1545232979-8bf68ee9b1af",
+    "photo-1522748906645-95d8adfd52c7",
+  ],
+};
 
-  hero: {
-    html: (t) => `
+const GALLERY_PHOTOS: Record<string, string[]> = {
+  romantic: [
+    "photo-1529634806980-85c3dd6d34ac",
+    "photo-1518568814500-bf0f8d125f46",
+    "photo-1516589178581-6cd7833ae3b2",
+    "photo-1494774157365-9e04c6720e47",
+  ],
+  cinematic: [
+    "photo-1469474968028-56623f02e42e",
+    "photo-1470071459604-3b5ec3a7fe05",
+    "photo-1419242902214-272b3f66ee7a",
+    "photo-1506748686214-e9df14d4d9d0",
+  ],
+  nature: [
+    "photo-1490750967868-88aa4f44baee",
+    "photo-1462275646964-a0e3c11f18a6",
+    "photo-1487530811176-3780de880c2d",
+    "photo-1518882224363-2c30e8cd4285",
+  ],
+  urban: [
+    "photo-1477959858617-67f85cf4f1df",
+    "photo-1519608487953-e999c86e7455",
+    "photo-1480714378408-67cf0d13bc1b",
+    "photo-1449034446853-66c86144b0ad",
+  ],
+  default: [
+    "photo-1529634806980-85c3dd6d34ac",
+    "photo-1518568814500-bf0f8d125f46",
+    "photo-1516589178581-6cd7833ae3b2",
+    "photo-1494774157365-9e04c6720e47",
+  ],
+};
+
+function pickCoverPhoto(mood: string): string {
+  const photos = COVER_PHOTOS[mood] || COVER_PHOTOS.romantic;
+  const idx = Math.floor(Math.random() * photos.length);
+  return `https://images.unsplash.com/${photos[idx]}?w=1600&q=80`;
+}
+
+function pickGalleryPhotos(mood: string): string[] {
+  const photos = GALLERY_PHOTOS[mood] || GALLERY_PHOTOS.default;
+  const shuffled = [...photos].sort(() => Math.random() - 0.5);
+  return shuffled.map(p => `https://images.unsplash.com/${p}?w=800&q=80`);
+}
+
+function pickFullImage(mood: string): string {
+  const photos = COVER_PHOTOS[mood] || COVER_PHOTOS.romantic;
+  const idx = Math.floor(Math.random() * photos.length);
+  return `https://images.unsplash.com/${photos[idx]}?w=1600&q=80`;
+}
+
+// ════════════════════════════════════════════════════════════
+// ♥ Forilove — 10 Section Blocks
+// ♥ Dynamic photo URLs based on mood
+// ════════════════════════════════════════════════════════════
+
+function createSectionRegistry(coverMood: string): Record<string, SectionDef> {
+  const coverUrl = pickCoverPhoto(coverMood);
+  const galleryUrls = pickGalleryPhotos(coverMood);
+  const fullImgUrl = pickFullImage(coverMood);
+
+  return {
+
+    hero: {
+      html: (t) => `
 <!-- ♥ Forilove — Hero -->
 <section class="fl-hero">
-  <div class="fl-hero-bg" data-editable="cover_photo" data-type="background-image" data-label="Kapak Fotoğrafı" style="background-image:url('https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1600&q=80')"></div>
+  <div class="fl-hero-bg" data-editable="cover_photo" data-type="background-image" data-label="Kapak Fotoğrafı" style="background-image:url('${coverUrl}')"></div>
   <div class="fl-hero-overlay"></div>
   <div class="fl-hero-deco"></div>
   <div class="fl-hero-content">
@@ -70,7 +188,7 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   </div>
   <div class="fl-hero-scroll"><span>♥</span></div>
 </section>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .fl-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform 8s ease}
 .fl-hero:hover .fl-hero-bg{transform:scale(1.03)}
@@ -82,24 +200,24 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 .fl-hero-date{font-size:clamp(12px,1.5vw,14px);letter-spacing:3px;color:rgba(255,255,255,0.5);font-weight:300}
 .fl-hero-scroll{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);z-index:1;opacity:0.4;font-size:12px}
 .fl-hero-scroll span{display:block;animation:flBounce 2s ease-in-out infinite}`,
-  },
+    },
 
-  date: {
-    html: (t) => `
+    date: {
+      html: (t) => `
 <!-- ♥ Forilove — Date -->
 <section class="fl-date">
   <div class="fl-divider"></div>
   <p class="fl-date-label">Özel Günümüz</p>
   <p class="fl-date-value" data-editable="special_date" data-type="date" data-label="Özel Tarih">${esc(t.special_date || "14.02.2024")}</p>
 </section>`,
-    css: () => `
+      css: () => `
 .fl-date{padding:clamp(60px,10vw,100px) 24px;text-align:center}
 .fl-date-label{font-size:clamp(10px,1.2vw,12px);letter-spacing:4px;text-transform:uppercase;color:var(--text-light);margin-bottom:16px;font-weight:400}
 .fl-date-value{font-size:clamp(18px,3vw,28px);letter-spacing:2px;color:var(--primary);font-weight:500}`,
-  },
+    },
 
-  gallery: {
-    html: (t) => `
+    gallery: {
+      html: (t) => `
 <!-- ♥ Forilove — Gallery -->
 <section class="fl-gallery" data-area="gallery" data-area-label="Fotoğraf Galerisi">
   <div class="fl-gallery-header">
@@ -107,13 +225,13 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
     <p class="fl-gallery-subtitle" data-editable="gallery_subtitle" data-type="text" data-label="Galeri Alt Başlığı">${esc(t.gallery_subtitle || "Birlikte geçirdiğimiz en güzel anlar")}</p>
   </div>
   <div class="fl-gallery-grid">
-    <img class="fl-gallery-img fl-stagger-1" data-editable="photo_1" data-type="image" data-label="Fotoğraf 1" src="https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac?w=800&q=80" alt="">
-    <img class="fl-gallery-img fl-stagger-2" data-editable="photo_2" data-type="image" data-label="Fotoğraf 2" src="https://images.unsplash.com/photo-1518568814500-bf0f8d125f46?w=800&q=80" alt="">
-    <img class="fl-gallery-img fl-stagger-3" data-editable="photo_3" data-type="image" data-label="Fotoğraf 3" src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=800&q=80" alt="">
-    <img class="fl-gallery-img fl-stagger-4" data-editable="photo_4" data-type="image" data-label="Fotoğraf 4" src="https://images.unsplash.com/photo-1494774157365-9e04c6720e47?w=800&q=80" alt="">
+    <img class="fl-gallery-img fl-stagger-1" data-editable="photo_1" data-type="image" data-label="Fotoğraf 1" src="${galleryUrls[0]}" alt="">
+    <img class="fl-gallery-img fl-stagger-2" data-editable="photo_2" data-type="image" data-label="Fotoğraf 2" src="${galleryUrls[1]}" alt="">
+    <img class="fl-gallery-img fl-stagger-3" data-editable="photo_3" data-type="image" data-label="Fotoğraf 3" src="${galleryUrls[2]}" alt="">
+    <img class="fl-gallery-img fl-stagger-4" data-editable="photo_4" data-type="image" data-label="Fotoğraf 4" src="${galleryUrls[3]}" alt="">
   </div>
 </section>`,
-    css: () => `
+      css: () => `
 .fl-gallery{padding:clamp(60px,10vw,120px) clamp(16px,4vw,48px);max-width:1100px;margin:0 auto}
 .fl-gallery-header{text-align:center;margin-bottom:clamp(24px,5vw,48px)}
 .fl-gallery-subtitle{font-size:clamp(14px,2vw,17px);color:var(--text-light);line-height:1.6;max-width:480px;margin:0 auto;font-weight:300}
@@ -121,10 +239,10 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 .fl-gallery-img{width:100%;height:clamp(200px,35vw,500px);object-fit:cover;display:block;transition:all 0.6s cubic-bezier(0.4,0,0.2,1)}
 .fl-gallery-img:hover{opacity:0.85;transform:scale(1.01)}
 @media(max-width:480px){.fl-gallery-grid{grid-template-columns:1fr}.fl-gallery-img{height:clamp(220px,60vw,350px)}}`,
-  },
+    },
 
-  love_letter: {
-    html: (t, hf) => `
+    love_letter: {
+      html: (t, hf) => `
 <!-- ♥ Forilove — Love Letter -->
 <section class="fl-letter" data-area="love_letter" data-area-label="Aşk Mektubu">
   <div class="fl-divider"></div>
@@ -134,15 +252,15 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
     <p class="fl-letter-text" data-editable="letter" data-type="textarea" data-label="Mektup">${esc(t.letter || "Sevgilim,\n\nSeninle geçirdiğim her an hayatımın en değerli hazinesi.\n\nSonsuza kadar seninle...")}</p>
   </div>
 </section>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-letter{padding:clamp(60px,10vw,120px) clamp(16px,4vw,24px);max-width:650px;margin:0 auto}
 .fl-letter-body{text-align:center;position:relative}
 .fl-letter-deco{display:none}
 .fl-letter-text{font-family:${hf};font-size:clamp(16px,2.5vw,21px);line-height:2;color:var(--text);white-space:pre-line;font-weight:300}`,
-  },
+    },
 
-  timeline: {
-    html: (t, hf) => `
+    timeline: {
+      html: (t, hf) => `
 <!-- ♥ Forilove — Timeline -->
 <section class="fl-timeline" data-area="timeline" data-area-label="Zaman Çizelgesi">
   <div class="fl-divider"></div>
@@ -164,7 +282,7 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
     </div>
   </div>
 </section>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-timeline{padding:clamp(60px,10vw,120px) clamp(16px,4vw,24px);max-width:650px;margin:0 auto}
 .fl-timeline-track{position:relative;padding-left:clamp(24px,4vw,36px)}
 .fl-timeline-track::before{content:'';position:absolute;left:5px;top:0;bottom:0;width:1px;background:var(--primary);opacity:0.3}
@@ -173,10 +291,10 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
 .fl-timeline-dot{position:absolute;left:-5px;top:6px;width:11px;height:11px;background:var(--primary);border-radius:50%;transition:all 0.3s ease}
 .fl-timeline-title{font-family:${hf};font-size:clamp(17px,2.5vw,22px);color:var(--dark);margin-bottom:8px;font-weight:500}
 .fl-timeline-desc{font-size:clamp(13px,1.8vw,15px);line-height:1.7;color:var(--text-light);font-weight:300}`,
-  },
+    },
 
-  countdown: {
-    html: (t, hf) => `
+    countdown: {
+      html: (t, hf) => `
 <!-- ♥ Forilove — Countdown -->
 <section class="fl-countdown" data-area="countdown" data-area-label="Geri Sayım">
   <div class="fl-divider"></div>
@@ -184,14 +302,14 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-countdown-date" data-editable="countdown_date" data-type="date" data-label="Geri Sayım Tarihi">${esc(t.countdown_date || "2025-02-14")}</p>
   <p class="fl-countdown-text" data-editable="countdown_label" data-type="text" data-label="Geri Sayım Etiketi">${esc(t.countdown_label || "Özel günümüze kalan süre")}</p>
 </section>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-countdown{padding:clamp(60px,10vw,120px) 24px;text-align:center;max-width:600px;margin:0 auto}
 .fl-countdown-date{font-family:${hf};font-size:clamp(32px,7vw,60px);color:var(--primary);margin-bottom:16px;font-weight:400}
 .fl-countdown-text{font-size:clamp(12px,1.5vw,14px);letter-spacing:3px;text-transform:uppercase;color:var(--text-light);font-weight:300}`,
-  },
+    },
 
-  quotes: {
-    html: (t, hf) => `
+    quotes: {
+      html: (t, hf) => `
 <!-- ♥ Forilove — Quote -->
 <section class="fl-quote" data-area="quotes" data-area-label="Alıntı">
   <div class="fl-divider"></div>
@@ -199,32 +317,32 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   <p class="fl-quote-text" data-editable="quote_text" data-type="textarea" data-label="Alıntı Metni">${esc(t.quote_text || "Seninle geçen her an, hayatımın en güzel sayfası oldu.")}</p>
   <p class="fl-quote-author" data-editable="quote_author" data-type="text" data-label="Alıntı Yazarı">${esc(t.quote_author || "Bizim Hikayemiz")}</p>
 </section>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-quote{padding:clamp(80px,12vw,160px) clamp(16px,4vw,24px);text-align:center;max-width:750px;margin:0 auto;position:relative}
 .fl-quote-deco{display:none}
 .fl-quote-text{font-family:${hf};font-style:italic;font-size:clamp(20px,4vw,38px);line-height:1.5;color:var(--dark);margin-bottom:clamp(24px,4vw,40px);font-weight:300}
 .fl-quote-author{font-size:clamp(10px,1.3vw,12px);letter-spacing:4px;text-transform:uppercase;color:var(--text-light);font-weight:400}`,
-  },
+    },
 
-  full_image: {
-    html: (t, hf) => `
+    full_image: {
+      html: (t, hf) => `
 <!-- ♥ Forilove — Full Image -->
 <section class="fl-fullimg" data-area="full_image" data-area-label="Tam Sayfa Fotoğraf">
-  <img class="fl-fullimg-photo" data-editable="full_photo" data-type="image" data-label="Tam Sayfa Fotoğraf" src="https://images.unsplash.com/photo-1545232979-8bf68ee9b1af?w=1600&q=80" alt="">
+  <img class="fl-fullimg-photo" data-editable="full_photo" data-type="image" data-label="Tam Sayfa Fotoğraf" src="${fullImgUrl}" alt="">
   <div class="fl-fullimg-overlay">
     <h2 class="fl-fullimg-text" data-editable="full_image_text" data-type="text" data-label="Fotoğraf Üstü Yazı">${esc(t.full_image_text || "Seninle her yer ev.")}</h2>
   </div>
 </section>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-fullimg{position:relative;overflow:hidden}
 .fl-fullimg-photo{width:100%;height:clamp(50vh,70vw,80vh);object-fit:cover;display:block;filter:brightness(0.65);transition:transform 8s ease}
 .fl-fullimg:hover .fl-fullimg-photo{transform:scale(1.05)}
 .fl-fullimg-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px}
 .fl-fullimg-text{font-family:${hf};font-size:clamp(28px,6vw,64px);text-align:center;color:#fff;font-weight:300}`,
-  },
+    },
 
-  video: {
-    html: (t) => `
+    video: {
+      html: (t) => `
 <!-- ♥ Forilove — Video -->
 <section class="fl-video" data-area="video" data-area-label="Video">
   <div class="fl-divider"></div>
@@ -234,27 +352,28 @@ const SECTION_REGISTRY: Record<string, SectionDef> = {
   </div>
   <p class="fl-video-caption" data-editable="video_caption" data-type="text" data-label="Video Açıklaması">${esc(t.video_caption || "Birlikte yaşadığımız özel an")}</p>
 </section>`,
-    css: () => `
+      css: () => `
 .fl-video{padding:clamp(60px,10vw,120px) clamp(16px,4vw,24px);max-width:900px;margin:0 auto}
 .fl-video-wrap{overflow:hidden;margin-bottom:16px}
 .fl-video-player{width:100%;display:block;background:#000}
 .fl-video-caption{text-align:center;font-size:clamp(12px,1.5vw,14px);letter-spacing:2px;text-transform:uppercase;color:var(--text-light);font-weight:300}`,
-  },
+    },
 
-  footer: {
-    html: (t, hf) => `
+    footer: {
+      html: (t, hf) => `
 <!-- ♥ Forilove — Footer -->
 <footer class="fl-footer">
   <div class="fl-divider"></div>
   <p class="fl-footer-message" data-editable="footer_text" data-type="textarea" data-label="Son Mesaj">${esc(t.footer_text || "Bu sayfa sana olan sevgimin küçük bir yansıması.\nSeni seviyorum, bugün ve her gün.")}</p>
   <p class="fl-footer-names" data-editable="footer_names" data-type="text" data-label="İsimler">${esc(t.footer_names || "♥")}</p>
 </footer>`,
-    css: (hf) => `
+      css: (hf) => `
 .fl-footer{padding:clamp(80px,12vw,120px) 24px clamp(48px,6vw,80px);text-align:center}
 .fl-footer-message{font-family:${hf};font-size:clamp(17px,3vw,28px);line-height:1.6;color:var(--text-light);max-width:520px;margin:0 auto clamp(24px,4vw,48px);font-weight:300;white-space:pre-line}
 .fl-footer-names{font-size:clamp(10px,1.3vw,12px);letter-spacing:5px;text-transform:uppercase;color:var(--text-light);opacity:0.6;font-weight:300}`,
-  },
-};
+    },
+  };
+}
 
 // ════════════════════════════════════════════════════════════
 // ♥ Forilove — Animation Library
@@ -286,10 +405,10 @@ const ANIMATION_LIBRARY = `
 // ♥ Forilove — Validation
 // ════════════════════════════════════════════════════════════
 
-const HEX_RE = /^#[0-9a-fA-F]{3,8}$/;
 const COLOR_RE = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))$/;
-const VALID_SECTIONS = Object.keys(SECTION_REGISTRY);
+const VALID_SECTIONS = ["hero", "date", "gallery", "love_letter", "timeline", "countdown", "quotes", "full_image", "video", "footer"];
 const SAFE_FONT_RE = /^[a-zA-Z0-9 :@;,]+$/;
+const VALID_COVER_MOODS = Object.keys(COVER_PHOTOS);
 
 export function validateConcept(raw: unknown): DesignConcept | null {
   if (!raw || typeof raw !== "object") return null;
@@ -303,8 +422,8 @@ export function validateConcept(raw: unknown): DesignConcept | null {
     primary: (typeof cp.primary === "string" && COLOR_RE.test(cp.primary.trim())) ? cp.primary.trim() : "#c4697a",
     primaryLight: (typeof cp.primaryLight === "string" && COLOR_RE.test(cp.primaryLight.trim())) ? cp.primaryLight.trim() : "#fdf2f4",
     dark: (typeof cp.dark === "string" && COLOR_RE.test(cp.dark.trim())) ? cp.dark.trim() : "#1a1a2e",
-    text: (typeof cp.text === "string" && COLOR_RE.test(cp.text.trim())) ? cp.text.trim() : "#2d2d3a",
-    textLight: (typeof cp.textLight === "string" && COLOR_RE.test(cp.textLight.trim())) ? cp.textLight.trim() : "#6b7280",
+    text: (typeof cp.text === "string") ? cp.text.trim() : "#2d2d3a",
+    textLight: (typeof cp.textLight === "string") ? cp.textLight.trim() : "#6b7280",
     accent: (typeof cp.accent === "string" && COLOR_RE.test(cp.accent.trim())) ? cp.accent.trim() : "#d4a853",
   };
 
@@ -323,7 +442,12 @@ export function validateConcept(raw: unknown): DesignConcept | null {
   const bodyBackground = typeof r.bodyBackground === "string" && r.bodyBackground.length < 200
     ? r.bodyBackground : "#ffffff";
 
-  return { mood, colorPalette, fonts, sections, animationLevel, bodyBackground, architecture };
+  const rawCoverMood = typeof r.coverPhotoMood === "string" ? r.coverPhotoMood : "romantic";
+  const coverPhotoMood = VALID_COVER_MOODS.includes(rawCoverMood) ? rawCoverMood : "romantic";
+
+  const isDarkTheme = r.isDarkTheme === true;
+
+  return { mood, architecture, colorPalette, fonts, sections, animationLevel, bodyBackground, coverPhotoMood, isDarkTheme };
 }
 
 export function validateImplementation(raw: unknown): { customCSS: string; defaultTexts: Record<string, string> } | null {
@@ -331,7 +455,7 @@ export function validateImplementation(raw: unknown): { customCSS: string; defau
   const r = raw as Record<string, unknown>;
 
   const customCSS = typeof r.customCSS === "string" ? sanitizeCustomCss(r.customCSS) : "";
-  if (!customCSS || customCSS.length < 50) return null;
+  if (!customCSS || customCSS.length < 30) return null;
 
   const rawTexts = (r.defaultTexts && typeof r.defaultTexts === "object" ? r.defaultTexts : {}) as Record<string, string>;
   const defaultTexts: Record<string, string> = {};
@@ -342,8 +466,18 @@ export function validateImplementation(raw: unknown): { customCSS: string; defau
   return { customCSS, defaultTexts };
 }
 
-// ♥ Forilove — Merge concept + implementation into AITemplateResponse
-export function mergeToResponse(concept: DesignConcept, impl: { customCSS: string; defaultTexts: Record<string, string> }): AITemplateResponse {
+export function validateReview(raw: unknown): { fixedCSS?: string; issues?: string[] } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const fixedCSS = typeof r.fixedCSS === "string" ? sanitizeCustomCss(r.fixedCSS) : undefined;
+  const issues = Array.isArray(r.issues) ? (r.issues as string[]).map(s => String(s).slice(0, 200)) : undefined;
+  return { fixedCSS, issues };
+}
+
+export function mergeToResponse(
+  concept: DesignConcept,
+  impl: { customCSS: string; defaultTexts: Record<string, string> }
+): AITemplateResponse {
   const animMap: Record<string, { hero: string; sections: string }> = {
     sade: { hero: "fadeIn", sections: "fadeIn" },
     orta: { hero: "fadeInUp", sections: "fadeIn" },
@@ -365,6 +499,8 @@ export function mergeToResponse(concept: DesignConcept, impl: { customCSS: strin
     bodyBackground: concept.bodyBackground,
     customCSS: impl.customCSS,
     defaultTexts: impl.defaultTexts,
+    coverPhotoMood: concept.coverPhotoMood,
+    isDarkTheme: concept.isDarkTheme,
   };
 }
 
@@ -393,7 +529,7 @@ export function validateAIResponse(raw: unknown): AITemplateResponse | null {
   if (sections.length === 0) sections.push("hero", "gallery", "quotes", "love_letter", "timeline", "footer");
 
   const rawAnim = (r.animations && typeof r.animations === "object" ? r.animations : {}) as Record<string, string>;
-  const animations: AITemplateResponse["animations"] = {
+  const animations = {
     hero: typeof rawAnim.hero === "string" ? rawAnim.hero.slice(0, 100) : "fadeInUp",
     sections: typeof rawAnim.sections === "string" ? rawAnim.sections.slice(0, 100) : "fadeInUp",
   };
@@ -407,7 +543,7 @@ export function validateAIResponse(raw: unknown): AITemplateResponse | null {
     if (typeof k === "string" && typeof v === "string") defaultTexts[k.slice(0, 50)] = v.slice(0, 1000);
   }
 
-  return { fonts, cssVariables, sections, animations, bodyBackground, customCSS, defaultTexts };
+  return { fonts, cssVariables, sections, animations, bodyBackground, customCSS, defaultTexts, coverPhotoMood: "romantic", isDarkTheme: false };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -431,6 +567,8 @@ export function sanitizeCustomCss(css: string): string {
 // ════════════════════════════════════════════════════════════
 
 export function assembleTemplate(ai: AITemplateResponse): string {
+  const sections = createSectionRegistry(ai.coverPhotoMood || "romantic");
+
   const fontFamilies = ai.fonts.map((f) => `family=${f.replace(/ /g, "+")}`).join("&");
   const fontsLink = ai.fonts.length > 0
     ? `<link href="https://fonts.googleapis.com/css2?${fontFamilies}&display=swap" rel="stylesheet">`
@@ -453,7 +591,7 @@ img{max-width:100%;height:auto}
   let sectionsHTML = "";
   let sectionsCSS = "";
   for (const key of ai.sections) {
-    const def = SECTION_REGISTRY[key];
+    const def = sections[key];
     if (!def) continue;
     sectionsHTML += def.html(ai.defaultTexts, headingFont);
     sectionsCSS += def.css(headingFont);
@@ -522,4 +660,6 @@ export const FALLBACK_RESPONSE: AITemplateResponse = {
     full_image_text: "Seninle her yer ev.",
     footer_text: "Bu sayfa sana olan sevgimin küçük bir yansıması.\nSeni seviyorum, bugün ve her gün.", footer_names: "♥",
   },
+  coverPhotoMood: "romantic",
+  isDarkTheme: false,
 };
