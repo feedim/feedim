@@ -162,9 +162,14 @@ export default function MyPagesPage() {
   };
 
   // Apply hook_values to template HTML for preview
-  const R2_DOMAIN = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
+  const R2_DOMAINS = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const toProxy = (v: string) => v.includes(R2_DOMAIN) ? v.replace(`https://${R2_DOMAIN}/`, `${origin}/api/r2/`) : v;
+  const toProxy = (v: string) => {
+    for (const d of R2_DOMAINS) {
+      if (v.includes(d)) return v.replace(`https://${d}/`, `${origin}/api/r2/`);
+    }
+    return v;
+  };
 
   const getRenderedHtml = (project: any) => {
     let html = project.templates?.html_content;

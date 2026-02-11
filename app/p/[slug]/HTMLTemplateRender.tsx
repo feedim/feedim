@@ -33,10 +33,14 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
 
   let html = template.html_content;
 
-  const r2PublicDomain = 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev';
+  const r2Domains = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const toProxyUrl = (val: string) =>
-    val.includes(r2PublicDomain) ? val.replace(`https://${r2PublicDomain}/`, `${origin}/api/r2/`) : val;
+  const toProxyUrl = (val: string) => {
+    for (const d of r2Domains) {
+      if (val.includes(d)) return val.replace(`https://${d}/`, `${origin}/api/r2/`);
+    }
+    return val;
+  };
 
   // Simple string replacement for rendering with XSS protection
   Object.entries(htmlData).forEach(([key, value]) => {
