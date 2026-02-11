@@ -24,9 +24,9 @@ export async function GET(
       return new NextResponse('Not Found', { status: 404 });
     }
 
-    const body = response.Body as ReadableStream;
+    const bytes = await response.Body.transformToByteArray();
 
-    return new NextResponse(body as any, {
+    return new NextResponse(Buffer.from(bytes), {
       headers: {
         'Content-Type': response.ContentType || 'image/jpeg',
         'Cache-Control': 'public, max-age=31536000, immutable',
