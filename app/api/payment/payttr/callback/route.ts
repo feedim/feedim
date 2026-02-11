@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     const merchant_salt = process.env.PAYTTR_MERCHANT_SALT || '';
 
     if (!merchant_salt) {
-      return new NextResponse('OK', { status: 200 }); // PayTR'ye OK döndür ama işleme
+      console.error('[PayTR] CRITICAL: PAYTTR_MERCHANT_SALT not configured, skipping payment:', merchant_oid);
+      return new NextResponse('OK', { status: 200 });
     }
 
     // Hash doğrulama (timing-safe comparison)
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
     const hashBuffer = Buffer.from(hash || '', 'utf8');
     const calculatedBuffer = Buffer.from(calculatedHash, 'utf8');
     if (hashBuffer.length !== calculatedBuffer.length || !crypto.timingSafeEqual(hashBuffer, calculatedBuffer)) {
+      console.error('[PayTR] Hash mismatch for merchant_oid:', merchant_oid);
       return new NextResponse('OK', { status: 200 });
     }
 
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (paymentError || !payment) {
+      console.error('[PayTR] Payment not found:', merchant_oid, paymentError?.message);
       return new NextResponse('OK', { status: 200 });
     }
 
@@ -79,12 +82,12 @@ export async function POST(request: NextRequest) {
       });
 
       if (coinsError) {
-        // Ödeme durumunu failed olarak işaretle
+        console.error('[PayTR] CRITICAL: Coin addition failed for payment:', payment.id, coinsError.message);
         await supabase
           .from('payments')
           .update({
             status: 'failed',
-            error_message: 'Coin eklenemedi',
+            error_message: `Coin eklenemedi: ${coinsError.message}`,
             completed_at: new Date().toISOString(),
           })
           .eq('id', payment.id);
@@ -115,7 +118,8 @@ export async function POST(request: NextRequest) {
     }
 
     return new NextResponse('OK', { status: 200 });
-  } catch {
-    return new NextResponse('OK', { status: 200 }); // Hata olsa bile PayTR'ye OK döndür
+  } catch (error) {
+    console.error('[PayTR] Unexpected callback error:', error);
+    return new NextResponse('OK', { status: 200 });
   }
 }

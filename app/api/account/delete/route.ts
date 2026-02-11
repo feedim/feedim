@@ -4,8 +4,15 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getR2Client } from '@/lib/r2/client';
 import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // 0. CSRF protection — verify request origin
+    const origin = request.headers.get('origin') || '';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+    if (!origin || !siteUrl || !origin.startsWith(siteUrl.replace(/\/$/, ''))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // 1. Verify user via anon client (cookie-based auth)
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getR2Client } from '@/lib/r2/client';
+import { createRateLimiter } from '@/lib/utils/ai';
 
 // Client converts everything to JPEG before sending, but accept originals too as fallback
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB (post-compression limit)
+
+// Rate limit: 20 uploads per minute per user
+const checkUploadLimit = createRateLimiter(20);
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +19,10 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!checkUploadLimit(user.id)) {
+      return NextResponse.json({ error: 'Çok fazla yükleme. Lütfen bekleyin.' }, { status: 429 });
     }
 
     const formData = await request.formData();

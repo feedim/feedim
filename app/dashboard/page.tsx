@@ -105,28 +105,22 @@ export default function DashboardPage() {
         }
       }
 
-      // Load user purchases first
-      const { data: purchasesData, error: purchasesError } = await supabase
-        .from("purchases")
-        .select("template_id")
-        .eq("user_id", user.id)
-        .eq("payment_status", "completed");
+      // Load purchases and saved templates in parallel
+      const [purchasesResult, savedResult] = await Promise.all([
+        supabase.from("purchases").select("template_id").eq("user_id", user.id).eq("payment_status", "completed"),
+        supabase.from("saved_templates").select("template_id").eq("user_id", user.id),
+      ]);
 
-      if (purchasesError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error("Purchases error:", purchasesError);
-        }
-      }
+      const purchasedTemplateIds = purchasesResult.data?.map(p => p.template_id) || [];
+      setPurchases(purchasedTemplateIds);
+      setSavedTemplates(savedResult.data?.map(s => s.template_id) || []);
 
-      const purchasedTemplateIds = purchasesData?.map(p => p.template_id) || [];
-
-      // Load templates excluding purchased ones (first page)
+      // Load templates excluding purchased ones
       let templatesQuery = supabase
         .from("templates")
         .select("id, name, slug, coin_price, description, html_content")
         .eq("is_active", true);
 
-      // Only add the filter if there are purchased templates
       if (purchasedTemplateIds.length > 0) {
         templatesQuery = templatesQuery.not("id", "in", `(${purchasedTemplateIds.join(',')})`);
       }
@@ -136,32 +130,11 @@ export default function DashboardPage() {
         .range(0, ITEMS_PER_PAGE - 1);
 
       if (templatesError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error("Templates error:", templatesError);
-        }
         toast.error(`Şablon hatası: ${templatesError.message}`);
       }
 
-      const hasMoreItems = (templatesData?.length || 0) === ITEMS_PER_PAGE;
-      setHasMore(hasMoreItems);
-
+      setHasMore((templatesData?.length || 0) === ITEMS_PER_PAGE);
       setTemplates(templatesData || []);
-
-      // Load saved templates
-      const { data: savedData, error: savedError } = await supabase
-        .from("saved_templates")
-        .select("template_id")
-        .eq("user_id", user.id);
-
-      if (savedError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error("Saved templates error:", savedError);
-        }
-      }
-
-      const purchasedIds = purchasesData?.map(p => p.template_id) || [];
-      setPurchases(purchasedIds);
-      setSavedTemplates(savedData?.map(s => s.template_id) || []);
     } catch (error) {
       console.error(error);
     } finally {

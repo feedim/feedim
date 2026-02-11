@@ -992,9 +992,25 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
       const coinPrice = template.coin_price || 0;
 
+      // Verify template is still active before purchase
+      const { data: freshTemplate } = await supabase
+        .from('templates')
+        .select('is_active, coin_price')
+        .eq('id', template.id)
+        .single();
+
+      if (!freshTemplate?.is_active) {
+        toast.error('Bu şablon artık satışta değil.');
+        setPurchasing(false);
+        return;
+      }
+
+      // Use fresh price from DB (prevent client-side manipulation)
+      const verifiedPrice = freshTemplate.coin_price || coinPrice;
+
       // Check if user has enough coins
-      if (coinBalance < coinPrice) {
-        toast.error(`Yetersiz bakiye! ${coinPrice} FL Coin gerekli.`);
+      if (coinBalance < verifiedPrice) {
+        toast.error(`Yetersiz bakiye! ${verifiedPrice} FL Coin gerekli.`);
         sessionStorage.setItem('forilove_return_url', `/dashboard/editor/${resolvedParams.templateId}`);
         router.push('/dashboard/coins');
         return;
@@ -1003,7 +1019,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       // Spend coins using database function
       const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
         p_user_id: user.id,
-        p_amount: coinPrice,
+        p_amount: verifiedPrice,
         p_description: `Şablon satın alındı: ${template.name}`,
         p_reference_id: template.id,
         p_reference_type: 'template'
@@ -1020,7 +1036,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const { data: purchaseData, error } = await supabase.from("purchases").insert({
         user_id: user.id,
         template_id: template.id,
-        coins_spent: coinPrice,
+        coins_spent: verifiedPrice,
         payment_method: "coins",
         payment_status: "completed",
       }).select().single();
@@ -1035,7 +1051,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             {
               buyer_user_id: user.id,
               purchase_id_param: purchaseData.id,
-              purchase_amount: coinPrice
+              purchase_amount: verifiedPrice
             }
           );
 

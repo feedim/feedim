@@ -68,29 +68,38 @@ export async function middleware(request: NextRequest) {
 
   // Role-based access control for admin/creator routes
   if (isAuthenticated && userId && (pathname.startsWith('/admin') || pathname.startsWith('/creator'))) {
-    try {
-      const res = await fetch(
-        `${supabaseUrl}/rest/v1/profiles?select=role&user_id=eq.${userId}`,
-        {
-          headers: {
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      )
-      const profiles = await res.json()
-      const role = profiles?.[0]?.role || 'user'
+    // Check cached role cookie first (avoids Supabase REST call on every request)
+    let role = request.cookies.get('fl-role')?.value || ''
 
-      if (pathname.startsWith('/admin') && role !== 'admin') {
+    if (!role) {
+      try {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/profiles?select=role&user_id=eq.${userId}`,
+          {
+            headers: {
+              'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        )
+        const profiles = await res.json()
+        role = profiles?.[0]?.role || 'user'
+      } catch {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
+    }
 
-      if (pathname.startsWith('/creator') && role !== 'creator' && role !== 'admin') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-      }
-    } catch {
+    if (pathname.startsWith('/admin') && role !== 'admin') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
+    if (pathname.startsWith('/creator') && role !== 'creator' && role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Cache role in cookie for 5 minutes
+    const response = NextResponse.next()
+    response.cookies.set('fl-role', role, { maxAge: 300, httpOnly: true, sameSite: 'lax', path: '/' })
+    return response
   }
 
   return NextResponse.next()
