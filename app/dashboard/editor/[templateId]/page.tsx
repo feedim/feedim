@@ -912,7 +912,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt.trim(), hooks: userHooks }),
+        body: JSON.stringify({ prompt: aiPrompt.trim(), hooks: userHooks, htmlContent: template?.html_content || '' }),
       });
 
       const data = await res.json();
