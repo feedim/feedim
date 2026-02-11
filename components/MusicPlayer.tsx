@@ -210,7 +210,7 @@ function ProgressBar({ progress, hoverProgress, onSeekAt, onHover, onLeave }: {
           style={{ width: active ? 12 : 0, height: active ? 12 : 0, background: BRAND_PINK, opacity: active ? 1 : 0 }}
         />
       </div>
-      <div className="absolute inset-0 -top-8 -bottom-8 sm:-top-4 sm:-bottom-4 z-20" />
+      <div className="absolute inset-0 -top-3 -bottom-3 sm:-top-2 sm:-bottom-2 z-20" />
     </div>
   );
 }

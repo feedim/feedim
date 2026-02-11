@@ -43,6 +43,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const [isChangingImage, setIsChangingImage] = useState(false);
   const [areas, setAreas] = useState<{ key: string; label: string }[]>([]);
   const [showSectionsModal, setShowSectionsModal] = useState(false);
+  const [draftHiddenAreas, setDraftHiddenAreas] = useState<Set<string>>(new Set());
   const router = useRouter();
   const supabase = createClient();
   // Deferred uploads: store File objects keyed by hook key, upload on publish
@@ -888,7 +889,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     )}
                     {areas.length > 0 && (
                       <button
-                        onClick={() => setShowSectionsModal(true)}
+                        onClick={() => {
+                          const hidden = new Set<string>();
+                          areas.forEach(a => { if (values[`__area_${a.key}`] === 'hidden') hidden.add(a.key); });
+                          setDraftHiddenAreas(hidden);
+                          setShowSectionsModal(true);
+                        }}
                         className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
                       >
                         <LayoutGrid className="h-4 w-4" />
@@ -1009,7 +1015,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 )}
                 {areas.length > 0 && (
                   <button
-                    onClick={() => setShowSectionsModal(true)}
+                    onClick={() => {
+                          const hidden = new Set<string>();
+                          areas.forEach(a => { if (values[`__area_${a.key}`] === 'hidden') hidden.add(a.key); });
+                          setDraftHiddenAreas(hidden);
+                          setShowSectionsModal(true);
+                        }}
                     className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm whitespace-nowrap"
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -1067,18 +1078,15 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
               <div className="space-y-2">
                 {areas.map((area) => {
-                  const isHidden = values[`__area_${area.key}`] === 'hidden';
+                  const isHidden = draftHiddenAreas.has(area.key);
                   return (
                     <button
                       key={area.key}
                       onClick={() => {
-                        setValues(prev => {
-                          const next = { ...prev };
-                          if (isHidden) {
-                            delete next[`__area_${area.key}`];
-                          } else {
-                            next[`__area_${area.key}`] = 'hidden';
-                          }
+                        setDraftHiddenAreas(prev => {
+                          const next = new Set(prev);
+                          if (isHidden) next.delete(area.key);
+                          else next.add(area.key);
                           return next;
                         });
                       }}
@@ -1114,7 +1122,15 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               </div>
 
               <button
-                onClick={() => setShowSectionsModal(false)}
+                onClick={() => {
+                  setValues(prev => {
+                    const next = { ...prev };
+                    areas.forEach(a => delete next[`__area_${a.key}`]);
+                    draftHiddenAreas.forEach(key => { next[`__area_${key}`] = 'hidden'; });
+                    return next;
+                  });
+                  setShowSectionsModal(false);
+                }}
                 className="btn-primary w-full py-3"
               >
                 Tamam
@@ -1179,7 +1195,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           </div>
                           {/* Change image button */}
                           <button
-                            onClick={() => setIsChangingImage(true)}
+                            onClick={() => { setDraftValue(''); setIsChangingImage(true); }}
                             className="btn-secondary flex items-center justify-center gap-2 w-full py-2.5 text-sm"
                           >
                             <Upload className="h-4 w-4" />
