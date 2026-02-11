@@ -224,18 +224,10 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
           <button
             onClick={handleConfirm}
             disabled={loading}
+            className="btn-primary"
             style={{
               width: "100%",
-              padding: "14px 0",
-              borderRadius: 12,
-              border: "none",
-              background: insufficientBalance ? "#6366F1" : BRAND_PINK,
-              color: "#fff",
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
-              transition: "opacity 0.15s",
+              background: insufficientBalance ? "#6366F1" : "#F97316",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
