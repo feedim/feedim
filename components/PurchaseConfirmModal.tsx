@@ -6,13 +6,11 @@ import { useRouter } from "next/navigation";
 
 /* ─── Types ─── */
 
-type IconType = "ai" | "template";
-
 interface ConfirmOptions {
   itemName: string;
   coinCost: number;
   currentBalance: number;
-  icon: IconType;
+  icon?: "ai" | "template";
   onConfirm: () => Promise<{ success: boolean; newBalance?: number; error?: string }>;
 }
 
@@ -73,7 +71,7 @@ export function PurchaseConfirmProvider({ children }: { children: React.ReactNod
 
 /* ─── Bottom Sheet ─── */
 
-const BRAND_PINK = "lab(49.5493 79.8381 2.31768)";
+const COIN_YELLOW = "#EAB308";
 
 interface SheetProps {
   options: ConfirmOptions;
@@ -188,42 +186,14 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
           </button>
         </div>
 
-        {/* Icon + Item */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "8px 0" }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 9999,
-              background: options.icon === "ai"
-                ? "linear-gradient(135deg, #8B5CF6, #6366F1)"
-                : BRAND_PINK,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            {options.icon === "ai" ? (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-              </svg>
-            ) : (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="6" />
-                <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
-                <path d="M7 6h1v4" />
-              </svg>
-            )}
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#fff" }}>
-              {options.itemName}
-            </p>
-            <p style={{ margin: 0, marginTop: 4, fontSize: 20, fontWeight: 700, color: BRAND_PINK }}>
-              {options.coinCost} FL Coin
-            </p>
-          </div>
+        {/* Item Info */}
+        <div style={{ textAlign: "center", padding: "4px 0" }}>
+          <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#fff" }}>
+            {options.itemName}
+          </p>
+          <p style={{ margin: 0, marginTop: 6, fontSize: 28, fontWeight: 800, color: COIN_YELLOW }}>
+            {options.coinCost} FL Coin
+          </p>
         </div>
 
         {/* Balance Info */}
@@ -250,7 +220,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: insufficientBalance ? "#ef4444" : "#22c55e",
+                color: insufficientBalance ? "#ef4444" : COIN_YELLOW,
                 margin: 0,
               }}
             >
@@ -269,8 +239,8 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
               padding: "14px 0",
               borderRadius: 12,
               border: "none",
-              background: insufficientBalance ? "#6366F1" : BRAND_PINK,
-              color: "#fff",
+              background: insufficientBalance ? "#6366F1" : COIN_YELLOW,
+              color: insufficientBalance ? "#fff" : "#000",
               fontSize: 16,
               fontWeight: 700,
               cursor: loading ? "not-allowed" : "pointer",
@@ -287,8 +257,8 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
                 style={{
                   width: 20,
                   height: 20,
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  borderTopColor: "#fff",
+                  border: "2px solid rgba(0,0,0,0.2)",
+                  borderTopColor: "#000",
                   borderRadius: 9999,
                   display: "inline-block",
                   animation: "spin 0.6s linear infinite",
