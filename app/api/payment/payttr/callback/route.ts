@@ -49,6 +49,21 @@ export async function POST(request: NextRequest) {
       return new NextResponse('OK', { status: 200 });
     }
 
+    // Tutar çapraz kontrolü: PayTR total_amount (kuruş) vs DB amount_try (TL)
+    const expectedAmountKurus = Math.round(payment.amount_try * 100);
+    const receivedAmountKurus = parseInt(total_amount, 10);
+    if (expectedAmountKurus !== receivedAmountKurus) {
+      await supabase
+        .from('payments')
+        .update({
+          status: 'failed',
+          error_message: `Tutar uyuşmazlığı: beklenen ${expectedAmountKurus}, gelen ${receivedAmountKurus}`,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', payment.id);
+      return new NextResponse('OK', { status: 200 });
+    }
+
     // Ödeme başarılı mı?
     if (status === 'success') {
       // Atomic coin ekleme

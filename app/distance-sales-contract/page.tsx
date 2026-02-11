@@ -73,15 +73,21 @@ export default function DistanceSalesContractPage() {
                 Hakkında Kanun, Madde 15/ı).
               </p>
               <p>
-                <strong>4.2.</strong> Şablon satın alımlarında, şablon henüz yayınlanmamış veya
+                <strong>4.2.</strong> <strong>İstisna:</strong> ALICI, FL Coins satın aldıktan sonra henüz
+                hiçbir şablon satın almamışsa (coinlerini hiç kullanmamışsa), satın alma tarihinden itibaren
+                <strong> 14 gün içinde</strong> tam iade talebinde bulunabilir. Bu durumda ödenen tutar
+                ALICI&apos;nın kullandığı ödeme yöntemine iade edilir.
+              </p>
+              <p>
+                <strong>4.3.</strong> Şablon satın alımlarında, şablon henüz yayınlanmamış veya
                 kullanılmamışsa <strong>14 gün içinde</strong> cayma hakkı kullanılabilir.
               </p>
               <p>
-                <strong>4.3.</strong> Cayma hakkının kullanımı için <strong>contact@forilove.com</strong>
+                <strong>4.4.</strong> Cayma hakkının kullanımı için <strong>contact@forilove.com</strong>
                 adresine e-posta ile bildirim yapılması yeterlidir.
               </p>
               <p>
-                <strong>4.4.</strong> Cayma bildiriminde aşağıdaki bilgiler yer almalıdır:
+                <strong>4.5.</strong> Cayma bildiriminde aşağıdaki bilgiler yer almalıdır:
               </p>
               <ul className="list-disc list-inside ml-4 space-y-1">
                 <li>Ad Soyad</li>
@@ -90,8 +96,8 @@ export default function DistanceSalesContractPage() {
                 <li>Cayma gerekçesi (opsiyonel)</li>
               </ul>
               <p>
-                <strong>4.5.</strong> Cayma hakkı kullanıldığında, ödenen tutar <strong>14 gün
-                içinde</strong> ALICI'nın kullandığı ödeme yöntemine iade edilir.
+                <strong>4.6.</strong> Cayma hakkı kullanıldığında, ödenen tutar <strong>14 gün
+                içinde</strong> ALICI&apos;nın kullandığı ödeme yöntemine iade edilir.
               </p>
             </div>
           </section>

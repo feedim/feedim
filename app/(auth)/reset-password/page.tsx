@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordInput from "@/components/PasswordInput";
+import { translateError } from "@/lib/utils/translateError";
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -34,7 +35,7 @@ export default function ResetPasswordPage() {
       toast.success("Şifre başarıyla güncellendi!");
       router.push("/login");
     } catch (error: any) {
-      toast.error(error.message || "Şifre güncellenemedi");
+      toast.error(translateError(error.message) || "Şifre güncellenemedi");
     } finally {
       setLoading(false);
     }

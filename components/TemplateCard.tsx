@@ -62,6 +62,7 @@ export default function TemplateCard({
             className="w-full h-full pointer-events-none scale-[0.3] origin-top-left"
             style={{ width: '333%', height: '333%' }}
             sandbox=""
+            loading="lazy"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Eye, ChevronDown, ChevronUp, PanelLeftClose, PanelLeft, X, Heart, Coins, Upload, Music, Play, Pause, Globe, Lock, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Eye, ChevronDown, ChevronUp, PanelLeftClose, PanelLeft, X, Heart, Coins, Upload, Music, Play, Pause, Globe, Lock, LayoutGrid, Undo2, Redo2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { compressImage, validateImageFile, getOptimizedFileName } from '@/lib/utils/imageCompression';
@@ -44,6 +44,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const [areas, setAreas] = useState<{ key: string; label: string }[]>([]);
   const [showSectionsModal, setShowSectionsModal] = useState(false);
   const [draftHiddenAreas, setDraftHiddenAreas] = useState<Set<string>>(new Set());
+  const [selectedVisibility, setSelectedVisibility] = useState<boolean | null>(null);
   const router = useRouter();
   const supabase = createClient();
   // Deferred uploads: store File objects keyed by hook key, upload on publish
@@ -52,6 +53,10 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const previewInitRef = useRef(false);
   const oldImageUrlRef = useRef<string>('');
   const valuesRef = useRef<Record<string, string>>({});
+  const undoStackRef = useRef<Record<string, string>[]>([]);
+  const redoStackRef = useRef<Record<string, string>[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   const R2_DOMAINS = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
   const r2Proxy = typeof window !== 'undefined' ? `${window.location.origin}/api/r2/` : '/api/r2/';
@@ -71,6 +76,31 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     return migrated;
   };
   valuesRef.current = values;
+
+  const pushUndo = (snapshot: Record<string, string>) => {
+    undoStackRef.current = [...undoStackRef.current.slice(-19), snapshot];
+    redoStackRef.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
+  };
+
+  const undo = () => {
+    if (undoStackRef.current.length === 0) return;
+    const prev = undoStackRef.current.pop()!;
+    redoStackRef.current.push({ ...valuesRef.current });
+    setValues(prev);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+  };
+
+  const redo = () => {
+    if (redoStackRef.current.length === 0) return;
+    const next = redoStackRef.current.pop()!;
+    undoStackRef.current.push({ ...valuesRef.current });
+    setValues(next);
+    setCanRedo(redoStackRef.current.length > 0);
+    setCanUndo(true);
+  };
 
   useEffect(() => {
     loadData();
@@ -100,6 +130,36 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowMusicModal(false);
+        setShowDetailsModal(false);
+        setShowVisibilityModal(false);
+        setShowSectionsModal(false);
+        setShowShareModal(false);
+        setEditingHook(null);
+        setIsChangingImage(false);
+      }
+      // Undo: Ctrl+Z (not inside inputs)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        undo();
+      }
+      // Redo: Ctrl+Shift+Z or Ctrl+Y
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        redo();
+      }
+    };
+    document.addEventListener('keydown', handleKeydown);
+    return () => document.removeEventListener('keydown', handleKeydown);
+  }, []);
+
   const loadData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -122,7 +182,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
       const templateData = templateRes.data;
       if (!templateData) {
-        toast.error("Template bulunamadı");
+        toast.error("Şablon bulunamadı");
         router.push("/dashboard");
         return;
       }
@@ -226,7 +286,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 console.error('Project insert error:', insertError);
                 console.error('Error details:', JSON.stringify(insertError, null, 2));
               }
-              toast.error(`Project oluşturulamadı: ${insertError.message || 'Bilinmeyen hata'}`);
+              toast.error(`Proje oluşturulamadı: ${insertError.message || 'Bilinmeyen hata'}`);
 
               // Create a temporary project object to show buttons
               const tempProject = {
@@ -435,6 +495,11 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         }
       });
 
+      // Add tap highlight reset style
+      const tapStyle = doc.createElement('style');
+      tapStyle.textContent = '* { -webkit-tap-highlight-color: transparent !important; }';
+      doc.head.appendChild(tapStyle);
+
       // Add click event listener script
       const script = doc.createElement('script');
       script.textContent = `
@@ -518,23 +583,23 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
     // Validation
     if (!trimmedTitle || trimmedTitle.length < 2) {
-      toast.error("Sayfa adi en az 2 karakter olmali");
+      toast.error("Sayfa adı en az 2 karakter olmalı");
       return;
     }
     if (trimmedTitle.length > 60) {
-      toast.error("Sayfa adi en fazla 60 karakter olabilir");
+      toast.error("Sayfa adı en fazla 60 karakter olabilir");
       return;
     }
     if (trimmedSlug.length < 5) {
-      toast.error("Slug en az 5 karakter olmali");
+      toast.error("Slug en az 5 karakter olmalı");
       return;
     }
     if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
-      toast.error("Slug sadece kucuk harf, rakam ve tire icermelidir");
+      toast.error("Slug sadece küçük harf, rakam ve tire içermelidir");
       return;
     }
     if (trimmedDesc.length > 50) {
-      toast.error("Aciklama en fazla 50 karakter olabilir");
+      toast.error("Açıklama en fazla 50 karakter olabilir");
       return;
     }
 
@@ -552,6 +617,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const doPublish = async (isPublic: boolean) => {
     if (!project) return;
     setSaving(true);
+    const minDelay = new Promise(resolve => setTimeout(resolve, 3000));
     try {
       const safeTitle = draftTitle.trim().substring(0, 60);
       const safeDescription = draftDescription.trim().substring(0, 50);
@@ -565,7 +631,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const finalValues = { ...values };
       const pendingKeys = Object.keys(pendingUploadsRef.current);
       if (pendingKeys.length > 0) {
-        toast('Yayımlanıyor…');
+        toast('Paylaşılıyor…');
         for (const key of pendingKeys) {
           const file = pendingUploadsRef.current[key];
           const optimizedName = getOptimizedFileName(file.name);
@@ -599,11 +665,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
       if (error) throw error;
 
-      toast.success("Degisiklikler kaydedildi!");
+      await minDelay;
+      toast.success("Değişiklikler kaydedildi!");
       setProject({ ...project, ...updateData });
       setShowShareModal(true);
     } catch (error: any) {
-      toast.error("Kaydetme hatasi: " + error.message);
+      toast.error("Kaydetme hatası: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -689,6 +756,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       }
     }
 
+    pushUndo({ ...valuesRef.current });
     setValues(prev => ({ ...prev, [editingHook]: finalValue }));
     setEditingHook(null);
     setIsChangingImage(false);
@@ -752,7 +820,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
         p_user_id: user.id,
         p_amount: coinPrice,
-        p_description: `Template satın alındı: ${template.name}`,
+        p_description: `Şablon satın alındı: ${template.name}`,
         p_reference_id: template.id,
         p_reference_type: 'template'
       });
@@ -872,16 +940,25 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         <button
                           onClick={() => setShowMusicModal(true)}
                           className="relative shrink-0 flex items-center justify-center"
-                          style={{ width: 36, height: 38 }}
+                          style={{ width: 40, height: 40 }}
                           aria-label="Müzik ayarları"
                         >
                           {editorMusicPlaying && (
-                            <div className="absolute" style={{ width: 44, height: 38, top: 0, left: 0, pointerEvents: 'none', zIndex: 1 }}>
+                            <div className="absolute" style={{ width: 44, height: 40, top: 0, left: -2, pointerEvents: 'none', zIndex: 1 }}>
                               <span style={{ position: 'absolute', top: -5, left: 0, fontSize: 9, opacity: 0.7, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote1 2.5s ease-in-out infinite' }}>&#9835;</span>
                               <span style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, opacity: 0.5, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote2 3s ease-in-out infinite 0.8s' }}>&#9834;</span>
                             </div>
                           )}
-                          <div className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.1)', animation: editorMusicPlaying ? 'spin 4s linear infinite' : 'none' }}>
+                          {/* Progress ring */}
+                          {editorMusicPlaying && (
+                            <svg width="40" height="40" viewBox="0 0 40 40" className="absolute inset-0 -rotate-90" style={{ pointerEvents: 'none' }}>
+                              <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+                              <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" strokeLinecap="round"
+                                style={{ stroke: 'lab(49.5493% 79.8381 2.31768)', strokeDasharray: `${2 * Math.PI * 18}`, strokeDashoffset: `${2 * Math.PI * 18 * 0.25}`, animation: 'editorRingSpin 8s linear infinite' }}
+                              />
+                            </svg>
+                          )}
+                          <div className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.1)', animation: editorMusicPlaying ? 'spin 4s linear infinite' : 'none' }}>
                             {(() => { const m = musicUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/); return m ? <img src={`https://img.youtube.com/vi/${m[1]}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-white" />; })()}
                           </div>
                         </button>
@@ -909,6 +986,24 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       </button>
                     )}
                     <button
+                      onClick={undo}
+                      disabled={!canUndo}
+                      className="p-2 rounded-full bg-white/10 transition-all hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="Geri al"
+                      title="Geri Al (Ctrl+Z)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={redo}
+                      disabled={!canRedo}
+                      className="p-2 rounded-full bg-white/10 transition-all hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="Yinele"
+                      title="Yinele (Ctrl+Shift+Z)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={handlePreview}
                       className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
                     >
@@ -920,8 +1015,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       className="btn-primary px-4 py-2 text-sm"
                     >
                       {saving
-                        ? (project.is_published ? "Güncelleniyor..." : "Yayımlanıyor...")
-                        : (project.is_published ? "Güncelle" : "Yayımla")
+                        ? (project.is_published ? "Güncelleniyor..." : "Paylaşılıyor...")
+                        : (project.is_published ? "Güncelle" : "Paylaş")
                       }
                     </button>
                   </>
@@ -976,10 +1071,26 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 style={{
                   scrollbarWidth: 'none',
                   WebkitOverflowScrolling: 'touch',
-                  maskImage: 'linear-gradient(to right, black calc(100% - 20px), transparent)',
-                  WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 20px), transparent)',
+                  maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent)',
+                  WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent)',
                 }}
               >
+                <button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="shrink-0 p-2.5 rounded-full bg-white/10 transition-all hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Geri al"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="shrink-0 p-2.5 rounded-full bg-white/10 transition-all hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Yinele"
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
                 {musicUrl ? (
                   <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
                     {/* Play/Pause */}
@@ -999,15 +1110,24 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       onClick={() => setShowMusicModal(true)}
                       aria-label="Müzik ayarları"
                       className="relative shrink-0 flex items-center justify-center"
-                      style={{ width: 36, height: 38 }}
+                      style={{ width: 40, height: 40 }}
                     >
                       {editorMusicPlaying && (
-                        <div className="absolute" style={{ width: 44, height: 38, top: 0, left: 0, pointerEvents: 'none', zIndex: 1 }}>
+                        <div className="absolute" style={{ width: 44, height: 40, top: 0, left: -2, pointerEvents: 'none', zIndex: 1 }}>
                           <span style={{ position: 'absolute', top: -5, left: 0, fontSize: 9, opacity: 0.7, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote1 2.5s ease-in-out infinite' }}>&#9835;</span>
                           <span style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, opacity: 0.5, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote2 3s ease-in-out infinite 0.8s' }}>&#9834;</span>
                         </div>
                       )}
-                      <div className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.1)', animation: editorMusicPlaying ? 'spin 4s linear infinite' : 'none' }}>
+                      {/* Progress ring */}
+                      {editorMusicPlaying && (
+                        <svg width="40" height="40" viewBox="0 0 40 40" className="absolute inset-0 -rotate-90" style={{ pointerEvents: 'none' }}>
+                          <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+                          <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" strokeLinecap="round"
+                            style={{ stroke: 'lab(49.5493% 79.8381 2.31768)', strokeDasharray: `${2 * Math.PI * 18}`, strokeDashoffset: `${2 * Math.PI * 18 * 0.25}`, animation: 'editorRingSpin 8s linear infinite' }}
+                          />
+                        </svg>
+                      )}
+                      <div className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.1)', animation: editorMusicPlaying ? 'spin 4s linear infinite' : 'none' }}>
                         {(() => { const m = musicUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/); return m ? <img src={`https://img.youtube.com/vi/${m[1]}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-white" />; })()}
                       </div>
                     </button>
@@ -1041,15 +1161,15 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                   Önizleme
                 </button>
               </div>
-              {/* Sağ: Yayımla */}
+              {/* Sağ: Paylaş */}
               <button
                 onClick={handlePublish}
                 disabled={saving}
                 className="btn-primary shrink-0 px-4 py-2.5 text-sm ml-2 whitespace-nowrap"
               >
                 {saving
-                  ? (project.is_published ? "Güncelleniyor..." : "Yayımlanıyor...")
-                  : (project.is_published ? "Güncelle" : "Yayımla")
+                  ? (project.is_published ? "Güncelleniyor..." : "Paylaşılıyor...")
+                  : (project.is_published ? "Güncelle" : "Paylaş")
                 }
               </button>
             </div>
@@ -1130,6 +1250,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
               <button
                 onClick={() => {
+                  pushUndo({ ...valuesRef.current });
                   setValues(prev => {
                     const next = { ...prev };
                     areas.forEach(a => delete next[`__area_${a.key}`]);
@@ -1181,6 +1302,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       <textarea
                         value={draftValue}
                         onChange={(e) => setDraftValue(e.target.value.slice(0, 1000))}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEditModal(); } }}
                         className="input-modern w-full min-h-[200px] resize-y text-base"
                         placeholder={currentHook.defaultValue}
                         maxLength={1000}
@@ -1300,6 +1422,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         type="url"
                         value={draftValue}
                         onChange={(e) => setDraftValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
                         className="input-modern w-full text-base"
                         placeholder="https://..."
                         autoFocus
@@ -1310,18 +1433,34 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     <div className="space-y-3">
                       <input
                         type="date"
-                        value={draftValue}
-                        onChange={(e) => setDraftValue(e.target.value)}
+                        value={(() => {
+                          if (/^\d{2}\.\d{2}\.\d{4}$/.test(draftValue)) {
+                            const [d, m, y] = draftValue.split('.');
+                            return `${y}-${m}-${d}`;
+                          }
+                          return draftValue;
+                        })()}
+                        onChange={(e) => {
+                          const iso = e.target.value;
+                          if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+                            const [y, m, d] = iso.split('-');
+                            setDraftValue(`${d}.${m}.${y}`);
+                          } else {
+                            setDraftValue(iso);
+                          }
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
                         className="input-modern w-full text-base"
                         autoFocus
                       />
-                      <p className="text-xs text-gray-400">Tarih seçin veya manuel yazın</p>
+                      <p className="text-xs text-gray-400">Tarih seçin (GG.AA.YYYY)</p>
                     </div>
                   ) : currentHook.type === 'url' ? (
                     <input
                       type="url"
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
                       className="input-modern w-full text-base"
                       placeholder="https://..."
                       autoFocus
@@ -1332,6 +1471,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         type="text"
                         value={draftValue}
                         onChange={(e) => setDraftValue(e.target.value.slice(0, 1000))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
                         className="input-modern w-full text-base"
                         placeholder={currentHook.defaultValue}
                         maxLength={1000}
@@ -1394,6 +1534,13 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                   type="url"
                   value={musicUrl}
                   onChange={(e) => setMusicUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const isValid = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)[a-zA-Z0-9_-]{11}/.test(musicUrl);
+                      if (musicUrl && isValid) { saveMusicToDb(musicUrl); setShowMusicModal(false); }
+                    }
+                  }}
                   className="input-modern w-full text-base"
                   placeholder="https://www.youtube.com/watch?v=..."
                   autoFocus
@@ -1468,7 +1615,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div>
                 <h3 className="text-lg font-bold text-white">Sayfa Bilgileri</h3>
-                <p className="text-xs text-gray-400">Sayfaniza isim ve aciklama verin</p>
+                <p className="text-xs text-gray-400">Sayfanıza isim ve açıklama verin</p>
               </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
@@ -1482,7 +1629,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <div className="space-y-3">
               {/* Title */}
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Sayfa Adi</label>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Sayfa Adı</label>
                 <input
                   type="text"
                   value={draftTitle}
@@ -1490,10 +1637,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     setDraftTitle(e.target.value);
                     if (!project.is_published) setDraftSlug(generateSlug(e.target.value));
                   }}
-                  placeholder="Ornek: Bizim Hikayemiz"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDetailsNext(); } }}
+                  placeholder="Örnek: Bizim Hikayemiz"
                   className="input-modern w-full text-base"
                   maxLength={60}
                 />
+                <p className="text-[11px] text-gray-500 mt-1 text-right">{draftTitle.length}/60</p>
               </div>
 
               {/* Slug */}
@@ -1510,17 +1659,18 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     tabIndex={-1}
                   />
                 </div>
-                <p className="text-[11px] text-gray-500 mt-1">Sayfa adindan otomatik olusturulur</p>
+                <p className="text-[11px] text-gray-500 mt-1">Sayfa adından otomatik oluşturulur</p>
               </div>
 
               {/* Description */}
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Aciklama</label>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Açıklama</label>
                 <input
                   type="text"
                   value={draftDescription}
                   onChange={(e) => setDraftDescription(e.target.value.slice(0, 50))}
-                  placeholder="Kisaca sayfanizi tanitin"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDetailsNext(); } }}
+                  placeholder="Kısaca sayfanızı tanıtın"
                   className="input-modern w-full text-base"
                   maxLength={50}
                 />
@@ -1533,13 +1683,13 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 onClick={() => setShowDetailsModal(false)}
                 className="flex-1 btn-secondary py-3"
               >
-                Iptal
+                İptal
               </button>
               <button
                 onClick={handleDetailsNext}
                 className="flex-1 btn-primary py-3 whitespace-nowrap truncate"
               >
-                {project.is_published ? "Kaydet ve Paylas" : "Devam"}
+                {project.is_published ? "Kaydet ve Paylaş" : "Devam"}
               </button>
             </div>
           </div>
@@ -1566,36 +1716,36 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
             <div className="space-y-3">
               <button
-                onClick={() => {
-                  if (!termsAccepted) { toast.error("Kullanım koşullarını kabul etmelisiniz"); return; }
-                  setShowVisibilityModal(false);
-                  doPublish(true);
-                }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-white/10 hover:border-pink-500/30 bg-white/5 hover:bg-white/10 transition-all text-left"
+                onClick={() => setSelectedVisibility(true)}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left ${
+                  selectedVisibility === true
+                    ? 'border-pink-500 bg-pink-500/10'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10'
+                }`}
               >
-                <div className="p-3 rounded-xl bg-pink-500/20">
+                <div className={`p-3 rounded-xl ${selectedVisibility === true ? 'bg-pink-500/30' : 'bg-pink-500/20'}`}>
                   <Globe className="h-6 w-6 text-pink-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-white">Herkese Acik</p>
+                  <p className="font-semibold text-white">Herkese Açık</p>
                   <p className="text-xs text-gray-400">Keşfet sayfasında görünür, herkes görebilir</p>
                 </div>
               </button>
 
               <button
-                onClick={() => {
-                  if (!termsAccepted) { toast.error("Kullanım koşullarını kabul etmelisiniz"); return; }
-                  setShowVisibilityModal(false);
-                  doPublish(false);
-                }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all text-left"
+                onClick={() => setSelectedVisibility(false)}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left ${
+                  selectedVisibility === false
+                    ? 'border-pink-500 bg-pink-500/10'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10'
+                }`}
               >
-                <div className="p-3 rounded-xl bg-white/10">
-                  <Lock className="h-6 w-6 text-gray-400" />
+                <div className={`p-3 rounded-xl ${selectedVisibility === false ? 'bg-white/20' : 'bg-white/10'}`}>
+                  <Lock className={`h-6 w-6 ${selectedVisibility === false ? 'text-white' : 'text-gray-400'}`} />
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-white">Ozel URL</p>
-                  <p className="text-xs text-gray-400">Sadece linke sahip olanlar gorebilir</p>
+                  <p className="font-semibold text-white">Özel URL</p>
+                  <p className="text-xs text-gray-400">Sadece linke sahip olanlar görebilir</p>
                 </div>
               </button>
             </div>
@@ -1609,11 +1759,25 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 className="mt-0.5 cursor-pointer shrink-0"
               />
               <span className="text-xs text-gray-400 leading-relaxed">
-                <a href="/terms" target="_blank" className="text-white underline">Kullanım Koşulları</a> ve{' '}
-                <a href="/privacy" target="_blank" className="text-white underline">Gizlilik Politikası</a>&apos;nı
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-white underline">Kullanım Koşulları</a> ve{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-white underline">Gizlilik Politikası</a>&apos;nı
                 okudum ve kabul ediyorum.
               </span>
             </label>
+
+            {/* Paylaş Button */}
+            <button
+              onClick={() => {
+                if (selectedVisibility === null) { toast.error("Lütfen bir görünürlük seçin"); return; }
+                if (!termsAccepted) { toast.error("Kullanım koşullarını kabul etmelisiniz"); return; }
+                setShowVisibilityModal(false);
+                doPublish(selectedVisibility);
+              }}
+              disabled={selectedVisibility === null || !termsAccepted}
+              className="btn-primary w-full py-3 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Paylaş
+            </button>
 
             {/* Info Note */}
             <p className="text-[11px] text-gray-500 text-center">

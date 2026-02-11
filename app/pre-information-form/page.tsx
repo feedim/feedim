@@ -115,12 +115,15 @@ export default function PreInformationFormPage() {
                   <strong>ÖNEMLİ:</strong> FL Coins dijital içerik niteliğinde olduğundan, hesabınıza
                   tanımlandıktan sonra cayma hakkınız sona erer (6502 sayılı
                   Tüketicinin Korunması Hakkında Kanun, Madde 15/ı).
+                  Ancak FL Coins satın aldıktan sonra henüz hiçbir şablon satın almadıysanız,
+                  <strong> 14 gün içinde</strong> tam iade talebinde bulunabilirsiniz.
                 </p>
               </div>
 
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-white">Cayma Hakkı Kullanılabilen Durumlar:</h3>
                 <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>FL Coins satın alındı ancak henüz <strong>hiçbir şablon satın alınmadıysa</strong> (coinler kullanılmadıysa)</li>
                   <li>Premium şablon satın alındı ancak henüz <strong>yayınlanmadıysa</strong></li>
                   <li>Cayma süresi: Satın alımdan sonra <strong>14 gün</strong></li>
                 </ul>

@@ -15,8 +15,14 @@ export default function RefundPolicyPage() {
           <section>
             <h2 className="text-2xl font-bold text-white mb-4">FL Coins İadeleri</h2>
             <p>
-              Satın alınan FL Coins iade edilemez ve geri ödemesi yapılamaz. Coinler dijital bir
+              Satın alınan FL Coins kural olarak iade edilemez ve geri ödemesi yapılamaz. Coinler dijital bir
               para birimi olup, satın alındığı anda hesabınıza tanımlanır ve kullanıma hazır hale gelir.
+            </p>
+            <p className="mt-4">
+              <strong className="text-white">İstisna:</strong> FL Coins satın aldıktan sonra henüz hiçbir
+              şablon satın almadıysanız (coinlerinizi hiç kullanmadıysanız), satın alma tarihinden itibaren
+              <strong className="text-white"> 14 gün içinde</strong> tam iade talebinde bulunabilirsiniz.
+              Bu durumda ödenen tutar, ödeme yapılan kredi/banka kartına iade edilir.
             </p>
           </section>
 

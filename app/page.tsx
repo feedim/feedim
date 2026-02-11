@@ -48,10 +48,8 @@ export default function Home() {
               >
                 Nasıl Çalışır?
               </button>
-              <Link href="/register">
-                <button className="btn-primary px-4 py-3 sm:px-8">
+              <Link href="/register" className="btn-primary px-4 py-3 sm:px-8">
                   Ücretsiz Başla
-                </button>
               </Link>
             </div>
 

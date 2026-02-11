@@ -1,17 +1,20 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  const isHomePage = pathname === '/'
   const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/creator')
   const isAuthPage = pathname === '/login' || pathname === '/register'
 
-  if (!isProtected && !isAuthPage) {
+  if (!isProtected && !isAuthPage && !isHomePage) {
     return NextResponse.next()
   }
 
-  // Supabase auth cookie prefix
-  const cookiePrefix = 'sb-ethgmysmhwbcirznyrup-auth-token'
+  // Derive cookie prefix from Supabase URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1] || ''
+  const cookiePrefix = `sb-${projectRef}-auth-token`
 
   // Reassemble Supabase auth cookie (may be chunked: .0, .1, .2, ...)
   let tokenStr = ''
@@ -58,8 +61,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Redirect authenticated users away from auth pages
-  if (isAuthenticated && isAuthPage) {
+  // Redirect authenticated users away from auth pages and home page
+  if (isAuthenticated && (isAuthPage || isHomePage)) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -67,7 +70,7 @@ export async function proxy(request: NextRequest) {
   if (isAuthenticated && userId && (pathname.startsWith('/admin') || pathname.startsWith('/creator'))) {
     try {
       const res = await fetch(
-        `https://ethgmysmhwbcirznyrup.supabase.co/rest/v1/profiles?select=role&user_id=eq.${userId}`,
+        `${supabaseUrl}/rest/v1/profiles?select=role&user_id=eq.${userId}`,
         {
           headers: {
             'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -95,6 +98,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/dashboard/:path*',
     '/admin/:path*',
     '/creator/:path*',

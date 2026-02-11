@@ -243,7 +243,7 @@ export default function ExplorePage() {
                 <div className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
                   <Search className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-[10px] font-medium text-white/70">Incele</span>
+                <span className="text-[10px] font-medium text-white/70">İncele</span>
               </button>
 
               {/* Use template */}
@@ -269,15 +269,13 @@ export default function ExplorePage() {
                 <div className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
                   <Share2 className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-[10px] font-medium text-white/70">Paylas</span>
+                <span className="text-[10px] font-medium text-white/70">Paylaş</span>
               </button>
             </div>
 
             {/* Bottom info */}
             <div className="absolute bottom-20 sm:bottom-6 left-0 right-20 z-20 px-4">
-              {creatorNames[project.user_id] && (
-                <p className="text-xs font-semibold text-white/50 mb-1 truncate">@{creatorNames[project.user_id]}</p>
-              )}
+              <p className="text-xs font-semibold text-white/50 mb-1 truncate">@{creatorNames[project.user_id] || "Anonim"}</p>
               <h3 className="text-xl font-bold mb-1 drop-shadow-lg truncate">{project.title}</h3>
               {project.description && (
                 <p className="text-sm text-white/60 mb-1 truncate">{project.description}</p>
@@ -326,14 +324,14 @@ export default function ExplorePage() {
               const p = projects.find((p) => p.id === inspectingId);
               return p ? (
                 <div className="flex items-center gap-1.5">
-                  <Link href={`/p/${p.slug}`} target="_blank" className="btn-secondary px-2.5 py-1 text-[11px]">
-                    Aç
-                  </Link>
                   {p.template_id && (
                     <Link href={`/dashboard/editor/${p.template_id}`} className="btn-primary px-2.5 py-1 text-[11px]">
                       Kullan
                     </Link>
                   )}
+                  <Link href={`/p/${p.slug}`} target="_blank" className="btn-secondary px-2.5 py-1 text-[11px]">
+                    Görüntüle
+                  </Link>
                 </div>
               ) : null;
             })()}

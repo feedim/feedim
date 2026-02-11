@@ -160,6 +160,7 @@ function RegisterForm() {
                   onChange={(e) => setName(e.target.value)}
                   required
                   maxLength={50}
+                  autoComplete="given-name"
                   className="input-modern w-full"
                 />
               </div>
@@ -171,6 +172,7 @@ function RegisterForm() {
                   onChange={(e) => setSurname(e.target.value)}
                   required
                   maxLength={50}
+                  autoComplete="family-name"
                   className="input-modern w-full"
                 />
               </div>
@@ -184,6 +186,7 @@ function RegisterForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 maxLength={255}
+                autoComplete="email"
                 className="input-modern w-full"
               />
             </div>
@@ -195,6 +198,7 @@ function RegisterForm() {
               required
               minLength={6}
               maxLength={128}
+              autoComplete="new-password"
               className="input-modern w-full"
             />
 

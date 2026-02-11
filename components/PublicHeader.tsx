@@ -21,10 +21,8 @@ export default function PublicHeader({ variant = "back", backLabel = "Geri" }: P
         </Link>
         {variant === "home" ? (
           <div className="flex items-center gap-3">
-            <Link href="/login">
-              <button className="btn-secondary px-4 py-3 sm:px-8">
+            <Link href="/login" className="btn-secondary px-4 py-3 sm:px-8">
                 Giriş Yap
-              </button>
             </Link>
           </div>
         ) : (

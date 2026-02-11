@@ -8,9 +8,7 @@ export default function CTASection() {
         <p className="text-gray-400 mb-8 max-w-xl mx-auto">
           Sevdikleri için harika sayfalar oluşturan binlerce kişiye katıl
         </p>
-        <Link href="/register">
-          <button className="btn-primary text-lg">Başlayın</button>
-        </Link>
+        <Link href="/register" className="btn-primary text-lg">Başlayın</Link>
       </div>
     </section>
   );

@@ -19,12 +19,12 @@ export async function generateMetadata({
     .single();
 
   if (!project || !project.is_published) {
-    return { title: "Sayfa Bulunamadi - Forilove" };
+    return { title: "Sayfa Bulunamadı - Forilove" };
   }
 
   const pageUrl = `${baseUrl}/p/${project.slug}`;
   const title = `${project.title} - Forilove`;
-  const description = project.description || `${project.title} - Forilove ile olusturuldu.`;
+  const description = project.description || `${project.title} - Forilove ile oluşturuldu.`;
 
   return {
     title,
@@ -36,11 +36,13 @@ export async function generateMetadata({
       type: "website",
       siteName: "Forilove",
       locale: "tr_TR",
+      images: [`${baseUrl}/icon.png`],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [`${baseUrl}/icon.png`],
     },
     alternates: {
       canonical: pageUrl,

@@ -97,6 +97,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 maxLength={255}
+                autoComplete="email"
                 className="input-modern w-full"
               />
             </div>
@@ -108,6 +109,7 @@ export default function LoginPage() {
               required
               minLength={6}
               maxLength={128}
+              autoComplete="current-password"
               className="input-modern w-full"
             />
 

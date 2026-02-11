@@ -49,14 +49,14 @@ export default function CreatorDashboard() {
         .single();
 
       if (!profile || (profile.role !== "creator" && profile.role !== "admin")) {
-        toast.error("Bu sayfaya erisim yetkiniz yok");
+        toast.error("Bu sayfaya erişim yetkiniz yok");
         router.push("/dashboard");
         return;
       }
 
       loadData(user.id);
     } catch {
-      toast.error("Yukleme hatasi");
+      toast.error("Yükleme hatası");
       router.push("/dashboard");
     }
   };
@@ -89,7 +89,7 @@ export default function CreatorDashboard() {
         .single();
 
       if (!profile || (profile.role !== 'creator' && profile.role !== 'admin')) {
-        toast.error("Bu islem icin yetkiniz yok");
+        toast.error("Bu işlem için yetkiniz yok");
         return;
       }
 
@@ -139,11 +139,11 @@ export default function CreatorDashboard() {
 
       if (error) throw error;
 
-      toast.success("Sablon ve iliskili tum veriler silindi.");
+      toast.success("Şablon ve ilişkili tüm veriler silindi.");
       setTemplates(templates.filter(t => t.id !== templateId));
       setUnpublishConfirm(null);
     } catch (error: any) {
-      toast.error("Silme hatasi: " + error.message);
+      toast.error("Silme hatası: " + error.message);
     }
   };
 
@@ -188,11 +188,9 @@ export default function CreatorDashboard() {
             <span className="font-medium">Geri</span>
           </button>
           <h1 className="text-lg font-semibold">Creator Studio</h1>
-          <Link href="/creator/new">
-            <button className="btn-primary px-4 py-2 text-sm flex items-center gap-2">
+          <Link href="/creator/new" className="btn-primary px-4 py-2 text-sm flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              Olustur
-            </button>
+              Oluştur
           </Link>
         </nav>
       </header>
@@ -214,7 +212,7 @@ export default function CreatorDashboard() {
                   title={template.name}
                   subtitle={`${template.coin_price} FL Coin · ${new Date(template.created_at).toLocaleDateString('tr-TR')}`}
                   viewCount={template.view_count || 0}
-                  htmlContent={template.html_content}
+                  previewSrc={`/api/templates/${template.id}/preview`}
                   editHref={`/creator/edit/${template.id}`}
                   viewHref={`/dashboard/editor/${template.id}`}
                   shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard/editor/${template.id}`}
@@ -235,7 +233,7 @@ export default function CreatorDashboard() {
                   {loadingMore ? (
                     <Heart className="h-4 w-4 animate-pulse" />
                   ) : (
-                    <span>Daha Fazla Goster</span>
+                    <span>Daha Fazla Göster</span>
                   )}
                 </button>
               </div>

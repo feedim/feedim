@@ -33,7 +33,7 @@ export default function TransactionCard({ transaction }: TransactionCardProps) {
           </div>
           {transaction.balance_after !== undefined && transaction.balance_after !== null && (
             <div className="text-sm text-gray-500">
-              Balance: {transaction.balance_after.toLocaleString()}
+              Bakiye: {transaction.balance_after.toLocaleString()}
             </div>
           )}
         </div>

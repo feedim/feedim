@@ -65,24 +65,18 @@ export default function PaymentFailedPage() {
 
         {/* Actions */}
         <div className="space-y-3">
-          <Link href="/dashboard/coins" className="block">
-            <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-black py-4 rounded-full font-bold text-lg transition-colors flex items-center justify-center gap-2">
+          <Link href="/dashboard/coins" className="block w-full bg-yellow-500 hover:bg-yellow-600 text-black py-4 rounded-full font-bold text-lg transition-colors flex items-center justify-center gap-2">
               <RefreshCw className="h-5 w-5" />
               Tekrar Dene
-            </button>
           </Link>
 
-          <Link href="/dashboard" className="block">
-            <button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-full font-semibold transition-colors flex items-center justify-center gap-2">
+          <Link href="/dashboard" className="block w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-full font-semibold transition-colors flex items-center justify-center gap-2">
               <ArrowLeft className="h-5 w-5" />
               Ana Sayfaya Dön
-            </button>
           </Link>
 
-          <Link href="/help" className="block">
-            <button className="text-gray-400 hover:text-white transition-colors text-sm">
+          <Link href="/help" className="block text-gray-400 hover:text-white transition-colors text-sm">
               Yardım Merkezi
-            </button>
           </Link>
         </div>
       </div>

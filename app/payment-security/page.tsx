@@ -52,7 +52,8 @@ export default function PaymentSecurityPage() {
           <section>
             <h2 className="text-2xl font-bold text-white mb-4">İade Politikası</h2>
             <p>
-              Satın aldığınız FL Coins iade edilemez. Ancak şablon satın alımlarınızdan memnun
+              Satın aldığınız FL Coins kural olarak iade edilemez. Ancak hiçbir şablon satın almadıysanız
+              14 gün içinde tam iade yapılır. Şablon satın alımlarınızdan memnun
               kalmazsanız 14 gün içerisinde iade talebinde bulunabilirsiniz. Detaylı bilgi için{" "}
               <Link href="/refund-policy" className="text-pink-500 hover:text-pink-400">
                 iade politikası

@@ -58,9 +58,9 @@ export function ShareSheet({ url, title = "", isOpen, onClose }: ShareSheetProps
         document.execCommand("copy");
         document.body.removeChild(ta);
       }
-      toast.success("Link kopyalandi!");
+      toast.success("Link kopyalandı!");
     } catch {
-      toast.error("Kopyalama basarisiz");
+      toast.error("Kopyalama başarısız");
     }
     onClose();
   };
@@ -131,7 +131,7 @@ export function ShareSheet({ url, title = "", isOpen, onClose }: ShareSheetProps
           }}
         >
           <div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>Paylas</h3>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>Paylaş</h3>
             <p style={{ margin: 0, marginTop: 2, fontSize: 15, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{title || url}</p>
           </div>
           <button
@@ -198,7 +198,7 @@ export function ShareSheet({ url, title = "", isOpen, onClose }: ShareSheetProps
                   <line x1="12" y1="2" x2="12" y2="15" />
                 </svg>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.8)", margin: 0 }}>Diger</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.8)", margin: 0 }}>Diğer</span>
             </button>
           )}
 
@@ -298,7 +298,7 @@ export default function ShareIconButton({
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(true); }}
         className={`${btnClass} ${className}`}
         style={btnStyle}
-        aria-label="Paylas"
+        aria-label="Paylaş"
       >
         <ShareIcon size={size} />
       </button>

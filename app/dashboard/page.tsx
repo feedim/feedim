@@ -125,7 +125,7 @@ export default function DashboardPage() {
         if (process.env.NODE_ENV === 'development') {
           console.error("Templates error:", templatesError);
         }
-        toast.error(`Template hatası: ${templatesError.message}`);
+        toast.error(`Şablon hatası: ${templatesError.message}`);
       }
 
       const hasMoreItems = (templatesData?.length || 0) === ITEMS_PER_PAGE;
@@ -265,30 +265,20 @@ export default function DashboardPage() {
             <span className="text-2xl font-bold">Forilove</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard/explore" className="hidden md:block">
-              <button className="text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/explore" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
                 Keşfet
-              </button>
             </Link>
-            <Link href="/dashboard/purchased" className="hidden md:block">
-              <button className="text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/purchased" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
                 Satın Alınanlar
-              </button>
             </Link>
-            <Link href="/dashboard/my-pages" className="hidden md:block">
-              <button className="text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
                 Sayfalarım
-              </button>
             </Link>
-            <Link href="/dashboard/saved" className="hidden md:block">
-              <button className="text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/saved" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
                 Kaydedilenler
-              </button>
             </Link>
-            <Link href="/dashboard/profile" className="hidden md:block">
-              <button className="text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
                 Profil
-              </button>
             </Link>
             <CoinWallet />
           </div>
@@ -338,8 +328,8 @@ export default function DashboardPage() {
               }) : (
                 <EmptyState
                   icon={Heart}
-                  title="Henüz Template Yok"
-                  message="Şu anda gösterilecek template bulunmuyor."
+                  title="Henüz Şablon Yok"
+                  message="Şu anda gösterilecek şablon bulunmuyor."
                 />
               )}
             </div>

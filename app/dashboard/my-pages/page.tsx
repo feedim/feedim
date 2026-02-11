@@ -48,7 +48,7 @@ export default function MyPagesPage() {
 
       const { data, error } = await supabase
         .from("projects")
-        .select("*, templates(*)")
+        .select("id, title, slug, description, view_count, template_id, user_id, updated_at, is_published, hook_values, music_url, templates(name)")
         .eq("user_id", user.id)
         .eq("is_published", true)
         .order("updated_at", { ascending: false })
@@ -78,7 +78,7 @@ export default function MyPagesPage() {
 
       const { data, error} = await supabase
         .from("projects")
-        .select("*, templates(*)")
+        .select("id, title, slug, description, view_count, template_id, user_id, updated_at, is_published, hook_values, music_url, templates(name)")
         .eq("user_id", user.id)
         .eq("is_published", true)
         .order("updated_at", { ascending: false })
@@ -161,69 +161,6 @@ export default function MyPagesPage() {
     }
   };
 
-  // Apply hook_values to template HTML for preview
-  const R2_DOMAINS = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const toProxy = (v: string) => {
-    for (const d of R2_DOMAINS) {
-      if (v.includes(d)) return v.replace(`https://${d}/`, `${origin}/api/r2/`);
-    }
-    return v;
-  };
-
-  const getRenderedHtml = (project: any) => {
-    let html = project.templates?.html_content;
-    if (!html) return undefined;
-    const hookValues = project.hook_values as Record<string, string> | null;
-    if (!hookValues) return html;
-
-    if (html.includes('HOOK_')) {
-      Object.entries(hookValues).forEach(([key, value]) => {
-        if (key.startsWith('__')) return;
-        html = html.replace(new RegExp(`HOOK_${key}`, 'g'), toProxy(String(value)) || '');
-      });
-    } else {
-      try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        Object.entries(hookValues).forEach(([key, value]) => {
-          if (key.startsWith('__')) return;
-          const el = doc.querySelector(`[data-editable="${key}"]`);
-          if (!el) return;
-          const type = el.getAttribute('data-type') || 'text';
-          const strVal = toProxy(String(value));
-          if (type === 'image') {
-            el.setAttribute('src', strVal);
-          } else if (type === 'background-image') {
-            const style = el.getAttribute('style') || '';
-            el.setAttribute('style', `${style}; background-image: url('${strVal}');`);
-          } else {
-            el.textContent = strVal;
-          }
-        });
-        html = doc.documentElement.outerHTML;
-      } catch {}
-    }
-
-    // Remove hidden data-area sections
-    try {
-      const hiddenAreas = Object.entries(hookValues)
-        .filter(([key, value]) => key.startsWith('__area_') && value === 'hidden')
-        .map(([key]) => key.replace('__area_', ''));
-      if (hiddenAreas.length > 0) {
-        const areaParser = new DOMParser();
-        const areaDoc = areaParser.parseFromString(html, 'text/html');
-        hiddenAreas.forEach(areaName => {
-          const el = areaDoc.querySelector(`[data-area="${areaName}"]`);
-          if (el) el.remove();
-        });
-        html = areaDoc.documentElement.outerHTML;
-      }
-    } catch {}
-
-    return html;
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
@@ -248,7 +185,7 @@ export default function MyPagesPage() {
       <main className="container mx-auto px-3 sm:px-6 py-4 pb-24 md:pb-16 max-w-2xl">
 
         {projects && projects.length > 0 ? (
-          <div>
+          <div className="space-y-3">
             {projects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -256,7 +193,6 @@ export default function MyPagesPage() {
                 title={project.title}
                 subtitle={project.templates?.name}
                 viewCount={project.view_count || 0}
-                htmlContent={getRenderedHtml(project)}
                 editHref={`/dashboard/editor/${project.template_id}`}
                 viewHref={`/p/${project.slug}`}
                 shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/p/${project.slug}`}

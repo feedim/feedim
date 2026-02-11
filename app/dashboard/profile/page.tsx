@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ReferralSection from "@/components/ReferralSection";
+import { translateError } from "@/lib/utils/translateError";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -73,7 +74,7 @@ export default function ProfilePage() {
       setEditMode(false);
       loadProfile();
     } catch (error: any) {
-      toast.error("Güncelleme hatası: " + error.message);
+      toast.error("Güncelleme hatası: " + translateError(error.message));
     }
   };
 
@@ -89,7 +90,7 @@ export default function ProfilePage() {
       setEditEmail(false);
       setNewEmail("");
     } catch (error: any) {
-      toast.error("E-posta güncelleme hatası: " + error.message);
+      toast.error("E-posta güncelleme hatası: " + translateError(error.message));
     }
   };
 
@@ -100,20 +101,20 @@ export default function ProfilePage() {
     }
 
     try {
-      // Soft delete user account with 14-day grace period
-      const { data, error } = await supabase.rpc('soft_delete_user_account', {
-        user_uuid: user.id
+      // Soft delete: mark account for deletion in auth metadata
+      const { error: metaError } = await supabase.auth.updateUser({
+        data: {
+          deletion_requested_at: new Date().toISOString(),
+        }
       });
 
-      if (error) throw error;
+      if (metaError) throw metaError;
 
-      if (data?.success) {
-        await supabase.auth.signOut();
-        toast.success("Hesabınız 14 gün içinde kalıcı olarak silinecek");
-        router.push("/");
-      }
+      await supabase.auth.signOut();
+      toast.success("Hesabınız 14 gün içinde kalıcı olarak silinecek");
+      router.push("/");
     } catch (error: any) {
-      toast.error("Silme hatası: " + error.message);
+      toast.error("Silme hatası: " + translateError(error.message));
     }
   };
 

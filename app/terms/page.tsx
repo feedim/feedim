@@ -102,7 +102,7 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>Tüm ödemeler güvenli POS sistemi üzerinden işlenir</li>
-              <li>FL Coins satın alımları kesindir, iade edilemez</li>
+              <li>FL Coins satın alımları kesindir, iade edilemez. Ancak hiçbir şablon satın alınmadıysa, 14 gün içinde tam iade yapılır</li>
               <li>Şablon satın alımlarında 14 gün iade garantisi vardır</li>
               <li>Fiyatlar önceden haber verilmeksizin değiştirilebilir</li>
               <li>İndirim ve promosyonlar belirli koşullara tabidir</li>

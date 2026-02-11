@@ -1,6 +1,5 @@
 import { Heart, Eye, Edit, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import DOMPurify from "isomorphic-dompurify";
 import ShareIconButton from "@/components/ShareIconButton";
 import { formatCount } from "@/lib/utils";
 
@@ -9,7 +8,8 @@ interface ProjectCardProps {
   title: string;
   subtitle?: string;
   viewCount?: number;
-  htmlContent?: string;
+  /** Override preview iframe src (defaults to /api/projects/{id}/preview) */
+  previewSrc?: string;
   editHref: string;
   viewHref?: string;
   shareUrl?: string;
@@ -23,7 +23,7 @@ export default function ProjectCard({
   title,
   subtitle,
   viewCount,
-  htmlContent,
+  previewSrc,
   editHref,
   viewHref,
   shareUrl,
@@ -31,62 +31,49 @@ export default function ProjectCard({
   onUnpublish,
   onUnpublishConfirm,
 }: ProjectCardProps) {
+  const previewContent = (
+    <iframe
+      src={previewSrc || `/api/projects/${id}/preview`}
+      className="w-full h-full pointer-events-none scale-[0.2] origin-top-left"
+      style={{ width: '500%', height: '500%' }}
+      sandbox=""
+      loading="lazy"
+    />
+  );
+
   return (
-    <div className="py-4 border-b border-white/5 last:border-b-0 flex gap-4">
+    <div className="bg-zinc-900/50 rounded-xl p-3 sm:p-4 flex gap-3 sm:gap-4">
       {/* Preview Thumbnail */}
       {viewHref ? (
-        <a href={viewHref} target="_blank" className="shrink-0">
-          <div className="w-24 h-32 bg-zinc-900 rounded-xl overflow-hidden">
-            {htmlContent ? (
-              <iframe
-                srcDoc={DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
-                className="w-full h-full pointer-events-none scale-[0.2] origin-top-left"
-                style={{ width: '500%', height: '500%' }}
-                sandbox=""
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Heart className="h-6 w-6 fill-pink-500 text-pink-500" />
-              </div>
-            )}
+        <a href={viewHref} target="_blank" rel="noopener noreferrer" className="shrink-0">
+          <div className="w-20 h-28 sm:w-24 sm:h-32 bg-zinc-900 rounded-lg overflow-hidden border border-white/10">
+            {previewContent}
           </div>
         </a>
       ) : (
-        <div className="shrink-0 w-24 h-32 bg-zinc-900 rounded-xl overflow-hidden">
-          {htmlContent ? (
-            <iframe
-              srcDoc={DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
-              className="w-full h-full pointer-events-none scale-[0.2] origin-top-left"
-              style={{ width: '500%', height: '500%' }}
-              sandbox=""
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Heart className="h-6 w-6 fill-pink-500 text-pink-500" />
-            </div>
-          )}
+        <div className="shrink-0 w-20 h-28 sm:w-24 sm:h-32 bg-zinc-900 rounded-lg overflow-hidden border border-white/10">
+          {previewContent}
         </div>
       )}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3 mb-0.5">
-          <h3 className="text-xl font-semibold truncate">{title}</h3>
-          {viewCount !== undefined && (
-            <span className="flex items-center gap-1 text-xs text-gray-500 shrink-0">
-              <Eye className="h-3.5 w-3.5" />
-              {formatCount(viewCount)}
-            </span>
-          )}
-        </div>
+        {viewCount !== undefined && (
+          <span className="flex items-center gap-1 text-[11px] text-gray-500 mb-0.5">
+            <Eye className="h-3 w-3" />
+            {formatCount(viewCount)} görüntülenme
+          </span>
+        )}
+
+        <h3 className="text-lg sm:text-xl font-semibold truncate">{title}</h3>
 
         {subtitle && (
-          <p className="text-xs text-gray-500 mb-2.5 truncate">{subtitle}</p>
+          <p className="text-xs text-gray-500 mb-2 truncate">{subtitle}</p>
         )}
 
         {/* Actions */}
         {unpublishConfirm === id ? (
-          <div className="flex gap-2">
+          <div className="flex gap-2 mt-2">
             <button
               onClick={() => onUnpublish(id)}
               className="flex-1 btn-primary text-sm py-2"
@@ -97,21 +84,20 @@ export default function ProjectCard({
               onClick={() => onUnpublishConfirm(null)}
               className="flex-1 btn-secondary text-sm py-2"
             >
-              Iptal
+              İptal
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5">
-            <Link href={editHref}>
-              <button className="h-8 px-3 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5" aria-label="Düzenle">
+          <div className="flex items-center gap-1.5 mt-2">
+            <Link href={editHref} className="h-8 px-3 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5" aria-label="Düzenle">
                 <Edit className="h-3.5 w-3.5" aria-hidden="true" />
                 Düzenle
-              </button>
             </Link>
             {viewHref && (
               <a
                 href={viewHref}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="h-8 px-3 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5"
                 aria-label="Görüntüle"
               >
@@ -129,7 +115,7 @@ export default function ProjectCard({
             )}
             <button
               onClick={() => onUnpublishConfirm(id)}
-              className="h-8 w-8 flex items-center justify-center text-gray-500 hover:text-white rounded-lg transition-all ml-auto"
+              className="h-8 w-8 flex items-center justify-center text-gray-500 hover:text-red-400 rounded-lg transition-all ml-auto"
               aria-label="Sil"
             >
               <Trash2 className="h-4 w-4" />

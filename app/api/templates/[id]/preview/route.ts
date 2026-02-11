@@ -64,7 +64,8 @@ export async function GET(
     return new NextResponse(template.html_content, {
       status: 200,
       headers: {
-        "Content-Type": "text/html",
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=120, s-maxage=600",
       },
     });
   } catch {

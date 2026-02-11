@@ -28,7 +28,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   }, []);
 
   if (!template?.html_content) {
-    return <div>Template bulunamadı</div>;
+    return <div>Şablon bulunamadı</div>;
   }
 
   let html = template.html_content;
@@ -106,7 +106,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
       />
 
       {/* Forilove Bottom Branding */}
-      <a href="/" target="_blank" className="flex items-center justify-center no-underline" style={{ height: 34, background: 'lab(49.5493% 79.8381 2.31768)', gap: 8, textDecoration: 'none' }}>
+      <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center no-underline" style={{ height: 34, background: 'lab(49.5493% 79.8381 2.31768)', gap: 8, textDecoration: 'none' }}>
         <div className="flex items-center" style={{ gap: 4 }}>
           <Heart className="fill-white text-white" style={{ width: 11, height: 11 }} />
           <span className="text-white" style={{ fontSize: 12, fontWeight: 600 }}>Forilove ile yapıldı</span>

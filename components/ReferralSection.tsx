@@ -97,7 +97,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
           </div>
           <div>
             <h3 className="font-bold text-lg">Arkadaşlarını Davet Et</h3>
-            <p className="text-sm text-gray-400">Arkadaşların satın alırsa %5 komisyon kazan.</p>
+            <p className="text-sm text-gray-400">Arkadaşların şablon satın alırsa %5 komisyon kazan.</p>
           </div>
         </div>
         <svg
@@ -129,7 +129,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
             className="btn-secondary px-4 py-2 h-auto"
           >
             {copied ? (
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-pink-500" />
             ) : (
               <Copy className="h-5 w-5" />
             )}
@@ -166,7 +166,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
         <h4 className="font-semibold mb-2 text-sm">Nasıl Çalışır?</h4>
         <ul className="text-sm text-gray-400 space-y-1">
           <li>• Arkadaşını davet et (referans linki ile kayıt olsun)</li>
-          <li>• Arkadaşın template satın aldığında <span className="text-yellow-500 font-bold">%5 komisyon</span> kazanırsın</li>
+          <li>• Arkadaşın şablon satın aldığında <span className="text-yellow-500 font-bold">%5 komisyon</span> kazanırsın</li>
           <li>• Minimum komisyon: <span className="text-yellow-500 font-bold">5 FL Coin</span></li>
         </ul>
       </div>
