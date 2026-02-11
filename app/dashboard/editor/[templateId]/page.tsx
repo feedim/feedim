@@ -1077,8 +1077,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <span className="font-medium">Geri</span>
           </button>
           <h1 className="text-base sm:text-lg font-bold max-w-[200px] sm:max-w-[300px] truncate md:absolute md:left-[120px] md:border-l md:border-white/10 md:pl-4">{template?.name}</h1>
-          {/* Desktop buttons - hidden on mobile, scrollable when overflow */}
-          <div className="hidden md:flex items-center gap-2 max-w-[calc(100vw-280px)] overflow-x-auto scrollbar-hide">
+          {/* Desktop buttons - hidden on mobile */}
+          <div className="hidden md:flex items-center gap-2">
             {loading ? (
               <div className="text-sm text-gray-400">Yükleniyor...</div>
             ) : !isPurchased ? (
@@ -1094,106 +1094,110 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               <>
                 {project && (
                   <>
-                    <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
-                      <button
-                        onClick={undo}
-                        disabled={!canUndo}
-                        className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                        style={{ height: 38 }}
-                        aria-label="Geri al"
-                        title="Geri Al (Ctrl+Z)"
-                      >
-                        <Undo2 className="h-[25px] w-[25px] text-white/70" />
-                      </button>
-                      <div className="w-px h-5 bg-white/15 shrink-0" />
-                      <button
-                        onClick={redo}
-                        disabled={!canRedo}
-                        className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                        style={{ height: 38 }}
-                        aria-label="Yinele"
-                        title="Yinele (Ctrl+Shift+Z)"
-                      >
-                        <Redo2 className="h-[25px] w-[25px] text-white/70" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => setShowAIModal(true)}
-                      className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
-                    >
-                      <Sparkles className="h-4 w-4" style={{ color: 'lab(49.5493% 79.8381 2.31768)' }} />
-                      AI ile Doldur
-                    </button>
-                    {areas.length > 0 && (
-                      <button
-                        onClick={() => {
-                          const hidden = new Set<string>();
-                          areas.forEach(a => { if (values[`__area_${a.key}`] === 'hidden') hidden.add(a.key); });
-                          setDraftHiddenAreas(hidden);
-                          setShowSectionsModal(true);
-                        }}
-                        className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
-                      >
-                        <LayoutGrid className="h-4 w-4" />
-                        Bölümler
-                      </button>
-                    )}
-                    {musicUrl ? (
+                    {/* Scrollable tools area */}
+                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
                       <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
-                        {/* Play/Pause */}
                         <button
-                          onClick={() => setEditorMusicPlaying(!editorMusicPlaying)}
-                          className="flex items-center justify-center px-1.5"
+                          onClick={undo}
+                          disabled={!canUndo}
+                          className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
                           style={{ height: 38 }}
-                          aria-label={editorMusicPlaying ? "Durdur" : "Oynat"}
+                          aria-label="Geri al"
+                          title="Geri Al (Ctrl+Z)"
                         >
-                          {editorMusicPlaying ? <Pause className="h-6 w-6 text-white/70" /> : <Play className="h-6 w-6 text-white/70" />}
+                          <Undo2 className="h-[25px] w-[25px] text-white/70" />
                         </button>
-                        {/* Ayraç */}
                         <div className="w-px h-5 bg-white/15 shrink-0" />
-                        {/* Thumbnail */}
                         <button
-                          onClick={() => setShowMusicModal(true)}
-                          className="relative shrink-0 flex items-center justify-center"
-                          style={{ width: 40, height: 40 }}
-                          aria-label="Müzik ayarları"
+                          onClick={redo}
+                          disabled={!canRedo}
+                          className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                          style={{ height: 38 }}
+                          aria-label="Yinele"
+                          title="Yinele (Ctrl+Shift+Z)"
                         >
-                          {editorMusicPlaying && (
-                            <div className="absolute" style={{ width: 44, height: 40, top: 0, left: -2, pointerEvents: 'none', zIndex: 1 }}>
-                              <span style={{ position: 'absolute', top: -5, left: 0, fontSize: 9, opacity: 0.7, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote1 2.5s ease-in-out infinite' }}>&#9835;</span>
-                              <span style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, opacity: 0.5, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote2 3s ease-in-out infinite 0.8s' }}>&#9834;</span>
-                            </div>
-                          )}
-                          {/* Progress ring */}
-                          {editorMusicPlaying && (
-                            <svg width="40" height="40" viewBox="0 0 40 40" className="absolute inset-0 -rotate-90" style={{ pointerEvents: 'none' }}>
-                              <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
-                              <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" strokeLinecap="round"
-                                style={{ stroke: 'lab(49.5493% 79.8381 2.31768)', strokeDasharray: `${2 * Math.PI * 18}`, strokeDashoffset: `${2 * Math.PI * 18 * (1 - editorMusicProgress / 100)}`, transition: 'stroke-dashoffset 0.4s' }}
-                              />
-                            </svg>
-                          )}
-                          <div className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.1)', animation: editorMusicPlaying ? 'spin 4s linear infinite' : 'none' }}>
-                            {(() => { const m = musicUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/); return m ? <img src={`https://img.youtube.com/vi/${m[1]}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-white" />; })()}
-                          </div>
+                          <Redo2 className="h-[25px] w-[25px] text-white/70" />
                         </button>
                       </div>
-                    ) : (
                       <button
-                        onClick={() => setShowMusicModal(true)}
+                        onClick={() => setShowAIModal(true)}
                         className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
                       >
-                        <Music className="h-4 w-4" />
-                        Müzik Ekle
+                        <Sparkles className="h-4 w-4" style={{ color: 'lab(49.5493% 79.8381 2.31768)' }} />
+                        AI ile Doldur
                       </button>
-                    )}
-                    <button
-                      onClick={handlePreview}
-                      className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Önizleme
-                    </button>
+                      {areas.length > 0 && (
+                        <button
+                          onClick={() => {
+                            const hidden = new Set<string>();
+                            areas.forEach(a => { if (values[`__area_${a.key}`] === 'hidden') hidden.add(a.key); });
+                            setDraftHiddenAreas(hidden);
+                            setShowSectionsModal(true);
+                          }}
+                          className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                          Bölümler
+                        </button>
+                      )}
+                      {musicUrl ? (
+                        <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
+                          {/* Play/Pause */}
+                          <button
+                            onClick={() => setEditorMusicPlaying(!editorMusicPlaying)}
+                            className="flex items-center justify-center px-1.5"
+                            style={{ height: 38 }}
+                            aria-label={editorMusicPlaying ? "Durdur" : "Oynat"}
+                          >
+                            {editorMusicPlaying ? <Pause className="h-6 w-6 text-white/70" /> : <Play className="h-6 w-6 text-white/70" />}
+                          </button>
+                          {/* Ayraç */}
+                          <div className="w-px h-5 bg-white/15 shrink-0" />
+                          {/* Thumbnail */}
+                          <button
+                            onClick={() => setShowMusicModal(true)}
+                            className="relative shrink-0 flex items-center justify-center"
+                            style={{ width: 40, height: 40 }}
+                            aria-label="Müzik ayarları"
+                          >
+                            {editorMusicPlaying && (
+                              <div className="absolute" style={{ width: 44, height: 40, top: 0, left: -2, pointerEvents: 'none', zIndex: 1 }}>
+                                <span style={{ position: 'absolute', top: -5, left: 0, fontSize: 9, opacity: 0.7, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote1 2.5s ease-in-out infinite' }}>&#9835;</span>
+                                <span style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, opacity: 0.5, color: 'lab(49.5493% 79.8381 2.31768)', animation: 'floatNote2 3s ease-in-out infinite 0.8s' }}>&#9834;</span>
+                              </div>
+                            )}
+                            {/* Progress ring */}
+                            {editorMusicPlaying && (
+                              <svg width="40" height="40" viewBox="0 0 40 40" className="absolute inset-0 -rotate-90" style={{ pointerEvents: 'none' }}>
+                                <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+                                <circle cx="20" cy="20" r="18" fill="none" strokeWidth="2.5" strokeLinecap="round"
+                                  style={{ stroke: 'lab(49.5493% 79.8381 2.31768)', strokeDasharray: `${2 * Math.PI * 18}`, strokeDashoffset: `${2 * Math.PI * 18 * (1 - editorMusicProgress / 100)}`, transition: 'stroke-dashoffset 0.4s' }}
+                                />
+                              </svg>
+                            )}
+                            <div className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.1)', animation: editorMusicPlaying ? 'spin 4s linear infinite' : 'none' }}>
+                              {(() => { const m = musicUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/); return m ? <img src={`https://img.youtube.com/vi/${m[1]}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-white" />; })()}
+                            </div>
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowMusicModal(true)}
+                          className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
+                        >
+                          <Music className="h-4 w-4" />
+                          Müzik Ekle
+                        </button>
+                      )}
+                      <button
+                        onClick={handlePreview}
+                        className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Önizleme
+                      </button>
+                    </div>
+                    {/* Publish button - always visible */}
                     <button
                       onClick={handlePublish}
                       disabled={saving}
