@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { AI_MODEL, createRateLimiter, parseAIJSON } from "@/lib/utils/ai";
 
 interface HookInput {
   key: string;
@@ -9,22 +10,7 @@ interface HookInput {
   defaultValue: string;
 }
 
-// Rate limit: per-user, max 5 requests per minute
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW = 60_000;
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(userId);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
-}
+const checkRateLimit = createRateLimiter(5);
 
 function sanitizeHooks(hooks: any[]): HookInput[] {
   const allowedTypes = new Set(["text", "textarea", "color", "date", "url"]);
@@ -47,10 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!checkRateLimit(user.id)) {
-      return NextResponse.json(
-        { error: "Çok fazla istek. Lütfen 1 dakika bekleyin." },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: "Çok fazla istek. 1 dakika bekleyin." }, { status: 429 });
     }
 
     const contentLength = req.headers.get("content-length");
@@ -65,17 +48,11 @@ export async function POST(req: NextRequest) {
     };
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0 || prompt.length > 500) {
-      return NextResponse.json(
-        { error: "Prompt geçersiz veya çok uzun (max 500 karakter)" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Prompt geçersiz veya çok uzun (max 500 karakter)" }, { status: 400 });
     }
 
     if (!Array.isArray(rawHooks) || rawHooks.length === 0 || rawHooks.length > 50) {
-      return NextResponse.json(
-        { error: "Hook listesi geçersiz (1-50 arası)" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Hook listesi geçersiz (1-50 arası)" }, { status: 400 });
     }
     const hooks = sanitizeHooks(rawHooks);
     if (hooks.length === 0) {
@@ -97,6 +74,8 @@ export async function POST(req: NextRequest) {
       return `${i + 1}. "${h.key}" (${h.label}) → ${typeRule}`;
     });
 
+    const requiredKeys = hooks.map(h => `"${h.key}"`).join(', ');
+
     const systemPrompt = `Forilove anı sayfası içerik yazarısın. Kullanıcının anlattığı hikayeye göre sayfa içeriği üret.
 
 Bugün: ${todayStr}
@@ -104,8 +83,8 @@ Bugün: ${todayStr}
 MUTLAKA UYULMASI GEREKEN KURALLAR:
 1. Aşağıdaki ${hooks.length} alanın HER BİRİ için yeni değer üret. HİÇBİRİNİ ATLAMA.
 2. Mevcut değerleri KULLANMA — her alan için HİKAYEYE UYGUN YENİ içerik yaz.
-3. text alanları: Kısa, çarpıcı, duygusal başlıklar (max 100 karakter)
-4. textarea alanları: Samimi, kişisel, mektup tarzı metinler (2-4 cümle)
+3. text alanları: Kısa, duygusal, çarpıcı başlıklar (max 100 karakter)
+4. textarea alanları: Samimi, mektup tarzı uzun metinler (2-4 cümle)
 5. date alanları: GG.AA.YYYY formatında. Kullanıcı tarih verdiyse kullan, yoksa hikayeye uygun bir tarih uydur.
 6. color alanları: HEX renk kodu (romantik tonlar: #FF6B9D, #E91E63, #D32F2F, #FFD700)
 7. url alanları: "" (boş string)
@@ -118,17 +97,17 @@ ${fieldLines.join('\n')}`;
 
     const userMessage = `Hikaye: ${prompt.slice(0, 500)}
 
-Yukarıdaki ${hooks.length} alanın TAMAMINI doldur. JSON objesi döndür.`;
+ÖNEMLİ: JSON'da şu ${hooks.length} key'in TAMAMI olmalı: ${requiredKeys}`;
 
     // Call Claude with assistant prefill to force JSON output
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     let aiText = "";
     const maxRetries = 3;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const response = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
+          model: AI_MODEL,
           max_tokens: 4096,
           temperature: 0.7,
           system: systemPrompt,
@@ -158,13 +137,9 @@ Yukarıdaki ${hooks.length} alanın TAMAMINI doldur. JSON objesi döndür.`;
     }
 
     // Parse JSON from AI response
-    let aiValues: Record<string, string>;
-    try {
-      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found");
-      aiValues = JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      console.error("AI JSON parse error. Raw response:", aiText.slice(0, 2000));
+    const aiValues = parseAIJSON(aiText) as Record<string, string> | null;
+    if (!aiValues || typeof aiValues !== "object") {
+      console.error("AI JSON parse error. Raw:", aiText.slice(0, 2000));
       return NextResponse.json({ error: "AI yanıtı parse edilemedi" }, { status: 500 });
     }
 
@@ -183,19 +158,18 @@ Yukarıdaki ${hooks.length} alanın TAMAMINI doldur. JSON objesi döndür.`;
       }
     }
 
-    console.log(`AI generate: ${filledByAI}/${hooks.length} filled by AI. Prompt: "${prompt.slice(0, 80)}"`);
-
-    // If AI filled less than half, log warning with missing keys
+    console.log(`AI generate: ${filledByAI}/${hooks.length} filled. Prompt: "${prompt.slice(0, 80)}"`);
     if (filledByAI < hooks.length / 2) {
       const missingKeys = hooks.filter(h => !aiValues[h.key] || typeof aiValues[h.key] !== 'string').map(h => h.key);
-      console.warn(`AI generate: LOW COVERAGE. Missing keys: ${missingKeys.join(', ')}`);
+      console.warn(`AI generate: LOW COVERAGE. Missing: ${missingKeys.join(', ')}`);
     }
 
     return NextResponse.json({ values: filteredValues });
   } catch (error: any) {
     console.error("AI generate error:", error);
-    const message = error.message || "AI oluşturma hatası";
-    const status = message.includes("zaman aşımı") ? 504 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (error?.status === 429) {
+      return NextResponse.json({ error: "AI meşgul. Birkaç saniye bekleyin." }, { status: 429 });
+    }
+    return NextResponse.json({ error: error.message || "AI oluşturma hatası" }, { status: 500 });
   }
 }

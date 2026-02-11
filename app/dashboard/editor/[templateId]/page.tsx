@@ -1089,7 +1089,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-lg sm:text-xl font-bold max-w-[200px] sm:max-w-[300px] truncate md:absolute md:left-[120px] md:border-l md:border-white/10 md:pl-4">{template?.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold max-w-[200px] sm:max-w-[300px] truncate md:absolute md:left-[120px] md:border-l md:border-white/10 md:pl-4">{template?.name}</h1>
           {/* Desktop buttons - hidden on mobile, max-width prevents overlap with absolute title */}
           <div className="hidden md:flex items-center gap-2 max-w-[calc(100vw-480px)]">
             {loading ? (
@@ -1281,8 +1281,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 style={{
                   scrollbarWidth: 'none',
                   WebkitOverflowScrolling: 'touch',
-                  maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent)',
-                  WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent)',
+                  maskImage: 'linear-gradient(to right, black calc(100% - 80px), transparent)',
+                  WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 80px), transparent)',
                 }}
               >
                 <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
