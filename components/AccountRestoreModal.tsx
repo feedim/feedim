@@ -17,9 +17,9 @@ export default function AccountRestoreModal({
   const router = useRouter();
   const supabase = createClient();
 
-  const daysRemaining = Math.ceil(
-    (new Date(scheduledDeletionAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  );
+  const GRACE_PERIOD_DAYS = 14;
+  const deletionDate = new Date(new Date(scheduledDeletionAt).getTime() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+  const daysRemaining = Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   const handleRestore = async () => {
     setLoading(true);
@@ -69,7 +69,7 @@ export default function AccountRestoreModal({
         </div>
 
         <p className="text-xs text-gray-500 mt-4 text-center">
-          {new Date(scheduledDeletionAt).toLocaleDateString("tr-TR", {
+          {deletionDate.toLocaleDateString("tr-TR", {
             day: "numeric",
             month: "long",
             year: "numeric",
