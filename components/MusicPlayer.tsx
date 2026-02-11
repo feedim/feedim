@@ -454,6 +454,23 @@ export default function MusicPlayer({ musicUrl }: { musicUrl: string }) {
 
   return (
     <>
+      {/* Hidden YouTube iframe — ALWAYS in DOM so music survives mini/full toggle.
+          Managed outside React (document.createElement) so only the useEffect cleanup removes it. */}
+      <div
+        ref={containerRef}
+        style={{
+          position: "fixed",
+          left: "-9999px",
+          top: "-9999px",
+          width: "200px",
+          height: "200px",
+          overflow: "hidden",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      />
+
       {/* ── Mini Player ──────────────────────────────────── */}
       {minimized && (
         <button onClick={() => setMinimized(false)} className="fixed z-[9999] left-1/2" style={{ bottom: 20, transform: "translateX(-50%)" }} aria-label="Müzik çalarını aç">
@@ -502,7 +519,7 @@ export default function MusicPlayer({ musicUrl }: { musicUrl: string }) {
               </div>
 
               {/* Center: Play button */}
-              <div className="relative">
+              <div>
                 {!hasInteracted && isReady ? (
                   <button onClick={togglePlay} className="h-12 w-12 sm:h-11 sm:w-11 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform animate-pulse" style={{ background: BRAND_PINK }} aria-label="Oynat">
                     <PlayIcon />
@@ -512,28 +529,6 @@ export default function MusicPlayer({ musicUrl }: { musicUrl: string }) {
                     {playButtonIcon}
                   </button>
                 )}
-                {/* Hidden YouTube iframe — never intercepts taps.
-                    playVideo() is called directly from button click handler,
-                    which counts as user gesture for autoplay policy. */}
-                <div
-                  ref={containerRef}
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "200px",
-                    height: "200px",
-                    minWidth: "200px",
-                    minHeight: "200px",
-                    overflow: "hidden",
-                    opacity: 0,
-                    pointerEvents: "none",
-                    zIndex: -1,
-                    display: "block",
-                    visibility: "visible",
-                  }}
-                />
               </div>
 
               {/* Right: Equalizer + Volume + Minimize */}
