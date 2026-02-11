@@ -227,7 +227,6 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
             className="btn-primary"
             style={{
               width: "100%",
-              background: insufficientBalance ? "#6366F1" : "#F97316",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
