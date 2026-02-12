@@ -81,14 +81,14 @@ export async function POST(request: NextRequest) {
     // Benzersiz sipariş ID oluştur
     const merchant_oid = `FL${Date.now()}${user.id.replace(/-/g, '').substring(0, 8)}`;
 
-    // Kullanıcı sepeti (PayTR formatı)
-    const user_basket = JSON.stringify([
-      [pkg.name, `${pkg.price_try}00`, 1]
-    ]);
+    // Kullanıcı sepeti (PayTR formatı — base64 encoded JSON)
+    const user_basket = Buffer.from(JSON.stringify([
+      [pkg.name, String(pkg.price_try), 1]
+    ])).toString('base64');
 
     // PayTR parametreleri
     const email = user.email || 'noreply@forilove.com';
-    const payment_amount = (pkg.price_try * 100).toString();
+    const payment_amount = Math.round(pkg.price_try * 100).toString();
     const user_name = profile?.full_name || 'Forilove Kullanıcısı';
     const user_address = 'Dijital Urun - Forilove';
     const user_phone = '8508400000';
