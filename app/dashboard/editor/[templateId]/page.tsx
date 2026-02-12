@@ -282,7 +282,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       // Load profile, purchase, and template in parallel
       const [profileRes, purchaseRes, templateRes] = await Promise.all([
         supabase.from('profiles').select('coin_balance').eq('user_id', user.id).single(),
-        supabase.from("purchases").select("id, template_id, payment_status").eq("user_id", user.id).eq("template_id", resolvedParams.templateId).eq("payment_status", "completed").single(),
+        supabase.from("purchases").select("id, template_id, payment_status").eq("user_id", user.id).eq("template_id", resolvedParams.templateId).eq("payment_status", "completed").maybeSingle(),
         supabase.from("templates").select("id, name, slug, coin_price, html_content, created_by").eq("id", resolvedParams.templateId).single(),
       ]);
 
@@ -1108,7 +1108,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       {/* Header */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl min-h-[73px]">
         <nav className="w-full px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
-          <button onClick={() => router.back()} className="flex items-center gap-2 transition-colors">
+          <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>

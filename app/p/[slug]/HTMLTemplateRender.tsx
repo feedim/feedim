@@ -142,19 +142,21 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     ALLOW_DATA_ATTR: true,
   });
 
-  // Run extracted template scripts after DOM render
+  // Run extracted template scripts after DOM render — wait for paint then execute
   useEffect(() => {
     if (!templateScripts.length) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    templateScripts.forEach((code, i) => {
-      const t = setTimeout(() => {
-        try { new Function(code)(); } catch (e) {
-          if (process.env.NODE_ENV === 'development') console.warn('Template script error:', e);
-        }
-      }, 100 * (i + 1));
-      timers.push(t);
+    let cancelled = false;
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        templateScripts.forEach((code) => {
+          try { new Function(code)(); } catch (e) {
+            if (process.env.NODE_ENV === 'development') console.warn('Template script error:', e);
+          }
+        });
+      });
     });
-    return () => timers.forEach(clearTimeout);
+    return () => { cancelled = true; cancelAnimationFrame(rafId); };
   }, [sanitizedHtml]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

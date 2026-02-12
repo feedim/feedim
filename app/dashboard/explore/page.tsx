@@ -213,7 +213,7 @@ export default function ExplorePage() {
       {/* Header — transparent, overlays reels */}
       <header className="absolute top-0 left-0 right-0 z-30">
         <nav className="container mx-auto px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+          <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>

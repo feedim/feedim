@@ -135,7 +135,7 @@ export default function CoinsPage() {
     <div className="min-h-screen bg-black text-white">
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl min-h-[73px]">
         <nav className="container mx-auto px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
-          <button onClick={() => router.back()} className="flex items-center gap-2 transition-colors">
+          <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
@@ -156,7 +156,7 @@ export default function CoinsPage() {
             <Coins className="h-14 w-14 sm:h-20 sm:w-20 text-yellow-500 mb-3 sm:mb-4" />
             <h2 className="text-lg sm:text-2xl font-bold mb-2">Paketler yükleniyor</h2>
             <p className="text-gray-400 mb-5 sm:mb-6 text-sm px-4">Coin paketleri henüz yapılandırılmamış.</p>
-            <button onClick={() => router.back()} className="btn-primary">
+            <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="btn-primary">
               Geri Dön
             </button>
           </div>

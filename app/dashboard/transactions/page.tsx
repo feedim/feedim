@@ -144,7 +144,7 @@ export default function TransactionsPage() {
     <div className="min-h-screen bg-black text-white">
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl min-h-[73px]">
         <nav className="container mx-auto px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
-          <button onClick={() => router.back()} className="flex items-center gap-2 transition-colors">
+          <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>

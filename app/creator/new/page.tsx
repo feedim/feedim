@@ -173,7 +173,7 @@ export default function NewŞablonPage() {
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl min-h-[73px] border-b border-white/10">
         <nav className="w-full px-6 flex items-center justify-between min-h-[73px]">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="flex items-center gap-2 transition-colors">
+            <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/creator'); } }} className="flex items-center gap-2 transition-colors">
               <ArrowLeft className="h-5 w-5" />
               <span className="font-medium">Geri</span>
             </button>
@@ -292,7 +292,7 @@ export default function NewŞablonPage() {
               srcDoc={previewHtml}
               className="w-full h-full border-0"
               title="Live Preview"
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts"
             />
           </div>
         </div>
