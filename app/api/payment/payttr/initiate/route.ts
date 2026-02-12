@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
 
     const merchant_ok_url = `${appUrl}/payment/success`;
     const merchant_fail_url = `${appUrl}/payment/failed`;
+    const merchant_notify_url = `${appUrl}/api/payment/payttr/callback`;
 
     // PayTR iFrame API token oluşturma
     const hashSTR = `${merchant_id}${user_ip}${merchant_oid}${email}${payment_amount}${user_basket}${no_installment}${max_installment}${currency}${test_mode}`;
@@ -166,6 +167,7 @@ export async function POST(request: NextRequest) {
       user_phone,
       merchant_ok_url,
       merchant_fail_url,
+      merchant_notify_url,
       timeout_limit: '30',
       currency,
       test_mode,
