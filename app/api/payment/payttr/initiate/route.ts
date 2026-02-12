@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const currency = 'TL';
     const test_mode = (process.env.PAYTTR_TEST_MODE || '').trim() === 'true' ? '1' : '0';
 
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '').trim();
     if (!appUrl) {
       return NextResponse.json(
         { success: false, error: 'Ödeme sistemi yapılandırması eksik. Lütfen daha sonra tekrar deneyin.' },
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
     const merchant_ok_url = `${appUrl}/payment/success`;
     const merchant_fail_url = `${appUrl}/payment/failed`;
     const merchant_notify_url = `${appUrl}/api/payment/payttr/callback`;
+    console.log('[PayTR Initiate] notify_url:', merchant_notify_url);
 
     // PayTR iFrame API token oluşturma
     const hashSTR = `${merchant_id}${user_ip}${merchant_oid}${email}${payment_amount}${user_basket}${no_installment}${max_installment}${currency}${test_mode}`;

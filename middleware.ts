@@ -33,6 +33,10 @@ export async function middleware(request: NextRequest) {
 
   // ♥ API Rate Limiting — applies to all /api/* routes
   if (pathname.startsWith('/api/')) {
+    // PayTR callback muaf — retry'lar rate limit'e takılmasın
+    if (pathname === '/api/payment/payttr/callback') {
+      return NextResponse.next()
+    }
     cleanupRateMap()
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
     if (!checkApiRateLimit(ip)) {

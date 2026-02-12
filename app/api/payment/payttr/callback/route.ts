@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * PayTR Callback (IPN) endpoint
  * PayTR ödeme sonucunu buraya POST eder
  */
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    hasEnvVars: !!(process.env.PAYTTR_MERCHANT_KEY && process.env.PAYTTR_MERCHANT_SALT),
+  });
+}
+
 export async function POST(request: NextRequest) {
+  console.log('[PayTR Callback] ▶ Request received');
   const supabase = createAdminClient();
 
   try {
@@ -16,6 +27,7 @@ export async function POST(request: NextRequest) {
     const status = formData.get('status') as string;
     const total_amount = formData.get('total_amount') as string;
     const hash = formData.get('hash') as string;
+    console.log('[PayTR Callback] merchant_oid:', merchant_oid, 'status:', status, 'amount:', total_amount);
 
     const merchant_key = (process.env.PAYTTR_MERCHANT_KEY || '').trim();
     const merchant_salt = (process.env.PAYTTR_MERCHANT_SALT || '').trim();
@@ -73,26 +85,60 @@ export async function POST(request: NextRequest) {
     if (status === 'success') {
       const totalCoins = payment.coins_purchased;
 
-      const { error: coinsError } = await supabase.rpc('add_coins_to_user', {
-        p_user_id: payment.user_id,
-        p_amount: totalCoins,
-        p_type: 'purchase',
-        p_description: `${payment.coin_packages?.name || 'Paket'} satın alındı`,
-        p_reference_id: payment.id,
-        p_reference_type: 'payment'
-      });
+      // 1. Mevcut bakiyeyi al
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('coin_balance')
+        .eq('user_id', payment.user_id)
+        .single();
 
-      if (coinsError) {
-        console.error('[PayTR Callback] Coin add failed:', merchant_oid, coinsError.message);
+      if (profileError || !profile) {
+        console.error('[PayTR Callback] Profile not found:', merchant_oid, profileError?.message);
         await supabase
           .from('coin_payments')
           .update({
             status: 'failed',
-            metadata: { ...payment.metadata, error: `Coin eklenemedi: ${coinsError.message}` },
+            metadata: { ...payment.metadata, error: `Profil bulunamadı: ${profileError?.message}` },
             completed_at: new Date().toISOString(),
           })
           .eq('id', payment.id);
         return new NextResponse('OK', { status: 200 });
+      }
+
+      // 2. Bakiyeyi artır
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ coin_balance: (profile.coin_balance || 0) + totalCoins })
+        .eq('user_id', payment.user_id);
+
+      if (updateError) {
+        console.error('[PayTR Callback] Balance update failed:', merchant_oid, updateError.message);
+        await supabase
+          .from('coin_payments')
+          .update({
+            status: 'failed',
+            metadata: { ...payment.metadata, error: `Bakiye güncellenemedi: ${updateError.message}` },
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', payment.id);
+        return new NextResponse('OK', { status: 200 });
+      }
+
+      // 3. Transaction kaydı ekle
+      const { error: txError } = await supabase
+        .from('coin_transactions')
+        .insert({
+          user_id: payment.user_id,
+          amount: totalCoins,
+          type: 'purchase',
+          description: `${payment.coin_packages?.name || 'Paket'} satın alındı`,
+          reference_id: payment.id,
+          reference_type: 'payment',
+        });
+
+      if (txError) {
+        console.error('[PayTR Callback] Transaction record failed:', merchant_oid, txError.message);
+        // Coin'ler eklendi ama kayıt tutulmadı — yine de completed olarak işaretle
       }
 
       await supabase
@@ -102,6 +148,8 @@ export async function POST(request: NextRequest) {
           completed_at: new Date().toISOString(),
         })
         .eq('id', payment.id);
+
+      console.log('[PayTR Callback] ✓ Completed for', merchant_oid, 'coins:', totalCoins);
 
     } else {
       await supabase
