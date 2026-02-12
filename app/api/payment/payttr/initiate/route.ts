@@ -115,6 +115,16 @@ export async function POST(request: NextRequest) {
     const hashSTR = `${merchant_id}${user_ip}${merchant_oid}${email}${payment_amount}${user_basket}${no_installment}${max_installment}${currency}${test_mode}`;
     const paytr_token = crypto.createHmac('sha256', merchant_key).update(hashSTR + merchant_salt).digest('base64');
 
+    // DEBUG — geçici log
+    console.log('[PayTR DEBUG]', JSON.stringify({
+      merchant_id, user_ip, merchant_oid, email, payment_amount,
+      user_basket: user_basket.substring(0, 50),
+      no_installment, max_installment, currency, test_mode,
+      merchant_ok_url, merchant_fail_url,
+      token_length: paytr_token.length,
+      hash_input_length: (hashSTR + merchant_salt).length,
+    }));
+
     // PayTR'ye gönderilecek parametreler (iFrame API — kart bilgisi gönderilmez)
     const params = new URLSearchParams({
       merchant_id,
@@ -189,6 +199,8 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
+
+    console.log('[PayTR] Full response:', JSON.stringify(payttrResult));
 
     if (payttrResult.status === 'success') {
       return NextResponse.json({
