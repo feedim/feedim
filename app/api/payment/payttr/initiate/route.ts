@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       return NextResponse.json(
-        { success: false, error: payttrResult.reason || 'Ödeme başlatılamadı. Kart bilgilerinizi kontrol edin.' },
+        { success: false, error: payttrResult.reason || 'Ödeme başlatılamadı.', debug: { merchant_id, user_ip, merchant_oid, email, payment_amount, user_basket: user_basket.substring(0, 60), no_installment, max_installment, currency, test_mode, paytr_token: paytr_token.substring(0, 20) + '...' } },
         { status: 400 }
       );
     }
