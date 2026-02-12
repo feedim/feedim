@@ -212,8 +212,9 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error: any) {
+    console.error('[PayTR] Unhandled error:', error?.message, error?.stack);
     return NextResponse.json(
-      { success: false, error: 'Sunucu hatası' },
+      { success: false, error: `Sunucu hatası: ${error?.message || 'Bilinmeyen hata'}` },
       { status: 500 }
     );
   }
