@@ -1714,42 +1714,54 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 {/* Edit Field */}
                 <div className="space-y-3">
                   {currentHook.type === 'list' ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {draftListItems.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={item}
-                            onChange={(e) => {
-                              const next = [...draftListItems];
-                              next[idx] = e.target.value.slice(0, 200);
-                              setDraftListItems(next);
-                            }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
-                            className="input-modern flex-1 text-base"
-                            placeholder={`Öğe ${idx + 1}`}
-                            maxLength={200}
-                            autoFocus={idx === 0}
-                          />
+                        <div key={idx} className="flex items-center gap-3 group">
+                          <span className="shrink-0 w-6 text-center text-xs font-medium text-gray-500">{idx + 1}</span>
+                          <div className="flex-1 relative">
+                            <input
+                              type="text"
+                              value={item}
+                              onChange={(e) => {
+                                const next = [...draftListItems];
+                                next[idx] = e.target.value.slice(0, 200);
+                                setDraftListItems(next);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (draftListItems.length < 20) {
+                                    setDraftListItems(prev => [...prev.slice(0, idx + 1), '', ...prev.slice(idx + 1)]);
+                                  }
+                                }
+                              }}
+                              className="input-modern w-full text-sm"
+                              placeholder={`${idx + 1}. metin`}
+                              maxLength={200}
+                              autoFocus={idx === draftListItems.length - 1}
+                            />
+                          </div>
                           {draftListItems.length > 1 && (
                             <button
                               onClick={() => setDraftListItems(prev => prev.filter((_, i) => i !== idx))}
-                              className="shrink-0 rounded-full p-2 bg-white/10 text-gray-400 hover:text-red-400 hover:bg-white/15 transition-all"
-                              aria-label="Öğeyi sil"
+                              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-red-400 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              aria-label="Sil"
                             >
                               <X className="h-4 w-4" />
                             </button>
                           )}
+                          {draftListItems.length <= 1 && <div className="w-8 shrink-0" />}
                         </div>
                       ))}
                       {draftListItems.length < 20 && (
                         <button
                           onClick={() => setDraftListItems(prev => [...prev, ''])}
-                          className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl text-sm text-gray-400 hover:border-pink-500/50 hover:text-white transition-all"
+                          className="w-full py-2.5 border border-dashed border-white/15 rounded-xl text-sm text-gray-500 hover:border-pink-500/40 hover:text-gray-300 transition-all flex items-center justify-center gap-1.5"
                         >
-                          + Yeni Öğe Ekle
+                          <span className="text-base leading-none">+</span> Yeni Ekle
                         </button>
                       )}
+                      <p className="text-[11px] text-gray-600 text-right">{draftListItems.length}/20</p>
                     </div>
                   ) : currentHook.type === 'textarea' ? (
                     <div>
