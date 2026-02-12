@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
 
     // Ödeme kaydını bul
     const { data: payment, error: paymentError } = await supabase
-      .from('payments')
+      .from('coin_payments')
       .select('*, coin_packages(*)')
-      .eq('merchant_oid', merchant_oid)
+      .eq('payment_id', merchant_oid)
       .single();
 
     if (paymentError || !payment) {
@@ -52,15 +52,15 @@ export async function POST(request: NextRequest) {
       return new NextResponse('OK', { status: 200 });
     }
 
-    // Tutar çapraz kontrolü: PayTR total_amount (kuruş) vs DB amount_try (TL)
-    const expectedAmountKurus = Math.round(payment.amount_try * 100);
+    // Tutar çapraz kontrolü: PayTR total_amount (kuruş) vs DB price_paid (TL)
+    const expectedAmountKurus = Math.round(payment.price_paid * 100);
     const receivedAmountKurus = parseInt(total_amount, 10);
     if (expectedAmountKurus !== receivedAmountKurus) {
       await supabase
-        .from('payments')
+        .from('coin_payments')
         .update({
           status: 'failed',
-          error_message: `Tutar uyuşmazlığı: beklenen ${expectedAmountKurus}, gelen ${receivedAmountKurus}`,
+          metadata: { ...payment.metadata, error: `Tutar uyuşmazlığı: beklenen ${expectedAmountKurus}, gelen ${receivedAmountKurus}` },
           completed_at: new Date().toISOString(),
         })
         .eq('id', payment.id);
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Ödeme başarılı mı?
     if (status === 'success') {
       // Atomic coin ekleme
-      const totalCoins = payment.coins + payment.bonus_coins;
+      const totalCoins = payment.coins_purchased;
 
       const { error: coinsError } = await supabase.rpc('add_coins_to_user', {
         p_user_id: payment.user_id,
@@ -84,10 +84,10 @@ export async function POST(request: NextRequest) {
       if (coinsError) {
         console.error('[PayTR] CRITICAL: Coin addition failed for payment:', payment.id, coinsError.message);
         await supabase
-          .from('payments')
+          .from('coin_payments')
           .update({
             status: 'failed',
-            error_message: `Coin eklenemedi: ${coinsError.message}`,
+            metadata: { ...payment.metadata, error: `Coin eklenemedi: ${coinsError.message}` },
             completed_at: new Date().toISOString(),
           })
           .eq('id', payment.id);
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
       // Ödemeyi completed olarak işaretle
       await supabase
-        .from('payments')
+        .from('coin_payments')
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
     } else {
       // Ödeme başarısız
       await supabase
-        .from('payments')
+        .from('coin_payments')
         .update({
           status: 'failed',
-          error_message: 'Ödeme başarısız',
+          metadata: { ...payment.metadata, error: 'Ödeme başarısız' },
           completed_at: new Date().toISOString(),
         })
         .eq('id', payment.id);

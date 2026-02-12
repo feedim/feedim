@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Benzersiz sipariş ID oluştur
-    const merchant_oid = `FL-${Date.now()}-${user.id.substring(0, 8)}`;
+    const merchant_oid = `FL${Date.now()}${user.id.replace(/-/g, '').substring(0, 8)}`;
 
     // Kullanıcı sepeti (PayTR formatı)
     const user_basket = JSON.stringify([
@@ -160,18 +160,19 @@ export async function POST(request: NextRequest) {
 
     // Pending ödeme kaydı oluştur (kart bilgisi SAKLANMAZ)
     const { data: payment, error: paymentError } = await supabase
-      .from('payments')
+      .from('coin_payments')
       .insert({
         user_id: user.id,
-        merchant_oid,
+        payment_id: merchant_oid,
         package_id: pkg.id,
-        amount_try: pkg.price_try,
-        coins: pkg.coins,
-        bonus_coins: pkg.bonus_coins,
+        price_paid: pkg.price_try,
+        coins_purchased: pkg.coins + (pkg.bonus_coins || 0),
         status: 'pending',
-        payment_method: 'payttr',
+        payment_provider: 'payttr',
+        currency: 'TRY',
         metadata: {
           package_name: pkg.name,
+          bonus_coins: pkg.bonus_coins || 0,
         },
       })
       .select()
