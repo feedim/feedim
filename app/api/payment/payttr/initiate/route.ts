@@ -67,11 +67,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Admin client — RLS bypass (ödeme kayıtları için gerekli)
-    const adminDb = createAdminClient();
-
     // Paketi veritabanından al
-    const { data: pkg, error: pkgError } = await adminDb
+    const { data: pkg, error: pkgError } = await supabase
       .from('coin_packages')
       .select('id, name, coins, price_try, bonus_coins')
       .eq('id', package_id)
@@ -85,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Kullanıcı bilgilerini al
-    const { data: profile } = await adminDb
+    const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, email')
       .eq('user_id', user.id)
@@ -161,6 +158,9 @@ export async function POST(request: NextRequest) {
       expiry_year: expiryYear,
       cvv,
     });
+
+    // Admin client — RLS bypass (ödeme kayıtları için gerekli)
+    const adminDb = createAdminClient();
 
     // Pending ödeme kaydı oluştur (kart bilgisi SAKLANMAZ)
     const { data: payment, error: paymentError } = await adminDb
