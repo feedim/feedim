@@ -152,14 +152,14 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
 
         {/* Balance Info */}
         <div className="border border-white/10 rounded-xl p-3.5 flex flex-col gap-1.5">
-          <div className="flex justify-between items-center">
-            <span className="text-[13px] text-gray-400">Mevcut bakiye:</span>
-            <span className="text-[13px] font-semibold text-white">{options.currentBalance} FL</span>
+          <div className="flex justify-between items-center pb-0.5">
+            <span className="text-[14px] text-gray-400">Mevcut bakiye:</span>
+            <span className="text-[14px] font-semibold text-white">{options.currentBalance} FL</span>
           </div>
           <div className="h-px bg-yellow-500/10" />
-          <div className="flex justify-between items-center">
-            <span className="text-[13px] text-gray-400">İşlem sonrası:</span>
-            <span className={`text-[13px] font-semibold ${insufficientBalance ? "text-red-500" : "text-yellow-500"}`}>
+          <div className="flex justify-between items-center pt-0.5">
+            <span className="text-[14px] text-gray-400">İşlem sonrası:</span>
+            <span className={`text-[14px] font-semibold ${insufficientBalance ? "text-red-500" : "text-yellow-500"}`}>
               {insufficientBalance ? "Yetersiz bakiye" : `${balanceAfter} FL`}
             </span>
           </div>
