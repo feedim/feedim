@@ -7,26 +7,6 @@ import DOMPurify from 'isomorphic-dompurify';
 import MusicPlayer from "@/components/MusicPlayer";
 import ShareIconButton from "@/components/ShareIconButton";
 
-// Blocklist of dangerous patterns for template scripts
-const DANGEROUS_PATTERNS = [
-  /document\.cookie/i,
-  /localStorage\s*\./i,
-  /sessionStorage\s*\./i,
-  /\.createElement\s*\(\s*['"]script/i,
-  /eval\s*\(/i,
-  /Function\s*\(/i,
-  /import\s*\(/i,
-  /window\.open\s*\(/i,
-  /fetch\s*\(/i,
-  /XMLHttpRequest/i,
-  /navigator\.sendBeacon/i,
-  /window\.location\s*=/i,
-];
-
-function isSafeScript(code: string): boolean {
-  return !DANGEROUS_PATTERNS.some(pattern => pattern.test(code));
-}
-
 // Extract <script> contents from HTML before DOMPurify strips them
 function extractScripts(html: string): { cleanHtml: string; scripts: string[] } {
   const scripts: string[] = [];
@@ -167,10 +147,6 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     if (!templateScripts.length) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     templateScripts.forEach((code, i) => {
-      if (!isSafeScript(code)) {
-        if (process.env.NODE_ENV === 'development') console.warn('Blocked unsafe template script');
-        return;
-      }
       const t = setTimeout(() => {
         try { new Function(code)(); } catch (e) {
           if (process.env.NODE_ENV === 'development') console.warn('Template script error:', e);
