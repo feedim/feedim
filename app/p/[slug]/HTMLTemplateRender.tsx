@@ -215,8 +215,8 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         suppressHydrationWarning
       />
 
-      {/* Forilove Bottom Branding — fixed so it shows on overflow:hidden templates */}
-      <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center no-underline" style={{ position: 'fixed', bottom: musicUrl ? 72 : 0, left: 0, right: 0, height: 34, background: 'lab(49.5493% 79.8381 2.31768)', gap: 8, textDecoration: 'none', zIndex: 9996 }}>
+      {/* Forilove Bottom Branding */}
+      <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center no-underline" style={{ height: 34, background: 'lab(49.5493% 79.8381 2.31768)', gap: 8, textDecoration: 'none' }}>
         <div className="flex items-center" style={{ gap: 4 }}>
           <Heart className="fill-white text-white" style={{ width: 11, height: 11 }} />
           <span className="text-white" style={{ fontSize: 12, fontWeight: 600 }}>Forilove ile yapıldı</span>
@@ -224,6 +224,8 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.3)' }} />
         <span className="text-white" style={{ fontSize: 11, fontWeight: 500, opacity: 0.9 }}>Hemen Dene &rarr;</span>
       </a>
+      {/* Spacer for music player */}
+      {musicUrl && <div style={{ height: 72, background: 'lab(49.5493% 79.8381 2.31768)' }} />}
 
       {/* Share Button — hidden in embed/inspect mode */}
       {!isEmbed && (
