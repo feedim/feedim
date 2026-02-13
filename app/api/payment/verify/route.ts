@@ -64,40 +64,34 @@ export async function POST(request: NextRequest) {
     const totalCoins = payment.coins_purchased;
     const packageName = payment.metadata?.package_name || 'Paket';
 
-    // 5a. ATOMIC CLAIM: Sadece bir işlem bu ödemeyi alabilir (double-spend önleme)
+    // 5a. ATOMIC CLAIM: pending → completed (double-spend önleme)
     const { data: claimed, error: claimError } = await adminClient
       .from('coin_payments')
-      .update({ status: 'processing' })
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        metadata: { ...payment.metadata, completed_via: 'verify_fallback' },
+      })
       .eq('id', payment.id)
       .eq('status', 'pending')
       .select('id');
 
     if (claimError || !claimed || claimed.length === 0) {
-      // Başka bir işlem zaten claim etti — ödemeyi tekrar sorgula
-      const { data: freshPayment } = await adminClient
-        .from('coin_payments')
-        .select('status, coins_purchased')
-        .eq('id', payment.id)
+      // Başka bir işlem zaten tamamladı — taze bakiyeyi döndür
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('coin_balance')
+        .eq('user_id', user.id)
         .single();
 
-      if (freshPayment?.status === 'completed') {
-        const { data: profile } = await adminClient
-          .from('profiles')
-          .select('coin_balance')
-          .eq('user_id', user.id)
-          .single();
-
-        return NextResponse.json({
-          status: 'completed',
-          coin_balance: profile?.coin_balance ?? 0,
-          coins_added: freshPayment.coins_purchased,
-        });
-      }
-
-      return NextResponse.json({ status: 'processing' });
+      return NextResponse.json({
+        status: 'completed',
+        coin_balance: profile?.coin_balance ?? 0,
+        coins_added: payment.coins_purchased,
+      });
     }
 
-    // 5b. ATOMIC COIN ADD: Bakiye + transaction tek seferde (race condition önleme)
+    // 5b. ATOMIC COIN ADD: Bakiye + transaction tek seferde
     const { data: newBalance, error: rpcError } = await adminClient.rpc('add_coins_atomic', {
       p_user_id: user.id,
       p_amount: totalCoins,
@@ -110,33 +104,26 @@ export async function POST(request: NextRequest) {
       // Rollback: status'u pending'e geri al
       await adminClient
         .from('coin_payments')
-        .update({ status: 'pending' })
+        .update({ status: 'pending', completed_at: null })
         .eq('id', payment.id);
       return NextResponse.json({ status: 'error' }, { status: 500 });
     }
 
-    // 5c. MARK COMPLETED
-    await adminClient
-      .from('coin_payments')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        metadata: { ...payment.metadata, completed_via: 'verify_fallback' },
-      })
-      .eq('id', payment.id);
-
-    // 5d. REFERRAL COMMISSION (kritik değil)
+    // 5c. REFERRAL COMMISSION (kritik değil)
     try {
-      await adminClient.rpc('process_coin_referral_commission', {
+      const { error: commissionError } = await adminClient.rpc('process_coin_referral_commission', {
         p_buyer_user_id: user.id,
         p_coin_payment_id: payment.id,
         p_purchase_amount: totalCoins,
       });
-    } catch {
-      // Referans hatası ödemeyi engellemez
+      if (commissionError) {
+        console.warn('[Verify] Commission RPC error:', commissionError.message);
+      }
+    } catch (e: any) {
+      console.warn('[Verify] Commission exception:', e?.message);
     }
 
-    // 5e. Taze bakiyeyi DB'den oku
+    // 5d. Taze bakiyeyi DB'den oku
     const { data: freshProfile } = await adminClient
       .from('profiles')
       .select('coin_balance')

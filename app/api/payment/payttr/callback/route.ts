@@ -76,21 +76,23 @@ export async function POST(request: NextRequest) {
       const totalCoins = payment.coins_purchased;
       const packageName = payment.metadata?.package_name || 'Paket';
 
-      // 1. ATOMIC CLAIM: Sadece bir işlem bu ödemeyi alabilir (double-spend önleme)
+      // 1. ATOMIC CLAIM: pending → completed (double-spend önleme)
       const { data: claimed, error: claimError } = await supabase
         .from('coin_payments')
-        .update({ status: 'processing' })
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
         .eq('id', payment.id)
         .eq('status', 'pending')
         .select('id');
 
       if (claimError || !claimed || claimed.length === 0) {
-        // Başka bir işlem zaten claim etti — OK dön (idempotent)
-        console.warn('[PayTR Callback] Already claimed by another process:', merchant_oid);
+        // Başka bir işlem zaten tamamladı — OK dön
         return new NextResponse('OK', { status: 200 });
       }
 
-      // 2. ATOMIC COIN ADD: Bakiye + transaction tek seferde (race condition önleme)
+      // 2. ATOMIC COIN ADD: Bakiye + transaction tek seferde
       const { data: newBalance, error: rpcError } = await supabase.rpc('add_coins_atomic', {
         p_user_id: payment.user_id,
         p_amount: totalCoins,
@@ -103,29 +105,23 @@ export async function POST(request: NextRequest) {
         // Rollback: status'u pending'e geri al → PayTR retry edebilir
         await supabase
           .from('coin_payments')
-          .update({ status: 'pending' })
+          .update({ status: 'pending', completed_at: null })
           .eq('id', payment.id);
         return new NextResponse('FAIL', { status: 500 });
       }
 
-      // 3. MARK COMPLETED
-      await supabase
-        .from('coin_payments')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', payment.id);
-
-      // 4. REFERRAL COMMISSION (kritik değil — hata olursa ödemeyi engellemez)
+      // 3. REFERRAL COMMISSION (kritik değil — hata olursa ödemeyi engellemez)
       try {
-        await supabase.rpc('process_coin_referral_commission', {
+        const { error: commissionError } = await supabase.rpc('process_coin_referral_commission', {
           p_buyer_user_id: payment.user_id,
           p_coin_payment_id: payment.id,
           p_purchase_amount: totalCoins,
         });
-      } catch {
-        // Referans hatası ödemeyi engellemez
+        if (commissionError) {
+          console.warn('[PayTR Callback] Commission RPC error:', commissionError.message);
+        }
+      } catch (e: any) {
+        console.warn('[PayTR Callback] Commission exception:', e?.message);
       }
 
       console.warn('[PayTR Callback] ✓ Completed:', merchant_oid, 'coins:', totalCoins, 'balance:', newBalance);
