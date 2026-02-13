@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Coins, Heart } from "lucide-react";
+import { CheckCircle, Coins, Heart, AlertCircle } from "lucide-react";
 
 export default function PaymentSuccessPage() {
   const [authorized, setAuthorized] = useState(false);
   const [verifying, setVerifying] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [coinBalance, setCoinBalance] = useState<number | null>(null);
+  const [coinsAdded, setCoinsAdded] = useState<number | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = (await import("@/lib/supabase/client")).createClient();
 
   useEffect(() => {
     const pending = sessionStorage.getItem("forilove_payment_pending");
@@ -25,27 +27,38 @@ export default function PaymentSuccessPage() {
       sessionStorage.removeItem("forilove_return_url");
     }
     setAuthorized(true);
-    // Kısa doğrulama: bakiye artmış mı kontrol et (maks 30sn)
+
+    // Verify payment via API (hem doğrulama hem fallback coin ekleme)
     let cancelled = false;
     (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setVerifying(false); return; }
         const start = Date.now();
-        let success = false;
-        // Kullanıcının son 1 saat içindeki tamamlanan ödeme var mı?
+        // Callback'in tamamlanması için birkaç saniye bekle, sonra verify çağır
         while (!cancelled && Date.now() - start < 30000) {
-          const { data: payments } = await supabase
-            .from('coin_payments')
-            .select('status, created_at')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(3);
-          if (payments?.some(p => p.status === 'completed')) { success = true; break; }
-          await new Promise(r => setTimeout(r, 2000));
+          const res = await fetch('/api/payment/verify', { method: 'POST' });
+          if (!res.ok) {
+            // 5xx → tekrar dene
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+          }
+          const data = await res.json();
+
+          if (data.status === 'completed') {
+            setVerified(true);
+            setCoinBalance(data.coin_balance);
+            setCoinsAdded(data.coins_added);
+            setVerifying(false);
+            return;
+          }
+
+          // Hala pending → biraz bekleyip tekrar dene
+          await new Promise(r => setTimeout(r, 3000));
         }
+        // 30sn geçti, hala pending
         setVerifying(false);
-      } catch { setVerifying(false); }
+      } catch {
+        setVerifying(false);
+      }
     })();
     return () => { cancelled = true; };
   }, [router]);
@@ -61,22 +74,58 @@ export default function PaymentSuccessPage() {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-12">
       <div className="max-w-md w-full text-center space-y-8">
-        {/* Success Icon */}
+        {/* Icon */}
         <div className="flex justify-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-yellow-500/20 rounded-full blur-2xl animate-pulse"></div>
-            <CheckCircle className="h-24 w-24 text-yellow-500 relative" />
+            <div className={`absolute inset-0 ${verified ? 'bg-yellow-500/20' : verifying ? 'bg-yellow-500/10' : 'bg-red-500/20'} rounded-full blur-2xl animate-pulse`}></div>
+            {verified ? (
+              <CheckCircle className="h-24 w-24 text-yellow-500 relative" />
+            ) : verifying ? (
+              <Coins className="h-24 w-24 text-yellow-500 relative animate-pulse" />
+            ) : (
+              <AlertCircle className="h-24 w-24 text-red-500 relative" />
+            )}
           </div>
         </div>
 
-        {/* Success Message */}
+        {/* Message */}
         <div className="space-y-4">
-          <h1 className="text-4xl font-bold text-yellow-500">
-            Ödeme Başarılı!
-          </h1>
-          <p className="text-base text-gray-400">
-            FL Coin'leriniz hesabınıza eklendi
-          </p>
+          {verified ? (
+            <>
+              <h1 className="text-4xl font-bold text-yellow-500">
+                Ödeme Başarılı!
+              </h1>
+              <p className="text-base text-gray-400">
+                {coinsAdded != null
+                  ? `${coinsAdded} FL Coin hesabınıza eklendi`
+                  : 'FL Coin\'leriniz hesabınıza eklendi'}
+              </p>
+              {coinBalance != null && (
+                <p className="text-sm text-gray-500">
+                  Güncel bakiyeniz: <span className="text-yellow-500 font-semibold">{coinBalance} FL Coin</span>
+                </p>
+              )}
+            </>
+          ) : verifying ? (
+            <>
+              <h1 className="text-3xl font-bold text-yellow-500">
+                Ödeme Doğrulanıyor...
+              </h1>
+              <p className="text-base text-gray-400">
+                Ödemeniz işleniyor, lütfen bekleyin
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold text-red-500">
+                Doğrulama Zaman Aşımı
+              </h1>
+              <p className="text-base text-gray-400">
+                Ödemeniz işleniyor olabilir. Bakiyeniz birkaç dakika içinde güncellenecektir.
+                Sorun devam ederse destek ile iletişime geçin.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Info */}
@@ -84,7 +133,11 @@ export default function PaymentSuccessPage() {
           <div className="flex items-center justify-center gap-3">
             <Coins className="h-6 w-6 text-yellow-500" />
             <p className="text-base font-medium text-gray-300">
-              {verifying ? 'Ödemeniz işleniyor, bakiyeniz doğrulanıyor...' : 'Artık premium şablonların kilidini açabilirsiniz!'}
+              {verifying
+                ? 'Ödemeniz işleniyor, bakiyeniz doğrulanıyor...'
+                : verified
+                  ? 'Artık premium şablonların kilidini açabilirsiniz!'
+                  : 'Bakiyeniz kısa süre içinde güncellenecektir'}
             </p>
           </div>
         </div>
