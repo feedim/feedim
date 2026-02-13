@@ -229,7 +229,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
                 </span>
               )}
               {appliedCoupon && (
-                <span className="inline-block bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+                <span className="inline-block bg-yellow-500/20 text-yellow-500 text-xs font-bold px-3 py-1 rounded-full uppercase">
                   -%{appliedCoupon.discountPercent} KUPON
                 </span>
               )}
@@ -331,16 +331,10 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-xl px-3.5 py-2.5">
-                <div className="flex items-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500 shrink-0">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                  <span className="text-sm font-medium text-green-400">
-                    {appliedCoupon.code}
-                  </span>
-                  <span className="text-xs text-green-500/70">-%{appliedCoupon.discountPercent}</span>
-                </div>
+              <div className="flex items-center justify-between px-1 py-1">
+                <span className="text-sm text-yellow-500">
+                  {appliedCoupon.code} <span className="text-gray-500">·</span> <span className="text-gray-400">%{appliedCoupon.discountPercent} indirim</span>
+                </span>
                 <button
                   onClick={handleRemoveCoupon}
                   className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
