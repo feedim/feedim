@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', detail: authError?.message }, { status: 401 });
     }
+
+    console.warn('[Verify Payment] User authenticated:', user.id);
 
     // Kullanıcının son pending/completed ödemesini bul
     const { data: payment, error: paymentError } = await adminClient
@@ -39,12 +41,24 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    if (paymentError || !payment) {
+    if (paymentError) {
+      console.error('[Verify Payment] Payment query error:', paymentError.message);
+      return NextResponse.json({
+        status: 'no_payment',
+        message: 'Ödeme sorgusu hatası',
+        detail: paymentError.message,
+      });
+    }
+
+    if (!payment) {
+      console.warn('[Verify Payment] No pending/completed payment found for user:', user.id);
       return NextResponse.json({
         status: 'no_payment',
         message: 'Bekleyen ödeme bulunamadı',
       });
     }
+
+    console.warn('[Verify Payment] Found payment:', payment.id, 'status:', payment.status);
 
     // Zaten completed → sadece bakiyeyi döndür
     if (payment.status === 'completed') {

@@ -36,31 +36,40 @@ export default function PaymentSuccessPage() {
       try {
         // Auth token al
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) { setVerifying(false); return; }
+        console.log('[PaymentSuccess] session:', session ? 'exists' : 'null');
+        if (!session?.access_token) {
+          console.error('[PaymentSuccess] No access token, aborting verify');
+          setVerifying(false);
+          return;
+        }
 
         const start = Date.now();
+        let attempt = 0;
         // Callback'in tamamlanması için birkaç saniye bekle, sonra verify çağır
         while (!cancelled && Date.now() - start < 30000) {
+          attempt++;
           const res = await fetch('/api/payment/verify', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${session.access_token}` },
           });
+          const body = await res.json().catch(() => null);
+          console.log(`[PaymentSuccess] attempt=${attempt} status=${res.status} body=`, body);
+
           if (!res.ok) {
             // 5xx → tekrar dene
             await new Promise(r => setTimeout(r, 3000));
             continue;
           }
-          const data = await res.json();
 
-          if (data.status === 'completed') {
+          if (body?.status === 'completed') {
             setVerified(true);
-            setCoinBalance(data.coin_balance);
-            setCoinsAdded(data.coins_added);
+            setCoinBalance(body.coin_balance);
+            setCoinsAdded(body.coins_added);
             setVerifying(false);
             return;
           }
 
-          // Hala pending → biraz bekleyip tekrar dene
+          // Hala pending veya no_payment → biraz bekleyip tekrar dene
           await new Promise(r => setTimeout(r, 3000));
         }
         // 30sn geçti, hala pending
