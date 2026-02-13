@@ -7,8 +7,10 @@ import { CheckCircle, Coins, Heart } from "lucide-react";
 
 export default function PaymentSuccessPage() {
   const [authorized, setAuthorized] = useState(false);
+  const [verifying, setVerifying] = useState(true);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const router = useRouter();
+  const supabase = (await import("@/lib/supabase/client")).createClient();
 
   useEffect(() => {
     const pending = sessionStorage.getItem("forilove_payment_pending");
@@ -23,6 +25,29 @@ export default function PaymentSuccessPage() {
       sessionStorage.removeItem("forilove_return_url");
     }
     setAuthorized(true);
+    // Kısa doğrulama: bakiye artmış mı kontrol et (maks 30sn)
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setVerifying(false); return; }
+        const start = Date.now();
+        let success = false;
+        // Kullanıcının son 1 saat içindeki tamamlanan ödeme var mı?
+        while (!cancelled && Date.now() - start < 30000) {
+          const { data: payments } = await supabase
+            .from('coin_payments')
+            .select('status, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(3);
+          if (payments?.some(p => p.status === 'completed')) { success = true; break; }
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        setVerifying(false);
+      } catch { setVerifying(false); }
+    })();
+    return () => { cancelled = true; };
   }, [router]);
 
   if (!authorized) {
@@ -59,7 +84,7 @@ export default function PaymentSuccessPage() {
           <div className="flex items-center justify-center gap-3">
             <Coins className="h-6 w-6 text-yellow-500" />
             <p className="text-base font-medium text-gray-300">
-              Artık premium şablonların kilidini açabilirsiniz!
+              {verifying ? 'Ödemeniz işleniyor, bakiyeniz doğrulanıyor...' : 'Artık premium şablonların kilidini açabilirsiniz!'}
             </p>
           </div>
         </div>

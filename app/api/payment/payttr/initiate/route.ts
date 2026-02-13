@@ -180,7 +180,8 @@ export async function POST(request: NextRequest) {
     const timeout = setTimeout(() => controller.abort(), 20000);
     let payttrResult: any;
     try {
-      const payttrResponse = await fetch('https://www.paytr.com/odeme/api/get-token', {
+      const getTokenUrl = (process.env.PAYTR_PROXY_URL || '').trim() || 'https://www.paytr.com/odeme/api/get-token';
+      const payttrResponse = await fetch(getTokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -195,9 +196,11 @@ export async function POST(request: NextRequest) {
         payttrResult = JSON.parse(text);
       } catch {
         console.error('[PayTR Initiate] Non-JSON response from PayTR:', text.substring(0, 500));
+        // IP kısıtı/erişim hatası ihtimali — kullanıcıya daha açıklayıcı mesaj
+        const hint = /ip|sunucu|erifim|yetki|yasak/gi.test(text) ? ' (muhtemel IP yetkisi/erişim kısıtı)' : '';
         // Bazı hatalarda düz metin gelebilir
         return NextResponse.json(
-          { success: false, error: `PayTR yanıt hatası: ${text.substring(0, 200)}` },
+          { success: false, error: `PayTR yanıt hatası${hint}: ${text.substring(0, 200)}` },
           { status: 502 }
         );
       }
