@@ -128,17 +128,9 @@
   }
 }
 
-/* Mobile Touch & UX Optimizations */
+/* Mobile Touch — only tap highlight globally, rest scoped to published pages */
 html, body {
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  touch-action: manipulation;
-  overscroll-behavior: none !important;
-  overscroll-behavior-y: none !important;
 }
 
 /* Cursor Pointer for ALL Interactive Elements */
