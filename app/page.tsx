@@ -14,7 +14,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center py-20 -mt-20">
-        <div className="container mx-auto px-4 sm:px-6">
+        <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-pink-500/10 border border-pink-500/20 mb-6 sm:mb-8">
@@ -64,7 +64,7 @@ export default function Home() {
 
       {/* How It Works */}
       <section id="features" className="border-t border-white/10 py-24">
-        <div className="container mx-auto px-6">
+        <div className="w-full px-6 lg:px-10">
           <div className="max-w-4xl mx-auto">
             {/* Section Header */}
             <div className="text-center mb-16">

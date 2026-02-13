@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Heart, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { CoinWallet } from "@/components/CoinWallet";
@@ -13,6 +13,65 @@ import TemplateCard from "@/components/TemplateCard";
 import { EmptyState } from "@/components/ErrorState";
 
 const ITEMS_PER_PAGE = 6;
+
+function DashboardNav() {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    if (moreOpen) document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [moreOpen]);
+
+  return (
+    <nav className="w-full px-3 sm:px-6 lg:px-10 py-5 flex items-center justify-between">
+      <Link href="/dashboard" className="flex items-center gap-2 shrink-0" aria-label="Forilove Ana Sayfa">
+        <Heart className="h-7 w-7 text-pink-500 fill-pink-500" aria-hidden="true" />
+        <span className="text-2xl font-bold">Forilove</span>
+      </Link>
+      <div className="flex items-center gap-1 lg:gap-3">
+        <Link href="/dashboard/explore" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+          Keşfet
+        </Link>
+        <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+          Sayfalarım
+        </Link>
+        <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+          Profil
+        </Link>
+        {/* Diğer dropdown */}
+        <div ref={moreRef} className="relative hidden md:block">
+          <button
+            onClick={() => setMoreOpen(!moreOpen)}
+            className="flex items-center gap-1 text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap"
+          >
+            Diğer
+            <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {moreOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-xl z-50">
+              <Link href="/dashboard/purchased" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
+                Satın Alınanlar
+              </Link>
+              <Link href="/dashboard/saved" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
+                Kaydedilenler
+              </Link>
+              <Link href="/dashboard/transactions" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
+                İşlem Geçmişi
+              </Link>
+            </div>
+          )}
+        </div>
+        <CoinWallet />
+      </div>
+    </nav>
+  );
+}
 
 export default function DashboardPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -251,7 +310,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-black text-white">
         <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl">
-          <nav className="container mx-auto px-3 sm:px-6 py-5 flex items-center justify-between">
+          <nav className="w-full px-3 sm:px-6 lg:px-10 py-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Heart className="h-7 w-7 text-pink-500 fill-pink-500" />
               <span className="text-2xl font-bold">Forilove</span>
@@ -259,12 +318,12 @@ export default function DashboardPage() {
           </nav>
         </header>
         <section className="pt-12 pb-8">
-          <div className="container mx-auto px-3 sm:px-6">
+          <div className="w-full px-3 sm:px-6 lg:px-10">
             <div className="animate-pulse bg-white/[0.06] h-10 w-64 rounded-lg mb-4" />
             <div className="animate-pulse bg-white/[0.06] h-5 w-96 max-w-full rounded-lg" />
           </div>
         </section>
-        <main className="container mx-auto px-3 sm:px-6 pb-20 md:pb-8">
+        <main className="w-full px-3 sm:px-6 lg:px-10 pb-20 md:pb-8">
           <TemplateGridSkeleton />
         </main>
         <MobileBottomNav />
@@ -276,35 +335,12 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl">
-        <nav className="container mx-auto px-3 sm:px-6 py-5 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2" aria-label="Forilove Ana Sayfa">
-            <Heart className="h-7 w-7 text-pink-500 fill-pink-500" aria-hidden="true" />
-            <span className="text-2xl font-bold">Forilove</span>
-          </Link>
-          <div className="flex items-center gap-1 lg:gap-3">
-            <Link href="/dashboard/explore" className="hidden md:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
-                Keşfet
-            </Link>
-            <Link href="/dashboard/purchased" className="hidden lg:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
-                Satın Alınanlar
-            </Link>
-            <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
-                Sayfalarım
-            </Link>
-            <Link href="/dashboard/saved" className="hidden lg:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
-                Kaydedilenler
-            </Link>
-            <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
-                Profil
-            </Link>
-            <CoinWallet />
-          </div>
-        </nav>
+        <DashboardNav />
       </header>
 
       {/* Hero */}
       <section className="pt-12 pb-8">
-        <div className="container mx-auto px-3 sm:px-6">
+        <div className="w-full px-3 sm:px-6 lg:px-10">
           <h1 className="text-4xl font-bold mb-4">Şablonları Keşfet</h1>
           <p className="text-base text-gray-400">
             Sevdiğinize özel bir sayfa oluşturmak için bir şablon seçin ve düzenleyin.
@@ -313,7 +349,7 @@ export default function DashboardPage() {
       </section>
 
       {/* Templates */}
-      <main className="container mx-auto px-3 sm:px-6 pb-20 md:pb-8 md:pt-0">
+      <main className="w-full px-3 sm:px-6 lg:px-10 pb-20 md:pb-8 md:pt-0">
         {templates.length === 0 ? (
           <EmptyState
             title="Henüz şablon yok"

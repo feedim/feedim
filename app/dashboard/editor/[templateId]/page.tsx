@@ -1222,14 +1222,23 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               <>
                 {project && (
                   <>
-                    {/* Scrollable tools area — same pattern as mobile */}
+                    {/* Scrollable tools area with arrow buttons */}
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('editor-toolbar-scroll');
+                        if (el) el.scrollBy({ left: -150, behavior: 'smooth' });
+                      }}
+                      className="hidden md:flex shrink-0 items-center justify-center w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 transition"
+                      aria-label="Sola kaydır"
+                    >
+                      <ChevronDown className="h-4 w-4 -rotate-90" />
+                    </button>
                     <div
+                      id="editor-toolbar-scroll"
                       className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto pr-6"
                       style={{
                         scrollbarWidth: 'none',
                         WebkitOverflowScrolling: 'touch',
-                        maskImage: 'linear-gradient(to right, black calc(100% - 80px), transparent)',
-                        WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 80px), transparent)',
                       }}
                     >
                       <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
@@ -1333,6 +1342,16 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         Önizleme
                       </button>
                     </div>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('editor-toolbar-scroll');
+                        if (el) el.scrollBy({ left: 150, behavior: 'smooth' });
+                      }}
+                      className="hidden md:flex shrink-0 items-center justify-center w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 transition"
+                      aria-label="Sağa kaydır"
+                    >
+                      <ChevronDown className="h-4 w-4 rotate-90" />
+                    </button>
                     {/* Publish button - always visible */}
                     <button
                       onClick={handlePublish}
@@ -1888,39 +1907,31 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           placeholder="#FF6B9D"
                         />
                       </div>
-                      {/* Instagram-style fixed palette */}
-                      <div className="grid grid-cols-8 gap-2">
-                        {[
-                          '#FFFFFF', '#000000', '#F5F5F5', '#1A1A1A',
-                          '#FF3B30', '#FF6B6B', '#FF9500', '#FFCC00',
-                          '#34C759', '#30D158', '#5AC8FA', '#007AFF',
-                          '#5856D6', '#AF52DE', '#FF2D55', '#FF6B9D',
-                          '#E30076', '#FF375F', '#BF5AF2', '#AC8E68',
-                          '#8E8E93', '#636366', '#C7B299', '#FFD700',
-                        ].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setDraftValue(color)}
-                            className="w-full aspect-square rounded-full border-2 transition-all active:scale-90"
-                            style={{
-                              backgroundColor: color,
-                              borderColor: draftValue === color ? '#FF2D55' : 'rgba(255,255,255,0.1)',
-                              boxShadow: draftValue === color ? '0 0 0 2px #FF2D55' : 'none',
-                            }}
-                            aria-label={color}
-                          />
-                        ))}
+                      {/* Instagram-style fixed palette — horizontally scrollable */}
+                      <div className="overflow-x-auto -mx-2 px-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                        <div className="flex gap-2 w-max pb-1">
+                          {[
+                            '#FFFFFF', '#000000', '#F5F5F5', '#1A1A1A',
+                            '#FF3B30', '#FF6B6B', '#FF9500', '#FFCC00',
+                            '#34C759', '#30D158', '#5AC8FA', '#007AFF',
+                            '#5856D6', '#AF52DE', '#FF2D55', '#FF6B9D',
+                            '#E30076', '#FF375F', '#BF5AF2', '#AC8E68',
+                            '#8E8E93', '#636366', '#C7B299', '#FFD700',
+                          ].map((color) => (
+                            <button
+                              key={color}
+                              onClick={() => setDraftValue(color)}
+                              className="w-9 h-9 shrink-0 rounded-full border-2 transition-all active:scale-90"
+                              style={{
+                                backgroundColor: color,
+                                borderColor: draftValue === color ? '#FF2D55' : 'rgba(255,255,255,0.1)',
+                                boxShadow: draftValue === color ? '0 0 0 2px #FF2D55' : 'none',
+                              }}
+                              aria-label={color}
+                            />
+                          ))}
+                        </div>
                       </div>
-                      {/* Native color picker fallback */}
-                      <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-white transition">
-                        <input
-                          type="color"
-                          value={draftValue || currentHook.defaultValue}
-                          onChange={(e) => setDraftValue(e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border border-white/20 bg-transparent"
-                        />
-                        Özel renk seç
-                      </label>
                     </div>
                   ) : currentHook.type === 'date' ? (
                     <div className="space-y-3">
