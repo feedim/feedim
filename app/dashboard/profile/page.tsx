@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, Coins, LogOut, Heart, Settings, Clock, Calendar, Wallet, Trash2, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3 } from "lucide-react";
+import { ArrowLeft, User, Mail, Coins, LogOut, Heart, Settings, Clock, Calendar, Wallet, Trash2, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Lock, Eye, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -24,6 +24,11 @@ export default function ProfilePage() {
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [adminStats, setAdminStats] = useState<any>(null);
+  const [adminProjects, setAdminProjects] = useState<any[]>([]);
+  const [adminProjectsTotal, setAdminProjectsTotal] = useState(0);
+  const [adminProjectsPage, setAdminProjectsPage] = useState(0);
+  const [adminProjectsTotalPages, setAdminProjectsTotalPages] = useState(0);
+  const [adminProjectsLoading, setAdminProjectsLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -58,6 +63,7 @@ export default function ProfilePage() {
             setAdminStats(await res.json());
           }
         } catch { /* silent */ }
+        loadAdminProjects(0);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -66,6 +72,21 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAdminProjects = async (pg: number) => {
+    setAdminProjectsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/projects?page=${pg}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdminProjects(data.projects || []);
+        setAdminProjectsTotal(data.total || 0);
+        setAdminProjectsPage(data.page || 0);
+        setAdminProjectsTotalPages(data.totalPages || 0);
+      }
+    } catch { /* silent */ }
+    finally { setAdminProjectsLoading(false); }
   };
 
   const handleUpdateProfile = async () => {
@@ -310,6 +331,93 @@ export default function ProfilePage() {
                 <p className="text-2xl font-bold">{adminStats.todayPayments.toLocaleString('tr-TR')}</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Admin Published Projects */}
+        {profile?.role === 'admin' && (
+          <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-pink-500" />
+                <h3 className="font-semibold">Yayınlanan Sayfalar</h3>
+                <span className="text-xs text-gray-500">({adminProjectsTotal})</span>
+              </div>
+            </div>
+
+            {adminProjectsLoading ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => (
+                  <div key={i} className="animate-pulse bg-white/5 rounded-xl h-16" />
+                ))}
+              </div>
+            ) : adminProjects.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-6">Henüz yayınlanan sayfa yok.</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {adminProjects.map((p: any) => (
+                    <div key={p.id} className="bg-white/5 rounded-xl p-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {p.is_public ? (
+                            <Globe className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                          ) : (
+                            <Lock className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                          )}
+                          <span className="text-sm font-medium truncate">{p.title}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span className="truncate">@{p.creator_name}</span>
+                          <span className="flex items-center gap-1 shrink-0">
+                            <Eye className="h-3 w-3" />
+                            {(p.view_count || 0).toLocaleString('tr-TR')}
+                          </span>
+                          <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('tr-TR')}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${p.is_public ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-500'}`}>
+                          {p.is_public ? 'Public' : 'Gizli'}
+                        </span>
+                        <Link
+                          href={`/p/${p.slug}`}
+                          target="_blank"
+                          className="p-1.5 rounded-lg hover:bg-white/10 transition"
+                        >
+                          <ExternalLink className="h-4 w-4 text-gray-400" />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {adminProjectsTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                    <button
+                      onClick={() => loadAdminProjects(adminProjectsPage - 1)}
+                      disabled={adminProjectsPage === 0}
+                      className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Önceki
+                    </button>
+                    <span className="text-xs text-gray-500">
+                      {adminProjectsPage + 1} / {adminProjectsTotalPages}
+                    </span>
+                    <button
+                      onClick={() => loadAdminProjects(adminProjectsPage + 1)}
+                      disabled={adminProjectsPage >= adminProjectsTotalPages - 1}
+                      className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    >
+                      Sonraki
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

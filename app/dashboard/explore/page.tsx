@@ -255,39 +255,39 @@ export default function ExplorePage() {
             <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none z-10" />
 
             {/* Right side actions */}
-            <div className="absolute right-3 bottom-32 sm:bottom-20 z-20 flex flex-col items-center gap-5 bg-black/30 backdrop-blur-sm rounded-3xl py-3 px-1.5">
+            <div className="absolute right-3 bottom-32 sm:bottom-20 z-20 flex flex-col items-center gap-5 py-3 px-1.5">
               {/* Inspect */}
               <button onClick={() => setInspectingProject(project)} className="flex flex-col items-center gap-1" aria-label="Sayfayı incele">
-                <div className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
+                <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
                   <Search className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-[10px] font-medium text-white/70">İncele</span>
+                <span className="text-[10px] font-medium text-white/70 drop-shadow-lg">İncele</span>
               </button>
 
               {/* Use template */}
               {project.template_id && (
                 <Link href={`/dashboard/editor/${project.template_id}`} className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-full bg-pink-500/80 backdrop-blur-md flex items-center justify-center active:scale-95 transition">
+                  <div className="w-12 h-12 rounded-full bg-pink-500/80 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-pink-500/30">
                     <Wand2 className="h-5 w-5 text-white" />
                   </div>
-                  <span className="text-[10px] font-medium text-white/70">Kullan</span>
+                  <span className="text-[10px] font-medium text-white/70 drop-shadow-lg">Kullan</span>
                 </Link>
               )}
 
               {/* Save */}
               <button onClick={() => handleToggleSave(project.id)} className="flex flex-col items-center gap-1" aria-label={savedProjects.includes(project.id) ? "Kaydedilenlerden çıkar" : "Kaydet"}>
-                <div className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10 ${savedProjects.includes(project.id) ? 'bg-pink-500/80' : 'bg-white/15'}`}>
+                <div className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center active:scale-95 transition border ${savedProjects.includes(project.id) ? 'bg-pink-500/80 border-pink-500/30' : 'bg-black/50 border-white/10'}`}>
                   <Bookmark className={`h-5 w-5 ${savedProjects.includes(project.id) ? 'text-white fill-white' : 'text-white'}`} />
                 </div>
-                <span className="text-[10px] font-medium text-white/70">Kaydet</span>
+                <span className="text-[10px] font-medium text-white/70 drop-shadow-lg">Kaydet</span>
               </button>
 
               {/* Share */}
               <button onClick={() => setSharingProject(project)} className="flex flex-col items-center gap-1" aria-label="Paylaş">
-                <div className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
+                <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
                   <Share2 className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-[10px] font-medium text-white/70">Paylaş</span>
+                <span className="text-[10px] font-medium text-white/70 drop-shadow-lg">Paylaş</span>
               </button>
             </div>
 
