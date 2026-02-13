@@ -92,29 +92,14 @@ export async function POST(request: NextRequest) {
         return new NextResponse('OK', { status: 200 });
       }
 
-      // 2. Bakiyeyi oku ve güncelle (claim sayesinde sadece 1 işlem buraya ulaşır)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('coin_balance')
-        .eq('user_id', payment.user_id)
-        .single();
+      // 2. Bakiyeyi atomic olarak güncelle
+      const { data: newBalance, error: updateError } = await supabase.rpc('increment_coin_balance', {
+        p_user_id: payment.user_id,
+        p_amount: totalCoins,
+      });
 
-      if (profileError || !profile) {
-        console.error('[PayTR Callback] Profile not found:', payment.user_id);
-        // Rollback
-        await supabase.from('coin_payments').update({ status: 'pending', completed_at: null }).eq('id', payment.id);
-        return new NextResponse('FAIL', { status: 500 });
-      }
-
-      const newBalance = (profile.coin_balance || 0) + totalCoins;
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ coin_balance: newBalance })
-        .eq('user_id', payment.user_id);
-
-      if (updateError) {
-        console.error('[PayTR Callback] Balance update failed:', updateError.message);
+      if (updateError || newBalance === null) {
+        console.error('[PayTR Callback] Balance update failed:', updateError?.message);
         await supabase.from('coin_payments').update({ status: 'pending', completed_at: null }).eq('id', payment.id);
         return new NextResponse('FAIL', { status: 500 });
       }

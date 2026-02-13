@@ -51,28 +51,15 @@ export async function processCoinCommission(
     // 3. %5 komisyon hesapla (minimum 5 FL)
     const commission = Math.max(Math.floor(purchaseAmount * 0.05), 5);
 
-    // 4. Referrer bakiyesini oku ve güncelle
-    const { data: referrerProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('coin_balance')
-      .eq('user_id', referrerId)
-      .single();
+    // 4. Referrer bakiyesini atomic olarak güncelle
+    const { data: newBalance, error: updateError } = await supabase.rpc('increment_coin_balance', {
+      p_user_id: referrerId,
+      p_amount: commission,
+    });
 
-    if (profileError || !referrerProfile) {
-      console.warn('[Commission] Referrer profile not found:', referrerId, profileError?.message);
-      return { success: false, reason: 'referrer_profile_not_found' };
-    }
-
-    const newBalance = (referrerProfile.coin_balance || 0) + commission;
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ coin_balance: newBalance })
-      .eq('user_id', referrerId);
-
-    if (updateError) {
-      console.warn('[Commission] Balance update error:', updateError.message);
-      return { success: false, reason: `balance_update_error: ${updateError.message}` };
+    if (updateError || newBalance === null) {
+      console.warn('[Commission] Balance update error:', updateError?.message);
+      return { success: false, reason: `balance_update_error: ${updateError?.message}` };
     }
 
     // 5. Komisyon işlemini kaydet

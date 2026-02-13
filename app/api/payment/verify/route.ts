@@ -92,27 +92,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 5b. Bakiyeyi oku ve güncelle (claim sayesinde sadece 1 işlem buraya ulaşır)
-    const { data: profile, error: profileError } = await adminClient
-      .from('profiles')
-      .select('coin_balance')
-      .eq('user_id', user.id)
-      .single();
+    // 5b. Bakiyeyi atomic olarak güncelle
+    const { data: newBalance, error: updateError } = await adminClient.rpc('increment_coin_balance', {
+      p_user_id: user.id,
+      p_amount: totalCoins,
+    });
 
-    if (profileError || !profile) {
-      // Rollback
-      await adminClient.from('coin_payments').update({ status: 'pending', completed_at: null }).eq('id', payment.id);
-      return NextResponse.json({ status: 'error' }, { status: 500 });
-    }
-
-    const newBalance = (profile.coin_balance || 0) + totalCoins;
-
-    const { error: updateError } = await adminClient
-      .from('profiles')
-      .update({ coin_balance: newBalance })
-      .eq('user_id', user.id);
-
-    if (updateError) {
+    if (updateError || newBalance === null) {
       await adminClient.from('coin_payments').update({ status: 'pending', completed_at: null }).eq('id', payment.id);
       return NextResponse.json({ status: 'error' }, { status: 500 });
     }
