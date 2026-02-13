@@ -30,7 +30,7 @@ export default function ExplorePage() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [inspectingId, setInspectingId] = useState<string | null>(null);
+  const [inspectingProject, setInspectingProject] = useState<PublicProject | null>(null);
   const [sharingProject, setSharingProject] = useState<PublicProject | null>(null);
   const [savedProjects, setSavedProjects] = useState<string[]>([]);
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
@@ -257,7 +257,7 @@ export default function ExplorePage() {
             {/* Right side actions */}
             <div className="absolute right-3 bottom-32 sm:bottom-20 z-20 flex flex-col items-center gap-5">
               {/* Inspect */}
-              <button onClick={() => setInspectingId(project.id)} className="flex flex-col items-center gap-1" aria-label="Sayfayı incele">
+              <button onClick={() => setInspectingProject(project)} className="flex flex-col items-center gap-1" aria-label="Sayfayı incele">
                 <div className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center active:scale-95 transition border border-white/10">
                   <Search className="h-5 w-5 text-white" />
                 </div>
@@ -327,35 +327,30 @@ export default function ExplorePage() {
       </div>{/* end reels wrapper */}
 
       {/* Inspect Modal */}
-      {inspectingId && (
+      {inspectingProject && (
         <div className="fixed inset-0 z-50 bg-black">
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
             <button
-              onClick={() => setInspectingId(null)}
+              onClick={() => setInspectingProject(null)}
               className="flex items-center gap-2 text-white/80 hover:text-white transition"
               aria-label="Geri"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Geri</span>
             </button>
-            {(() => {
-              const p = projects.find((p) => p.id === inspectingId);
-              return p ? (
-                <div className="flex items-center gap-1.5">
-                  {p.template_id && (
-                    <Link href={`/dashboard/editor/${p.template_id}`} className="btn-primary px-2.5 py-1 text-[11px]">
-                      Kullan
-                    </Link>
-                  )}
-                  <Link href={`/p/${p.slug}`} target="_blank" className="btn-secondary px-2.5 py-1 text-[11px]">
-                    Görüntüle
-                  </Link>
-                </div>
-              ) : null;
-            })()}
+            <div className="flex items-center gap-1.5">
+              {inspectingProject.template_id && (
+                <Link href={`/dashboard/editor/${inspectingProject.template_id}`} className="btn-primary px-2.5 py-1 text-[11px]">
+                  Kullan
+                </Link>
+              )}
+              <Link href={`/p/${inspectingProject.slug}`} target="_blank" className="btn-secondary px-2.5 py-1 text-[11px]">
+                Görüntüle
+              </Link>
+            </div>
           </div>
           <iframe
-            src={`/api/projects/${inspectingId}/preview`}
+            src={`/p/${inspectingProject.slug}`}
             className="w-full h-full"
             sandbox="allow-scripts allow-same-origin"
           />

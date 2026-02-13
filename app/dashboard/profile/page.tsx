@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, Coins, LogOut, Heart, Settings, Clock, Calendar, Wallet, Trash2, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText } from "lucide-react";
+import { ArrowLeft, User, Mail, Coins, LogOut, Heart, Settings, Clock, Calendar, Wallet, Trash2, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [newEmail, setNewEmail] = useState("");
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [adminStats, setAdminStats] = useState<any>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -49,6 +50,24 @@ export default function ProfilePage() {
       setProfile(profileData);
       setFirstName(profileData?.name || "");
       setLastName(profileData?.surname || "");
+
+      if (profileData?.role === 'admin') {
+        const [usersRes, paymentsRes, todayPaymentsRes, projectsRes] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('coin_payments').select('price_paid, coins_purchased', { count: 'exact' }).eq('status', 'completed'),
+          supabase.from('coin_payments').select('price_paid, coins_purchased').eq('status', 'completed').gte('completed_at', new Date().toISOString().split('T')[0]),
+          supabase.from('projects').select('*', { count: 'exact', head: true }).eq('is_published', true),
+        ]);
+        setAdminStats({
+          totalUsers: usersRes.count || 0,
+          totalPayments: paymentsRes.count || 0,
+          totalRevenueTRY: paymentsRes.data?.reduce((s: number, p: any) => s + (p.price_paid || 0), 0) || 0,
+          totalCoins: paymentsRes.data?.reduce((s: number, p: any) => s + (p.coins_purchased || 0), 0) || 0,
+          todayRevenueTRY: todayPaymentsRes.data?.reduce((s: number, p: any) => s + (p.price_paid || 0), 0) || 0,
+          todayPayments: todayPaymentsRes.data?.length || 0,
+          publishedPages: projectsRes.count || 0,
+        });
+      }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.log('Profile load error:', error);
@@ -262,6 +281,46 @@ export default function ProfilePage() {
             </Link>
           </div>
         </div>
+
+        {/* Admin Analytics */}
+        {profile?.role === 'admin' && adminStats && (
+          <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-pink-500" />
+              <h3 className="font-semibold">Admin Analytics</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Toplam Kullanıcı</p>
+                <p className="text-2xl font-bold">{adminStats.totalUsers.toLocaleString('tr-TR')}</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Bugün Satış</p>
+                <p className="text-2xl font-bold text-green-400">{adminStats.todayRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Toplam Satış</p>
+                <p className="text-2xl font-bold text-green-400">{adminStats.totalRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Toplam Ödeme</p>
+                <p className="text-2xl font-bold">{adminStats.totalPayments.toLocaleString('tr-TR')}</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Toplam Coin</p>
+                <p className="text-2xl font-bold text-yellow-500">{adminStats.totalCoins.toLocaleString('tr-TR')}</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Yayınlanan Sayfa</p>
+                <p className="text-2xl font-bold">{adminStats.publishedPages.toLocaleString('tr-TR')}</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4 col-span-2">
+                <p className="text-xs text-gray-400 mb-1">Bugün Ödeme</p>
+                <p className="text-2xl font-bold">{adminStats.todayPayments.toLocaleString('tr-TR')}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Referral Section */}
         <ReferralSection userId={user.id} />

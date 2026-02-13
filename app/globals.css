@@ -191,6 +191,14 @@ img, svg {
   box-shadow: none;
 }
 
+input:focus, input:focus-visible,
+textarea:focus, textarea:focus-visible,
+select:focus, select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
 /* Modern UI Design System - Lab Color Space */
 .btn-primary {
   color: #fff;

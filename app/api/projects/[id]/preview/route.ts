@@ -151,21 +151,6 @@ export async function GET(
       html = overscrollCSS + html;
     }
 
-    // Inject music player if music_url exists
-    const musicUrl = (project as any).music_url;
-    if (musicUrl) {
-      const vidMatch = musicUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
-      if (vidMatch) {
-        const videoId = vidMatch[1];
-        const musicEmbed = `<div style="position:fixed;bottom:0;left:0;right:0;z-index:9999;height:64px;background:rgba(0,0,0,0.95);backdrop-filter:blur(12px);display:flex;align-items:center;padding:0 16px;gap:12px;border-top:1px solid rgba(255,255,255,0.1)"><iframe id="yt-music" src="https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=0&disablekb=1&fs=0&modestbranding=1&playsinline=1" allow="autoplay;encrypted-media" style="position:fixed;width:1px;height:1px;top:-9999px;left:-9999px;border:none"></iframe><img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;animation:spin 4s linear infinite" alt=""><div style="flex:1;min-width:0"><p style="color:white;font-size:13px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Müzik çalıyor</p><p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0">YouTube</p></div><button onclick="var f=document.getElementById('yt-music');if(f.src){f.dataset.src=f.src;f.src='';this.textContent='▶'}else{f.src=f.dataset.src;this.textContent='⏸'}" style="color:white;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;flex-shrink:0">⏸</button></div><style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>`;
-        if (html.includes('</body>')) {
-          html = html.replace('</body>', `${musicEmbed}</body>`);
-        } else {
-          html += musicEmbed;
-        }
-      }
-    }
-
     return new NextResponse(html, {
       status: 200,
       headers: {
