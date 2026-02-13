@@ -50,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning style={{ backgroundColor: '#000' }}>
       <head>
         <meta charSet="utf-8" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
@@ -89,7 +89,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
+      <body className={`${inter.variable} antialiased`} style={{ backgroundColor: '#000' }} suppressHydrationWarning>
         <Script
           async
           src="https://www.googletagmanager.com/gtag/js?id=G-3D5YZ6PJBS"
