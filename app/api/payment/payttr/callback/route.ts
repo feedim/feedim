@@ -138,9 +138,9 @@ export async function POST(request: NextRequest) {
 
       if (txError) {
         console.error('[PayTR Callback] Transaction record failed:', merchant_oid, txError.message);
-        // Coin'ler eklendi ama kayıt tutulmadı — yine de completed olarak işaretle
       }
 
+      // 4. Ödemeyi completed olarak işaretle
       await supabase
         .from('coin_payments')
         .update({
