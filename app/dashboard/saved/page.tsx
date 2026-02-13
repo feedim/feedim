@@ -144,6 +144,8 @@ export default function SavedTemplatesPage() {
       itemName: template.name,
       description: "Şablonu satın alıp düzenlemeye başlayın",
       coinCost: coinPrice,
+      originalPrice: template.discount_price ? template.coin_price : undefined,
+      discountLabel: template.discount_label || undefined,
       currentBalance: coinBalance,
       icon: 'template',
       onConfirm: async () => {

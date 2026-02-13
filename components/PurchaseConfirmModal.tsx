@@ -10,6 +10,8 @@ interface ConfirmOptions {
   itemName: string;
   description?: string;
   coinCost: number;
+  originalPrice?: number;
+  discountLabel?: string;
   currentBalance: number;
   icon?: "ai" | "template";
   onConfirm: () => Promise<{ success: boolean; newBalance?: number; error?: string }>;
@@ -144,9 +146,21 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
 
         {/* Coin Cost */}
         <div className="text-center pt-1">
-          <p className="mt-1.5 text-[32px] font-extrabold text-yellow-500 tracking-tight">
-            {options.coinCost} FL
-          </p>
+          {options.discountLabel && (
+            <span className="inline-block bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase mb-2">
+              {options.discountLabel}
+            </span>
+          )}
+          <div className="flex items-center justify-center gap-2 mt-1.5">
+            {options.originalPrice && options.originalPrice !== options.coinCost && (
+              <span className="text-xl font-bold text-gray-500 line-through decoration-red-500/70 decoration-2">
+                {options.originalPrice} FL
+              </span>
+            )}
+            <span className="text-[32px] font-extrabold text-yellow-500 tracking-tight">
+              {options.coinCost} FL
+            </span>
+          </div>
           <p className="text-sm text-gray-400">{options.itemName}</p>
         </div>
 
