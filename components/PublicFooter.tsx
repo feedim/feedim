@@ -50,7 +50,7 @@ export default function PublicFooter() {
               </Link>
             </div>
             <div className="mt-2">
-              <img src="/logo_band_white.svg" alt="Ödeme yöntemleri" height={32} style={{ height: 32, width: 'auto', opacity: 0.7 }} />
+              <img src="/logo_band_white.svg" alt="Ödeme yöntemleri" height={25} style={{ height: 25, width: 'auto', opacity: 0.7 }} />
             </div>
           </div>
           <p className="text-sm text-gray-500">&copy; 2026 Forilove</p>

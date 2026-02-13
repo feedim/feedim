@@ -92,7 +92,6 @@ export async function processCoinCommission(
       return { success: false, reason: `txn_insert_error: ${txnError.message}` };
     }
 
-    console.warn('[Commission] ✓ Paid', commission, 'FL to referrer', referrerId);
     return { success: true, reason: 'ok', commission };
 
   } catch (e: any) {

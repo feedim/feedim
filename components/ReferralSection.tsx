@@ -15,6 +15,9 @@ export default function ReferralSection({ userId }: { userId: string }) {
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasReferrer, setHasReferrer] = useState(true);
+  const [referralInput, setReferralInput] = useState('');
+  const [submittingCode, setSubmittingCode] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -55,6 +58,14 @@ export default function ReferralSection({ userId }: { userId: string }) {
         total_referrals: statsData?.total_referrals || 0,
         total_earnings: statsData?.total_earnings || 0,
       });
+
+      // Referrer kontrolü
+      const { data: existingRef } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('referred_id', userId)
+        .maybeSingle();
+      setHasReferrer(!!existingRef);
     } catch (error) {
       // Silent error handling
     } finally {
@@ -79,6 +90,33 @@ export default function ReferralSection({ userId }: { userId: string }) {
     }
   };
 
+  const applyReferralCode = async () => {
+    const code = referralInput.trim();
+    if (!code || !/^[a-zA-Z0-9]{1,20}$/.test(code)) {
+      toast.error('Geçersiz referans kodu');
+      return;
+    }
+    setSubmittingCode(true);
+    try {
+      const { data, error } = await supabase.rpc('process_referral_signup', {
+        p_new_user_id: userId,
+        p_referral_code: code,
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success('Referans kodu uygulandı!');
+        setHasReferrer(true);
+        setReferralInput('');
+      } else {
+        toast.error(data?.message || 'Referans kodu uygulanamadı');
+      }
+    } catch {
+      toast.error('Referans kodu uygulanamadı');
+    } finally {
+      setSubmittingCode(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-zinc-900 rounded-xl p-6 animate-pulse">
@@ -97,7 +135,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-lg">Arkadaşlarını Davet Et</h3>
-            <p className="text-sm text-gray-400">Arkadaşların şablon satın alırsa %5 komisyon kazan.</p>
+            <p className="text-sm text-gray-400">Arkadaşların FL satın alırsa %5 komisyon kazan.</p>
           </div>
         </div>
         <svg
@@ -140,6 +178,28 @@ export default function ReferralSection({ userId }: { userId: string }) {
         </p>
       </div>
 
+      {/* Referral Code Input */}
+      {!hasReferrer && (
+        <div className="bg-black/20 rounded-lg p-3 sm:p-4 mb-4">
+          <label className="block text-sm text-gray-400 mb-2">Referans Kodu Gir</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={referralInput}
+              onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+              placeholder="Referans kodunu gir"
+              maxLength={20}
+              className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2 text-sm text-white"
+            />
+            <button onClick={applyReferralCode} disabled={submittingCode || !referralInput.trim()}
+              className="btn-secondary px-4 py-2 h-auto text-sm disabled:opacity-50">
+              {submittingCode ? '...' : 'Uygula'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Bir kez girilir, sonra değiştirilemez.</p>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div className="bg-black/20 rounded-lg p-3 sm:p-4">
@@ -167,7 +227,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
         <ul className="text-sm text-gray-400 space-y-1">
           <li>• Arkadaşını davet et (referans linki ile kayıt olsun)</li>
           <li>• Arkadaşın şablon satın aldığında <span className="text-yellow-500 font-bold">%5 komisyon</span> kazanırsın</li>
-          <li>• Minimum komisyon: <span className="text-yellow-500 font-bold">5 FL Coin</span></li>
+          <li>• Minimum komisyon: <span className="text-yellow-500 font-bold">5 FL</span></li>
         </ul>
       </div>
       </div>

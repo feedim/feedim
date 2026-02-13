@@ -219,12 +219,12 @@ export default function CoinsPage() {
               <div className="text-center space-y-4 pt-8 border-t border-white/10">
                 <div className="space-y-2">
                   <p className="text-sm text-gray-400">
-                    Premium şablonların kilidini açmak için FL Coin kullanın
+                    Premium şablonların kilidini açmak için FL kullanın
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 justify-center text-sm">
                   <Link href="/fl-coins" className="text-gray-400 hover:text-white transition">
-                    FL Coins Hakkında
+                    FL Hakkında
                   </Link>
                   <Link href="/payment-security" className="text-gray-400 hover:text-white transition">
                     Ödeme Güvenliği

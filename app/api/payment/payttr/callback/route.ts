@@ -136,10 +136,9 @@ export async function POST(request: NextRequest) {
       }
 
       // 4. Referans komisyonu (kritik değil — direkt DB sorguları ile)
-      const commResult = await processCoinCommission(supabase, payment.user_id, payment.id, totalCoins);
-      console.warn('[PayTR Callback] Commission result:', JSON.stringify(commResult));
+      await processCoinCommission(supabase, payment.user_id, payment.id, totalCoins);
 
-      console.warn('[PayTR Callback] ✓ Completed:', merchant_oid, 'coins:', totalCoins, 'balance:', newBalance);
+      console.warn('[PayTR Callback] ✓', merchant_oid);
 
     } else {
       await supabase

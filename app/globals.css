@@ -181,7 +181,7 @@ img, svg {
 }
 
 :focus-visible {
-  outline: 2px solid lab(49.5493% 79.8381 2.31768);
+  outline: 2px solid rgba(255, 255, 255, 0.3);
   outline-offset: 2px;
 }
 

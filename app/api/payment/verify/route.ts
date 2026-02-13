@@ -134,8 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5d. Referans komisyonu (kritik değil — direkt DB sorguları ile)
-    const commResult = await processCoinCommission(adminClient, user.id, payment.id, totalCoins);
-    console.warn('[Verify] Commission result:', JSON.stringify(commResult));
+    await processCoinCommission(adminClient, user.id, payment.id, totalCoins);
 
     return NextResponse.json({
       status: 'completed',
