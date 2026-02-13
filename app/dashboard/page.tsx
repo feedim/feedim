@@ -281,20 +281,20 @@ export default function DashboardPage() {
             <Heart className="h-7 w-7 text-pink-500 fill-pink-500" aria-hidden="true" />
             <span className="text-2xl font-bold">Forilove</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard/explore" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+          <div className="flex items-center gap-1 lg:gap-3">
+            <Link href="/dashboard/explore" className="hidden md:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
                 Keşfet
             </Link>
-            <Link href="/dashboard/purchased" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/purchased" className="hidden lg:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
                 Satın Alınanlar
             </Link>
-            <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
                 Sayfalarım
             </Link>
-            <Link href="/dashboard/saved" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/saved" className="hidden lg:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
                 Kaydedilenler
             </Link>
-            <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-4 py-2 transition font-semibold">
+            <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-2 lg:px-4 py-2 transition font-semibold text-sm lg:text-base whitespace-nowrap">
                 Profil
             </Link>
             <CoinWallet />

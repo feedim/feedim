@@ -300,7 +300,7 @@ export default function ExplorePage() {
               )}
               <div className="flex items-center gap-3">
                 {getTemplateName(project) && (
-                  <span className="text-xs text-white/40 truncate max-w-[120px]">{getTemplateName(project)}</span>
+                  <span className="text-xs text-white/40 truncate max-w-[160px]">Şablon: {getTemplateName(project)}</span>
                 )}
                 <span className="flex items-center gap-1 text-xs text-white/30 shrink-0">
                   <Eye className="h-3 w-3" />

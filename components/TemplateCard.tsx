@@ -1,6 +1,7 @@
 import Link from "next/link";
 import DOMPurify from "isomorphic-dompurify";
 import { Heart, Coins, Bookmark, Eye } from "lucide-react";
+import { useRef, useCallback } from "react";
 
 interface TemplateCardProps {
   template: any;
@@ -32,6 +33,38 @@ export default function TemplateCard({
   previewUrl,
 }: TemplateCardProps) {
   const isPublished = template.projectStatus === 'published';
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const scrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startAutoScroll = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      let scrollPos = 0;
+      scrollTimerRef.current = setInterval(() => {
+        scrollPos += 1;
+        doc.documentElement.scrollTop = scrollPos;
+        if (scrollPos >= doc.documentElement.scrollHeight - doc.documentElement.clientHeight) {
+          scrollPos = 0;
+        }
+      }, 20);
+    } catch { /* cross-origin, skip */ }
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (scrollTimerRef.current) {
+      clearInterval(scrollTimerRef.current);
+      scrollTimerRef.current = null;
+    }
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) doc.documentElement.scrollTop = 0;
+    } catch { /* cross-origin, skip */ }
+  }, []);
 
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,6 +76,8 @@ export default function TemplateCard({
   return (
     <div
       onClick={onClick}
+      onMouseEnter={startAutoScroll}
+      onMouseLeave={stopAutoScroll}
       className="group relative aspect-[3/4] bg-zinc-900 overflow-hidden border border-white/10 hover:border-pink-500/30 transition-all cursor-pointer"
       style={{ borderRadius: '29px' }}
     >
@@ -50,6 +85,7 @@ export default function TemplateCard({
       <div className="absolute inset-0 overflow-hidden bg-zinc-900">
         {previewUrl ? (
           <iframe
+            ref={iframeRef}
             src={previewUrl}
             className="w-full h-full pointer-events-none scale-[0.3] origin-top-left"
             style={{ width: '333%', height: '333%' }}
@@ -58,6 +94,7 @@ export default function TemplateCard({
           />
         ) : template.html_content ? (
           <iframe
+            ref={iframeRef}
             srcDoc={DOMPurify.sanitize(template.html_content, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
             className="w-full h-full pointer-events-none scale-[0.3] origin-top-left"
             style={{ width: '333%', height: '333%' }}

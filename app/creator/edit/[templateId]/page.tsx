@@ -184,7 +184,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
             <div className="h-6 w-px bg-white/10"></div>
             <button
               onClick={() => setLeftPanelOpen(!leftPanelOpen)}
-              className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-white/10 transition-all"
+              className="p-2 bg-[#1a1d23] hover:bg-[#22262e] rounded-lg border border-white/10 transition-all"
               aria-label={leftPanelOpen ? "Paneli Kapat" : "Paneli Aç"}
             >
               <Menu className="h-4 w-4 text-gray-400" aria-hidden="true" />

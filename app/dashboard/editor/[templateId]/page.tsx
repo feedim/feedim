@@ -1873,26 +1873,54 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       )}
                     </div>
                   ) : currentHook.type === 'color' ? (
-                    <div className="space-y-3">
-                      <div className="flex gap-3">
+                    <div className="space-y-4">
+                      {/* Color preview */}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-14 h-14 rounded-2xl border-2 border-white/20 shrink-0"
+                          style={{ backgroundColor: draftValue || currentHook.defaultValue }}
+                        />
+                        <input
+                          type="text"
+                          value={draftValue}
+                          onChange={(e) => setDraftValue(e.target.value)}
+                          className="input-modern flex-1 text-base font-mono"
+                          placeholder="#FF6B9D"
+                        />
+                      </div>
+                      {/* Instagram-style fixed palette */}
+                      <div className="grid grid-cols-8 gap-2">
+                        {[
+                          '#FFFFFF', '#000000', '#F5F5F5', '#1A1A1A',
+                          '#FF3B30', '#FF6B6B', '#FF9500', '#FFCC00',
+                          '#34C759', '#30D158', '#5AC8FA', '#007AFF',
+                          '#5856D6', '#AF52DE', '#FF2D55', '#FF6B9D',
+                          '#E30076', '#FF375F', '#BF5AF2', '#AC8E68',
+                          '#8E8E93', '#636366', '#C7B299', '#FFD700',
+                        ].map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setDraftValue(color)}
+                            className="w-full aspect-square rounded-full border-2 transition-all active:scale-90"
+                            style={{
+                              backgroundColor: color,
+                              borderColor: draftValue === color ? '#FF2D55' : 'rgba(255,255,255,0.1)',
+                              boxShadow: draftValue === color ? '0 0 0 2px #FF2D55' : 'none',
+                            }}
+                            aria-label={color}
+                          />
+                        ))}
+                      </div>
+                      {/* Native color picker fallback */}
+                      <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-white transition">
                         <input
                           type="color"
                           value={draftValue || currentHook.defaultValue}
                           onChange={(e) => setDraftValue(e.target.value)}
-                          className="w-20 h-20 rounded-xl cursor-pointer border-2 border-white/20"
-                          autoFocus
+                          className="w-8 h-8 rounded-lg cursor-pointer border border-white/20 bg-transparent"
                         />
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={draftValue}
-                            onChange={(e) => setDraftValue(e.target.value)}
-                            className="input-modern w-full text-base font-mono"
-                            placeholder="#FF6B9D"
-                          />
-                          <p className="text-xs text-gray-400 mt-2">HEX renk kodu</p>
-                        </div>
-                      </div>
+                        Özel renk seç
+                      </label>
                     </div>
                   ) : currentHook.type === 'date' ? (
                     <div className="space-y-3">

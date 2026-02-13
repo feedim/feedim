@@ -88,8 +88,10 @@ export async function POST(req: NextRequest) {
 
     // Build compact field list — each field on one line with type and what's expected
     const fieldLines = hooks.map((h) => {
-      const typeHint = h.type === 'text' ? 'kısa metin, max 100 kar'
-        : h.type === 'textarea' ? 'uzun metin, max 500 kar'
+      const defaultLen = h.defaultValue ? h.defaultValue.length : 0;
+      const lenHint = defaultLen > 0 ? `, hedef ~${Math.min(defaultLen + 10, h.type === 'text' ? 60 : 200)} kar` : '';
+      const typeHint = h.type === 'text' ? `çok kısa metin (3-6 kelime, max 60 kar)${lenHint}`
+        : h.type === 'textarea' ? `kısa paragraf (2-3 cümle, max 200 kar)${lenHint}`
         : h.type === 'date' ? `tarih, format: GG.AA.YYYY`
         : h.type === 'color' ? 'hex renk, ör: #FF6B9D'
         : h.type === 'url' ? 'boş string döndür'
@@ -110,14 +112,16 @@ ALANLAR (${hooks.length} adet):
 ${fieldLines.join('\n')}
 
 KURALLAR:
-- text: Kısa, duygusal, çarpıcı başlıklar ve metinler yaz
-- textarea: Samimi, mektup tarzı uzun metinler yaz. Kişiye özel hissettir
+- text: KISA VE ÖZ yaz. Başlıklar max 3-5 kelime, alt başlıklar max 8-10 kelime. Hero başlığı: max 4 kelime. Etiket/badge: 1-2 kelime. Asla uzun cümle yazma.
+- textarea: Orta uzunlukta, samimi ve duygusal yaz. Max 2-3 cümle (150 karakter civarı). Mektup tarzı ama kısa tut. Paragraflar yapma.
 - date: GG.AA.YYYY formatında. Kullanıcı tarih verdiyse onu kullan, yoksa ${todayStr}
 - color: HEX renk kodu (#FF6B9D gibi). Romantik tonlar kullan (pembe, kırmızı, bordo, altın)
 - url: Her zaman "" (boş string) döndür
 - İsim geçiyorsa ilgili alanlarda kullan
 - Belirsiz alanlar için şablona uygun romantik içerik üret
 - "X yıllık" ifadesi varsa tarihi bugünden geriye hesapla
+- ÖNEMLİ: label'daki ipucuna göre içeriğin uzunluğunu ayarla. "Başlık" = çok kısa, "Açıklama" = 1 cümle, "Mesaj/Mektup" = 2-3 cümle. Her alan için default değer uzunluğuna yakın tut.
+- Emoji kullanma, sade ve doğal Türkçe yaz
 
 JSON formatında SADECE bu key'leri içeren obje döndür: ${requiredKeys}
 Başka hiçbir metin veya açıklama ekleme, sadece JSON.`;

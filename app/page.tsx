@@ -7,13 +7,6 @@ import PublicFooter from "@/components/PublicFooter";
 import CTASection from "@/components/CTASection";
 
 export default function Home() {
-  const scrollToFeatures = () => {
-    const featuresSection = document.getElementById('features');
-    if (featuresSection) {
-      featuresSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-black text-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "WebPage", name: "Forilove - Sevginizi Ölümsüzleştirin", description: "Kod bilgisi olmadan sevgilinize özel romantik web sayfaları oluşturun.", url: "https://forilove.com", isPartOf: { "@id": "https://forilove.com/#website" } }) }} />
@@ -42,12 +35,9 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <div className="flex flex-row items-center justify-center gap-3">
-              <button
-                onClick={scrollToFeatures}
-                className="btn-secondary px-4 py-3 sm:px-8"
-              >
-                Nasıl Çalışır?
-              </button>
+              <Link href="/templates" className="btn-secondary px-4 py-3 sm:px-8">
+                Şablonlar
+              </Link>
               <Link href="/register" className="btn-primary px-4 py-3 sm:px-8">
                   Ücretsiz Başla
               </Link>
