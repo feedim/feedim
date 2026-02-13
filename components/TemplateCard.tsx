@@ -44,14 +44,14 @@ export default function TemplateCard({
       if (!doc) return;
       let scrollPos = 0;
       scrollTimerRef.current = setInterval(() => {
-        scrollPos += 5;
+        scrollPos += 15;
         doc.documentElement.scrollTop = scrollPos;
         const maxScroll = doc.documentElement.scrollHeight - doc.documentElement.clientHeight;
         if (maxScroll > 0 && scrollPos >= maxScroll) {
           scrollPos = 0;
           doc.documentElement.scrollTop = 0;
         }
-      }, 12);
+      }, 8);
     } catch { /* cross-origin, skip */ }
   }, []);
 
