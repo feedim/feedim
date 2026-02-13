@@ -173,7 +173,7 @@ export default function SavedTemplatesPage() {
             p_user_id: user.id,
           });
           if (couponCheck?.valid) {
-            finalPrice = Math.max(1, Math.round(finalPrice * (1 - couponCheck.discount_percent / 100)));
+            finalPrice = Math.max(0, Math.round(finalPrice * (1 - couponCheck.discount_percent / 100)));
           } else {
             return { success: false, error: couponCheck?.error || 'Kupon doğrulanamadı' };
           }

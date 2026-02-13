@@ -101,7 +101,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
 
   // Calculate effective cost with coupon
   const effectiveCost = appliedCoupon
-    ? Math.max(1, Math.round(options.coinCost * (1 - appliedCoupon.discountPercent / 100)))
+    ? Math.max(0, Math.round(options.coinCost * (1 - appliedCoupon.discountPercent / 100)))
     : options.coinCost;
 
   const insufficientBalance = options.currentBalance < effectiveCost;
@@ -198,7 +198,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[500px] bg-zinc-900 rounded-t-[32px] p-6 flex flex-col gap-5 animate-[slideUp_0.25s_ease-out]"
+        className="w-full max-w-[500px] bg-zinc-900 rounded-t-[32px] p-6 flex flex-col gap-3 animate-[slideUp_0.25s_ease-out]"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -294,7 +294,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
                         style={{ background: "var(--color-yellow-500)", color: "black" }}
                       >
                         {couponLoading ? (
-                          <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          <span className="inline-block w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                         ) : (
                           "Uygula"
                         )}

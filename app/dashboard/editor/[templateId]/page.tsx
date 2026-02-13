@@ -1145,7 +1145,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             p_user_id: user.id,
           });
           if (couponCheck?.valid) {
-            verifiedPrice = Math.max(1, Math.round(verifiedPrice * (1 - couponCheck.discount_percent / 100)));
+            verifiedPrice = Math.max(0, Math.round(verifiedPrice * (1 - couponCheck.discount_percent / 100)));
           } else {
             return { success: false, error: couponCheck?.error || 'Kupon doğrulanamadı' };
           }
