@@ -11,6 +11,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import TemplateCard from "@/components/TemplateCard";
 import { usePurchaseConfirm } from "@/components/PurchaseConfirmModal";
 import { getActivePrice, isDiscountActive } from "@/lib/discount";
+import type { CouponInfo } from "@/components/PurchaseConfirmModal";
 
 export default function SavedTemplatesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -48,7 +49,7 @@ export default function SavedTemplatesPage() {
         .from("saved_templates")
         .select(`
           template_id,
-          templates (id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, description, html_content)
+          templates (id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, description, html_content, purchase_count)
         `)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -141,22 +142,47 @@ export default function SavedTemplatesPage() {
   const handlePurchase = async (template: any) => {
     const coinPrice = getActivePrice(template);
 
+    // Determine discount display
+    let displayOriginalPrice: number | undefined;
+    let displayDiscountLabel: string | undefined;
+
+    if (isDiscountActive(template)) {
+      displayOriginalPrice = template.coin_price;
+      displayDiscountLabel = template.discount_label;
+    }
+
     const confirmResult = await confirm({
       itemName: template.name,
       description: "Şablonu satın alıp düzenlemeye başlayın",
       coinCost: coinPrice,
-      originalPrice: isDiscountActive(template) ? template.coin_price : undefined,
-      discountLabel: isDiscountActive(template) ? template.discount_label : undefined,
+      originalPrice: displayOriginalPrice,
+      discountLabel: displayDiscountLabel,
       currentBalance: coinBalance,
       icon: 'template',
-      onConfirm: async () => {
+      allowCoupon: true,
+      onConfirm: async (couponInfo?: CouponInfo) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Oturum bulunamadı');
+
+        let finalPrice = coinPrice;
+
+        // Apply coupon discount if provided (re-validate server-side)
+        if (couponInfo) {
+          const { data: couponCheck } = await supabase.rpc('validate_coupon', {
+            p_code: couponInfo.code,
+            p_user_id: user.id,
+          });
+          if (couponCheck?.valid) {
+            finalPrice = Math.max(1, Math.round(finalPrice * (1 - couponCheck.discount_percent / 100)));
+          } else {
+            return { success: false, error: couponCheck?.error || 'Kupon doğrulanamadı' };
+          }
+        }
 
         const { data: result, error } = await supabase.rpc('purchase_template', {
           p_user_id: user.id,
           p_template_id: template.id,
-          p_coin_price: coinPrice
+          p_coin_price: finalPrice
         });
 
         if (error || !result.success) {
@@ -169,7 +195,7 @@ export default function SavedTemplatesPage() {
 
     if (!confirmResult?.success) return;
 
-    toast.success(`${template.name} satın alındı (-${coinPrice} FL)`);
+    toast.success(`${template.name} satın alındı!`);
     setCoinBalance(confirmResult.newBalance);
     setPurchases([...purchases, template.id]);
     router.push(`/dashboard/editor/${template.id}`);

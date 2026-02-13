@@ -11,6 +11,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import { TemplateGridSkeleton } from "@/components/Skeletons";
 import TemplateCard from "@/components/TemplateCard";
 import { EmptyState } from "@/components/ErrorState";
+import WelcomeCouponModal from "@/components/WelcomeCouponModal";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -98,12 +99,14 @@ export default function DashboardPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [welcomeCoupon, setWelcomeCoupon] = useState<{ code: string; discountPercent: number; expiresAt: string | null } | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     loadData();
     processOAuthReferral();
+    checkWelcomeCoupon();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -149,6 +152,26 @@ export default function DashboardPage() {
         toast.success("Referans bağlantısı kaydedildi!");
       }
     } catch (e) { if (process.env.NODE_ENV === 'development') console.warn('Operation failed:', e); }
+  };
+
+  const checkWelcomeCoupon = async () => {
+    try {
+      const flag = sessionStorage.getItem('forilove_show_welcome_coupon');
+      if (!flag) return;
+      sessionStorage.removeItem('forilove_show_welcome_coupon');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase.rpc('get_welcome_coupon', { p_user_id: user.id });
+      if (data?.found) {
+        setWelcomeCoupon({
+          code: data.code,
+          discountPercent: data.discount_percent,
+          expiresAt: data.expires_at,
+        });
+      }
+    } catch (e) { if (process.env.NODE_ENV === 'development') console.warn('Welcome coupon check failed:', e); }
   };
 
   const loadData = async () => {
@@ -202,7 +225,7 @@ export default function DashboardPage() {
       // Load templates excluding purchased ones
       let templatesQuery = supabase
         .from("templates")
-        .select("id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, description, html_content")
+        .select("id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, description, html_content, purchase_count")
         .eq("is_active", true);
 
       if (purchasedTemplateIds.length > 0) {
@@ -241,7 +264,7 @@ export default function DashboardPage() {
 
       let templatesQuery = supabase
         .from("templates")
-        .select("id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, description, html_content")
+        .select("id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, description, html_content, purchase_count")
         .eq("is_active", true);
 
       // Only add the filter if there are purchased templates
@@ -414,6 +437,16 @@ export default function DashboardPage() {
       </main>
 
       <MobileBottomNav />
+
+      {/* Welcome Coupon Modal */}
+      {welcomeCoupon && (
+        <WelcomeCouponModal
+          code={welcomeCoupon.code}
+          discountPercent={welcomeCoupon.discountPercent}
+          expiresAt={welcomeCoupon.expiresAt}
+          onClose={() => setWelcomeCoupon(null)}
+        />
+      )}
     </div>
   );
 }

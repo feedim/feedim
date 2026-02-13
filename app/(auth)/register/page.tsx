@@ -41,6 +41,7 @@ function RegisterForm() {
     if (referralCode) {
       sessionStorage.setItem('forilove_pending_referral', referralCode);
     }
+    sessionStorage.setItem('forilove_show_welcome_coupon', 'true');
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -125,10 +126,12 @@ function RegisterForm() {
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
+        sessionStorage.setItem('forilove_show_welcome_coupon', 'true');
         toast.success("Kayıt başarılı! Lütfen e-postanızı kontrol edin ve doğrulayın.");
         router.push("/login");
       } else if (data.session) {
         // User is automatically logged in with session
+        sessionStorage.setItem('forilove_show_welcome_coupon', 'true');
         toast.success("Kayıt başarılı! Hoş geldiniz!");
 
         // Wait a bit for session to be fully set
@@ -138,6 +141,7 @@ function RegisterForm() {
         router.refresh();
       } else {
         // No session but user exists - redirect to login
+        sessionStorage.setItem('forilove_show_welcome_coupon', 'true');
         toast.success("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");
         router.push("/login");
       }

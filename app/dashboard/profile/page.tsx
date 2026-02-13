@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, Coins, LogOut, Heart, Settings, Clock, Calendar, Wallet, Trash2, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe } from "lucide-react";
+import { ArrowLeft, User, Mail, Coins, LogOut, Heart, Settings, Clock, Calendar, Wallet, Trash2, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Ticket, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -24,6 +24,9 @@ export default function ProfilePage() {
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [adminStats, setAdminStats] = useState<any>(null);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [couponForm, setCouponForm] = useState({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720 });
+  const [couponCreating, setCouponCreating] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -53,9 +56,16 @@ export default function ProfilePage() {
 
       if (profileData?.role === 'admin') {
         try {
-          const res = await fetch('/api/admin/stats');
-          if (res.ok) {
-            setAdminStats(await res.json());
+          const [statsRes, couponsRes] = await Promise.all([
+            fetch('/api/admin/stats'),
+            fetch('/api/admin/coupons'),
+          ]);
+          if (statsRes.ok) {
+            setAdminStats(await statsRes.json());
+          }
+          if (couponsRes.ok) {
+            const couponsData = await couponsRes.json();
+            setCoupons(couponsData.coupons || []);
           }
         } catch { /* silent */ }
       }
@@ -127,6 +137,56 @@ export default function ProfilePage() {
       toast.error("Silme hatası: " + translateError(error.message));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleCreateCoupon = async () => {
+    if (!couponForm.code.trim()) {
+      toast.error("Kupon kodu girin");
+      return;
+    }
+    setCouponCreating(true);
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponForm.code,
+          discountPercent: couponForm.discountPercent,
+          maxUses: couponForm.maxUses,
+          expiryHours: couponForm.expiryHours,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Kupon oluşturulamadı');
+        return;
+      }
+      toast.success(`Kupon oluşturuldu: ${data.coupon.code}`);
+      setCoupons([data.coupon, ...coupons]);
+      setCouponForm({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720 });
+    } catch {
+      toast.error('Bir hata oluştu');
+    } finally {
+      setCouponCreating(false);
+    }
+  };
+
+  const handleDeactivateCoupon = async (couponId: string) => {
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ couponId }),
+      });
+      if (!res.ok) {
+        toast.error('Kupon deaktif edilemedi');
+        return;
+      }
+      setCoupons(coupons.map(c => c.id === couponId ? { ...c, is_active: false } : c));
+      toast.success('Kupon deaktif edildi');
+    } catch {
+      toast.error('Bir hata oluştu');
     }
   };
 
@@ -352,6 +412,116 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Admin: Kupon Yönetimi */}
+        {profile?.role === 'admin' && (
+          <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Ticket className="h-5 w-5 text-pink-500" />
+              <h3 className="font-semibold">Kupon Yonetimi</h3>
+            </div>
+
+            {/* Create Coupon Form */}
+            <div className="space-y-3 mb-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Kupon Kodu</label>
+                  <input
+                    type="text"
+                    value={couponForm.code}
+                    onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                    placeholder="YILBASI50"
+                    maxLength={30}
+                    className="input-modern w-full text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Indirim %</label>
+                  <input
+                    type="number"
+                    value={couponForm.discountPercent}
+                    onChange={(e) => setCouponForm({ ...couponForm, discountPercent: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)) })}
+                    min={1}
+                    max={100}
+                    className="input-modern w-full text-sm"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Max Kullanim</label>
+                  <input
+                    type="number"
+                    value={couponForm.maxUses}
+                    onChange={(e) => setCouponForm({ ...couponForm, maxUses: Math.max(1, parseInt(e.target.value) || 1) })}
+                    min={1}
+                    className="input-modern w-full text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Sure (saat)</label>
+                  <input
+                    type="number"
+                    value={couponForm.expiryHours}
+                    onChange={(e) => setCouponForm({ ...couponForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
+                    min={1}
+                    className="input-modern w-full text-sm"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleCreateCoupon}
+                disabled={couponCreating || !couponForm.code.trim()}
+                className="btn-primary w-full py-2.5 text-sm flex items-center justify-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                {couponCreating ? "Olusturuluyor..." : "Kupon Olustur"}
+              </button>
+            </div>
+
+            {/* Coupons List */}
+            {coupons.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Mevcut Kuponlar</p>
+                {coupons.map((coupon) => (
+                  <div key={coupon.id} className={`flex items-center justify-between p-3 rounded-xl ${coupon.is_active ? 'bg-white/5' : 'bg-white/[0.02] opacity-50'}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-yellow-500">{coupon.code}</span>
+                        <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">
+                          %{coupon.discount_percent}
+                        </span>
+                        {coupon.coupon_type === 'welcome' && (
+                          <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-full">
+                            hosgeldin
+                          </span>
+                        )}
+                        {!coupon.is_active && (
+                          <span className="text-xs bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full">
+                            deaktif
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {coupon.current_uses}/{coupon.max_uses || '∞'} kullanim
+                        {coupon.expires_at && ` · ${new Date(coupon.expires_at) > new Date() ? `${Math.ceil((new Date(coupon.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldi` : 'suresi dolmus'}`}
+                      </p>
+                    </div>
+                    {coupon.is_active && (
+                      <button
+                        onClick={() => handleDeactivateCoupon(coupon.id)}
+                        className="p-2 text-gray-500 hover:text-red-400 transition shrink-0"
+                        title="Deaktif et"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

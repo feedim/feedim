@@ -1,6 +1,6 @@
 import Link from "next/link";
 import DOMPurify from "isomorphic-dompurify";
-import { Heart, Coins, Bookmark, Eye } from "lucide-react";
+import { Heart, Coins, Bookmark, Eye, Users } from "lucide-react";
 import { useRef } from "react";
 import { isDiscountActive } from "@/lib/discount";
 
@@ -195,6 +195,14 @@ export default function TemplateCard({
               <div className="btn-primary flex-1 py-2.5 text-sm text-center pointer-events-none">
                 {isPurchased ? 'Yayına Al' : 'Satın Al'}
               </div>
+            </div>
+          )}
+
+          {/* Social proof */}
+          {template.purchase_count > 0 && !isPurchased && !isPublished && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <Users className="h-3.5 w-3.5 text-gray-500" />
+              <span className="text-xs text-gray-500">{template.purchase_count} kişi aldı</span>
             </div>
           )}
         </div>

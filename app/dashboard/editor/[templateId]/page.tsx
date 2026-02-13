@@ -10,6 +10,7 @@ import { compressImage, validateImageFile, getOptimizedFileName } from '@/lib/ut
 import { ShareSheet } from '@/components/ShareIconButton';
 import { usePurchaseConfirm } from '@/components/PurchaseConfirmModal';
 import { getActivePrice, isDiscountActive } from '@/lib/discount';
+import type { CouponInfo } from '@/components/PurchaseConfirmModal';
 
 declare global { interface Window { YT: any; onYouTubeIframeAPIReady: (() => void) | undefined; } }
 
@@ -305,7 +306,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const [profileRes, purchaseRes, templateRes] = await Promise.all([
         supabase.from('profiles').select('coin_balance').eq('user_id', user.id).single(),
         supabase.from("purchases").select("id, template_id, payment_status").eq("user_id", user.id).eq("template_id", resolvedParams.templateId).eq("payment_status", "completed").maybeSingle(),
-        supabase.from("templates").select("id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, html_content, created_by").eq("id", resolvedParams.templateId).single(),
+        supabase.from("templates").select("id, name, slug, coin_price, discount_price, discount_label, discount_expires_at, html_content, created_by, purchase_count").eq("id", resolvedParams.templateId).single(),
       ]);
 
       if (!profileRes.data || !templateRes.data) {
@@ -1101,15 +1102,25 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const handlePurchase = async () => {
     const coinPrice = getActivePrice(template);
 
+    // Determine discount display
+    let displayOriginalPrice: number | undefined;
+    let displayDiscountLabel: string | undefined;
+
+    if (isDiscountActive(template)) {
+      displayOriginalPrice = template.coin_price;
+      displayDiscountLabel = template.discount_label;
+    }
+
     const result = await confirm({
       itemName: template.name,
       description: "Şablonu satın alıp düzenlemeye başlayın",
       coinCost: coinPrice,
-      originalPrice: isDiscountActive(template) ? template.coin_price : undefined,
-      discountLabel: isDiscountActive(template) ? template.discount_label : undefined,
+      originalPrice: displayOriginalPrice,
+      discountLabel: displayDiscountLabel,
       currentBalance: coinBalance,
       icon: 'template',
-      onConfirm: async () => {
+      allowCoupon: true,
+      onConfirm: async (couponInfo?: CouponInfo) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Oturum bulunamadı');
 
@@ -1125,13 +1136,27 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         }
 
         // Use fresh price from DB (expiry-aware, prevent client-side manipulation)
-        const verifiedPrice = getActivePrice(freshTemplate);
+        let verifiedPrice = getActivePrice(freshTemplate);
+
+        // Apply coupon discount if provided (re-validate server-side)
+        if (couponInfo) {
+          const { data: couponCheck } = await supabase.rpc('validate_coupon', {
+            p_code: couponInfo.code,
+            p_user_id: user.id,
+          });
+          if (couponCheck?.valid) {
+            verifiedPrice = Math.max(1, Math.round(verifiedPrice * (1 - couponCheck.discount_percent / 100)));
+          } else {
+            return { success: false, error: couponCheck?.error || 'Kupon doğrulanamadı' };
+          }
+        }
 
         // Spend coins using database function
+        const couponNote = couponInfo ? ` (Kupon: ${couponInfo.code})` : '';
         const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
           p_user_id: user.id,
           p_amount: verifiedPrice,
-          p_description: `Şablon satın alındı: ${template.name}`,
+          p_description: `Şablon satın alındı: ${template.name}${couponNote}`,
           p_reference_id: template.id,
           p_reference_type: 'template'
         });
@@ -1186,7 +1211,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
     if (!result?.success) return;
 
-    toast.success(`${template.name} satın alındı (-${coinPrice} FL)`);
+    toast.success(`${template.name} satın alındı!`);
     setCoinBalance(result.newBalance);
     window.location.reload();
   };

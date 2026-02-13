@@ -28,7 +28,7 @@ export default function TemplatesPage() {
         .select("*")
         .eq("is_active", true)
         .eq("is_public", true)
-        .order("coin_price", { ascending: true }) // Could be changed to purchase_count when available
+        .order("purchase_count", { ascending: false, nullsFirst: false })
         .limit(TEMPLATE_LIMIT);
 
       setTemplates(templatesData || []);

@@ -3,8 +3,15 @@
 import { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 /* ─── Types ─── */
+
+export interface CouponInfo {
+  code: string;
+  couponId: string;
+  discountPercent: number;
+}
 
 interface ConfirmOptions {
   itemName: string;
@@ -14,7 +21,8 @@ interface ConfirmOptions {
   discountLabel?: string;
   currentBalance: number;
   icon?: "ai" | "template";
-  onConfirm: () => Promise<{ success: boolean; newBalance?: number; error?: string }>;
+  allowCoupon?: boolean;
+  onConfirm: (couponInfo?: CouponInfo) => Promise<{ success: boolean; newBalance?: number; error?: string }>;
 }
 
 type ConfirmResult = { success: true; newBalance: number } | null;
@@ -83,15 +91,71 @@ interface SheetProps {
 function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponInfo | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const router = useRouter();
+  const supabase = createClient();
 
-  const insufficientBalance = options.currentBalance < options.coinCost;
-  const balanceAfter = options.currentBalance - options.coinCost;
+  // Calculate effective cost with coupon
+  const effectiveCost = appliedCoupon
+    ? Math.max(1, Math.round(options.coinCost * (1 - appliedCoupon.discountPercent / 100)))
+    : options.coinCost;
+
+  const insufficientBalance = options.currentBalance < effectiveCost;
+  const balanceAfter = options.currentBalance - effectiveCost;
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
+
+  const handleApplyCoupon = async () => {
+    const trimmed = couponCode.trim();
+    if (!trimmed) return;
+
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCouponError("Oturum bulunamadı");
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('validate_coupon', {
+        p_code: trimmed,
+        p_user_id: user.id,
+      });
+
+      if (error) {
+        setCouponError("Kupon doğrulanamadı");
+        return;
+      }
+
+      if (data?.valid) {
+        setAppliedCoupon({
+          code: trimmed,
+          couponId: data.coupon_id,
+          discountPercent: data.discount_percent,
+        });
+        setCouponError(null);
+      } else {
+        setCouponError(data?.error || "Geçersiz kupon kodu");
+      }
+    } catch {
+      setCouponError("Bir hata oluştu");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError(null);
+  };
 
   const handleConfirm = async () => {
     if (insufficientBalance) {
@@ -103,8 +167,18 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
     setLoading(true);
     setError(null);
     try {
-      const result = await options.onConfirm();
+      const result = await options.onConfirm(appliedCoupon || undefined);
       if (result.success && result.newBalance !== undefined) {
+        // Record coupon usage after successful purchase
+        if (appliedCoupon) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.rpc('record_coupon_usage', {
+              p_coupon_id: appliedCoupon.couponId,
+              p_user_id: user.id,
+            });
+          }
+        }
         onResult({ success: true, newBalance: result.newBalance });
       } else {
         setError(result.error || "İşlem başarısız oldu");
@@ -146,23 +220,83 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
 
         {/* Coin Cost */}
         <div className="text-center pt-1">
-          {options.discountLabel && (
-            <span className="inline-block bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase mb-2">
-              {options.discountLabel}
-            </span>
+          {(options.discountLabel || appliedCoupon) && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {options.discountLabel && (
+                <span className="inline-block bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+                  {options.discountLabel}
+                </span>
+              )}
+              {appliedCoupon && (
+                <span className="inline-block bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+                  -%{appliedCoupon.discountPercent} KUPON
+                </span>
+              )}
+            </div>
           )}
           <div className="flex items-center justify-center gap-2 mt-1.5">
-            {options.originalPrice && options.originalPrice !== options.coinCost && (
+            {/* Show original price crossed out if there's any discount */}
+            {(options.originalPrice && options.originalPrice !== options.coinCost) || appliedCoupon ? (
               <span className="text-xl font-bold text-gray-500 line-through decoration-red-500/70 decoration-2">
-                {options.originalPrice} FL
+                {appliedCoupon ? options.coinCost : options.originalPrice} FL
               </span>
-            )}
+            ) : null}
             <span className="text-[32px] font-extrabold text-yellow-500 tracking-tight">
-              {options.coinCost} FL
+              {effectiveCost} FL
             </span>
           </div>
           <p className="text-sm text-gray-400">{options.itemName}</p>
         </div>
+
+        {/* Coupon Input */}
+        {options.allowCoupon && !appliedCoupon && (
+          <div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                placeholder="Kupon kodu girin"
+                maxLength={30}
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500/50 transition"
+              />
+              <button
+                onClick={handleApplyCoupon}
+                disabled={couponLoading || !couponCode.trim()}
+                className="px-4 py-2.5 bg-yellow-500 text-black text-sm font-semibold rounded-lg hover:bg-yellow-400 transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              >
+                {couponLoading ? (
+                  <span className="inline-block w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                ) : (
+                  "Uygula"
+                )}
+              </button>
+            </div>
+            {couponError && (
+              <p className="text-xs text-red-500 mt-1.5">{couponError}</p>
+            )}
+          </div>
+        )}
+
+        {/* Applied Coupon Badge */}
+        {options.allowCoupon && appliedCoupon && (
+          <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              <span className="text-sm font-medium text-green-400">
+                {appliedCoupon.code} (-%{appliedCoupon.discountPercent})
+              </span>
+            </div>
+            <button
+              onClick={handleRemoveCoupon}
+              className="text-xs text-gray-400 hover:text-white transition"
+            >
+              Kaldır
+            </button>
+          </div>
+        )}
 
         {/* Balance Info */}
         <div className="border border-white/10 rounded-xl p-3.5 flex flex-col gap-1.5">
