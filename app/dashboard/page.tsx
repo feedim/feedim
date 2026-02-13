@@ -157,9 +157,9 @@ export default function DashboardPage() {
 
   const processPromoSignup = async () => {
     try {
-      const pendingPromo = sessionStorage.getItem('forilove_pending_promo');
+      const pendingPromo = localStorage.getItem('forilove_pending_promo');
       if (!pendingPromo) return;
-      sessionStorage.removeItem('forilove_pending_promo');
+      localStorage.removeItem('forilove_pending_promo');
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;

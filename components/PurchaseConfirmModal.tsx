@@ -174,10 +174,13 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
         if (appliedCoupon) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            await supabase.rpc('record_coupon_usage', {
+            const { data: usageResult } = await supabase.rpc('record_coupon_usage', {
               p_coupon_id: appliedCoupon.couponId,
               p_user_id: user.id,
             });
+            if (usageResult && !usageResult.success) {
+              console.warn('Kupon kullanımı kaydedilemedi:', usageResult.error);
+            }
           }
         }
         onResult({ success: true, newBalance: result.newBalance });

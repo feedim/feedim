@@ -39,7 +39,7 @@ function RegisterForm() {
     // Get promo code from URL
     const promoCode = searchParams.get('promo');
     if (promoCode && /^[a-zA-Z0-9]{3,20}$/.test(promoCode)) {
-      sessionStorage.setItem('forilove_pending_promo', promoCode);
+      localStorage.setItem('forilove_pending_promo', promoCode);
     }
   }, [searchParams]);
 

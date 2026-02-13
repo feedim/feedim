@@ -1151,19 +1151,28 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           }
         }
 
-        // Spend coins using database function
+        // Spend coins (skip if free via coupon)
         const couponNote = couponInfo ? ` (Kupon: ${couponInfo.code})` : '';
-        const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
-          p_user_id: user.id,
-          p_amount: verifiedPrice,
-          p_description: `Şablon satın alındı: ${template.name}${couponNote}`,
-          p_reference_id: template.id,
-          p_reference_type: 'template'
-        });
+        let newBalance = 0;
 
-        if (spendError) throw spendError;
-        if (!spendResult[0]?.success) {
-          return { success: false, error: spendResult[0]?.message || 'Coin harcama başarısız' };
+        if (verifiedPrice > 0) {
+          const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
+            p_user_id: user.id,
+            p_amount: verifiedPrice,
+            p_description: `Şablon satın alındı: ${template.name}${couponNote}`,
+            p_reference_id: template.id,
+            p_reference_type: 'template'
+          });
+
+          if (spendError) throw spendError;
+          if (!spendResult[0]?.success) {
+            return { success: false, error: spendResult[0]?.message || 'Coin harcama başarısız' };
+          }
+          newBalance = spendResult[0].new_balance;
+        } else {
+          // Free purchase - get current balance
+          const { data: balanceData } = await supabase.from('profiles').select('coin_balance').eq('user_id', user.id).single();
+          newBalance = balanceData?.coin_balance ?? 0;
         }
 
         // Record purchase
@@ -1178,7 +1187,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         if (error) throw error;
 
         // Process referral commission (5% to referrer if user was referred)
-        if (purchaseData?.id) {
+        if (purchaseData?.id && verifiedPrice > 0) {
           try {
             const { data: commissionResult, error: commissionError } = await supabase.rpc(
               'process_referral_commission',
@@ -1205,7 +1214,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           }
         }
 
-        return { success: true, newBalance: spendResult[0].new_balance };
+        return { success: true, newBalance };
       },
     });
 

@@ -179,17 +179,30 @@ export default function SavedTemplatesPage() {
           }
         }
 
-        const { data: result, error } = await supabase.rpc('purchase_template', {
-          p_user_id: user.id,
-          p_template_id: template.id,
-          p_coin_price: finalPrice
-        });
+        if (finalPrice > 0) {
+          const { data: result, error } = await supabase.rpc('purchase_template', {
+            p_user_id: user.id,
+            p_template_id: template.id,
+            p_coin_price: finalPrice
+          });
 
-        if (error || !result.success) {
-          return { success: false, error: result?.error || 'Satın alma başarısız' };
+          if (error || !result.success) {
+            return { success: false, error: result?.error || 'Satın alma başarısız' };
+          }
+
+          return { success: true, newBalance: result.new_balance };
+        } else {
+          // Free purchase via coupon
+          const { error } = await supabase.from("purchases").insert({
+            user_id: user.id,
+            template_id: template.id,
+            coins_spent: 0,
+            payment_method: "coins",
+            payment_status: "completed",
+          });
+          if (error) throw error;
+          return { success: true, newBalance: coinBalance };
         }
-
-        return { success: true, newBalance: result.new_balance };
       },
     });
 
