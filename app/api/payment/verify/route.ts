@@ -20,15 +20,33 @@ export async function GET() {
       .from('coin_payments')
       .select('*', { count: 'exact', head: true });
 
+    // RPC fonksiyonu var mı test et (dry run — gerçek veri değiştirmez)
+    const { error: rpcError } = await adminClient.rpc('add_coins_atomic', {
+      p_user_id: '00000000-0000-0000-0000-000000000000',
+      p_amount: 0,
+      p_payment_id: '00000000-0000-0000-0000-000000000000',
+      p_description: 'diagnostic test',
+    });
+
+    // Son pending ödemeyi bul
+    const { data: lastPending } = await adminClient
+      .from('coin_payments')
+      .select('id, status, user_id, coins_purchased, created_at')
+      .in('status', ['pending', 'completed'])
+      .order('created_at', { ascending: false })
+      .limit(3);
+
     return NextResponse.json({
       ok: !error,
       timestamp: new Date().toISOString(),
-      commit: '39f1c23',
+      commit: '4cb42f7',
       env: {
         hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
         hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       },
       db: error ? { error: error.message } : { payments_count: count },
+      rpc_test: rpcError ? { error: rpcError.message, code: rpcError.code } : { ok: true },
+      recent_payments: lastPending,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message }, { status: 500 });
