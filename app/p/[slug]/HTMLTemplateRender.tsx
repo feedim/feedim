@@ -43,24 +43,8 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
 
     window.addEventListener("error", handleError);
 
-    // Published page touch optimizations
-    const s = document.documentElement.style;
-    const b = document.body.style;
-    s.overscrollBehavior = 'none';
-    b.overscrollBehavior = 'none';
-    s.setProperty('touch-action', 'manipulation');
-    b.setProperty('touch-action', 'manipulation');
-    b.setProperty('-webkit-user-select', 'none');
-    b.setProperty('user-select', 'none');
-
     return () => {
       window.removeEventListener("error", handleError);
-      s.overscrollBehavior = '';
-      b.overscrollBehavior = '';
-      s.removeProperty('touch-action');
-      b.removeProperty('touch-action');
-      b.removeProperty('-webkit-user-select');
-      b.removeProperty('user-select');
     };
   }, []);
 
