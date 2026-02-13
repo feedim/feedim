@@ -30,33 +30,21 @@ export default function PaymentSuccessPage() {
     }
     setAuthorized(true);
 
-    // Verify payment via API (hem doğrulama hem fallback coin ekleme)
     let cancelled = false;
     (async () => {
       try {
-        // Auth token al
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('[PaymentSuccess] session:', session ? 'exists' : 'null');
-        if (!session?.access_token) {
-          console.error('[PaymentSuccess] No access token, aborting verify');
-          setVerifying(false);
-          return;
-        }
+        if (!session?.access_token) { setVerifying(false); return; }
 
         const start = Date.now();
-        let attempt = 0;
-        // Callback'in tamamlanması için birkaç saniye bekle, sonra verify çağır
         while (!cancelled && Date.now() - start < 30000) {
-          attempt++;
           const res = await fetch('/api/payment/verify', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${session.access_token}` },
           });
           const body = await res.json().catch(() => null);
-          console.log(`[PaymentSuccess] attempt=${attempt} status=${res.status} body=`, body);
 
           if (!res.ok) {
-            // 5xx → tekrar dene
             await new Promise(r => setTimeout(r, 3000));
             continue;
           }
@@ -69,10 +57,8 @@ export default function PaymentSuccessPage() {
             return;
           }
 
-          // Hala pending veya no_payment → biraz bekleyip tekrar dene
           await new Promise(r => setTimeout(r, 3000));
         }
-        // 30sn geçti, hala pending
         setVerifying(false);
       } catch {
         setVerifying(false);
@@ -115,12 +101,12 @@ export default function PaymentSuccessPage() {
               </h1>
               <p className="text-base text-gray-400">
                 {coinsAdded != null
-                  ? `${coinsAdded} FL Coin hesabınıza eklendi`
-                  : 'FL Coin\'leriniz hesabınıza eklendi'}
+                  ? `${coinsAdded} FL hesabınıza eklendi`
+                  : 'FL\'leriniz hesabınıza eklendi'}
               </p>
               {coinBalance != null && (
                 <p className="text-sm text-gray-500">
-                  Güncel bakiyeniz: <span className="text-yellow-500 font-semibold">{coinBalance} FL Coin</span>
+                  Güncel bakiyeniz: <span className="text-yellow-500 font-semibold">{coinBalance} FL</span>
                 </p>
               )}
             </>
@@ -144,20 +130,6 @@ export default function PaymentSuccessPage() {
               </p>
             </>
           )}
-        </div>
-
-        {/* Info */}
-        <div className="bg-zinc-900 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-center gap-3">
-            <Coins className="h-6 w-6 text-yellow-500" />
-            <p className="text-base font-medium text-gray-300">
-              {verifying
-                ? 'Ödemeniz işleniyor, bakiyeniz doğrulanıyor...'
-                : verified
-                  ? 'Artık premium şablonların kilidini açabilirsiniz!'
-                  : 'Bakiyeniz kısa süre içinde güncellenecektir'}
-            </p>
-          </div>
         </div>
 
         {/* Actions */}

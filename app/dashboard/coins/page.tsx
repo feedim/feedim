@@ -119,7 +119,7 @@ export default function CoinsPage() {
         <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl min-h-[73px]">
           <nav className="container mx-auto px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
             <div className="flex items-center gap-2"><ArrowLeft className="h-5 w-5" /><span className="font-medium">Geri</span></div>
-            <h1 className="text-lg font-semibold">FL Coin Al</h1>
+            <h1 className="text-lg font-semibold">FL Satın Al</h1>
             <div className="w-16" />
           </nav>
         </header>
@@ -139,7 +139,7 @@ export default function CoinsPage() {
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-lg font-semibold">FL Coin Al</h1>
+          <h1 className="text-lg font-semibold">FL Satın Al</h1>
           <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
             <Coins className="h-5 w-5 text-yellow-500" />
             <div className="flex items-baseline gap-1">
