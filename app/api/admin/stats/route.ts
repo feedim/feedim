@@ -24,11 +24,12 @@ export async function GET() {
     // Use admin client (service_role) to bypass RLS
     const admin = createAdminClient();
 
-    const [usersRes, paymentsRes, todayPaymentsRes, projectsRes] = await Promise.all([
+    const [usersRes, paymentsRes, todayPaymentsRes, projectsRes, recentUsersRes] = await Promise.all([
       admin.from("profiles").select("*", { count: "exact", head: true }),
       admin.from("coin_payments").select("price_paid, coins_purchased", { count: "exact" }).eq("status", "completed"),
       admin.from("coin_payments").select("price_paid, coins_purchased").eq("status", "completed").gte("completed_at", new Date().toISOString().split("T")[0]),
       admin.from("projects").select("*", { count: "exact", head: true }).eq("is_published", true),
+      admin.from("profiles").select("name, surname, full_name, coin_balance, created_at").order("created_at", { ascending: false }).limit(10),
     ]);
 
     return NextResponse.json({
@@ -39,6 +40,7 @@ export async function GET() {
       todayRevenueTRY: todayPaymentsRes.data?.reduce((s: number, p: any) => s + (p.price_paid || 0), 0) || 0,
       todayPayments: todayPaymentsRes.data?.length || 0,
       publishedPages: projectsRes.count || 0,
+      recentUsers: recentUsersRes.data || [],
     });
   } catch (error) {
     console.error("Admin stats error:", error);
