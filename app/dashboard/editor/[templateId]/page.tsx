@@ -814,12 +814,9 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     setShowDetailsModal(false);
 
     const wasUnpublished = !project.is_published;
-    if (wasUnpublished) {
-      setTermsAccepted(false);
-      setShowVisibilityModal(true);
-    } else {
-      doPublish(project.is_public || false);
-    }
+    setTermsAccepted(!wasUnpublished);
+    setSelectedVisibility(project.is_public ?? true);
+    setShowVisibilityModal(true);
   };
 
   const doPublish = async (isPublic: boolean) => {
@@ -2305,7 +2302,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               disabled={selectedVisibility === null || !termsAccepted}
               className="btn-primary w-full py-3 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Paylaş
+              {project.is_published ? 'Güncelle' : 'Paylaş'}
             </button>
 
             {/* Info Note */}
