@@ -175,13 +175,50 @@ export async function POST(request: NextRequest) {
       lang: 'tr',
     });
 
-    const payttrResponse = await fetch('https://www.paytr.com/odeme/api/get-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-
-    const payttrResult = await payttrResponse.json();
+    // PayTR API — iFrame token al (timeout + sağlam parse)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    let payttrResult: any;
+    try {
+      const payttrResponse = await fetch('https://www.paytr.com/odeme/api/get-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: controller.signal,
+      });
+      const text = await payttrResponse.text();
+      try {
+        payttrResult = JSON.parse(text);
+      } catch {
+        // Bazı hatalarda düz metin gelebilir
+        return NextResponse.json(
+          { success: false, error: `PayTR yanıt hatası: ${text.substring(0, 200)}` },
+          { status: 502 }
+        );
+      }
+    } catch (e: any) {
+      // Timeout veya ağ kesintisi
+      try {
+        await adminDb
+          .from('coin_payments')
+          .update({
+            status: 'failed',
+            metadata: {
+              package_name: pkg.name,
+              bonus_coins: pkg.bonus_coins || 0,
+              error: `PayTR bağlantı hatası: ${e?.name === 'AbortError' ? 'timeout' : (e?.message || 'unknown')}`,
+            },
+            completed_at: new Date().toISOString(),
+          })
+          .eq('payment_id', merchant_oid);
+      } catch {}
+      return NextResponse.json(
+        { success: false, error: 'PayTR bağlantı hatası. Lütfen tekrar deneyin.' },
+        { status: 504 }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (payttrResult.status === 'success') {
       return NextResponse.json({
