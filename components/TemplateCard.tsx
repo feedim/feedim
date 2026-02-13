@@ -1,7 +1,7 @@
 import Link from "next/link";
 import DOMPurify from "isomorphic-dompurify";
 import { Heart, Coins, Bookmark, Eye } from "lucide-react";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 
 interface TemplateCardProps {
   template: any;
@@ -34,37 +34,63 @@ export default function TemplateCard({
 }: TemplateCardProps) {
   const isPublished = template.projectStatus === 'published';
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const scrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const startAutoScroll = useCallback(() => {
+    if (isMobile) return;
     const iframe = iframeRef.current;
     if (!iframe) return;
     try {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!doc) return;
-      let scrollPos = 0;
-      scrollTimerRef.current = setInterval(() => {
-        scrollPos += 15;
-        doc.documentElement.scrollTop = scrollPos;
-        const maxScroll = doc.documentElement.scrollHeight - doc.documentElement.clientHeight;
-        if (maxScroll > 0 && scrollPos >= maxScroll) {
-          scrollPos = 0;
-          doc.documentElement.scrollTop = 0;
-        }
-      }, 8);
+      const maxScroll = doc.documentElement.scrollHeight - doc.documentElement.clientHeight;
+      if (maxScroll <= 0) return;
+
+      // Calculate jump positions based on content length
+      const steps = maxScroll > 3000 ? 5 : maxScroll > 1500 ? 4 : 3;
+      const positions: number[] = [];
+      for (let i = 0; i < steps; i++) {
+        positions.push(Math.round((maxScroll * i) / (steps - 1)));
+      }
+
+      doc.documentElement.style.scrollBehavior = 'smooth';
+      let idx = 0;
+
+      const jumpNext = () => {
+        idx++;
+        if (idx >= positions.length) idx = 0;
+        doc.documentElement.scrollTop = positions[idx];
+        scrollTimerRef.current = setTimeout(jumpNext, 1800);
+      };
+
+      // Start from top, wait a bit, then jump
+      doc.documentElement.scrollTop = 0;
+      scrollTimerRef.current = setTimeout(jumpNext, 1200);
     } catch { /* cross-origin, skip */ }
-  }, []);
+  }, [isMobile]);
 
   const stopAutoScroll = useCallback(() => {
     if (scrollTimerRef.current) {
-      clearInterval(scrollTimerRef.current);
+      clearTimeout(scrollTimerRef.current);
       scrollTimerRef.current = null;
     }
     const iframe = iframeRef.current;
     if (!iframe) return;
     try {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (doc) doc.documentElement.scrollTop = 0;
+      if (doc) {
+        doc.documentElement.style.scrollBehavior = 'auto';
+        doc.documentElement.scrollTop = 0;
+      }
     } catch { /* cross-origin, skip */ }
   }, []);
 
