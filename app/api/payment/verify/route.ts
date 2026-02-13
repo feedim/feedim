@@ -123,9 +123,9 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         amount: totalCoins,
-        type: 'purchase',
+        transaction_type: 'purchase',
         description: `${packageName} satın alındı`,
-        reference_id: payment.id,
+        reference_id: String(payment.id),
         reference_type: 'payment',
       });
 

@@ -81,9 +81,9 @@ export async function processCoinCommission(
       .insert({
         user_id: referrerId,
         amount: commission,
-        type: 'referral_commission',
+        transaction_type: 'referral_commission',
         description: 'Referans komisyonu (coin satın alma)',
-        reference_id: coinPaymentId,
+        reference_id: String(coinPaymentId),
         reference_type: 'coin_referral_commission',
       });
 

@@ -11,9 +11,8 @@ import { TransactionListSkeleton } from "@/components/Skeletons";
 
 interface Transaction {
   id: string;
-  type: string;
+  transaction_type: string;
   amount: number;
-  balance_after: number;
   description: string;
   created_at: string;
 }
