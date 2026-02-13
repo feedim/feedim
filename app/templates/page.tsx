@@ -81,7 +81,7 @@ export default function TemplatesPage() {
         <section className="pt-20 pb-12 border-b border-white/10">
           <div className="container mx-auto px-6">
             <div className="max-w-3xl">
-              <h1 className="text-4xl sm:text-5xl font-bold mb-6">
+              <h1 className="text-4xl sm:text-5xl font-bold mb-6" style={{ lineHeight: 1.2 }}>
                 Sevgi Dolu Şablonlar
               </h1>
               <p className="text-lg text-gray-400">

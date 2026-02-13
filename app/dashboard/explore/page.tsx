@@ -350,7 +350,7 @@ export default function ExplorePage() {
             </div>
           </div>
           <iframe
-            src={`/p/${inspectingProject.slug}`}
+            src={`/p/${inspectingProject.slug}?embed=1`}
             className="w-full h-full"
             sandbox="allow-scripts allow-same-origin"
           />

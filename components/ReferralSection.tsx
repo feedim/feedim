@@ -92,8 +92,8 @@ export default function ReferralSection({ userId }: { userId: string }) {
 
   const applyReferralCode = async () => {
     const code = referralInput.trim();
-    if (!code || !/^[a-zA-Z0-9]{1,20}$/.test(code)) {
-      toast.error('Geçersiz referans kodu');
+    if (!code || !/^[A-Z0-9]{4,8}$/.test(code)) {
+      toast.error('Geçersiz referans kodu (4-8 karakter, büyük harf/rakam)');
       return;
     }
     setSubmittingCode(true);
@@ -194,10 +194,10 @@ export default function ReferralSection({ userId }: { userId: string }) {
             <input
               type="text"
               value={referralInput}
-              onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
-              placeholder="Referans kodunu gir"
-              maxLength={20}
-              className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2 text-sm text-white"
+              onChange={(e) => setReferralInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              placeholder="Örn: A77856AB"
+              maxLength={8}
+              className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2 text-sm text-white uppercase tracking-widest font-mono"
             />
             <button onClick={applyReferralCode} disabled={submittingCode || !referralInput.trim()}
               className="btn-secondary px-4 py-2 h-auto text-sm disabled:opacity-50">

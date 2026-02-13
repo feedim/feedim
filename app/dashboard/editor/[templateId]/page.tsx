@@ -74,6 +74,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const redoStackRef = useRef<Record<string, string>[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
 
   const R2_DOMAINS = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
   const r2Proxy = typeof window !== 'undefined' ? `${window.location.origin}/api/r2/` : '/api/r2/';
@@ -93,6 +95,25 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     return migrated;
   };
   valuesRef.current = values;
+
+  const updateToolbarArrows = () => {
+    const el = document.getElementById('editor-toolbar-scroll');
+    if (!el) return;
+    setShowLeftArrow(el.scrollLeft > 5);
+    setShowRightArrow(el.scrollLeft < el.scrollWidth - el.clientWidth - 5);
+  };
+
+  useEffect(() => {
+    const el = document.getElementById('editor-toolbar-scroll');
+    if (!el) return;
+    el.addEventListener('scroll', updateToolbarArrows);
+    // Check initial state
+    const timer = setTimeout(updateToolbarArrows, 100);
+    return () => {
+      el.removeEventListener('scroll', updateToolbarArrows);
+      clearTimeout(timer);
+    };
+  }); // runs on every render to catch when toolbar appears
 
   const pushUndo = (snapshot: Record<string, string>) => {
     undoStackRef.current = [...undoStackRef.current.slice(-19), snapshot];
@@ -1223,16 +1244,18 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 {project && (
                   <>
                     {/* Scrollable tools area with arrow buttons */}
-                    <button
-                      onClick={() => {
-                        const el = document.getElementById('editor-toolbar-scroll');
-                        if (el) el.scrollBy({ left: -200, behavior: 'smooth' });
-                      }}
-                      className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition active:scale-95"
-                      aria-label="Sola kaydır"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </button>
+                    {showLeftArrow && (
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById('editor-toolbar-scroll');
+                          if (el) el.scrollBy({ left: -200, behavior: 'smooth' });
+                        }}
+                        className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition active:scale-95"
+                        aria-label="Sola kaydır"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                    )}
                     <div
                       id="editor-toolbar-scroll"
                       className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto"
@@ -1342,16 +1365,18 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         Önizleme
                       </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        const el = document.getElementById('editor-toolbar-scroll');
-                        if (el) el.scrollBy({ left: 200, behavior: 'smooth' });
-                      }}
-                      className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition active:scale-95"
-                      aria-label="Sağa kaydır"
-                    >
-                      <ArrowLeft className="h-4 w-4 rotate-180" />
-                    </button>
+                    {showRightArrow && (
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById('editor-toolbar-scroll');
+                          if (el) el.scrollBy({ left: 200, behavior: 'smooth' });
+                        }}
+                        className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition active:scale-95"
+                        aria-label="Sağa kaydır"
+                      >
+                        <ArrowLeft className="h-4 w-4 rotate-180" />
+                      </button>
+                    )}
                     {/* Publish button - always visible */}
                     <button
                       onClick={handlePublish}

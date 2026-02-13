@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Heart, ChevronDown } from "lucide-react";
+import { Heart, ChevronDown, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { CoinWallet } from "@/components/CoinWallet";
@@ -17,6 +17,8 @@ const ITEMS_PER_PAGE = 6;
 function DashboardNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -27,6 +29,11 @@ function DashboardNav() {
     if (moreOpen) document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
   }, [moreOpen]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+  };
 
   return (
     <nav className="w-full px-3 sm:px-6 lg:px-10 py-5 flex items-center justify-between">
@@ -40,6 +47,9 @@ function DashboardNav() {
         </Link>
         <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
           Sayfalarım
+        </Link>
+        <Link href="/dashboard/purchased" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+          Satın Alınanlar
         </Link>
         <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
           Profil
@@ -55,15 +65,21 @@ function DashboardNav() {
           </button>
           {moreOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-xl z-50">
-              <Link href="/dashboard/purchased" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
-                Satın Alınanlar
-              </Link>
               <Link href="/dashboard/saved" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
                 Kaydedilenler
               </Link>
               <Link href="/dashboard/transactions" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
                 İşlem Geçmişi
               </Link>
+              <div className="border-t border-white/10">
+                <button
+                  onClick={() => { setMoreOpen(false); handleSignOut(); }}
+                  className="w-full text-left px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Çıkış Yap
+                </button>
+              </div>
             </div>
           )}
         </div>

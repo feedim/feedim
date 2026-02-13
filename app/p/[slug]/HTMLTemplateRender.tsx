@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import { escapeHtml, sanitizeUrl } from "@/lib/security/sanitize";
 import DOMPurify from 'isomorphic-dompurify';
@@ -22,6 +22,12 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   const template = project.templates;
   const htmlData = project.hook_values || {};
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isEmbed, setIsEmbed] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsEmbed(params.get('embed') === '1');
+  }, []);
 
   // Add error handling for template scripts
   useEffect(() => {
@@ -221,13 +227,15 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
       {/* Spacer for music player */}
       {musicUrl && <div style={{ height: 72, background: 'lab(49.5493% 79.8381 2.31768)' }} />}
 
-      {/* Share Button */}
-      <ShareIconButton
-        url={`${typeof window !== "undefined" ? window.location.href : ""}`}
-        title={project.title}
-        variant="fixed"
-        size={18}
-      />
+      {/* Share Button — hidden in embed/inspect mode */}
+      {!isEmbed && (
+        <ShareIconButton
+          url={`${typeof window !== "undefined" ? window.location.href : ""}`}
+          title={project.title}
+          variant="fixed"
+          size={18}
+        />
+      )}
 
       {/* Music Player */}
       {musicUrl && <MusicPlayer musicUrl={musicUrl} />}
