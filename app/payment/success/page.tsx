@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, Coins, Heart, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function PaymentSuccessPage() {
   const [authorized, setAuthorized] = useState(false);
@@ -13,6 +14,7 @@ export default function PaymentSuccessPage() {
   const [coinsAdded, setCoinsAdded] = useState<number | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     const pending = sessionStorage.getItem("forilove_payment_pending");
@@ -32,10 +34,17 @@ export default function PaymentSuccessPage() {
     let cancelled = false;
     (async () => {
       try {
+        // Auth token al
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) { setVerifying(false); return; }
+
         const start = Date.now();
         // Callback'in tamamlanması için birkaç saniye bekle, sonra verify çağır
         while (!cancelled && Date.now() - start < 30000) {
-          const res = await fetch('/api/payment/verify', { method: 'POST' });
+          const res = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
           if (!res.ok) {
             // 5xx → tekrar dene
             await new Promise(r => setTimeout(r, 3000));

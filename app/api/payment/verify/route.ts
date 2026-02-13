@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -9,20 +8,28 @@ export const dynamic = 'force-dynamic';
  * Success sayfası bu endpoint'i çağırarak:
  * 1. Ödeme durumunu doğrular
  * 2. Callback çalışmadıysa coin'leri ekler (fallback)
+ *
+ * Auth: client Authorization: Bearer <token> header'ı gönderir
  */
 export async function POST(request: NextRequest) {
+  const adminClient = createAdminClient();
+
   try {
-    // Auth: kullanıcıyı doğrula
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Auth: Bearer token ile kullanıcıyı doğrula
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Missing token' }, { status: 401 });
+    }
+
+    const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const adminClient = createAdminClient();
-
-    // Kullanıcının son pending ödemesini bul
+    // Kullanıcının son pending/completed ödemesini bul
     const { data: payment, error: paymentError } = await adminClient
       .from('coin_payments')
       .select('*')
@@ -100,7 +107,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: 'error',
       message: 'Doğrulama sırasında hata oluştu',
-      debug: process.env.NODE_ENV !== 'production' ? error?.message : undefined,
     }, { status: 500 });
   }
 }
