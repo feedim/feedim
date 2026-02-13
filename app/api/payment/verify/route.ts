@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { processCoinCommission } from '@/lib/process-coin-commission';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5c. Transaction kaydı
-    await adminClient
+    const { error: txnError } = await adminClient
       .from('coin_transactions')
       .insert({
         user_id: user.id,
@@ -128,17 +129,13 @@ export async function POST(request: NextRequest) {
         reference_type: 'payment',
       });
 
-    // 5d. Referans komisyonu (kritik değil)
-    try {
-      const { error: commErr } = await adminClient.rpc('process_coin_referral_commission', {
-        p_buyer_user_id: user.id,
-        p_coin_payment_id: payment.id,
-        p_purchase_amount: totalCoins,
-      });
-      if (commErr) console.warn('[Verify] Commission error:', commErr.message);
-    } catch (e: any) {
-      console.warn('[Verify] Commission exception:', e?.message);
+    if (txnError) {
+      console.error('[Verify] Transaction insert failed:', txnError.message);
     }
+
+    // 5d. Referans komisyonu (kritik değil — direkt DB sorguları ile)
+    const commResult = await processCoinCommission(adminClient, user.id, payment.id, totalCoins);
+    console.warn('[Verify] Commission result:', JSON.stringify(commResult));
 
     return NextResponse.json({
       status: 'completed',

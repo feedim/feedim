@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { processCoinCommission } from '@/lib/process-coin-commission';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 3. Transaction kaydı
-      await supabase
+      const { error: txnError } = await supabase
         .from('coin_transactions')
         .insert({
           user_id: payment.user_id,
@@ -130,17 +131,13 @@ export async function POST(request: NextRequest) {
           reference_type: 'payment',
         });
 
-      // 4. Referans komisyonu (kritik değil)
-      try {
-        const { error: commErr } = await supabase.rpc('process_coin_referral_commission', {
-          p_buyer_user_id: payment.user_id,
-          p_coin_payment_id: payment.id,
-          p_purchase_amount: totalCoins,
-        });
-        if (commErr) console.warn('[PayTR Callback] Commission error:', commErr.message);
-      } catch (e: any) {
-        console.warn('[PayTR Callback] Commission exception:', e?.message);
+      if (txnError) {
+        console.error('[PayTR Callback] Transaction insert failed:', txnError.message);
       }
+
+      // 4. Referans komisyonu (kritik değil — direkt DB sorguları ile)
+      const commResult = await processCoinCommission(supabase, payment.user_id, payment.id, totalCoins);
+      console.warn('[PayTR Callback] Commission result:', JSON.stringify(commResult));
 
       console.warn('[PayTR Callback] ✓ Completed:', merchant_oid, 'coins:', totalCoins, 'balance:', newBalance);
 
