@@ -182,7 +182,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
   const handlePreview = () => {
     const previewWindow = window.open("", "_blank");
     if (previewWindow) {
-      const sanitized = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "meta", "title"], ADD_ATTR: ["target", "data-editable", "data-type", "data-hook"] });
+      const sanitized = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "meta", "title"], ADD_ATTR: ["target", "data-editable", "data-type", "data-hook", "data-locked"] });
       previewWindow.document.write(sanitized);
       previewWindow.document.close();
     }

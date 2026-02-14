@@ -179,7 +179,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   const sanitizedHtml = DOMPurify.sanitize(cleanHtml, {
     WHOLE_DOCUMENT: true,
     ADD_TAGS: ['iframe', 'video', 'audio', 'source', 'style', 'link'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'data-editable', 'data-type', 'data-label', 'media', 'data-list-item-class', 'data-list-sep-class', 'data-list-sep-html', 'data-list-duplicate'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'data-editable', 'data-type', 'data-label', 'data-locked', 'media', 'data-list-item-class', 'data-list-sep-class', 'data-list-sep-html', 'data-list-duplicate'],
     ALLOW_DATA_ATTR: true,
   });
 

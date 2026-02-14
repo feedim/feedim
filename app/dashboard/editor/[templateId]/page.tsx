@@ -25,6 +25,7 @@ interface TemplateHook {
   type: 'text' | 'image' | 'textarea' | 'color' | 'date' | 'url' | 'background-image' | 'list';
   label: string;
   defaultValue: string;
+  locked?: boolean;
 }
 
 export default function NewEditorPage({ params }: { params: Promise<{ templateId: string }> }) {
@@ -64,6 +65,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiPrompt, setAIPrompt] = useState('');
   const [aiLoading, setAILoading] = useState(false);
+  const FIELD_UNLOCK_COST = 15;
+  const [unlockedFields, setUnlockedFields] = useState<Set<string>>(new Set());
   const [selectedVisibility, setSelectedVisibility] = useState<boolean | null>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -99,6 +102,13 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     return migrated;
   };
   valuesRef.current = values;
+
+  const isFieldLocked = (hookKey: string): boolean => {
+    if (template?.coin_price > 0) return false;
+    const hook = hooks.find(h => h.key === hookKey);
+    if (!hook?.locked) return false;
+    return !unlockedFields.has(hookKey);
+  };
 
   const updateToolbarArrows = () => {
     const el = document.getElementById('editor-toolbar-scroll');
@@ -176,7 +186,9 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     // Listen for messages from iframe (srcDoc iframes have origin 'null')
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== 'null' && event.origin !== window.location.origin) return;
-      if (event.data?.type === 'EDIT_HOOK' && typeof event.data.key === 'string' && /^[a-zA-Z0-9_-]+$/.test(event.data.key)) {
+      if (event.data?.type === 'UNLOCK_HOOK' && typeof event.data.key === 'string' && /^[a-zA-Z0-9_-]+$/.test(event.data.key)) {
+        handleFieldUnlock(event.data.key);
+      } else if (event.data?.type === 'EDIT_HOOK' && typeof event.data.key === 'string' && /^[a-zA-Z0-9_-]+$/.test(event.data.key)) {
         // Use valuesRef to avoid stale closure
         setIsChangingImage(false);
         setDraftValue(valuesRef.current[event.data.key] || '');
@@ -459,10 +471,22 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
 
       setCoinBalance(profileRes.data?.coin_balance || 0);
 
-      const purchaseData = purchaseRes.data;
-      setIsPurchased(!!purchaseData);
-
+      let purchaseData = purchaseRes.data;
       const templateData = templateRes.data;
+
+      // Auto-purchase free templates (coin_price === 0)
+      if (!purchaseData && templateData.coin_price === 0) {
+        const { data: autoPurchase } = await supabase.from("purchases").insert({
+          user_id: user.id,
+          template_id: resolvedParams.templateId,
+          coins_spent: 0,
+          payment_method: "coins",
+          payment_status: "completed",
+        }).select().single();
+        if (autoPurchase) purchaseData = autoPurchase;
+      }
+
+      setIsPurchased(!!purchaseData);
 
       setTemplate(templateData);
 
@@ -524,6 +548,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             setProject(existingProject);
             setValues(migrateR2Urls(existingProject.hook_values || extractDefaults(parsedHooks)));
             setMusicUrl(existingProject.music_url || "");
+            setUnlockedFields(new Set(existingProject.unlocked_fields || []));
           } else {
             // Create new project
             // Güzel slug: baslik-rastgeleid formatında
@@ -684,11 +709,14 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           defaultValue = element.textContent?.trim() || '';
         }
 
+        const locked = element.getAttribute('data-locked') === 'true';
+
         hooks.push({
           key,
           type: type as TemplateHook['type'],
           label: label || key,
           defaultValue,
+          locked,
         });
       });
     }
@@ -825,10 +853,17 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       tapStyle.textContent = '* { -webkit-tap-highlight-color: transparent !important; }';
       doc.head.appendChild(tapStyle);
 
+      // Compute locked field keys for iframe injection
+      const lockedFieldKeys = hooks
+        .filter(h => h.locked && template?.coin_price === 0 && !unlockedFields.has(h.key))
+        .map(h => h.key);
+
       // Add click event listener script
       const script = doc.createElement('script');
       script.textContent = `
         document.addEventListener('DOMContentLoaded', function() {
+          var LOCKED_SET = new Set(${JSON.stringify(lockedFieldKeys)});
+
           // Capture ALL clicks at document level - check if click point has an editable underneath
           document.addEventListener('click', function(e) {
             var els = document.elementsFromPoint(e.clientX, e.clientY);
@@ -839,7 +874,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
-                window.parent.postMessage({ type: 'EDIT_HOOK', key: editable.getAttribute('data-editable') }, '*');
+                var key = editable.getAttribute('data-editable');
+                if (LOCKED_SET.has(key)) {
+                  window.parent.postMessage({ type: 'UNLOCK_HOOK', key: key }, '*');
+                } else {
+                  window.parent.postMessage({ type: 'EDIT_HOOK', key: key }, '*');
+                }
                 return;
               }
             }
@@ -858,15 +898,21 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             // Set cursor on topmost element (the one browser actually renders cursor for)
             var topEl = els[0];
             if (topEl) topEl.style.cursor = editable ? 'pointer' : '';
-            // Update hover outline
+            // Update hover outline — locked fields get grey/white border
             if (editable !== lastHovered) {
               if (lastHovered) {
                 lastHovered.style.outline = '2px solid transparent';
                 lastHovered.style.boxShadow = 'none';
               }
               if (editable) {
-                editable.style.outline = '2px solid #ec4899';
-                editable.style.boxShadow = '0 0 0 4px rgba(236, 72, 153, 0.1)';
+                var eKey = editable.getAttribute('data-editable');
+                if (LOCKED_SET.has(eKey)) {
+                  editable.style.outline = '2px solid rgba(255,255,255,0.4)';
+                  editable.style.boxShadow = '0 0 0 4px rgba(255,255,255,0.05)';
+                } else {
+                  editable.style.outline = '2px solid #ec4899';
+                  editable.style.boxShadow = '0 0 0 4px rgba(236, 72, 153, 0.1)';
+                }
               }
               lastHovered = editable;
             }
@@ -876,6 +922,16 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             // Init transition for smooth hover effect
             el.style.outline = '2px solid transparent';
             el.style.transition = 'outline 0.2s, box-shadow 0.2s';
+
+            // Lock icon overlay for locked fields
+            var elKey = el.getAttribute('data-editable');
+            if (LOCKED_SET.has(elKey)) {
+              el.style.position = el.style.position || 'relative';
+              var overlay = document.createElement('div');
+              overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);pointer-events:none;z-index:2;border-radius:inherit;';
+              overlay.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+              el.appendChild(overlay);
+            }
 
             // Color indicator badge for color-editable fields
             if (el.getAttribute('data-type') === 'color') {
@@ -1201,7 +1257,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const fillableTypes = new Set(['text', 'textarea', 'color', 'date', 'url']);
       const currentValues = valuesRef.current;
       const userHooks = hooks
-        .filter(h => !h.key.startsWith('__') && fillableTypes.has(h.type))
+        .filter(h => !h.key.startsWith('__') && fillableTypes.has(h.type) && !isFieldLocked(h.key))
         .map(h => ({ key: h.key, type: h.type, label: h.label, defaultValue: currentValues[h.key] || h.defaultValue }));
 
       const res = await fetch('/api/ai/generate', {
@@ -1236,6 +1292,45 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const closeEditModal = () => {
     setEditingHook(null);
     setIsChangingImage(false);
+  };
+
+  const handleFieldUnlock = async (hookKey: string) => {
+    const hook = hooks.find(h => h.key === hookKey);
+    if (!hook) return;
+
+    const result = await confirm({
+      itemName: `"${hook.label}" Kilidini Aç`,
+      description: "Bu alanı düzenlemek için kilidi açın",
+      coinCost: FIELD_UNLOCK_COST,
+      currentBalance: coinBalance,
+      icon: 'template',
+      allowCoupon: false,
+      onConfirm: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Oturum bulunamadı');
+
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('unlock_template_field', {
+          p_user_id: user.id,
+          p_project_id: project?.id,
+          p_field_key: hookKey,
+          p_cost: FIELD_UNLOCK_COST,
+        });
+
+        if (rpcError) throw rpcError;
+        if (!rpcResult?.success) {
+          return { success: false, error: rpcResult?.error || 'Alan kilidi açılamadı' };
+        }
+        return { success: true, newBalance: rpcResult.new_balance };
+      },
+    });
+
+    if (!result?.success) return;
+
+    setCoinBalance(result.newBalance);
+    setUnlockedFields(prev => new Set([...prev, hookKey]));
+
+    // Open edit modal for the newly unlocked field
+    openEditModal(hookKey);
   };
 
   const handleImageUpload = async (file: File) => {
@@ -1443,7 +1538,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 className="btn-primary px-6 py-2 text-sm flex items-center gap-2"
               >
                 <Coins className="h-4 w-4 text-yellow-300" />
-                {purchasing ? "..." : `${getActivePrice(template)} FL`}
+                {purchasing ? "..." : getActivePrice(template) === 0 ? "Ücretsiz" : `${getActivePrice(template)} FL`}
               </button>
             ) : (
               <>
@@ -1630,7 +1725,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-2 whitespace-nowrap truncate"
               >
                 <Coins className="h-4 w-4 text-yellow-300" />
-                {purchasing ? "..." : `${getActivePrice(template)} FL`}
+                {purchasing ? "..." : getActivePrice(template) === 0 ? "Ücretsiz" : `${getActivePrice(template)} FL`}
               </button>
             </div>
           </div>

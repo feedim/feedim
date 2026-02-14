@@ -99,15 +99,15 @@ export default function AffiliateDashboardPage() {
                       </button>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-center">
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-left">
                         <p className="text-[10px] text-zinc-400 mb-0.5">Toplam Kazanç</p>
                         <p className="text-sm font-bold text-pink-500">{sponsorBalance.totalEarnings.toLocaleString('tr-TR')}</p>
                       </div>
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-center">
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-left">
                         <p className="text-[10px] text-zinc-400 mb-0.5">Ödenen</p>
                         <p className="text-sm font-bold text-pink-400">{sponsorBalance.totalPaidOut.toLocaleString('tr-TR')}</p>
                       </div>
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-center">
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-left">
                         <p className="text-[10px] text-zinc-400 mb-0.5">Bekleyen</p>
                         <p className="text-sm font-bold text-pink-300">{sponsorBalance.totalPending.toLocaleString('tr-TR')}</p>
                       </div>

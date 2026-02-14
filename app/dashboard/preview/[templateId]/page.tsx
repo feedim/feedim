@@ -48,7 +48,7 @@ export default function PreviewPage() {
     try {
       const data = JSON.parse(raw);
       const { cleanHtml, scripts } = extractScripts(data.html || "");
-      setHtml(DOMPurify.sanitize(cleanHtml, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "iframe"], ADD_ATTR: ["target", "allow", "allowfullscreen", "frameborder", "data-editable", "data-type", "data-hook"], ALLOW_DATA_ATTR: true, ADD_DATA_URI_TAGS: ["img", "a", "source"] }));
+      setHtml(DOMPurify.sanitize(cleanHtml, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "iframe"], ADD_ATTR: ["target", "allow", "allowfullscreen", "frameborder", "data-editable", "data-type", "data-hook", "data-locked"], ALLOW_DATA_ATTR: true, ADD_DATA_URI_TAGS: ["img", "a", "source"] }));
       setTemplateScripts(scripts);
       setMusicUrl(data.musicUrl || "");
       if (data.templateName) {

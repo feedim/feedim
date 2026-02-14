@@ -160,7 +160,7 @@ export default function NewŞablonPage() {
         if (trimmed) scripts.push(trimmed);
         return '';
       });
-      const sanitized = DOMPurify.sanitize(withoutScripts, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "meta", "title"], ADD_ATTR: ["target", "data-editable", "data-type", "data-label", "data-css-property", "data-hook", "data-area", "data-area-label"], ALLOW_DATA_ATTR: true });
+      const sanitized = DOMPurify.sanitize(withoutScripts, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "meta", "title"], ADD_ATTR: ["target", "data-editable", "data-type", "data-label", "data-locked", "data-css-property", "data-hook", "data-area", "data-area-label"], ALLOW_DATA_ATTR: true });
       const scriptTags = scripts.map(s => `<script>${s}<\/script>`).join('\n');
       previewWindow.document.write(sanitized + scriptTags);
       previewWindow.document.close();

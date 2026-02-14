@@ -64,7 +64,7 @@ export default function TemplateCard({
         ) : template.html_content ? (
           <iframe
             ref={iframeRef}
-            srcDoc={DOMPurify.sanitize(template.html_content, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label'] })}
+            srcDoc={DOMPurify.sanitize(template.html_content, { WHOLE_DOCUMENT: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['data-editable', 'data-type', 'data-label', 'data-locked'] })}
             className="w-full h-full pointer-events-none scale-[0.3] origin-top-left"
             style={{ width: '333%', height: '333%' }}
             sandbox="allow-same-origin"
@@ -171,29 +171,33 @@ export default function TemplateCard({
           ) : (
             <div className="flex items-center gap-3">
               {showPrice && (
-                <>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Coins className="h-6 w-6 text-yellow-500" />
-                    {hasDiscount ? (
-                      <>
-                        <span className="text-base font-bold text-zinc-500 line-through decoration-red-500/70 decoration-2">
-                          {template.coin_price}
-                        </span>
+                template.coin_price === 0 ? (
+                  <span className="text-lg font-bold text-emerald-400 shrink-0">Ücretsiz</span>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Coins className="h-6 w-6 text-yellow-500" />
+                      {hasDiscount ? (
+                        <>
+                          <span className="text-base font-bold text-zinc-500 line-through decoration-red-500/70 decoration-2">
+                            {template.coin_price}
+                          </span>
+                          <span className="text-3xl font-black text-yellow-500">
+                            {template.discount_price}
+                          </span>
+                        </>
+                      ) : (
                         <span className="text-3xl font-black text-yellow-500">
-                          {template.discount_price}
+                          {template.coin_price || 0}
                         </span>
-                      </>
-                    ) : (
-                      <span className="text-3xl font-black text-yellow-500">
-                        {template.coin_price || 0}
-                      </span>
-                    )}
-                  </div>
-                  <div className="w-px h-8 bg-white/20 shrink-0"></div>
-                </>
+                      )}
+                    </div>
+                    <div className="w-px h-8 bg-white/20 shrink-0"></div>
+                  </>
+                )
               )}
               <div className="btn-primary flex-1 py-2.5 text-sm text-center pointer-events-none">
-                {isPurchased ? 'Yayına Al' : 'Satın Al'}
+                {isPurchased ? 'Yayına Al' : template.coin_price === 0 ? 'Keşfet' : 'Satın Al'}
               </div>
             </div>
           )}
