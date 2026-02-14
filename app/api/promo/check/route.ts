@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ valid: false });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("promo_links")
     .select("discount_percent, max_signups, current_signups, expires_at, is_active")
