@@ -305,21 +305,16 @@ export default function SecurityPage() {
                         <p className="text-xs text-zinc-500">{userEmail}</p>
                       </div>
                     </div>
-                    {role !== "affiliate" && (
-                      <button
-                        onClick={() => setShowDisablePassword(!showDisablePassword)}
-                        className="text-xs text-zinc-500 hover:text-red-400 transition"
-                      >
-                        Kapat
-                      </button>
-                    )}
-                    {role === "affiliate" && (
-                      <span className="text-xs text-zinc-600">Zorunlu</span>
-                    )}
+                    <button
+                      onClick={() => setShowDisablePassword(!showDisablePassword)}
+                      className="text-xs text-zinc-500 hover:text-red-400 transition"
+                    >
+                      Kapat
+                    </button>
                   </div>
 
                   {/* Disable 2FA - password required */}
-                  {showDisablePassword && role !== "affiliate" && (
+                  {showDisablePassword && (
                     <div className="space-y-3 bg-white/5 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-1">
                         <Lock className="h-4 w-4 text-zinc-400" />
