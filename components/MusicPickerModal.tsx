@@ -284,7 +284,7 @@ export default function MusicPickerModal({
                   </div>
 
                   {isSelected && (
-                    <div className="w-5.5 h-5.5 rounded-full bg-pink-500 flex items-center justify-center shrink-0 -ml-1">
+                    <div className="w-5.5 h-5.5 rounded-full bg-pink-500 flex items-center justify-center shrink-0" style={{ marginRight: 3 }}>
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   )}
@@ -346,27 +346,30 @@ export default function MusicPickerModal({
           )}
         </div>
 
-        {/* Footer Buttons */}
-        <div className="flex gap-3 px-4 pb-4 pt-2 shrink-0">
-          {(currentUrl || onRemove) && (
+        {/* Footer */}
+        <div className="px-4 pb-4 pt-2 shrink-0 space-y-2.5">
+          <p className="text-[10px] text-gray-500 text-center leading-tight">
+            Müzik YouTube&apos;dan oynatılır. Telif hakkı sorumluluğu kullanıcıya aittir.
+          </p>
+          <div className="flex gap-3">
+            {(currentUrl || onRemove) && (
+              <button
+                onClick={() => onRemove?.()}
+                className="flex-1 btn-secondary"
+                style={{ height: 44, lineHeight: '44px' }}
+              >
+                Müziği Kaldır
+              </button>
+            )}
             <button
-              onClick={() => onRemove?.()}
-              className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-white/5 text-red-400 hover:bg-white/10 transition-all"
+              onClick={handleSelect}
+              disabled={!hasSelection}
+              className="flex-1 btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ height: 44, lineHeight: '44px' }}
             >
-              Müziği Kaldır
+              Müzik Ekle
             </button>
-          )}
-          <button
-            onClick={handleSelect}
-            disabled={!hasSelection}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: hasSelection ? BRAND_PINK : "rgba(255,255,255,0.1)",
-              color: "white",
-            }}
-          >
-            Seç
-          </button>
+          </div>
         </div>
       </div>
     </div>
