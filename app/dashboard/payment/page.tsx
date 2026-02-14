@@ -121,12 +121,12 @@ export default function PaymentPage() {
           <div className="bg-zinc-900 rounded-2xl p-5 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400 mb-1">{data.package_name}</p>
+                <p className="text-sm text-zinc-400 mb-1">{data.package_name}</p>
                 <p className="text-xl font-bold text-yellow-500">
                   {totalCoins.toLocaleString()} FL
                 </p>
                 {data.bonus_coins > 0 && (
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-zinc-500 mt-0.5">
                     +{data.bonus_coins.toLocaleString()} bonus dahil
                   </p>
                 )}
@@ -172,7 +172,7 @@ export default function PaymentPage() {
                 allow="payment"
               />
             </div>
-            <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
               <Lock className="h-3.5 w-3.5" />
               <p>Ödeme süresince sayfayı kapatmayın. Tamamlandığında otomatik yönlendirileceksiniz.</p>
             </div>
@@ -181,24 +181,24 @@ export default function PaymentPage() {
           /* Loading State */
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Heart className="h-10 w-10 text-pink-500 fill-pink-500 animate-pulse" />
-            <p className="text-gray-400 text-sm">Ödeme formu yükleniyor...</p>
+            <p className="text-zinc-400 text-sm">Ödeme formu yükleniyor...</p>
           </div>
         ) : null}
 
         {/* Info & Legal */}
-        <div className="mt-6 bg-zinc-900/50 rounded-xl px-4 py-3 space-y-1.5 text-xs text-gray-500 font-medium">
+        <div className="mt-6 bg-zinc-900/50 rounded-xl px-4 py-3 space-y-1.5 text-xs text-zinc-500 font-medium">
           <p>Tüm işlemler 256-bit SSL şifreleme ve 3D Secure ile korunur.</p>
           <p>Ödeme altyapısı PayTR tarafından sağlanmaktadır.</p>
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2 justify-center text-xs font-semibold pt-4">
-          <Link href="/payment-security" className="text-gray-500 hover:text-white transition">
+          <Link href="/payment-security" className="text-zinc-500 hover:text-white transition">
             Ödeme Güvenliği
           </Link>
-          <Link href="/refund-policy" className="text-gray-500 hover:text-white transition">
+          <Link href="/refund-policy" className="text-zinc-500 hover:text-white transition">
             İade Politikası
           </Link>
-          <Link href="/distance-sales-contract" className="text-gray-500 hover:text-white transition">
+          <Link href="/distance-sales-contract" className="text-zinc-500 hover:text-white transition">
             Mesafeli Satış Sözleşmesi
           </Link>
         </div>

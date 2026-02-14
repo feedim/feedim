@@ -205,13 +205,13 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div>
             <h3 className="text-lg font-bold text-white">Satın Alma Onayı</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Satın almak için işlemi onaylayın</p>
+            <p className="text-xs text-zinc-400 mt-0.5">Satın almak için işlemi onaylayın</p>
           </div>
           <button
             onClick={onClose}
             disabled={loading}
             aria-label="Kapat"
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 text-zinc-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6 6 18" />
@@ -238,7 +238,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
           )}
           <div className="flex items-center justify-center gap-2 mt-1.5">
             {(options.originalPrice && options.originalPrice !== options.coinCost) || appliedCoupon ? (
-              <span className="text-xl font-bold text-gray-500 line-through decoration-red-500/70 decoration-2">
+              <span className="text-xl font-bold text-zinc-500 line-through decoration-red-500/70 decoration-2">
                 {appliedCoupon ? options.coinCost : options.originalPrice} FL
               </span>
             ) : null}
@@ -246,18 +246,18 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
               {effectiveCost} FL
             </span>
           </div>
-          <p className="text-sm text-gray-400">{options.itemName}</p>
+          <p className="text-sm text-zinc-400">{options.itemName}</p>
         </div>
 
         {/* Balance Info */}
         <div className="border border-white/10 rounded-xl p-3.5 flex flex-col gap-1.5">
           <div className="flex justify-between items-center pb-0.5">
-            <span className="text-[14px] text-gray-400">Mevcut bakiye:</span>
+            <span className="text-[14px] text-zinc-400">Mevcut bakiye:</span>
             <span className="text-[14px] font-semibold text-white">{options.currentBalance} FL</span>
           </div>
           <div className="h-px bg-yellow-500/10" />
           <div className="flex justify-between items-center pt-0.5">
-            <span className="text-[14px] text-gray-400">İşlem sonrası:</span>
+            <span className="text-[14px] text-zinc-400">İşlem sonrası:</span>
             <span className={`text-[14px] font-semibold ${insufficientBalance ? "text-red-500" : "text-yellow-500"}`}>
               {insufficientBalance ? "Yetersiz bakiye" : `${balanceAfter} FL`}
             </span>
@@ -272,7 +272,7 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
                 {!couponOpen ? (
                   <button
                     onClick={() => setCouponOpen(true)}
-                    className="w-full text-center text-[13px] text-gray-500 hover:text-gray-300 transition-colors py-0.5"
+                    className="w-full text-center text-[13px] text-zinc-500 hover:text-zinc-300 transition-colors py-0.5"
                   >
                     Kupon kodum var
                   </button>
@@ -310,11 +310,11 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
             ) : (
               <div className="flex items-center justify-between py-0.5">
                 <span className="text-sm text-yellow-500">
-                  {appliedCoupon.code} <span className="text-gray-500">·</span> <span className="text-gray-400">%{appliedCoupon.discountPercent} indirim</span>
+                  {appliedCoupon.code} <span className="text-zinc-500">·</span> <span className="text-zinc-400">%{appliedCoupon.discountPercent} indirim</span>
                 </span>
                 <button
                   onClick={handleRemoveCoupon}
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
                 >
                   Kaldır
                 </button>

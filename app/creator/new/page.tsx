@@ -183,7 +183,7 @@ export default function NewŞablonPage() {
               className="p-2 bg-[#1a1d23] hover:bg-[#22262e] rounded-lg border border-white/10 transition-all"
               aria-label={leftPanelOpen ? "Paneli Kapat" : "Paneli Aç"}
             >
-              <Menu className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <Menu className="h-4 w-4 text-zinc-400" aria-hidden="true" />
             </button>
           </div>
           <h1 className="text-lg font-semibold flex-1 ml-3">Yeni Şablon Oluştur</h1>
@@ -216,7 +216,7 @@ export default function NewŞablonPage() {
           {/* Settings */}
           <div className="p-6 border-b border-white/10 space-y-3">
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Sablon Adi</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Sablon Adi</label>
               <input
                 type="text"
                 value={name}
@@ -228,9 +228,9 @@ export default function NewŞablonPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Slug (URL)</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Slug (URL)</label>
               <div className="flex items-center gap-0 bg-black/40 border border-white/10 rounded-xl overflow-hidden">
-                <span className="text-xs text-gray-500 pl-3 shrink-0">forilove.com/p/</span>
+                <span className="text-xs text-zinc-500 pl-3 shrink-0">forilove.com/p/</span>
                 <input
                   type="text"
                   value={slug}
@@ -240,11 +240,11 @@ export default function NewŞablonPage() {
                   tabIndex={-1}
                 />
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">Şablon adından otomatik oluşturulur</p>
+              <p className="text-[11px] text-zinc-500 mt-1">Şablon adından otomatik oluşturulur</p>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Açıklama</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Açıklama</label>
               <input
                 type="text"
                 value={description}
@@ -253,11 +253,11 @@ export default function NewŞablonPage() {
                 placeholder="Kisaca sablonu tanitin"
                 maxLength={50}
               />
-              <p className="text-[11px] text-gray-500 mt-1 text-right">{description.length}/50</p>
+              <p className="text-[11px] text-zinc-500 mt-1 text-right">{description.length}/50</p>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Fiyat (FL)</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Fiyat (FL)</label>
               <input
                 type="number"
                 value={coinPrice}
@@ -274,7 +274,7 @@ export default function NewŞablonPage() {
 
           {/* HTML Editor */}
           <div className="flex-1 flex flex-col p-6 min-h-0">
-            <label className="block text-sm text-gray-400 mb-2">HTML Kodu</label>
+            <label className="block text-sm text-zinc-400 mb-2">HTML Kodu</label>
             <textarea
               value={htmlContent}
               onChange={(e) => setHtmlContent(e.target.value)}

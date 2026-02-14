@@ -84,7 +84,7 @@ export default function TemplatesPage() {
               <h1 className="text-4xl sm:text-5xl font-bold mb-6" style={{ lineHeight: 1.2 }}>
                 Sevgi Dolu Şablonlar
               </h1>
-              <p className="text-lg text-gray-400">
+              <p className="text-lg text-zinc-400">
                 Sevdikleriniz için özel olarak tasarlanmış profesyonel şablonlar. Yıldönümü, doğum günü ve özel günleriniz için hazır tasarımlar.
               </p>
             </div>
@@ -100,7 +100,7 @@ export default function TemplatesPage() {
           ) : templates.length === 0 ? (
             <div className="text-center py-20">
               <Heart className="h-20 w-20 text-pink-500/30 mx-auto mb-6" aria-hidden="true" />
-              <p className="text-xl text-gray-400">Henüz şablon eklenmedi.</p>
+              <p className="text-xl text-zinc-400">Henüz şablon eklenmedi.</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

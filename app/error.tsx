@@ -23,7 +23,7 @@ export default function Error({
 
         <h1 className="text-3xl font-bold mb-3 text-pink-500">Bir Şeyler Yanlış Gitti</h1>
 
-        <p className="text-gray-400 mb-8">
+        <p className="text-zinc-400 mb-8">
           Üzgünüz, bir hata oluştu. Lütfen sayfayı yenilemeyi deneyin veya ana sayfaya dönün.
         </p>
 

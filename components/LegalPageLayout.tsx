@@ -24,10 +24,10 @@ export default function LegalPageLayout({
       <main className={`container mx-auto px-3 sm:px-6 py-10 sm:py-16 ${maxWidthClass}`}>
         <h1 className="text-4xl font-bold mb-6">{title}</h1>
         {lastUpdated && (
-          <p className="text-gray-500 mb-8">Son güncelleme: {lastUpdated}</p>
+          <p className="text-zinc-500 mb-8">Son güncelleme: {lastUpdated}</p>
         )}
 
-        <div className="space-y-8 text-gray-400 leading-loose sm:leading-8">{children}</div>
+        <div className="space-y-8 text-zinc-400 leading-loose sm:leading-8">{children}</div>
       </main>
 
       <PublicFooter />

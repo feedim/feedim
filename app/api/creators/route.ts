@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Validate UUIDs
     const validIds = userIds.filter(
-      (id: string) => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)
+      (id: string) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     );
     if (validIds.length === 0) return NextResponse.json({});
 

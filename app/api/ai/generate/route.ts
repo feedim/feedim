@@ -244,7 +244,7 @@ Tüm ${hooks.length} alanı doldur: ${requiredKeys}`;
       if (!jsonMatch) throw new Error("No JSON found");
       aiValues = JSON.parse(jsonMatch[0]);
     } catch (e) {
-      console.error("AI JSON parse error. Raw response:", aiText.slice(0, 1000));
+      if (process.env.NODE_ENV === "development") console.error("AI JSON parse error. Raw response:", aiText.slice(0, 1000));
       return NextResponse.json({ error: "AI yanıtı parse edilemedi" }, { status: 500 });
     }
 
@@ -267,7 +267,7 @@ Tüm ${hooks.length} alanı doldur: ${requiredKeys}`;
 
     return NextResponse.json({ values: filteredValues });
   } catch (error: any) {
-    console.error("AI generate error:", error);
+    if (process.env.NODE_ENV === "development") console.error("AI generate error:", error);
     const message = error.message || "AI oluşturma hatası";
     const status = message.includes("zaman aşımı") ? 504 : 500;
     return NextResponse.json({ error: message }, { status });

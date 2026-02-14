@@ -132,7 +132,7 @@ export default function DisclaimerPage() {
               <a href="mailto:contact@forilove.com" className="text-pink-500 hover:text-pink-400">
                 contact@forilove.com
               </a>
-              <p className="text-sm mt-2 text-gray-500">
+              <p className="text-sm mt-2 text-zinc-500">
                 Bildirimlerde lütfen içeriğin bulunduğu URL'yi ve ihlal türünü belirtin.
               </p>
             </div>

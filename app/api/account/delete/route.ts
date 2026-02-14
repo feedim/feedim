@@ -98,7 +98,37 @@ export async function POST(request: Request) {
       .delete()
       .eq('user_id', userId);
 
-    // 10. Delete profile
+    // 10. Delete promo_signups (where user signed up via a promo)
+    await admin
+      .from('promo_signups')
+      .delete()
+      .eq('user_id', userId);
+
+    // 11. Delete promo_links (user's own promo links)
+    await admin
+      .from('promo_links')
+      .delete()
+      .eq('created_by', userId);
+
+    // 12. Delete affiliate_applications
+    await admin
+      .from('affiliate_applications')
+      .delete()
+      .eq('user_id', userId);
+
+    // 13. Delete affiliate_payouts
+    await admin
+      .from('affiliate_payouts')
+      .delete()
+      .eq('affiliate_user_id', userId);
+
+    // 14. Delete coin_payments
+    await admin
+      .from('coin_payments')
+      .delete()
+      .eq('user_id', userId);
+
+    // 15. Delete profile
     await admin
       .from('profiles')
       .delete()

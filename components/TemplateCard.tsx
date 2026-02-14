@@ -80,8 +80,8 @@ export default function TemplateCard({
       {/* Top Right: Save Button or View Count */}
       {exploreMode ? (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-          <Eye className="h-3.5 w-3.5 text-gray-300" />
-          <span className="text-xs font-medium text-gray-300">{exploreViewCount.toLocaleString()}</span>
+          <Eye className="h-3.5 w-3.5 text-zinc-300" />
+          <span className="text-xs font-medium text-zinc-300">{exploreViewCount.toLocaleString()}</span>
         </div>
       ) : showSaveButton ? (
         <button
@@ -127,7 +127,7 @@ export default function TemplateCard({
         <div>
           <h3 className="text-2xl font-bold mb-2 truncate">{template.name}</h3>
           {template.description && (
-            <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+            <p className="text-sm text-zinc-400 mb-4 line-clamp-2">
               {template.description}
             </p>
           )}
@@ -176,7 +176,7 @@ export default function TemplateCard({
                     <Coins className="h-6 w-6 text-yellow-500" />
                     {hasDiscount ? (
                       <>
-                        <span className="text-base font-bold text-gray-500 line-through decoration-red-500/70 decoration-2">
+                        <span className="text-base font-bold text-zinc-500 line-through decoration-red-500/70 decoration-2">
                           {template.coin_price}
                         </span>
                         <span className="text-3xl font-black text-yellow-500">
@@ -201,8 +201,8 @@ export default function TemplateCard({
           {/* Social proof */}
           {template.purchase_count > 0 && !isPurchased && !isPublished && (
             <div className="flex items-center gap-1.5 mt-2">
-              <Users className="h-3.5 w-3.5 text-gray-500" />
-              <span className="text-xs text-gray-500">{template.purchase_count} kişi aldı</span>
+              <Users className="h-3.5 w-3.5 text-zinc-500" />
+              <span className="text-xs text-zinc-500">{template.purchase_count} kişi aldı</span>
             </div>
           )}
         </div>

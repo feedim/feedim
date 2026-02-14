@@ -201,7 +201,7 @@ export default function ExplorePage() {
       <div className="h-dvh bg-black flex flex-col items-center justify-center text-white px-6">
         <Heart className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-3" />
         <h2 className="text-lg sm:text-xl font-bold mb-2">Henüz içerik yok</h2>
-        <p className="text-gray-400 text-sm text-center mb-6">Herkese açık paylaşılan sayfalar burada görünecek.</p>
+        <p className="text-zinc-400 text-sm text-center mb-6">Herkese açık paylaşılan sayfalar burada görünecek.</p>
         <Link href="/dashboard" className="btn-primary px-6 py-3">Ana Sayfa</Link>
         <MobileBottomNav />
       </div>

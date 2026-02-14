@@ -282,7 +282,7 @@ export default function ShareIconButton({
 
   const btnClass =
     variant === "ghost"
-      ? "p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+      ? "p-3 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
       : "rounded-full flex items-center justify-center transition-all duration-200 active:scale-95";
 
   const btnStyle: React.CSSProperties =

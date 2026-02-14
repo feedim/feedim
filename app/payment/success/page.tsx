@@ -99,13 +99,13 @@ export default function PaymentSuccessPage() {
               <h1 className="text-4xl font-bold text-yellow-500">
                 Ödeme Başarılı!
               </h1>
-              <p className="text-base text-gray-400">
+              <p className="text-base text-zinc-400">
                 {coinsAdded != null
                   ? `${coinsAdded} FL hesabınıza eklendi`
                   : 'FL\'leriniz hesabınıza eklendi'}
               </p>
               {coinBalance != null && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-zinc-500">
                   Güncel bakiyeniz: <span className="text-yellow-500 font-semibold">{coinBalance} FL</span>
                 </p>
               )}
@@ -115,7 +115,7 @@ export default function PaymentSuccessPage() {
               <h1 className="text-3xl font-bold text-yellow-500">
                 Ödeme Doğrulanıyor...
               </h1>
-              <p className="text-base text-gray-400">
+              <p className="text-base text-zinc-400">
                 Ödemeniz işleniyor, lütfen bekleyin
               </p>
             </>
@@ -124,7 +124,7 @@ export default function PaymentSuccessPage() {
               <h1 className="text-3xl font-bold text-red-500">
                 Doğrulama Zaman Aşımı
               </h1>
-              <p className="text-base text-gray-400">
+              <p className="text-base text-zinc-400">
                 Ödemeniz işleniyor olabilir. Bakiyeniz birkaç dakika içinde güncellenecektir.
                 Sorun devam ederse destek ile iletişime geçin.
               </p>

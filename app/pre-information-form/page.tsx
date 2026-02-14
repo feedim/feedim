@@ -14,7 +14,7 @@ export default function PreInformationFormPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "WebPage", name: "Ön Bilgilendirme Formu - Forilove", description: "Mesafeli Sözleşmeler Yönetmeliği uyarınca ön bilgilendirme formu.", url: "https://forilove.com/pre-information-form", isPartOf: { "@id": "https://forilove.com/#website" } }) }} />
 
         <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl p-6 mb-8">
-          <p className="text-gray-300 text-sm">
+          <p className="text-zinc-300 text-sm">
             <strong>Mesafeli Sözleşmeler Yönetmeliği</strong> (RG: 27.11.2014/29188) Madde 5 uyarınca
             düzenlenmiştir. Bu form, ödeme işleminden <strong>önce</strong> mutlaka okunmalı ve
             kabul edilmelidir.
@@ -26,7 +26,7 @@ export default function PreInformationFormPage() {
           {/* SATICI BİLGİLERİ */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">1. SATICI BİLGİLERİ</h2>
-            <div className="text-gray-300 space-y-2">
+            <div className="text-zinc-300 space-y-2">
               <p><strong>İşletme Adı:</strong> Forilove</p>
               <p><strong>Yetkili:</strong> Meral SÖZER</p>
               <p><strong>Adres:</strong> Zafer Mah. 547.1. Sk. No:224 Salihli/Manisa</p>
@@ -39,7 +39,7 @@ export default function PreInformationFormPage() {
           {/* ÜRÜN/HİZMET BİLGİLERİ */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">2. ÜRÜN/HİZMET BİLGİLERİ</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-white">Ürün Türü:</h3>
                 <p>Dijital İçerik (FL Coins - Dijital Para Birimi ve Premium Şablonlar)</p>
@@ -64,7 +64,7 @@ export default function PreInformationFormPage() {
                 <p className="mb-2">
                   <strong>KDV Oranı:</strong> %20
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-zinc-400">
                   Not: Fiyat bilgileri sipariş sırasında sepet sayfasında gösterilir.
                 </p>
               </div>
@@ -74,7 +74,7 @@ export default function PreInformationFormPage() {
           {/* ÖDEME BİLGİLERİ */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">3. ÖDEME VE TESLİMAT</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-white">Ödeme Şekli:</h3>
                 <ul className="list-disc list-inside ml-4 space-y-1">
@@ -91,7 +91,7 @@ export default function PreInformationFormPage() {
                   <strong>Dijital teslimat:</strong> Ödeme onayından sonra <strong>0-48 saat</strong> içinde
                   FL Coins kullanıcı hesabına otomatik olarak tanımlanır.
                 </p>
-                <p className="text-sm text-gray-400 mt-2">
+                <p className="text-sm text-zinc-400 mt-2">
                   Not: Çoğu ödemede FL Coins anında hesaba yüklenir. Nadir durumlarda banka onay
                   süreçleri nedeniyle 48 saate kadar sürebilir.
                 </p>
@@ -109,9 +109,9 @@ export default function PreInformationFormPage() {
           {/* CAYMA HAKKI */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">4. CAYMA HAKKI</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl p-6">
-                <p className="text-gray-300">
+                <p className="text-zinc-300">
                   <strong>ÖNEMLİ:</strong> FL Coins dijital içerik niteliğinde olduğundan, hesabınıza
                   tanımlandıktan sonra cayma hakkınız sona erer (6502 sayılı
                   Tüketicinin Korunması Hakkında Kanun, Madde 15/ı).
@@ -135,7 +135,7 @@ export default function PreInformationFormPage() {
                   <strong>contact@forilove.com</strong> adresine e-posta göndererek cayma hakkınızı
                   kullanabilirsiniz.
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-zinc-400">
                   E-postada belirtilmesi gerekenler: Ad-soyad, e-posta adresi, sipariş numarası
                 </p>
               </div>
@@ -153,7 +153,7 @@ export default function PreInformationFormPage() {
           {/* ŞİKAYET VE İTİRAZ */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">5. ŞİKAYET VE İTİRAZ</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <p>
                 Satın alınan ürün/hizmetle ilgili şikayet ve itirazlar için aşağıdaki
                 mercilere başvurulabilir:
@@ -187,7 +187,7 @@ export default function PreInformationFormPage() {
           {/* KİŞİSEL VERİLER */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">6. KİŞİSEL VERİLERİN KORUNMASI</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <p>
                 Kişisel verileriniz <strong>6698 sayılı KVKK</strong> (Kişisel Verilerin Korunması Kanunu)
                 uyarınca işlenmekte ve korunmaktadır.
@@ -209,7 +209,7 @@ export default function PreInformationFormPage() {
           {/* ONAY BEYANI */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">7. ONAY BEYANI</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <p>
                 Ödeme işlemini tamamlayarak aşağıdaki hususları <strong>kabul etmiş sayılırsınız</strong>:
               </p>
@@ -236,13 +236,13 @@ export default function PreInformationFormPage() {
           {/* İNDİRME BUTONU */}
           <div className="text-center pt-6">
             <PrintButton />
-            <p className="text-gray-500 text-sm mt-3">
+            <p className="text-zinc-500 text-sm mt-3">
               Bu formu yazdırabilir veya PDF olarak kaydedebilirsiniz
             </p>
           </div>
 
           {/* Son Güncelleme */}
-          <div className="text-center text-gray-500 text-sm pt-8 border-t border-white/10">
+          <div className="text-center text-zinc-500 text-sm pt-8 border-t border-white/10">
             <p>Son Güncelleme: Şubat 2026</p>
             <p className="mt-2">
               Sorularınız için:{" "}

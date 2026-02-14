@@ -40,14 +40,14 @@ export default function PaymentFailedPage() {
           <h1 className="text-4xl font-bold text-red-500">
             Ödeme Başarısız
           </h1>
-          <p className="text-xl text-gray-400">
+          <p className="text-xl text-zinc-400">
             İşlem tamamlanamadı
           </p>
         </div>
 
         {/* Info */}
         <div className="bg-zinc-900 rounded-2xl p-6 space-y-4">
-          <div className="text-left space-y-2 text-sm text-gray-400">
+          <div className="text-left space-y-2 text-sm text-zinc-400">
             <p>Ödeme işlemi sırasında bir hata oluştu. Olası nedenler:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Yetersiz bakiye</li>
@@ -59,7 +59,7 @@ export default function PaymentFailedPage() {
         </div>
 
         {/* Countdown */}
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-zinc-500">
           {countdown} saniye sonra coin sayfasına yönlendirileceksiniz...
         </p>
 
@@ -75,7 +75,7 @@ export default function PaymentFailedPage() {
               Ana Sayfaya Dön
           </Link>
 
-          <Link href="/help" className="block text-gray-400 hover:text-white transition-colors text-sm">
+          <Link href="/help" className="block text-zinc-400 hover:text-white transition-colors text-sm">
               Yardım Merkezi
           </Link>
         </div>

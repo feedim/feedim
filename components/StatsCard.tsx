@@ -15,7 +15,7 @@ export default function StatsCard({ icon: Icon, iconColor, iconBgColor, label, v
         <div className={`w-10 h-10 rounded-lg ${iconBgColor} flex items-center justify-center`}>
           <Icon className={`h-5 w-5 ${iconColor}`} />
         </div>
-        <h3 className="text-sm text-gray-400">{label}</h3>
+        <h3 className="text-sm text-zinc-400">{label}</h3>
       </div>
       <p className="text-3xl font-bold">{value}</p>
     </div>

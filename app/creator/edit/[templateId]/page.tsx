@@ -212,7 +212,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
               className="p-2 bg-[#1a1d23] hover:bg-[#22262e] rounded-lg border border-white/10 transition-all"
               aria-label={leftPanelOpen ? "Paneli Kapat" : "Paneli Aç"}
             >
-              <Menu className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <Menu className="h-4 w-4 text-zinc-400" aria-hidden="true" />
             </button>
           </div>
           <h1 className="text-lg font-semibold flex-1 ml-3">Şablon Düzenle</h1>
@@ -245,7 +245,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
           {/* Settings */}
           <div className="p-6 border-b border-white/10 space-y-3">
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Sablon Adi</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Sablon Adi</label>
               <input
                 type="text"
                 value={name}
@@ -257,9 +257,9 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Slug (URL)</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Slug (URL)</label>
               <div className="flex items-center gap-0 bg-black/40 border border-white/10 rounded-xl overflow-hidden">
-                <span className="text-xs text-gray-500 pl-3 shrink-0">forilove.com/p/</span>
+                <span className="text-xs text-zinc-500 pl-3 shrink-0">forilove.com/p/</span>
                 <input
                   type="text"
                   value={slug}
@@ -269,11 +269,11 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
                   tabIndex={-1}
                 />
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">Şablon adından otomatik oluşturulur</p>
+              <p className="text-[11px] text-zinc-500 mt-1">Şablon adından otomatik oluşturulur</p>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Açıklama</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Açıklama</label>
               <input
                 type="text"
                 value={description}
@@ -282,11 +282,11 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
                 placeholder="Kisaca sablonu tanitin"
                 maxLength={50}
               />
-              <p className="text-[11px] text-gray-500 mt-1 text-right">{description.length}/50</p>
+              <p className="text-[11px] text-zinc-500 mt-1 text-right">{description.length}/50</p>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Fiyat (FL)</label>
+              <label className="block text-sm text-zinc-400 mb-1.5">Fiyat (FL)</label>
               <input
                 type="number"
                 value={coinPrice}
@@ -321,7 +321,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">İndirimli Fiyat (FL)</label>
+                <label className="block text-xs text-zinc-500 mb-1">İndirimli Fiyat (FL)</label>
                 <input
                   type="number"
                   value={discountPrice ?? ""}
@@ -339,7 +339,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
               {discountPrice !== null && (
                 <>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">İndirim Nedeni</label>
+                    <label className="block text-xs text-zinc-500 mb-1">İndirim Nedeni</label>
                     <input
                       type="text"
                       value={discountLabel}
@@ -351,7 +351,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">İndirim Süresi</label>
+                    <label className="block text-xs text-zinc-500 mb-1">İndirim Süresi</label>
                     <select
                       value={discountDuration ?? ""}
                       onChange={(e) => {
@@ -380,7 +380,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
 
                   <div className="bg-pink-500/10 border border-pink-500/20 rounded-lg px-3 py-2">
                     <p className="text-xs text-pink-300">
-                      <span className="line-through text-gray-500">{coinPrice} FL</span>
+                      <span className="line-through text-zinc-500">{coinPrice} FL</span>
                       {" → "}
                       <span className="font-bold text-yellow-500">{discountPrice} FL</span>
                       {discountLabel && <span className="ml-1 text-pink-400">({discountLabel})</span>}
@@ -393,7 +393,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
 
           {/* HTML Editor */}
           <div className="flex-1 flex flex-col p-6 min-h-0">
-            <label className="block text-sm text-gray-400 mb-2">HTML Kodu</label>
+            <label className="block text-sm text-zinc-400 mb-2">HTML Kodu</label>
             <textarea
               value={htmlContent}
               onChange={(e) => setHtmlContent(e.target.value)}

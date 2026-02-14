@@ -100,7 +100,7 @@ RULES:
     return NextResponse.json({ html: updatedHtml });
 
   } catch (error: any) {
-    console.error("Refine error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Refine error:", error);
     if (error?.status === 429) {
       return NextResponse.json({ error: "AI meşgul. Birkaç saniye bekleyin." }, { status: 429 });
     }

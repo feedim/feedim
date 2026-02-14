@@ -155,7 +155,7 @@ export default function CoinsPage() {
           <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
             <Coins className="h-14 w-14 sm:h-20 sm:w-20 text-yellow-500 mb-3 sm:mb-4" />
             <h2 className="text-lg sm:text-2xl font-bold mb-2">Paketler yükleniyor</h2>
-            <p className="text-gray-400 mb-5 sm:mb-6 text-sm px-4">Coin paketleri henüz yapılandırılmamış.</p>
+            <p className="text-zinc-400 mb-5 sm:mb-6 text-sm px-4">Coin paketleri henüz yapılandırılmamış.</p>
             <button onClick={() => { if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="btn-primary">
               Geri Dön
             </button>
@@ -174,12 +174,12 @@ export default function CoinsPage() {
                   {totalCoins.toLocaleString()} FL
                 </div>
                 {pkg.bonus_coins > 0 && (
-                  <div className="text-sm text-gray-400 mb-2">
+                  <div className="text-sm text-zinc-400 mb-2">
                     +{pkg.bonus_coins.toLocaleString()} bonus coin
                   </div>
                 )}
                 <div className="text-3xl font-bold mb-0 leading-none">{pkg.price_try}₺</div>
-                <p className="text-sm text-gray-400">{pkg.name}</p>
+                <p className="text-sm text-zinc-400">{pkg.name}</p>
               </div>
 
               <input
@@ -218,18 +218,18 @@ export default function CoinsPage() {
 
               <div className="text-center space-y-4 pt-8 border-t border-white/10">
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-zinc-400">
                     Premium şablonların kilidini açmak için FL kullanın
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 justify-center text-sm">
-                  <Link href="/fl-coins" className="text-gray-400 hover:text-white transition">
+                  <Link href="/fl-coins" className="text-zinc-400 hover:text-white transition">
                     FL Hakkında
                   </Link>
-                  <Link href="/payment-security" className="text-gray-400 hover:text-white transition">
+                  <Link href="/payment-security" className="text-zinc-400 hover:text-white transition">
                     Ödeme Güvenliği
                   </Link>
-                  <Link href="/refund-policy" className="text-gray-400 hover:text-white transition">
+                  <Link href="/refund-policy" className="text-zinc-400 hover:text-white transition">
                     İade Politikası
                   </Link>
                 </div>

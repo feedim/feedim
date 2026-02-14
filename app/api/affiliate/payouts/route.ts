@@ -140,7 +140,7 @@ export async function GET() {
       payouts: allPayouts,
     });
   } catch (error) {
-    console.error("Affiliate payouts GET error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate payouts GET error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ payout });
   } catch (error) {
-    console.error("Affiliate payouts POST error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate payouts POST error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

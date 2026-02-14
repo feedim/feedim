@@ -49,7 +49,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Admin affiliate applications GET error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin affiliate applications GET error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -113,7 +113,7 @@ export async function PUT(request: NextRequest) {
         .eq("user_id", application.user_id);
 
       if (roleError) {
-        console.error("Role update error:", roleError);
+        if (process.env.NODE_ENV === "development") console.error("Role update error:", roleError);
         // Rollback application status
         await admin
           .from("affiliate_applications")
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (error) {
-    console.error("Admin affiliate applications PUT error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin affiliate applications PUT error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

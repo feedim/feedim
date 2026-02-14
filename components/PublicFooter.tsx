@@ -8,43 +8,43 @@ export default function PublicFooter() {
         {/* Links + Payment */}
         <div className="flex flex-col items-center gap-6 mb-8">
           <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm justify-center max-w-4xl">
-            <Link href="/templates" className="text-gray-400 hover:text-white transition">
+            <Link href="/templates" className="text-zinc-400 hover:text-white transition">
               Şablonlar
             </Link>
-            <Link href="/blog" className="text-gray-400 hover:text-white transition">
+            <Link href="/blog" className="text-zinc-400 hover:text-white transition">
               Blog
             </Link>
-            <Link href="/about" className="text-gray-400 hover:text-white transition">
+            <Link href="/about" className="text-zinc-400 hover:text-white transition">
               Hakkımızda
             </Link>
-            <Link href="/contact" className="text-gray-400 hover:text-white transition">
+            <Link href="/contact" className="text-zinc-400 hover:text-white transition">
               İletişim
             </Link>
-            <Link href="/affiliate" className="text-gray-400 hover:text-white transition">
-              Affiliate Program
+            <Link href="/affiliate" className="text-zinc-400 hover:text-white transition">
+              Satış Ortağımız Olun
             </Link>
-            <Link href="/distance-sales-contract" className="text-gray-400 hover:text-white transition">
+            <Link href="/distance-sales-contract" className="text-zinc-400 hover:text-white transition">
               Mesafeli Satış Sözleşmesi
             </Link>
-            <Link href="/pre-information-form" className="text-gray-400 hover:text-white transition">
+            <Link href="/pre-information-form" className="text-zinc-400 hover:text-white transition">
               Ön Bilgilendirme
             </Link>
-            <Link href="/disclaimer" className="text-gray-400 hover:text-white transition">
+            <Link href="/disclaimer" className="text-zinc-400 hover:text-white transition">
               Sorumluluk Reddi
             </Link>
-            <Link href="/fl-coins" className="text-gray-400 hover:text-white transition">
+            <Link href="/fl-coins" className="text-zinc-400 hover:text-white transition">
               FL
             </Link>
-            <Link href="/payment-security" className="text-gray-400 hover:text-white transition">
+            <Link href="/payment-security" className="text-zinc-400 hover:text-white transition">
               Ödeme Güvenliği
             </Link>
-            <Link href="/refund-policy" className="text-gray-400 hover:text-white transition">
+            <Link href="/refund-policy" className="text-zinc-400 hover:text-white transition">
               İade Politikası
             </Link>
-            <Link href="/privacy" className="text-gray-400 hover:text-white transition">
+            <Link href="/privacy" className="text-zinc-400 hover:text-white transition">
               Gizlilik
             </Link>
-            <Link href="/terms" className="text-gray-400 hover:text-white transition">
+            <Link href="/terms" className="text-zinc-400 hover:text-white transition">
               Kullanım Koşulları
             </Link>
           </div>
@@ -76,13 +76,13 @@ export default function PublicFooter() {
           </div>
 
           {/* Center: Venivex */}
-          <a href="https://venivex.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition">
+          <a href="https://venivex.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 transition">
             <img src="https://venivex.com/assets/images/logo.png" alt="Venivex" className="h-4 w-auto opacity-60" />
             <span className="text-xs">VENİVEX Tarafından geliştirildi</span>
           </a>
 
           {/* Right: Copyright */}
-          <p className="text-xs text-gray-500">&copy; 2026 Forilove</p>
+          <p className="text-xs text-zinc-500">&copy; 2026 Forilove</p>
         </div>
       </div>
     </footer>

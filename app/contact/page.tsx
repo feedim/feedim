@@ -20,7 +20,7 @@ export default function ContactPage() {
         <h1 className="text-4xl font-bold mb-6">İletişim</h1>
 
         <div className="space-y-8">
-          <p className="text-gray-400">
+          <p className="text-zinc-400">
             Sizden haber almak isteriz. İster bir sorunuz olsun, ister geri bildirim paylaşmak
             isteyin, ister desteğe ihtiyacınız olsun, bizimle iletişime geçmekten çekinmeyin.
           </p>
@@ -32,7 +32,7 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <p className="text-gray-400 mb-2">
+              <p className="text-zinc-400 mb-2">
                 Genel sorular ve iletişim için:
               </p>
               <a
@@ -44,7 +44,7 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <p className="text-gray-400 mb-2">
+              <p className="text-zinc-400 mb-2">
                 Teknik destek ve yardım için:
               </p>
               <a
@@ -56,7 +56,7 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <p className="text-gray-400 mb-2">
+              <p className="text-zinc-400 mb-2">
                 Affiliate Program başvuru ve destek için:
               </p>
               <a
@@ -70,7 +70,7 @@ export default function ContactPage() {
 
           <div className="border border-white/10 rounded-xl p-8">
             <h2 className="text-xl font-semibold mb-4">Çalışma Saatleri</h2>
-            <div className="text-gray-400 space-y-2">
+            <div className="text-zinc-400 space-y-2">
               <p>Pazartesi - Cuma: 09:00 - 18:00 (Türkiye Saati)</p>
               <p>Cumartesi - Pazar: Kapalı</p>
             </div>
@@ -78,7 +78,7 @@ export default function ContactPage() {
 
           <div className="border border-white/10 rounded-xl p-8">
             <h2 className="text-xl font-semibold mb-4">Yanıt Süresi</h2>
-            <p className="text-gray-400">
+            <p className="text-zinc-400">
               Genellikle iş günlerinde 24 saat içinde tüm sorulara yanıt veriyoruz.
               Acil konular için lütfen e-posta başlığınızda "ACİL" belirtin.
             </p>

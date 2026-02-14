@@ -207,7 +207,7 @@ export default function CreatorDashboard() {
           <div className="text-center py-20">
             <Heart className="h-16 w-16 text-white mx-auto mb-4 opacity-20" />
             <h2 className="text-xl font-bold mb-2">Henüz şablon yok</h2>
-            <p className="text-gray-400 text-sm mb-6">İlk şablonunuzu oluşturun.</p>
+            <p className="text-zinc-400 text-sm mb-6">İlk şablonunuzu oluşturun.</p>
           </div>
         ) : (
           <>

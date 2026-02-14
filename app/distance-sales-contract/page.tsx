@@ -20,7 +20,7 @@ export default function DistanceSalesContractPage() {
             <div className="space-y-4">
               <div>
                 <h3 className="text-xl font-semibold mb-2 text-white">SATICI BİLGİLERİ:</h3>
-                <div className="text-gray-300 space-y-1">
+                <div className="text-zinc-300 space-y-1">
                   <p><strong>İşletme Adı:</strong> Forilove</p>
                   <p><strong>Yetkili:</strong> Meral SÖZER</p>
                   <p><strong>Adres:</strong> Zafer Mah. 547.1. Sk. No:224 Salihli/Manisa</p>
@@ -32,7 +32,7 @@ export default function DistanceSalesContractPage() {
 
               <div>
                 <h3 className="text-xl font-semibold mb-2 text-white">ALICI BİLGİLERİ:</h3>
-                <p className="text-gray-300">Sistemde kayıtlı kullanıcı bilgileri geçerlidir.</p>
+                <p className="text-zinc-300">Sistemde kayıtlı kullanıcı bilgileri geçerlidir.</p>
               </div>
             </div>
           </section>
@@ -40,7 +40,7 @@ export default function DistanceSalesContractPage() {
           {/* MADDE 2 */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">MADDE 2: SÖZLEŞMENİN KONUSU</h2>
-            <p className="text-gray-300">
+            <p className="text-zinc-300">
               İşbu sözleşmenin konusu, ALICI'nın SATICI'ya ait <strong>forilove.com</strong> internet
               sitesinden elektronik ortamda siparişini yaptığı, aşağıda nitelikleri ve satış fiyatı
               belirtilen dijital ürün/hizmetin satışı ve teslimi ile ilgili olarak <strong>6502 sayılı
@@ -52,7 +52,7 @@ export default function DistanceSalesContractPage() {
           {/* MADDE 3 */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">MADDE 3: ÜRÜN/HİZMET BİLGİLERİ</h2>
-            <div className="text-gray-300 space-y-2">
+            <div className="text-zinc-300 space-y-2">
               <p><strong>Ürün/Hizmet:</strong> FL Coins (Dijital Para Birimi) ve Premium Şablonlar</p>
               <p><strong>Miktar:</strong> Kullanıcının seçtiği paket/şablon</p>
               <p><strong>Birim Fiyat:</strong> Paket/şablon bazında değişkenlik gösterir</p>
@@ -66,7 +66,7 @@ export default function DistanceSalesContractPage() {
           {/* MADDE 4 */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">MADDE 4: CAYMA HAKKI</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <p>
                 <strong>4.1.</strong> ALICI, dijital içerik niteliğindeki <strong>FL Coins'in</strong>
                 hesabına tanımlanması ile cayma hakkını kaybeder (6502 sayılı Tüketicinin Korunması
@@ -105,7 +105,7 @@ export default function DistanceSalesContractPage() {
           {/* MADDE 5 */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">MADDE 5: ÖDEME VE TESLİMAT</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <p>
                 <strong>5.1.</strong> Ödemeler <strong>SSL sertifikalı</strong> ve <strong>3D Secure
                 korumalı</strong> güvenli ödeme sistemi (PayTR) üzerinden alınır.
@@ -131,7 +131,7 @@ export default function DistanceSalesContractPage() {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-white">ALICI'nın Yükümlülükleri:</h3>
-                <ul className="list-disc list-inside ml-4 space-y-1 text-gray-300">
+                <ul className="list-disc list-inside ml-4 space-y-1 text-zinc-300">
                   <li>Doğru ve güncel bilgi sağlamak</li>
                   <li>Kullanım koşullarına uymak</li>
                   <li>FL Coins'leri kendi kullanımı için satın almak</li>
@@ -142,7 +142,7 @@ export default function DistanceSalesContractPage() {
 
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-white">SATICI'nın Yükümlülükleri:</h3>
-                <ul className="list-disc list-inside ml-4 space-y-1 text-gray-300">
+                <ul className="list-disc list-inside ml-4 space-y-1 text-zinc-300">
                   <li>Hizmeti kesintisiz sunmak için makul çaba göstermek</li>
                   <li>Kişisel verileri korumak (KVKK uyumlu)</li>
                   <li>Ödeme güvenliğini sağlamak</li>
@@ -155,7 +155,7 @@ export default function DistanceSalesContractPage() {
           {/* MADDE 7 */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">MADDE 7: UYUŞMAZLIK ÇÖZÜMÜ</h2>
-            <div className="text-gray-300 space-y-3">
+            <div className="text-zinc-300 space-y-3">
               <p>
                 <strong>7.1.</strong> İşbu sözleşmeden doğan uyuşmazlıklarda <strong>İstanbul
                 Mahkemeleri ve İcra Daireleri</strong> yetkilidir.
@@ -177,19 +177,19 @@ export default function DistanceSalesContractPage() {
           {/* MADDE 8 */}
           <section className="bg-zinc-900 rounded-xl p-6">
             <h2 className="text-2xl font-bold mb-4 text-pink-500">MADDE 8: YÜRÜRLÜK</h2>
-            <p className="text-gray-300">
+            <p className="text-zinc-300">
               ALICI, işbu Mesafeli Satış Sözleşmesi'nin tüm maddelerini okuduğunu, anladığını,
               içeriğini kabul ettiğini ve elektronik ortamda onay vererek sözleşmeyi
               imzalamış/akdetmiş sayılacağını beyan ve kabul eder.
             </p>
-            <p className="text-gray-300 mt-3">
+            <p className="text-zinc-300 mt-3">
               İşbu sözleşme, ALICI'nın siparişi onaylaması ile yürürlüğe girer.
             </p>
           </section>
 
           {/* UYARI */}
           <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl p-6">
-            <p className="text-gray-300 text-sm">
+            <p className="text-zinc-300 text-sm">
               <strong>ÖNEMLİ:</strong> Bu sözleşme, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler
               Yönetmeliği (27.11.2014/29188) uyarınca düzenlenmiştir. Sözleşme, taraflar arasında
               akdedildiği tarihten itibaren <strong>3 (üç) yıl süreyle saklanacaktır</strong>.
@@ -197,7 +197,7 @@ export default function DistanceSalesContractPage() {
           </div>
 
           {/* Son Güncelleme */}
-          <div className="text-center text-gray-500 text-sm pt-8">
+          <div className="text-center text-zinc-500 text-sm pt-8">
             <p>Son Güncelleme: Şubat 2026</p>
             <p className="mt-2">
               Bu sözleşme hakkında sorularınız için:{" "}

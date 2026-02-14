@@ -62,7 +62,7 @@ export default function WelcomeCouponModal({ code, discountPercent, expiresAt, o
         {/* Title */}
         <div className="text-center">
           <h3 className="text-xl font-bold text-white mb-1">Hos geldiniz!</h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-zinc-400">
             Size ozel %{discountPercent} indirim kuponu hediye ettik.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default function WelcomeCouponModal({ code, discountPercent, expiresAt, o
         </div>
 
         {/* Info */}
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs text-zinc-500 text-center">
           {daysLeft !== null ? `${daysLeft} gün geçerli` : "Süreli kupon"} · Şablon satın alımında geçerli · 1 kullanım
         </p>
 

@@ -177,14 +177,14 @@ export default function MusicPickerModal({
               <Music className="h-4.5 w-4.5 text-pink-400" />
               Müzik Seç
             </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <p className="text-[11px] text-zinc-400 mt-0.5">
               YouTube&apos;da arayın veya listeden seçin
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Kapat"
-            className="rounded-full p-1.5 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+            className="rounded-full p-1.5 bg-white/10 text-zinc-400 hover:text-white hover:bg-white/15 transition-all"
           >
             <X className="h-4.5 w-4.5" />
           </button>
@@ -193,13 +193,13 @@ export default function MusicPickerModal({
         {/* Search */}
         <div className="px-4 pt-3 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/30 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/30 transition-all"
               placeholder="YouTube'da şarkı ara..."
             />
           </div>
@@ -213,12 +213,12 @@ export default function MusicPickerModal({
           {searching && displayTracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8">
               <HeartLoader />
-              <p className="text-xs text-gray-500 mt-3">Aranıyor...</p>
+              <p className="text-xs text-zinc-500 mt-3">Aranıyor...</p>
             </div>
           ) : displayTracks.length === 0 && searchQuery.length >= 2 ? (
             <div className="text-center py-8">
-              <Music className="h-7 w-7 text-gray-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Sonuç bulunamadı</p>
+              <Music className="h-7 w-7 text-zinc-600 mx-auto mb-2" />
+              <p className="text-sm text-zinc-500">Sonuç bulunamadı</p>
             </div>
           ) : (
             displayTracks.map((track) => {
@@ -245,7 +245,7 @@ export default function MusicPickerModal({
                     <p className="text-sm font-medium text-white truncate">
                       {track.title}
                     </p>
-                    <p className="text-[11px] text-gray-400 truncate">
+                    <p className="text-[11px] text-zinc-400 truncate">
                       {track.artist}
                     </p>
                   </div>
@@ -263,7 +263,7 @@ export default function MusicPickerModal({
 
         {/* Footer */}
         <div className="px-4 pb-4 pt-2.5 shrink-0 border-t border-white/5 space-y-2.5">
-          <p className="text-[10px] text-gray-500 text-center leading-tight">
+          <p className="text-[10px] text-zinc-500 text-center leading-tight">
             Müzik YouTube&apos;dan oynatılır. Telif hakkı sorumluluğu kullanıcıya aittir.
           </p>
           <div className="flex gap-3">

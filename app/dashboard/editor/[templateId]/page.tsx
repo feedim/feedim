@@ -1435,7 +1435,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           {/* Desktop buttons - hidden on mobile, max-width prevents overlap with absolute title */}
           <div className="hidden md:flex items-center gap-2 max-w-[calc(100vw-480px)]">
             {loading ? (
-              <div className="text-sm text-gray-400">Yükleniyor...</div>
+              <div className="text-sm text-zinc-400">Yükleniyor...</div>
             ) : !isPurchased ? (
               <button
                 onClick={handlePurchase}
@@ -1763,7 +1763,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Heart className="h-10 w-10 text-pink-500 fill-pink-500 animate-pulse" />
                   <p className="text-white text-sm font-medium">Oluşturuluyor...</p>
-                  <p className="text-gray-500 text-xs">Bu işlem birkaç saniye sürebilir</p>
+                  <p className="text-zinc-500 text-xs">Bu işlem birkaç saniye sürebilir</p>
                 </div>
               ) : (
                 <>
@@ -1773,12 +1773,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         <Sparkles className="h-5 w-5" style={{ color: 'lab(49.5493% 79.8381 2.31768)' }} />
                         AI ile Doldur
                       </h3>
-                      <p className="text-xs text-gray-400">Tek cümleyle tüm alanları doldurun</p>
+                      <p className="text-xs text-zinc-400">Tek cümleyle tüm alanları doldurun</p>
                     </div>
                     <button
                       onClick={() => setShowAIModal(false)}
                       aria-label="Kapat"
-                      className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+                      className="rounded-full p-2 bg-white/10 text-zinc-400 hover:text-white hover:bg-white/15 transition-all"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -1800,8 +1800,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       autoFocus
                     />
                     <div className="flex items-center justify-between mt-1.5">
-                      <p className="text-xs text-gray-500">Geri Al ile değişiklikleri iptal edebilirsiniz</p>
-                      <p className="text-[11px] text-gray-500">{aiPrompt.length}/500</p>
+                      <p className="text-xs text-zinc-500">Geri Al ile değişiklikleri iptal edebilirsiniz</p>
+                      <p className="text-[11px] text-zinc-500">{aiPrompt.length}/500</p>
                     </div>
                   </div>
 
@@ -1843,12 +1843,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     <LayoutGrid className="h-5 w-5 text-pink-400" />
                     Bölümler
                   </h3>
-                  <p className="text-xs text-gray-400">Görünmesini istemediğiniz alanları kapatabilirsiniz</p>
+                  <p className="text-xs text-zinc-400">Görünmesini istemediğiniz alanları kapatabilirsiniz</p>
                 </div>
                 <button
                   onClick={() => setShowSectionsModal(false)}
                   aria-label="Kapat"
-                  className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+                  className="rounded-full p-2 bg-white/10 text-zinc-400 hover:text-white hover:bg-white/15 transition-all"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1874,7 +1874,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           : 'border-white/10 bg-white/5'
                       }`}
                     >
-                      <span className={`text-sm font-medium ${isHidden ? 'text-gray-500 line-through' : 'text-white'}`}>
+                      <span className={`text-sm font-medium ${isHidden ? 'text-zinc-500 line-through' : 'text-white'}`}>
                         {area.label}
                       </span>
                       <div
@@ -1935,12 +1935,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
                   <div>
                     <h3 className="text-lg font-bold text-white truncate max-w-[200px]">{currentHook.label}</h3>
-                    <p className="text-xs text-gray-400">Düzenle</p>
+                    <p className="text-xs text-zinc-400">Düzenle</p>
                   </div>
                   <button
                     onClick={closeEditModal}
                     aria-label="Kapat"
-                    className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+                    className="rounded-full p-2 bg-white/10 text-zinc-400 hover:text-white hover:bg-white/15 transition-all"
                   >
                     <X className="h-5 w-5" aria-hidden="true" />
                   </button>
@@ -1952,7 +1952,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     <div className="space-y-3">
                       {draftListItems.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-3 group">
-                          <span className="shrink-0 w-6 text-center text-xs font-medium text-gray-500">{idx + 1}</span>
+                          <span className="shrink-0 w-6 text-center text-xs font-medium text-zinc-500">{idx + 1}</span>
                           <div className="flex-1 relative">
                             <input
                               type="text"
@@ -1979,7 +1979,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           {draftListItems.length > 1 && (
                             <button
                               onClick={() => setDraftListItems(prev => prev.filter((_, i) => i !== idx))}
-                              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-red-400 hover:bg-white/10 transition-all"
+                              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-red-400 hover:bg-white/10 transition-all"
                               aria-label="Sil"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1991,12 +1991,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       {draftListItems.length < 20 && (
                         <button
                           onClick={() => setDraftListItems(prev => [...prev, ''])}
-                          className="w-full py-2.5 border border-dashed border-white/15 rounded-xl text-sm text-gray-500 hover:border-pink-500/40 hover:text-gray-300 transition-all flex items-center justify-center gap-1.5"
+                          className="w-full py-2.5 border border-dashed border-white/15 rounded-xl text-sm text-zinc-500 hover:border-pink-500/40 hover:text-zinc-300 transition-all flex items-center justify-center gap-1.5"
                         >
                           <span className="text-base leading-none">+</span> Yeni Ekle
                         </button>
                       )}
-                      <p className="text-[11px] text-gray-600 text-right">{draftListItems.length}/20</p>
+                      <p className="text-[11px] text-zinc-600 text-right">{draftListItems.length}/20</p>
                     </div>
                   ) : currentHook.type === 'textarea' ? (
                     <div>
@@ -2009,7 +2009,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         maxLength={1000}
                         autoFocus
                       />
-                      <p className="text-[11px] text-gray-500 mt-1 text-right">{draftValue.length}/1000</p>
+                      <p className="text-[11px] text-zinc-500 mt-1 text-right">{draftValue.length}/1000</p>
                     </div>
                   ) : currentHook.type === 'image' || currentHook.type === 'background-image' ? (
                     <div className="space-y-4">
@@ -2036,7 +2036,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         <>
                           {/* URL Input */}
                           <div>
-                            <label className="block text-xs text-gray-400 mb-2">URL ile Ekle</label>
+                            <label className="block text-xs text-zinc-400 mb-2">URL ile Ekle</label>
                             <input
                               type="url"
                               value={draftValue && !draftValue.startsWith('data:') ? draftValue : ''}
@@ -2049,13 +2049,13 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           {/* Divider */}
                           <div className="flex items-center gap-3">
                             <div className="flex-1 h-px bg-white/10"></div>
-                            <span className="text-xs text-gray-500">VEYA</span>
+                            <span className="text-xs text-zinc-500">VEYA</span>
                             <div className="flex-1 h-px bg-white/10"></div>
                           </div>
 
                           {/* File Upload with Drag & Drop */}
                           <div>
-                            <label className="block text-xs text-gray-400 mb-2">Dosya Yükle</label>
+                            <label className="block text-xs text-zinc-400 mb-2">Dosya Yükle</label>
                             <label
                               className="block w-full border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-pink-500/50 hover:bg-white/5 transition-all"
                               onDragOver={(e) => {
@@ -2075,11 +2075,11 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                                 if (isImage) handleImageUpload(file);
                               }}
                             >
-                              <Upload className="h-10 w-10 mx-auto mb-3 text-gray-400" />
+                              <Upload className="h-10 w-10 mx-auto mb-3 text-zinc-400" />
                               <p className="text-sm text-white mb-1">
                                 {uploadingImage ? 'Yükleniyor...' : 'Görseli sürükle & bırak'}
                               </p>
-                              <p className="text-xs text-gray-500">veya tıklayarak seç</p>
+                              <p className="text-xs text-zinc-500">veya tıklayarak seç</p>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -2156,7 +2156,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           <div className="flex gap-2">
                             {/* Gün */}
                             <div className="flex-1">
-                              <label className="text-xs text-gray-500 mb-1 block">Gün</label>
+                              <label className="text-xs text-zinc-500 mb-1 block">Gün</label>
                               <select
                                 value={selDay}
                                 onChange={(e) => updateDate(parseInt(e.target.value), selMonth, selYear)}
@@ -2169,7 +2169,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                             </div>
                             {/* Ay */}
                             <div className="flex-[2]">
-                              <label className="text-xs text-gray-500 mb-1 block">Ay</label>
+                              <label className="text-xs text-zinc-500 mb-1 block">Ay</label>
                               <select
                                 value={selMonth}
                                 onChange={(e) => updateDate(selDay, parseInt(e.target.value), selYear)}
@@ -2182,7 +2182,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                             </div>
                             {/* Yıl */}
                             <div className="flex-1">
-                              <label className="text-xs text-gray-500 mb-1 block">Yıl</label>
+                              <label className="text-xs text-zinc-500 mb-1 block">Yıl</label>
                               <select
                                 value={selYear}
                                 onChange={(e) => updateDate(selDay, selMonth, parseInt(e.target.value))}
@@ -2220,7 +2220,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         autoFocus
                       />
                       {draftValue.length > 100 && (
-                        <p className="text-[11px] text-gray-500 mt-1 text-right">{draftValue.length}/1000</p>
+                        <p className="text-[11px] text-zinc-500 mt-1 text-right">{draftValue.length}/1000</p>
                       )}
                     </div>
                   )}
@@ -2272,11 +2272,11 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div>
                 <h3 className="text-lg font-bold text-white">Sayfa Bilgileri</h3>
-                <p className="text-xs text-gray-400">Sayfanıza isim ve açıklama verin</p>
+                <p className="text-xs text-zinc-400">Sayfanıza isim ve açıklama verin</p>
               </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+                className="rounded-full p-2 bg-white/10 text-zinc-400 hover:text-white hover:bg-white/15 transition-all"
                 aria-label="Kapat"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
@@ -2286,7 +2286,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <div className="space-y-3">
               {/* Title */}
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Sayfa Adı</label>
+                <label className="text-sm font-medium text-zinc-300 mb-1.5 block">Sayfa Adı</label>
                 <input
                   type="text"
                   value={draftTitle}
@@ -2299,14 +2299,14 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                   className="input-modern w-full text-base"
                   maxLength={60}
                 />
-                <p className="text-[11px] text-gray-500 mt-1 text-right">{draftTitle.length}/60</p>
+                <p className="text-[11px] text-zinc-500 mt-1 text-right">{draftTitle.length}/60</p>
               </div>
 
               {/* Slug */}
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Sayfa URL</label>
+                <label className="text-sm font-medium text-zinc-300 mb-1.5 block">Sayfa URL</label>
                 <div className="flex items-center gap-0 bg-black/40 border border-white/10 rounded-xl overflow-hidden">
-                  <span className="text-xs text-gray-500 pl-3 shrink-0">forilove.com/p/</span>
+                  <span className="text-xs text-zinc-500 pl-3 shrink-0">forilove.com/p/</span>
                   <input
                     type="text"
                     value={draftSlug}
@@ -2316,12 +2316,12 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                     tabIndex={-1}
                   />
                 </div>
-                <p className="text-[11px] text-gray-500 mt-1">Sayfa adından otomatik oluşturulur</p>
+                <p className="text-[11px] text-zinc-500 mt-1">Sayfa adından otomatik oluşturulur</p>
               </div>
 
               {/* Description */}
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Açıklama</label>
+                <label className="text-sm font-medium text-zinc-300 mb-1.5 block">Açıklama</label>
                 <input
                   type="text"
                   value={draftDescription}
@@ -2331,7 +2331,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                   className="input-modern w-full text-base"
                   maxLength={50}
                 />
-                <p className="text-[11px] text-gray-500 mt-1 text-right">{draftDescription.length}/50</p>
+                <p className="text-[11px] text-zinc-500 mt-1 text-right">{draftDescription.length}/50</p>
               </div>
             </div>
 
@@ -2360,11 +2360,11 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div>
                 <h3 className="text-lg font-bold text-white">Sayfa Görünürlüğü</h3>
-                <p className="text-xs text-gray-400">Sayfanız nasıl erişilebilir olsun?</p>
+                <p className="text-xs text-zinc-400">Sayfanız nasıl erişilebilir olsun?</p>
               </div>
               <button
                 onClick={() => setShowVisibilityModal(false)}
-                className="rounded-full p-2 bg-white/10 text-gray-400 hover:text-white hover:bg-white/15 transition-all"
+                className="rounded-full p-2 bg-white/10 text-zinc-400 hover:text-white hover:bg-white/15 transition-all"
                 aria-label="Kapat"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
@@ -2385,7 +2385,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-white">Herkese Açık</p>
-                  <p className="text-xs text-gray-400">Keşfet sayfasında görünür, herkes görebilir</p>
+                  <p className="text-xs text-zinc-400">Keşfet sayfasında görünür, herkes görebilir</p>
                 </div>
               </button>
 
@@ -2398,11 +2398,11 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 }`}
               >
                 <div className={`p-3 rounded-xl ${selectedVisibility === false ? 'bg-white/20' : 'bg-white/10'}`}>
-                  <Lock className={`h-6 w-6 ${selectedVisibility === false ? 'text-white' : 'text-gray-400'}`} />
+                  <Lock className={`h-6 w-6 ${selectedVisibility === false ? 'text-white' : 'text-zinc-400'}`} />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-white">Özel URL</p>
-                  <p className="text-xs text-gray-400">Sadece linke sahip olanlar görebilir</p>
+                  <p className="text-xs text-zinc-400">Sadece linke sahip olanlar görebilir</p>
                 </div>
               </button>
             </div>
@@ -2415,7 +2415,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 className="mt-0.5 cursor-pointer shrink-0"
               />
-              <span className="text-xs text-gray-400 leading-relaxed">
+              <span className="text-xs text-zinc-400 leading-relaxed">
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-white underline">Kullanım Koşulları</a> ve{' '}
                 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-white underline">Gizlilik Politikası</a>&apos;nı
                 okudum ve kabul ediyorum.
@@ -2437,7 +2437,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             </button>
 
             {/* Info Note */}
-            <p className="text-[11px] text-gray-500 text-center">
+            <p className="text-[11px] text-zinc-500 text-center">
               Her satın alınan şablon yalnızca 1 kez yayınlanabilir.
             </p>
           </div>

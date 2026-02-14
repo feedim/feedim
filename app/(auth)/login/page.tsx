@@ -121,9 +121,9 @@ export default function LoginPage() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="cursor-pointer"
                 />
-                <span className="text-sm text-gray-400">Beni hatırla</span>
+                <span className="text-sm text-zinc-400">Beni hatırla</span>
               </label>
-              <Link href="/forgot-password" className="text-sm text-gray-400 hover:text-white transition font-semibold">
+              <Link href="/forgot-password" className="text-sm text-zinc-400 hover:text-white transition font-semibold">
                 Şifremi unuttum?
               </Link>
             </div>
@@ -142,7 +142,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-black text-gray-400">veya</span>
+              <span className="px-4 bg-black text-zinc-400">veya</span>
             </div>
           </div>
 
@@ -163,7 +163,7 @@ export default function LoginPage() {
 
           </div>
 
-          <p className="text-center text-gray-400 text-sm mt-6">
+          <p className="text-center text-zinc-400 text-sm mt-6">
             Hesabınız yok mu?{" "}
             <Link href="/register" className="text-pink-500 hover:text-pink-400 font-semibold">
               Kayıt ol

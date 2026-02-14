@@ -118,7 +118,7 @@ export default function Home() {
             {/* Badge */}
             <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-pink-500/10 border border-pink-500/20 mb-6 sm:mb-8">
               <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500 fill-pink-500" aria-hidden="true" />
-              <span className="text-xs sm:text-sm text-gray-300">Özel anlarınız için dijital sayfalar!</span>
+              <span className="text-xs sm:text-sm text-zinc-300">Özel anlarınız için dijital sayfalar!</span>
             </div>
 
             {/* Main Title */}
@@ -128,7 +128,7 @@ export default function Home() {
             </h1>
 
             {/* Description */}
-            <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto px-2">
+            <p className="text-base sm:text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl mx-auto px-2">
               Özel tasarlanmış şablonlar ile sevdikleriniz için unutulmaz anı sayfaları oluşturun
             </p>
 
@@ -148,19 +148,19 @@ export default function Home() {
                 <div className="text-2xl md:text-3xl font-bold text-white">
                   {statsReveal.isVisible ? formatCount(usersCount, "") : "0"}
                 </div>
-                <div className="text-sm text-gray-500 mt-1">Kullanıcı</div>
+                <div className="text-sm text-zinc-500 mt-1">Kullanıcı</div>
               </div>
               <div>
                 <div className="text-2xl md:text-3xl font-bold text-white">
                   {statsReveal.isVisible ? formatCount(sharesCount, "") : "0"}
                 </div>
-                <div className="text-sm text-gray-500 mt-1">Paylaşım</div>
+                <div className="text-sm text-zinc-500 mt-1">Paylaşım</div>
               </div>
               <div>
                 <div className="text-2xl md:text-3xl font-bold text-white">
                   {statsReveal.isVisible ? `${ratingCount}★` : "0★"}
                 </div>
-                <div className="text-sm text-gray-500 mt-1">Puan</div>
+                <div className="text-sm text-zinc-500 mt-1">Puan</div>
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <div ref={templateReveal.ref} className={`text-center mb-12 ${templateReveal.isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">En Popüler Şablonlar</h2>
-              <p className="text-gray-400 text-lg">Binlerce kişi tarafından tercih edilen şablonlar</p>
+              <p className="text-zinc-400 text-lg">Binlerce kişi tarafından tercih edilen şablonlar</p>
             </div>
 
             {loadingTemplates ? (
@@ -217,7 +217,7 @@ export default function Home() {
             {trustBadges.map((badge) => (
               <div key={badge.label} className="flex items-center gap-2">
                 <badge.icon className="h-5 w-5 text-pink-500" />
-                <span className="text-sm text-gray-400">{badge.label}</span>
+                <span className="text-sm text-zinc-400">{badge.label}</span>
               </div>
             ))}
           </div>
@@ -231,7 +231,7 @@ export default function Home() {
             {/* Section Header */}
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Nasıl Çalışır?</h2>
-              <p className="text-gray-400 text-lg">3 basit adımda anı sayfanızı oluşturun</p>
+              <p className="text-zinc-400 text-lg">3 basit adımda anı sayfanızı oluşturun</p>
             </div>
 
             {/* Steps */}
@@ -246,12 +246,12 @@ export default function Home() {
                 </div>
                 <div className="flex-1 pt-1 pb-12">
                   <h3 className="text-xl font-bold mb-3">Şablon Seçin</h3>
-                  <p className="text-gray-400 text-lg leading-relaxed mb-4">
+                  <p className="text-zinc-400 text-lg leading-relaxed mb-4">
                     Özel günleriniz için tasarlanmış profesyonel şablonlar arasından beğendiğinizi seçin. Her biri farklı tema ve stilde.
                   </p>
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 border border-white/5">
                     <Heart className="h-5 w-5 sm:h-4 sm:w-4 text-pink-500 shrink-0" aria-hidden="true" />
-                    <span className="text-sm text-gray-400">Yıldönümü, Doğum Günü, Evlilik Teklifi ve daha fazlası</span>
+                    <span className="text-sm text-zinc-400">Yıldönümü, Doğum Günü, Evlilik Teklifi ve daha fazlası</span>
                   </div>
                 </div>
               </div>
@@ -266,14 +266,14 @@ export default function Home() {
                 </div>
                 <div className="flex-1 pt-1 pb-12">
                   <h3 className="text-xl font-bold mb-3">Özelleştirin</h3>
-                  <p className="text-gray-400 text-lg leading-relaxed mb-4">
+                  <p className="text-zinc-400 text-lg leading-relaxed mb-4">
                     Fotoğraflarınızı ekleyin, metinleri düzenleyin, renkleri değiştirin. Basit editörümüz ile her şeyi kolayca özelleştirin.
                   </p>
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 border border-white/5">
                     <svg className="h-5 w-5 sm:h-4 sm:w-4 text-pink-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <span className="text-sm text-gray-400">Kod bilgisi gerektirmez, tıklayın ve düzenleyin</span>
+                    <span className="text-sm text-zinc-400">Kod bilgisi gerektirmez, tıklayın ve düzenleyin</span>
                   </div>
                 </div>
               </div>
@@ -287,14 +287,14 @@ export default function Home() {
                 </div>
                 <div className="flex-1 pt-1">
                   <h3 className="text-xl font-bold mb-3">Paylaşın</h3>
-                  <p className="text-gray-400 text-lg leading-relaxed mb-4">
+                  <p className="text-zinc-400 text-lg leading-relaxed mb-4">
                     Özel linkinizi alın ve sevdiklerinizle paylaşın. WhatsApp, Instagram veya dilediğiniz platformda anında erişilebilir.
                   </p>
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 border border-white/5">
                     <svg className="h-5 w-5 sm:h-4 sm:w-4 text-pink-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                    <span className="text-sm text-gray-400">Her cihazdan erişilebilir, mobil uyumlu</span>
+                    <span className="text-sm text-zinc-400">Her cihazdan erişilebilir, mobil uyumlu</span>
                   </div>
                 </div>
               </div>
@@ -310,7 +310,7 @@ export default function Home() {
           <div className="max-w-5xl mx-auto">
             <div ref={testimonialReveal.ref} className={`text-center mb-12 ${testimonialReveal.isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
               <h2 className="text-2xl md:text-3xl font-bold mb-4">Kullanıcılarımız Ne Diyor?</h2>
-              <p className="text-gray-400 text-lg">Gerçek kullanıcılardan gerçek hikayeler</p>
+              <p className="text-zinc-400 text-lg">Gerçek kullanıcılardan gerçek hikayeler</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -325,9 +325,9 @@ export default function Home() {
                       <Star key={i} className="h-4 w-4 text-pink-500 fill-pink-500" />
                     ))}
                   </div>
-                  <p className="text-gray-300 mb-4 leading-relaxed">&ldquo;{t.text}&rdquo;</p>
+                  <p className="text-zinc-300 mb-4 leading-relaxed">&ldquo;{t.text}&rdquo;</p>
                   <p className="text-sm font-semibold text-white">{t.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{t.context}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">{t.context}</p>
                 </div>
               ))}
             </div>

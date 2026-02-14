@@ -90,7 +90,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Admin affiliate payouts GET error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin affiliate payouts GET error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -222,7 +222,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (error) {
-    console.error("Admin affiliate payouts PUT error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin affiliate payouts PUT error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

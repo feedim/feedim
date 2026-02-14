@@ -56,7 +56,7 @@ export async function GET() {
 
     return NextResponse.json({ application: application || null });
   } catch (error) {
-    console.error("Affiliate apply GET error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate apply GET error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Affiliate apply error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate apply error:", error);
     return NextResponse.json({ error: "Bir hata oluştu" }, { status: 500 });
   }
 }

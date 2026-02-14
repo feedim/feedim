@@ -15,13 +15,13 @@ export default function BlogPagination({ currentPage, totalPages }: BlogPaginati
       {currentPage > 1 ? (
         <Link
           href={currentPage === 2 ? '/blog' : `/blog?page=${currentPage - 1}`}
-          className="flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition"
+          className="flex items-center justify-center w-10 h-10 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition"
           aria-label="Önceki sayfa"
         >
           <ChevronLeft className="h-5 w-5" />
         </Link>
       ) : (
-        <span className="flex items-center justify-center w-10 h-10 rounded-full text-gray-600 cursor-not-allowed">
+        <span className="flex items-center justify-center w-10 h-10 rounded-full text-zinc-600 cursor-not-allowed">
           <ChevronLeft className="h-5 w-5" />
         </span>
       )}
@@ -34,7 +34,7 @@ export default function BlogPagination({ currentPage, totalPages }: BlogPaginati
           className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-semibold transition ${
             page === currentPage
               ? 'bg-pink-500 text-white'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
+              : 'text-zinc-400 hover:text-white hover:bg-white/10'
           }`}
           aria-label={`Sayfa ${page}`}
           aria-current={page === currentPage ? 'page' : undefined}
@@ -47,13 +47,13 @@ export default function BlogPagination({ currentPage, totalPages }: BlogPaginati
       {currentPage < totalPages ? (
         <Link
           href={`/blog?page=${currentPage + 1}`}
-          className="flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition"
+          className="flex items-center justify-center w-10 h-10 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition"
           aria-label="Sonraki sayfa"
         >
           <ChevronRight className="h-5 w-5" />
         </Link>
       ) : (
-        <span className="flex items-center justify-center w-10 h-10 rounded-full text-gray-600 cursor-not-allowed">
+        <span className="flex items-center justify-center w-10 h-10 rounded-full text-zinc-600 cursor-not-allowed">
           <ChevronRight className="h-5 w-5" />
         </span>
       )}

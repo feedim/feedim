@@ -19,7 +19,7 @@ export default function AboutPage() {
       <main className="container mx-auto px-3 sm:px-6 py-10 sm:py-16 max-w-3xl">
         <h1 className="text-4xl font-bold mb-6">Hakkımızda</h1>
 
-        <div className="space-y-6 text-gray-400">
+        <div className="space-y-6 text-zinc-400">
           <p>
             Forilove, insanların sevdikleri için güzel ve kişiselleştirilmiş web sayfaları
             oluşturmasına yardımcı olan bir platformdur. İster yıldönümü, ister Sevgililer Günü,
@@ -44,7 +44,7 @@ export default function AboutPage() {
           {/* Şahıs İşletmesi Bilgileri */}
           <div className="bg-zinc-900 rounded-xl p-6 mt-8">
             <h2 className="text-2xl font-bold text-white mb-4">İşletme Bilgileri</h2>
-            <div className="space-y-2 text-gray-300">
+            <div className="space-y-2 text-zinc-300">
               <p><strong>İşletme Adı:</strong> Forilove</p>
               <p><strong>Yetkili:</strong> Meral SÖZER</p>
               <p><strong>Adres:</strong> Zafer Mah. 547.1. Sk. No:224 Salihli/Manisa</p>

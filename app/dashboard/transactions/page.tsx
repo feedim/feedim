@@ -164,7 +164,7 @@ export default function TransactionsPage() {
           <div className="text-center py-12 sm:py-20">
             <Heart className="h-12 w-12 sm:h-16 sm:w-16 text-white mx-auto mb-3 sm:mb-4" />
             <h2 className="text-lg sm:text-xl font-bold mb-2">Henüz işlem yok</h2>
-            <p className="text-gray-400 mb-5 sm:mb-6 text-sm sm:text-base">Başlamak için coin satın alın.</p>
+            <p className="text-zinc-400 mb-5 sm:mb-6 text-sm sm:text-base">Başlamak için coin satın alın.</p>
             <Link href="/dashboard/coins">
               <button className="btn-primary">
                 FL Satın Al

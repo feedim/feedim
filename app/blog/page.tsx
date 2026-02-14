@@ -80,7 +80,7 @@ export default async function BlogPage({ searchParams }: Props) {
 
       <main className="container mx-auto px-3 sm:px-6 py-10 sm:py-16 max-w-4xl">
         <h1 className="text-5xl font-bold mb-4">Blog</h1>
-        <p className="text-gray-400 mb-12 text-lg">
+        <p className="text-zinc-400 mb-12 text-lg">
           Sevgiliye hediye fikirleri, ilham veren öneriler ve daha fazlası.
         </p>
 

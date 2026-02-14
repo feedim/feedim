@@ -229,7 +229,7 @@ export async function GET() {
       } : null,
     });
   } catch (error) {
-    console.error("Affiliate promos GET error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate promos GET error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -336,7 +336,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ promo: data });
   } catch (error) {
-    console.error("Affiliate promos POST error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate promos POST error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -396,7 +396,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Affiliate payment info PUT error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate payment info PUT error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -458,7 +458,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Affiliate promos DELETE error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Affiliate promos DELETE error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

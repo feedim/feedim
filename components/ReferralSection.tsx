@@ -143,11 +143,11 @@ export default function ReferralSection({ userId }: { userId: string }) {
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-lg">Arkadaşlarını Davet Et</h3>
-            <p className="text-sm text-gray-400">Arkadaşların FL satın alırsa %5 komisyon kazan.</p>
+            <p className="text-sm text-zinc-400">Arkadaşların FL satın alırsa %5 komisyon kazan.</p>
           </div>
         </div>
         <svg
-          className="h-5 w-5 text-gray-400 transition-transform group-open:rotate-180 shrink-0 ml-2"
+          className="h-5 w-5 text-zinc-400 transition-transform group-open:rotate-180 shrink-0 ml-2"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -160,7 +160,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
 
       {/* Referral Link */}
       <div className="bg-black/20 rounded-lg p-3 sm:p-4 mb-4">
-        <label className="block text-sm text-gray-400 mb-2">
+        <label className="block text-sm text-zinc-400 mb-2">
           Referans Linkini Paylaş
         </label>
         <div className="flex gap-2">
@@ -181,7 +181,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
             )}
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-zinc-500 mt-2">
           Referans Kodun: <span className="font-bold text-pink-500">{stats?.referral_code}</span>
         </p>
       </div>
@@ -189,7 +189,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
       {/* Referral Code Input */}
       {!hasReferrer && (
         <div className="bg-black/20 rounded-lg p-3 sm:p-4 mb-4">
-          <label className="block text-sm text-gray-400 mb-2">Referans Kodu Gir</label>
+          <label className="block text-sm text-zinc-400 mb-2">Referans Kodu Gir</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -204,7 +204,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
               {submittingCode ? '...' : 'Uygula'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Bir kez girilir, sonra değiştirilemez.</p>
+          <p className="text-xs text-zinc-500 mt-1">Bir kez girilir, sonra değiştirilemez.</p>
         </div>
       )}
 
@@ -212,8 +212,8 @@ export default function ReferralSection({ userId }: { userId: string }) {
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div className="bg-black/20 rounded-lg p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Users className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-400">Toplam Davet</span>
+            <Users className="h-4 w-4 text-zinc-400" />
+            <span className="text-sm text-zinc-400">Toplam Davet</span>
           </div>
           <p className="text-2xl font-bold">{stats?.total_referrals || 0}</p>
         </div>
@@ -221,7 +221,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
         <div className="bg-black/20 rounded-lg p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-1">
             <Coins className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm text-gray-400">Toplam Kazanç</span>
+            <span className="text-sm text-zinc-400">Toplam Kazanç</span>
           </div>
           <p className="text-2xl font-bold text-yellow-500">
             {stats?.total_earnings || 0} <span className="text-sm">FL</span>
@@ -232,7 +232,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
       {/* Info */}
       <div className="mt-4 p-3 sm:p-4 bg-black/20 rounded-lg">
         <h4 className="font-semibold mb-2 text-sm">Nasıl Çalışır?</h4>
-        <ul className="text-sm text-gray-400 space-y-1">
+        <ul className="text-sm text-zinc-400 space-y-1">
           <li>• Arkadaşını davet et (referans linki ile kayıt olsun)</li>
           <li>• Arkadaşın şablon satın aldığında <span className="text-yellow-500 font-bold">%5 komisyon</span> kazanırsın</li>
           <li>• Minimum komisyon: <span className="text-yellow-500 font-bold">5 FL</span></li>

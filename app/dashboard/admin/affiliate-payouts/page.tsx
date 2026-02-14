@@ -120,19 +120,19 @@ export default function AdminAffiliatePayoutsPage() {
                 <div className="bg-zinc-900 rounded-2xl p-4 text-center">
                   <Clock className="h-5 w-5 text-pink-500 mx-auto mb-1" />
                   <p className="text-xl font-bold text-pink-500">{summary.pendingCount}</p>
-                  <p className="text-xs text-gray-400">Bekleyen</p>
+                  <p className="text-xs text-zinc-400">Bekleyen</p>
                   <p className="text-xs text-pink-500 font-medium">{summary.pendingTotal.toLocaleString('tr-TR')} TRY</p>
                 </div>
                 <div className="bg-zinc-900 rounded-2xl p-4 text-center">
                   <CheckCircle className="h-5 w-5 text-pink-400 mx-auto mb-1" />
                   <p className="text-xl font-bold text-pink-400">{summary.approvedCount}</p>
-                  <p className="text-xs text-gray-400">Onaylanan</p>
+                  <p className="text-xs text-zinc-400">Onaylanan</p>
                   <p className="text-xs text-pink-400 font-medium">{summary.approvedTotal.toLocaleString('tr-TR')} TRY</p>
                 </div>
                 <div className="bg-zinc-900 rounded-2xl p-4 text-center">
                   <XCircle className="h-5 w-5 text-red-500 mx-auto mb-1" />
                   <p className="text-xl font-bold text-red-500">{summary.rejectedCount}</p>
-                  <p className="text-xs text-gray-400">Reddedilen</p>
+                  <p className="text-xs text-zinc-400">Reddedilen</p>
                 </div>
               </div>
             )}
@@ -144,7 +144,7 @@ export default function AdminAffiliatePayoutsPage() {
                   key={f}
                   onClick={() => setFilter(f)}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition shrink-0 ${
-                    filter === f ? "bg-pink-500 text-white" : "bg-zinc-800 text-gray-400 hover:text-white"
+                    filter === f ? "bg-pink-500 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
                   }`}
                 >
                   {f === "all" ? "Tümü" : f === "pending" ? "Bekleyen" : f === "approved" ? "Onaylanan" : "Reddedilen"}
@@ -159,8 +159,8 @@ export default function AdminAffiliatePayoutsPage() {
             <div className="space-y-4">
               {filteredPayouts.length === 0 ? (
                 <div className="bg-zinc-900 rounded-2xl p-8 text-center">
-                  <DollarSign className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                  <p className="text-gray-500">
+                  <DollarSign className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
+                  <p className="text-zinc-500">
                     {filter === "pending" ? "Bekleyen ödeme talebi yok" : "Bu kategoride talep yok"}
                   </p>
                 </div>
@@ -171,8 +171,8 @@ export default function AdminAffiliatePayoutsPage() {
                       {/* Üst: Tutar + Durum */}
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <p className="text-2xl font-bold">{Number(payout.amount).toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-2xl font-bold">{Number(payout.amount).toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">TRY</span></p>
+                          <p className="text-xs text-zinc-500 mt-1">
                             {new Date(payout.requested_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
@@ -187,15 +187,15 @@ export default function AdminAffiliatePayoutsPage() {
 
                       {/* Affiliate Bilgileri */}
                       <div className="bg-white/5 rounded-xl p-3 mb-3 space-y-1">
-                        <p className="text-sm"><span className="text-gray-400">Ad:</span> {payout.affiliate_name}</p>
-                        <p className="text-sm"><span className="text-gray-400">E-posta:</span> {payout.affiliate_email}</p>
-                        <p className="text-sm font-mono"><span className="text-gray-400">IBAN:</span> {formatIban(payout.affiliate_iban)}</p>
-                        <p className="text-sm"><span className="text-gray-400">Hesap Sahibi:</span> {payout.affiliate_holder_name || "—"}</p>
+                        <p className="text-sm"><span className="text-zinc-400">Ad:</span> {payout.affiliate_name}</p>
+                        <p className="text-sm"><span className="text-zinc-400">E-posta:</span> {payout.affiliate_email}</p>
+                        <p className="text-sm font-mono"><span className="text-zinc-400">IBAN:</span> {formatIban(payout.affiliate_iban)}</p>
+                        <p className="text-sm"><span className="text-zinc-400">Hesap Sahibi:</span> {payout.affiliate_holder_name || "—"}</p>
                       </div>
 
                       {/* İşlenmiş ise not göster */}
                       {payout.status !== "pending" && payout.processed_at && (
-                        <p className="text-xs text-gray-500 mb-2">
+                        <p className="text-xs text-zinc-500 mb-2">
                           İşlenme: {new Date(payout.processed_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
                           {payout.admin_note && ` — Not: ${payout.admin_note}`}
                         </p>
@@ -209,6 +209,7 @@ export default function AdminAffiliatePayoutsPage() {
                             placeholder="Admin notu (isteğe bağlı)"
                             value={noteInput[payout.id] || ""}
                             onChange={(e) => setNoteInput({ ...noteInput, [payout.id]: e.target.value })}
+                            maxLength={500}
                             className="input-modern w-full text-sm"
                           />
                           <div className="flex gap-2">

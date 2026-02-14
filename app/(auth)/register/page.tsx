@@ -219,7 +219,7 @@ function RegisterForm() {
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 className="mt-0.5 cursor-pointer"
               />
-              <span className="text-sm text-gray-400 leading-snug">
+              <span className="text-sm text-zinc-400 leading-snug">
                 <Link href="/terms" target="_blank" className="text-pink-500 hover:text-pink-400 underline">
                   Kullanım Koşulları
                 </Link>
@@ -245,7 +245,7 @@ function RegisterForm() {
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-black text-gray-400">veya</span>
+              <span className="px-4 bg-black text-zinc-400">veya</span>
             </div>
           </div>
 
@@ -266,7 +266,7 @@ function RegisterForm() {
 
           </div>
 
-          <p className="text-center text-gray-400 text-sm mt-6">
+          <p className="text-center text-zinc-400 text-sm mt-6">
             Zaten hesabınız var mı?{" "}
             <Link href="/login" className="text-pink-500 hover:text-pink-400 font-semibold">
               Giriş yap

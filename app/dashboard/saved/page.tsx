@@ -250,7 +250,7 @@ export default function SavedTemplatesPage() {
           <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
             <Bookmark className="h-14 w-14 sm:h-20 sm:w-20 text-white mb-3 sm:mb-4" strokeWidth={1.2} />
             <h2 className="text-lg sm:text-2xl font-bold mb-2">Henüz şablon yok</h2>
-            <p className="text-gray-400 mb-5 sm:mb-6 text-sm px-4">Beğendiğiniz şablonları kaydedin.</p>
+            <p className="text-zinc-400 mb-5 sm:mb-6 text-sm px-4">Beğendiğiniz şablonları kaydedin.</p>
             <Link href="/dashboard">
               <button className="btn-primary">
                 Şablonları Keşfet

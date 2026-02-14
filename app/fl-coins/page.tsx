@@ -19,7 +19,7 @@ export default function LPCoinsPage() {
       <main className="container mx-auto px-6 py-16 max-w-3xl">
         <h1 className="text-4xl font-bold mb-6">FL Coins Nedir?</h1>
 
-        <div className="space-y-6 text-gray-400">
+        <div className="space-y-6 text-zinc-400">
           <p>
             FL Coins, Forilove platformunda premium şablonlara erişim sağlayan dijital bir para birimidir.
             Platformumuzda coin satın alarak özel tasarlanmış şablonları kullanabilir ve sevdikleriniz için

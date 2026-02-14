@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
               </button>
 
               <div className="text-center">
-                <Link href="/login" className="text-sm text-gray-400 hover:text-white transition font-semibold">
+                <Link href="/login" className="text-sm text-zinc-400 hover:text-white transition font-semibold">
                   Giriş sayfasına dön
                 </Link>
               </div>

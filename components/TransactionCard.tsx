@@ -16,7 +16,7 @@ export default function TransactionCard({ transaction }: TransactionCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <div className="font-semibold mb-1">{transaction.description}</div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-zinc-400">
             {new Date(transaction.created_at).toLocaleDateString('tr-TR', {
               year: 'numeric',
               month: 'long',
@@ -32,7 +32,7 @@ export default function TransactionCard({ transaction }: TransactionCardProps) {
             {isPositive ? '+' : ''}{transaction.amount?.toLocaleString() || 0}
           </div>
           {transaction.balance_after !== undefined && transaction.balance_after !== null && (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-zinc-500">
               Bakiye: {transaction.balance_after.toLocaleString()}
             </div>
           )}

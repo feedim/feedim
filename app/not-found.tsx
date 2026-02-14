@@ -13,7 +13,7 @@ export default function NotFound() {
         />
         <h1 className="text-6xl font-bold mb-4 text-pink-500">404</h1>
         <h2 className="text-2xl font-bold mb-3">Sayfa Bulunamadı</h2>
-        <p className="text-gray-400 mb-8">
+        <p className="text-zinc-400 mb-8">
           Aradığınız sayfa mevcut değil veya taşınmış olabilir
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

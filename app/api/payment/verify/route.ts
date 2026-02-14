@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (txnError) {
-      console.error('[Verify] Transaction insert failed:', txnError.message);
+      if (process.env.NODE_ENV === "development") console.error('[Verify] Transaction insert failed:', txnError.message);
     }
 
     // 5d. Referans komisyonu (kritik değil — direkt DB sorguları ile)

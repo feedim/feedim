@@ -58,7 +58,7 @@ export default function ErrorState({
         {title}
       </h2>
 
-      <p className="text-gray-400 mb-6">
+      <p className="text-zinc-400 mb-6">
         {message}
       </p>
 
@@ -135,7 +135,7 @@ export function LoadingState({
   return (
     <div className="flex flex-col items-center justify-center p-12" role="status" aria-live="polite">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mb-4" aria-hidden="true"></div>
-      <p className="text-gray-600 dark:text-gray-400">{message}</p>
+      <p className="text-zinc-600 dark:text-zinc-400">{message}</p>
       <span className="sr-only">Yükleniyor</span>
     </div>
   );
@@ -163,7 +163,7 @@ export function EmptyState({
     <div className="text-center p-8 sm:p-12" role="status">
       {Icon && (
         <div className="flex justify-center mb-3 sm:mb-4">
-          <Icon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" aria-hidden="true" />
+          <Icon className="h-12 w-12 sm:h-16 sm:w-16 text-zinc-400" aria-hidden="true" />
         </div>
       )}
 
@@ -171,7 +171,7 @@ export function EmptyState({
         {title}
       </h3>
 
-      <p className="text-gray-400 mb-5 sm:mb-6 text-sm">
+      <p className="text-zinc-400 mb-5 sm:mb-6 text-sm">
         {message}
       </p>
 

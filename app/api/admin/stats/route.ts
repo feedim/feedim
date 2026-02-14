@@ -43,7 +43,7 @@ export async function GET() {
       recentUsers: recentUsersRes.data || [],
     });
   } catch (error) {
-    console.error("Admin stats error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin stats error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

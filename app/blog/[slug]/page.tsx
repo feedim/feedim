@@ -95,7 +95,7 @@ export default async function BlogPostPage({ params }: Props) {
                     <h3 className="font-semibold group-hover:text-pink-500 transition">
                       {p.title}
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">{p.readTime} okuma</p>
+                    <p className="text-sm text-zinc-500 mt-1">{p.readTime} okuma</p>
                   </div>
                 </Link>
               ))}

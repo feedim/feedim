@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (paymentError) {
-      console.error('[PayTR] Payment insert failed:', paymentError.message, paymentError.details);
+      if (process.env.NODE_ENV === "development") console.error('[PayTR] Payment insert failed:', paymentError.message, paymentError.details);
       return NextResponse.json(
         { success: false, error: 'Ödeme kaydı oluşturulamadı' },
         { status: 500 }
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       try {
         payttrResult = JSON.parse(text);
       } catch {
-        console.error('[PayTR Initiate] Non-JSON response from PayTR:', text.substring(0, 500));
+        if (process.env.NODE_ENV === "development") console.error('[PayTR Initiate] Non-JSON response from PayTR:', text.substring(0, 500));
         // IP kısıtı/erişim hatası ihtimali — kullanıcıya daha açıklayıcı mesaj
         const hint = /ip|sunucu|erifim|yetki|yasak/gi.test(text) ? ' (muhtemel IP yetkisi/erişim kısıtı)' : '';
         // Bazı hatalarda düz metin gelebilir

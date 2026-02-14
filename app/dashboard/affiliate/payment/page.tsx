@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Wallet, Check, Clock, CheckCircle, XCircle, Send, Calendar } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Wallet, Check, Clock, CheckCircle, XCircle, Send, Calendar, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -22,6 +23,8 @@ export default function AffiliatePaymentPage() {
   const [requesting, setRequesting] = useState(false);
   const [visiblePayouts, setVisiblePayouts] = useState(ITEMS_PER_PAGE);
   const [historyPeriod, setHistoryPeriod] = useState<PeriodKey>("all");
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -39,6 +42,19 @@ export default function AffiliatePaymentPage() {
       if (profile?.role !== "affiliate" && profile?.role !== "admin") {
         router.push("/dashboard/profile");
         return;
+      }
+
+      setUserRole(profile.role);
+
+      // Check MFA status for affiliates
+      if (profile.role === "affiliate") {
+        const mfaRes = await fetch("/api/auth/mfa");
+        if (mfaRes.ok) {
+          const mfaData = await mfaRes.json();
+          setMfaEnabled(mfaData.enabled);
+        }
+      } else {
+        setMfaEnabled(true); // admin doesn't require MFA
       }
 
       // Load payment info + balance from promos API
@@ -154,7 +170,7 @@ export default function AffiliatePaymentPage() {
       case "pending": return { text: "Bekliyor", color: "text-pink-300", icon: Clock };
       case "approved": return { text: "Onaylandı", color: "text-pink-500", icon: CheckCircle };
       case "rejected": return { text: "Reddedildi", color: "text-red-500", icon: XCircle };
-      default: return { text: status, color: "text-gray-400", icon: Clock };
+      default: return { text: status, color: "text-zinc-400", icon: Clock };
     }
   };
 
@@ -225,12 +241,12 @@ export default function AffiliatePaymentPage() {
                 <div className="flex items-center justify-between bg-pink-500/10 border border-pink-500/20 rounded-xl p-4 mb-3">
                   <div>
                     <p className="text-xs text-pink-300 mb-0.5">Çekilebilir Bakiye</p>
-                    <p className="text-3xl font-bold text-pink-500">{balance.available.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+                    <p className="text-3xl font-bold text-pink-500">{balance.available.toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">TRY</span></p>
                   </div>
                   <button
                     onClick={handleRequestPayout}
                     disabled={requesting || !balance.canRequestPayout}
-                    className="px-5 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:bg-zinc-700 disabled:text-gray-500 rounded-xl text-sm font-bold transition flex items-center gap-2 shrink-0"
+                    className="px-5 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded-xl text-sm font-bold transition flex items-center gap-2 shrink-0"
                   >
                     <Send className="h-4 w-4" />
                     {requesting ? "..." : "Çek"}
@@ -240,18 +256,18 @@ export default function AffiliatePaymentPage() {
                 {/* Bekleyen + Ödenen */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="bg-white/5 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-500">Bekleyen Talep</p>
-                    <p className="text-lg font-bold text-pink-300">{balance.totalPending.toLocaleString('tr-TR')} <span className="text-xs text-gray-500">TRY</span></p>
+                    <p className="text-[10px] text-zinc-500">Bekleyen Talep</p>
+                    <p className="text-lg font-bold text-pink-300">{balance.totalPending.toLocaleString('tr-TR')} <span className="text-xs text-zinc-500">TRY</span></p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-500">Toplam Ödenen</p>
-                    <p className="text-lg font-bold text-pink-400">{balance.totalPaidOut.toLocaleString('tr-TR')} <span className="text-xs text-gray-500">TRY</span></p>
+                    <p className="text-[10px] text-zinc-500">Toplam Ödenen</p>
+                    <p className="text-lg font-bold text-pink-400">{balance.totalPaidOut.toLocaleString('tr-TR')} <span className="text-xs text-zinc-500">TRY</span></p>
                   </div>
                 </div>
 
                 {/* Otomatik çekim bilgisi */}
                 <div className="bg-white/5 rounded-lg px-3 py-2">
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-zinc-400">
                     {balance.available >= balance.minPayout
                       ? balance.nextAutoDate
                         ? `Sonraki otomatik çekim: ${new Date(balance.nextAutoDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -264,17 +280,34 @@ export default function AffiliatePaymentPage() {
               </div>
             )}
 
+            {/* 2FA Gate for Affiliates */}
+            {userRole === "affiliate" && !mfaEnabled && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-5 w-5 text-yellow-400" />
+                  <h3 className="font-semibold text-yellow-400">2FA Zorunlu</h3>
+                </div>
+                <p className="text-sm text-zinc-400 mb-4">
+                  IBAN bilgisi eklemek ve ödeme talebi oluşturmak için iki faktörlü doğrulamayı etkinleştirmeniz gerekmektedir.
+                </p>
+                <Link href="/dashboard/security" className="btn-primary w-full py-3 flex items-center justify-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  2FA Etkinleştir
+                </Link>
+              </div>
+            )}
+
             {/* IBAN Bilgileri */}
-            <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+            <div className={`bg-zinc-900 rounded-2xl p-6 mb-6 ${userRole === "affiliate" && !mfaEnabled ? "opacity-50 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-2 mb-2">
                 <Wallet className="h-5 w-5 text-pink-500" />
                 <h2 className="font-semibold text-lg">IBAN Bilgileri</h2>
               </div>
-              <p className="text-xs text-gray-500 mb-6">Kazançlarınız bu hesaba aktarılacaktır.</p>
+              <p className="text-xs text-zinc-500 mb-6">Kazançlarınız bu hesaba aktarılacaktır.</p>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">IBAN</label>
+                  <label className="block text-sm text-zinc-400 mb-2">IBAN</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -286,7 +319,7 @@ export default function AffiliatePaymentPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Hesap Sahibi (Ad Soyad)</label>
+                  <label className="block text-sm text-zinc-400 mb-2">Hesap Sahibi (Ad Soyad)</label>
                   <input
                     type="text"
                     value={holderName}
@@ -330,7 +363,7 @@ export default function AffiliatePaymentPage() {
                     key={key}
                     onClick={() => setHistoryPeriod(key)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
-                      historyPeriod === key ? "bg-pink-500 text-white" : "bg-white/5 text-gray-400 hover:text-white"
+                      historyPeriod === key ? "bg-pink-500 text-white" : "bg-white/5 text-zinc-400 hover:text-white"
                     }`}
                   >
                     {label}
@@ -342,15 +375,15 @@ export default function AffiliatePaymentPage() {
               {filteredPayouts.length > 0 && (
                 <div className="flex gap-3 mb-4">
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center">
-                    <p className="text-[10px] text-gray-500">Onaylanan</p>
+                    <p className="text-[10px] text-zinc-500">Onaylanan</p>
                     <p className="text-sm font-bold text-pink-500">{periodSummary.approvedAmount.toLocaleString('tr-TR')} TRY</p>
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center">
-                    <p className="text-[10px] text-gray-500">Bekleyen</p>
+                    <p className="text-[10px] text-zinc-500">Bekleyen</p>
                     <p className="text-sm font-bold text-pink-300">{periodSummary.pendingAmount.toLocaleString('tr-TR')} TRY</p>
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center">
-                    <p className="text-[10px] text-gray-500">Talep</p>
+                    <p className="text-[10px] text-zinc-500">Talep</p>
                     <p className="text-sm font-bold">{periodSummary.total}</p>
                   </div>
                 </div>
@@ -368,11 +401,11 @@ export default function AffiliatePaymentPage() {
                           <StatusIcon className={`h-5 w-5 shrink-0 ${status.color}`} />
                           <div className="min-w-0">
                             <p className="text-sm font-medium">{Number(payout.amount).toLocaleString('tr-TR')} TRY</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-zinc-500">
                               {new Date(payout.requested_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </p>
                             {payout.admin_note && (
-                              <p className="text-xs text-gray-400 mt-1">Not: {payout.admin_note}</p>
+                              <p className="text-xs text-zinc-400 mt-1">Not: {payout.admin_note}</p>
                             )}
                           </div>
                         </div>
@@ -390,7 +423,7 @@ export default function AffiliatePaymentPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-zinc-500 text-center py-4">
                   {historyPeriod === "all" ? "Henüz ödeme talebi yok." : "Bu dönemde ödeme talebi yok."}
                 </p>
               )}
@@ -399,7 +432,7 @@ export default function AffiliatePaymentPage() {
             {/* Bilgilendirme */}
             <div className="bg-zinc-900 rounded-2xl p-6">
               <h3 className="font-semibold mb-3">Ödeme Bilgilendirmesi</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
+              <ul className="space-y-2 text-sm text-zinc-400">
                 <li>• İlk 24 saat içindeki satışlardan elde edilen kazançlar peşin olarak ödenir.</li>
                 <li>• Sonrasında ödemeler haftada bir (7 günde bir) yapılır.</li>
                 <li>• Minimum ödeme tutarı 100 TRY&apos;dir.</li>

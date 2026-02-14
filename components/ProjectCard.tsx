@@ -59,7 +59,7 @@ export default function ProjectCard({
       {/* Content */}
       <div className="flex-1 min-w-0">
         {viewCount !== undefined && (
-          <span className="flex items-center gap-1 text-[11px] text-gray-500 mb-1.5">
+          <span className="flex items-center gap-1 text-[11px] text-zinc-500 mb-1.5">
             <Eye className="h-3 w-3" />
             {formatCount(viewCount)} görüntülenme
           </span>
@@ -68,7 +68,7 @@ export default function ProjectCard({
         <h3 className="text-lg sm:text-xl font-semibold truncate">{title}</h3>
 
         {subtitle && (
-          <p className="text-xs text-gray-500 mt-1 mb-1.5 truncate">{subtitle}</p>
+          <p className="text-xs text-zinc-500 mt-1 mb-1.5 truncate">{subtitle}</p>
         )}
 
         {/* Actions */}
@@ -89,7 +89,7 @@ export default function ProjectCard({
           </div>
         ) : (
           <div className="flex items-center gap-1.5 mt-2">
-            <Link href={editHref} className="h-8 px-3 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5" aria-label="Düzenle">
+            <Link href={editHref} className="h-8 px-3 text-xs font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5" aria-label="Düzenle">
                 <Edit className="h-3.5 w-3.5" aria-hidden="true" />
                 Düzenle
             </Link>
@@ -98,7 +98,7 @@ export default function ProjectCard({
                 href={viewHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-8 px-3 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5"
+                className="h-8 px-3 text-xs font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5"
                 aria-label="Görüntüle"
               >
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -115,7 +115,7 @@ export default function ProjectCard({
             )}
             <button
               onClick={() => onUnpublishConfirm(id)}
-              className="h-8 w-8 flex items-center justify-center text-gray-500 hover:text-red-400 rounded-lg transition-all ml-auto"
+              className="h-8 w-8 flex items-center justify-center text-zinc-500 hover:text-red-400 rounded-lg transition-all ml-auto"
               aria-label="Sil"
             >
               <Trash2 className="h-4 w-4" />

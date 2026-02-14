@@ -13,7 +13,7 @@ export default function BlogPostCard({ post }: BlogPostCardProps) {
         <h2 className="text-lg font-semibold mb-1 group-hover:text-pink-500 transition">
           {post.title}
         </h2>
-        <p className="text-gray-400 text-sm mb-3 leading-relaxed">{post.description}</p>
+        <p className="text-zinc-400 text-sm mb-3 leading-relaxed">{post.description}</p>
         <PostMeta date={post.date} readTime={post.readTime} size="sm" />
       </article>
     </Link>

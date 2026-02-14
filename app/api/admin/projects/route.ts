@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil((count || 0) / PAGE_SIZE),
     });
   } catch (error) {
-    console.error("Admin projects error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin projects error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -104,7 +104,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Admin delete project error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Admin delete project error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -52,7 +52,7 @@ export default function MobileBottomNav() {
               className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
                 item.active
                   ? "text-pink-500"
-                  : "text-gray-400 hover:text-white"
+                  : "text-zinc-400 hover:text-white"
               }`}
               aria-label={item.label}
             >

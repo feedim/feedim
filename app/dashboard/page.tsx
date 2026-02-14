@@ -43,33 +43,33 @@ function DashboardNav() {
         <span className="text-2xl font-bold">Forilove</span>
       </Link>
       <div className="flex items-center gap-1 lg:gap-3">
-        <Link href="/dashboard/explore" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+        <Link href="/dashboard/explore" className="hidden md:block text-zinc-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
           Keşfet
         </Link>
-        <Link href="/dashboard/my-pages" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+        <Link href="/dashboard/my-pages" className="hidden md:block text-zinc-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
           Sayfalarım
         </Link>
-        <Link href="/dashboard/purchased" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+        <Link href="/dashboard/purchased" className="hidden md:block text-zinc-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
           Satın Alınanlar
         </Link>
-        <Link href="/dashboard/profile" className="hidden md:block text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
+        <Link href="/dashboard/profile" className="hidden md:block text-zinc-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap">
           Profil
         </Link>
         {/* Diğer dropdown */}
         <div ref={moreRef} className="relative hidden md:block">
           <button
             onClick={() => setMoreOpen(!moreOpen)}
-            className="flex items-center gap-1 text-gray-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap"
+            className="flex items-center gap-1 text-zinc-400 hover:text-white px-3 py-2 transition font-semibold text-sm whitespace-nowrap"
           >
             Diğer
             <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
           </button>
           {moreOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-xl z-50">
-              <Link href="/dashboard/saved" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
+              <Link href="/dashboard/saved" className="block px-4 py-3 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
                 Kaydedilenler
               </Link>
-              <Link href="/dashboard/transactions" className="block px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
+              <Link href="/dashboard/transactions" className="block px-4 py-3 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition" onClick={() => setMoreOpen(false)}>
                 İşlem Geçmişi
               </Link>
               <div className="border-t border-white/10">
@@ -409,7 +409,7 @@ export default function DashboardPage() {
       <section className="pt-12 pb-8">
         <div className="w-full px-3 sm:px-6 lg:px-10">
           <h1 className="text-4xl font-bold mb-4">Şablonları Keşfet</h1>
-          <p className="text-base text-gray-400">
+          <p className="text-base text-zinc-400">
             Sevdiğinize özel bir sayfa oluşturmak için bir şablon seçin ve düzenleyin.
           </p>
         </div>

@@ -99,20 +99,20 @@ export default function AdminProjectsPage() {
             <span className="font-medium">Geri</span>
           </button>
           <h1 className="text-lg font-semibold">Yayınlanan Sayfalar</h1>
-          <span className="text-sm text-gray-500 w-16 text-right">{total}</span>
+          <span className="text-sm text-zinc-500 w-16 text-right">{total}</span>
         </nav>
       </header>
 
       <main className="w-full px-3 sm:px-6 lg:px-10 py-4 pb-24 md:pb-8 max-w-3xl mx-auto">
         {/* Search */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Sayfa, kullanıcı veya slug ara..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-400"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-400"
           />
         </div>
 
@@ -123,7 +123,7 @@ export default function AdminProjectsPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-12">
+          <p className="text-sm text-zinc-500 text-center py-12">
             {searchQuery ? "Sonuç bulunamadı." : "Henüz yayınlanan sayfa yok."}
           </p>
         ) : (
@@ -143,7 +143,7 @@ export default function AdminProjectsPage() {
                         {p.is_public ? 'Public' : 'Gizli'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-zinc-500">
                       <span className="truncate">@{p.creator_name}</span>
                       <span className="flex items-center gap-1 shrink-0">
                         <Eye className="h-3 w-3" />
@@ -152,7 +152,7 @@ export default function AdminProjectsPage() {
                       <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('tr-TR')}</span>
                     </div>
                     <div className="mt-1">
-                      <span className="text-[11px] text-gray-400 font-mono truncate block">/p/{p.slug}</span>
+                      <span className="text-[11px] text-zinc-400 font-mono truncate block">/p/{p.slug}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -162,7 +162,7 @@ export default function AdminProjectsPage() {
                       className="p-2 rounded-lg hover:bg-white/10 transition"
                       title="Görüntüle"
                     >
-                      <ExternalLink className="h-4 w-4 text-gray-400" />
+                      <ExternalLink className="h-4 w-4 text-zinc-400" />
                     </Link>
                     <button
                       onClick={() => handleDelete(p.id, p.title)}
@@ -170,7 +170,7 @@ export default function AdminProjectsPage() {
                       className="p-2 rounded-lg hover:bg-red-500/10 transition disabled:opacity-30"
                       title="Sil"
                     >
-                      <Trash2 className={`h-4 w-4 ${deletingId === p.id ? 'text-gray-600' : 'text-red-400'}`} />
+                      <Trash2 className={`h-4 w-4 ${deletingId === p.id ? 'text-zinc-600' : 'text-red-400'}`} />
                     </button>
                   </div>
                 </div>
@@ -183,18 +183,18 @@ export default function AdminProjectsPage() {
                 <button
                   onClick={() => setPage(p => p - 1)}
                   disabled={page === 0}
-                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Önceki
                 </button>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-zinc-500">
                   Sayfa {page + 1} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(p => p + 1)}
                   disabled={page >= totalPages - 1}
-                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
                 >
                   Sonraki
                   <ChevronRight className="h-4 w-4" />

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import PublicFooter from "@/components/PublicFooter";
-import { Users, Percent, Wallet, Clock, TrendingUp, Shield } from "lucide-react";
+import { Users, Percent, Wallet, Clock, TrendingUp, Shield, Heart, Gift, PartyPopper, Sparkles, CalendarHeart } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Affiliate Program | Forilove",
@@ -85,6 +85,51 @@ export default function AffiliatePage() {
         </div>
       </section>
 
+      {/* Forilove Nedir? */}
+      <section className="border-t border-white/10 py-20">
+        <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
+          <h2 className="text-3xl font-bold text-center mb-4">Forilove Nedir?</h2>
+          <p className="text-zinc-400 text-center mb-12 max-w-2xl mx-auto">
+            Forilove, sevdikleriniz için özel dijital davetiyeler ve hediye sayfaları oluşturmanızı sağlayan bir platformdur. Anneler günü, sevgililer günü, doğum günleri ve daha fazlası için hazır şablonlarla dakikalar içinde kişiselleştirilmiş sayfalar tasarlayın.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
+              <Heart className="h-6 w-6 text-pink-500 mb-3" />
+              <h3 className="font-bold text-sm mb-1">Sevgililer Günü</h3>
+              <p className="text-xs text-zinc-400">Sevgilinize özel romantik sayfalar, aşk mektupları ve sürpriz davetiyeler oluşturun.</p>
+            </div>
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
+              <Gift className="h-6 w-6 text-pink-500 mb-3" />
+              <h3 className="font-bold text-sm mb-1">Anneler & Babalar Günü</h3>
+              <p className="text-xs text-zinc-400">Annenize veya babanıza unutulmaz dijital hediyeler ve teşekkür sayfaları hazırlayın.</p>
+            </div>
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
+              <PartyPopper className="h-6 w-6 text-pink-500 mb-3" />
+              <h3 className="font-bold text-sm mb-1">Doğum Günü</h3>
+              <p className="text-xs text-zinc-400">Doğum günü kutlamaları için müzikli, fotoğraflı ve animasyonlu özel sayfalar.</p>
+            </div>
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
+              <Sparkles className="h-6 w-6 text-pink-500 mb-3" />
+              <h3 className="font-bold text-sm mb-1">Düğün & Nişan Davetiyeleri</h3>
+              <p className="text-xs text-zinc-400">Online davetiyeler ile düğün ve nişan davetlerinizi dijital olarak paylaşın.</p>
+            </div>
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
+              <CalendarHeart className="h-6 w-6 text-pink-500 mb-3" />
+              <h3 className="font-bold text-sm mb-1">Yıl Dönümü</h3>
+              <p className="text-xs text-zinc-400">Evlilik yıl dönümü, tanışma yıl dönümü gibi özel günler için anı sayfaları.</p>
+            </div>
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
+              <Users className="h-6 w-6 text-pink-500 mb-3" />
+              <h3 className="font-bold text-sm mb-1">Özel Davetiyeler</h3>
+              <p className="text-xs text-zinc-400">Baby shower, mezuniyet, açılış ve her türlü özel etkinlik için dijital davetiyeler.</p>
+            </div>
+          </div>
+          <p className="text-xs text-zinc-500 text-center mt-8">
+            Tüm şablonlar müzik, fotoğraf, geri sayım ve animasyon desteği ile tamamen kişiselleştirilebilir.
+          </p>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
@@ -148,7 +193,7 @@ export default function AffiliatePage() {
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
               <Shield className="h-8 w-8 text-pink-500 mb-3" />
               <h3 className="font-bold mb-2">Minimum Ödeme</h3>
-              <p className="text-sm text-zinc-400">Minimum ödeme tutarı 100 TRY&apos;dir. Bu tutarın altındaki bakiyeler bir sonraki ödeme dönemine aktarılır.</p>
+              <p className="text-sm text-zinc-400">Minimum ödeme tutarı 100 TRY&apos;dir. Bu tutarın altındaki bakiyeler bir sonraki ödeme dönemine aktarılır. Kullanıcılar iki faktörlü doğrulama (2FA) ile korunur.</p>
             </div>
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
               <TrendingUp className="h-8 w-8 text-pink-500 mb-3" />
