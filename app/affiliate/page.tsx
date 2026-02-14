@@ -89,8 +89,11 @@ export default function AffiliatePage() {
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
           <h2 className="text-3xl font-bold text-center mb-4">Forilove Nedir?</h2>
-          <p className="text-zinc-400 text-center mb-12 max-w-2xl mx-auto">
-            Forilove, sevdikleriniz için özel dijital davetiyeler ve hediye sayfaları oluşturmanızı sağlayan bir platformdur. Anneler günü, sevgililer günü, doğum günleri ve daha fazlası için hazır şablonlarla dakikalar içinde kişiselleştirilmiş sayfalar tasarlayın.
+          <p className="text-zinc-400 text-center mb-4 max-w-2xl mx-auto">
+            Forilove, sevdikleriniz için özel dijital davetiyeler ve hediye sayfaları oluşturmanızı sağlayan bir platformdur. Hiçbir teknik bilgi gerektirmez — herkes çok basit bir editör panelinden birkaç dakikada kendi sayfasını oluşturabilir.
+          </p>
+          <p className="text-zinc-500 text-center text-sm mb-12 max-w-xl mx-auto">
+            Şablon seç, fotoğraflarını ve yazılarını ekle, müziğini belirle, yayınla. Bu kadar basit.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5">
@@ -125,7 +128,7 @@ export default function AffiliatePage() {
             </div>
           </div>
           <p className="text-xs text-zinc-500 text-center mt-8">
-            Tüm şablonlar müzik, fotoğraf, geri sayım ve animasyon desteği ile tamamen kişiselleştirilebilir.
+            Tüm şablonlar müzik, fotoğraf, geri sayım ve animasyon desteği ile tamamen kişiselleştirilebilir. Tasarım bilgisi gerekmez — basit editör panelinden herkes yapabilir.
           </p>
         </div>
       </section>
