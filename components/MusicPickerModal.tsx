@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Search, Music, Check, Link2, Heart } from "lucide-react";
+import { X, Search, Music, Check, Heart } from "lucide-react";
 import { MUSIC_LIBRARY } from "@/lib/musicLibrary";
 
 interface MusicPickerModalProps {
@@ -17,13 +17,6 @@ interface SearchResult {
   title: string;
   artist: string;
   thumbnail: string;
-}
-
-function extractVideoId(url: string): string | null {
-  const m = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
-  );
-  return m ? m[1] : null;
 }
 
 const BRAND_PINK = "lab(49.5493% 79.8381 2.31768)";
@@ -58,8 +51,6 @@ export default function MusicPickerModal({
 }: MusicPickerModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [customUrl, setCustomUrl] = useState("");
-  const [customMode, setCustomMode] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
@@ -78,11 +69,10 @@ export default function MusicPickerModal({
   // Initialize selectedId from currentUrl
   useEffect(() => {
     if (isOpen && currentUrl) {
-      const vid = extractVideoId(currentUrl);
-      if (vid) {
-        setSelectedId(vid);
-        setCustomMode(false);
-      }
+      const m = currentUrl.match(
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
+      );
+      if (m?.[1]) setSelectedId(m[1]);
     }
   }, [isOpen, currentUrl]);
 
@@ -90,8 +80,6 @@ export default function MusicPickerModal({
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery("");
-      setCustomMode(false);
-      setCustomUrl("");
       setSearchResults([]);
       setSearching(false);
     }
@@ -159,37 +147,16 @@ export default function MusicPickerModal({
 
   // ─── Handlers ────────────────────────────────────────────
   const handleSelect = () => {
-    if (customMode && customUrl) {
-      const isValid =
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)[a-zA-Z0-9_-]{11}/.test(
-          customUrl
-        );
-      if (!isValid) return;
-      onSelect(customUrl);
-    } else if (selectedId) {
+    if (selectedId) {
       onSelect(`https://www.youtube.com/watch?v=${selectedId}`);
     }
   };
 
   const handleTrackClick = (track: SearchResult) => {
     setSelectedId(track.id);
-    setCustomMode(false);
-    setCustomUrl("");
   };
 
   if (!isOpen) return null;
-
-  const hasSelection = customMode
-    ? !!customUrl &&
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)[a-zA-Z0-9_-]{11}/.test(
-        customUrl
-      )
-    : !!selectedId;
-  const customUrlValid = customUrl
-    ? /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|music\.youtube\.com\/watch\?v=)[a-zA-Z0-9_-]{11}/.test(
-        customUrl
-      )
-    : false;
 
   const displayTracks = searchQuery.length >= 2 ? searchResults : defaultTracks;
 
@@ -255,7 +222,7 @@ export default function MusicPickerModal({
             </div>
           ) : (
             displayTracks.map((track) => {
-              const isSelected = selectedId === track.id && !customMode;
+              const isSelected = selectedId === track.id;
 
               return (
                 <button
@@ -294,60 +261,8 @@ export default function MusicPickerModal({
           )}
         </div>
 
-        {/* Custom URL Section */}
-        <div className="px-4 pt-1.5 shrink-0 border-t border-white/5">
-          <button
-            onClick={() => {
-              setCustomMode(!customMode);
-              if (!customMode) setSelectedId(null);
-            }}
-            className="flex items-center gap-2 text-[11px] text-gray-400 hover:text-gray-300 transition-colors py-1.5 w-full"
-          >
-            <Link2 className="h-3.5 w-3.5" />
-            <span>
-              {customMode ? "Listeden seç" : "veya YouTube linki yapıştır"}
-            </span>
-          </button>
-
-          {customMode && (
-            <div className="pb-2">
-              <input
-                type="url"
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/30 transition-all"
-                placeholder="https://www.youtube.com/watch?v=..."
-                autoFocus
-              />
-              {customUrl && !customUrlValid && (
-                <p className="text-[11px] text-red-400 mt-1">
-                  Geçerli bir YouTube linki girin
-                </p>
-              )}
-              {customUrl && customUrlValid && (
-                <div
-                  className="flex items-center gap-3 mt-1.5 rounded-xl p-2"
-                  style={{ background: "rgba(255,255,255,0.03)" }}
-                >
-                  <img
-                    src={`https://img.youtube.com/vi/${extractVideoId(customUrl)}/mqdefault.jpg`}
-                    alt=""
-                    className="w-11 h-11 rounded-lg object-cover shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">
-                      YouTube Video
-                    </p>
-                    <p className="text-white/40 text-[11px] mt-0.5">Özel link</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Footer */}
-        <div className="px-4 pb-4 pt-2 shrink-0 space-y-2.5">
+        <div className="px-4 pb-4 pt-2.5 shrink-0 border-t border-white/5 space-y-2.5">
           <p className="text-[10px] text-gray-500 text-center leading-tight">
             Müzik YouTube&apos;dan oynatılır. Telif hakkı sorumluluğu kullanıcıya aittir.
           </p>
@@ -356,16 +271,14 @@ export default function MusicPickerModal({
               <button
                 onClick={() => onRemove?.()}
                 className="flex-1 btn-secondary"
-                style={{ height: 44, lineHeight: '44px' }}
               >
                 Müziği Kaldır
               </button>
             )}
             <button
               onClick={handleSelect}
-              disabled={!hasSelection}
+              disabled={!selectedId}
               className="flex-1 btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ height: 44, lineHeight: '44px' }}
             >
               Müzik Ekle
             </button>
