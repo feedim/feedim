@@ -167,7 +167,7 @@ export default function MusicPickerModal({
     >
       <div
         className="bg-zinc-900 w-full sm:w-[480px] rounded-t-3xl sm:rounded-3xl animate-slide-up sm:animate-scale-in flex flex-col"
-        style={{ maxHeight: "89vh" }}
+        style={{ height: "89vh", maxHeight: "89vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

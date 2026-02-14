@@ -112,7 +112,7 @@ export default function AdminProjectsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Sayfa, kullanıcı veya slug ara..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-600"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-400"
           />
         </div>
 
@@ -152,7 +152,7 @@ export default function AdminProjectsPage() {
                       <span className="shrink-0">{new Date(p.created_at).toLocaleDateString('tr-TR')}</span>
                     </div>
                     <div className="mt-1">
-                      <span className="text-[11px] text-gray-600 font-mono truncate block">/p/{p.slug}</span>
+                      <span className="text-[11px] text-gray-400 font-mono truncate block">/p/{p.slug}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

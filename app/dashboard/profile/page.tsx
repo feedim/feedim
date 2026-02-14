@@ -419,11 +419,11 @@ export default function ProfilePage() {
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-1">Bugün Satış</p>
-                <p className="text-2xl font-bold text-[#39FF14]">{adminStats.todayRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+                <p className="text-2xl font-bold text-pink-500">{adminStats.todayRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-1">Toplam Satış</p>
-                <p className="text-2xl font-bold text-[#39FF14]">{adminStats.totalRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+                <p className="text-2xl font-bold text-pink-500">{adminStats.totalRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-1">Toplam Ödeme</p>
