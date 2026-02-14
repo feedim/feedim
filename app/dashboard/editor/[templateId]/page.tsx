@@ -928,9 +928,11 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             var elKey = el.getAttribute('data-editable');
             if (LOCKED_SET.has(elKey)) {
               el.style.position = el.style.position || 'relative';
+              el.style.opacity = '0.45';
+              el.style.padding = el.style.padding || '11px';
               var overlay = document.createElement('div');
-              overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(236,72,153,0.12);pointer-events:none;z-index:2;border-radius:inherit;';
-              overlay.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+              overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(236,72,153,0.08);pointer-events:none;z-index:2;border-radius:inherit;';
+              overlay.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
               el.appendChild(overlay);
             }
 
@@ -1568,7 +1570,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         className="btn-secondary shrink-0 flex items-center justify-center transition active:scale-95" style={{ width: 49, height: 49 }}
                         aria-label="Sola kaydır"
                       >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="h-5 w-5 text-white/70" />
                       </button>
                     )}
                     <div
@@ -1689,7 +1691,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                         className="btn-secondary shrink-0 flex items-center justify-center transition active:scale-95" style={{ width: 49, height: 49 }}
                         aria-label="Sağa kaydır"
                       >
-                        <ArrowLeft className="h-4 w-4 rotate-180" />
+                        <ArrowLeft className="h-5 w-5 text-white/70 rotate-180" />
                       </button>
                     )}
                     {/* Publish button - always visible */}
