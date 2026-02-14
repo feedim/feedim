@@ -221,8 +221,8 @@ export default function AffiliateApplyPage() {
             </div>
 
             {!emailVerified && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
-                <p className="text-sm text-red-400 font-medium">E-posta adresiniz doğrulanmamış</p>
+              <div className="bg-pink-500/10 border border-pink-500/20 rounded-2xl p-4 mb-4">
+                <p className="text-sm text-pink-400 font-medium">E-posta adresiniz doğrulanmamış</p>
                 <p className="text-xs text-zinc-400 mt-1">
                   Affiliate programına başvurmak için e-posta adresinizin doğrulanmış olması gerekmektedir.{" "}
                   <a href="/dashboard/security" className="text-pink-500 hover:text-pink-400 font-semibold">Doğrula →</a>
