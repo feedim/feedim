@@ -26,6 +26,9 @@ export default function SecurityPage() {
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [emailCooldown, setEmailCooldown] = useState(0);
+  // Email change
+  const [editEmail, setEditEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -143,6 +146,19 @@ export default function SecurityPage() {
     }
   };
 
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim()) return;
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      toast.success("E-posta güncelleme linki gönderildi! Lütfen e-postanızı kontrol edin.");
+      setEditEmail(false);
+      setNewEmail("");
+    } catch {
+      toast.error("E-posta güncellenemedi");
+    }
+  };
+
   const handleSendEmailCode = async () => {
     if (!userEmail) return;
     setSendingCode(true);
@@ -233,16 +249,53 @@ export default function SecurityPage() {
                     )}
                   </div>
                 </div>
-                {!emailVerified && !verifyingEmail && (
+                <div className="flex items-center gap-3">
+                  {!emailVerified && !verifyingEmail && (
+                    <button
+                      onClick={handleSendEmailCode}
+                      disabled={sendingCode}
+                      className="text-xs text-pink-500 hover:text-pink-400 font-semibold transition"
+                    >
+                      {sendingCode ? "..." : "Doğrula"}
+                    </button>
+                  )}
                   <button
-                    onClick={handleSendEmailCode}
-                    disabled={sendingCode}
-                    className="text-sm text-pink-500 hover:text-pink-400 font-semibold transition"
+                    onClick={() => setEditEmail(!editEmail)}
+                    className="text-xs text-zinc-400 hover:text-white font-semibold transition"
                   >
-                    {sendingCode ? "..." : "Onayla"}
+                    Değiştir
                   </button>
-                )}
+                </div>
               </div>
+
+              {/* Email change form */}
+              {editEmail && (
+                <div className="mt-4 space-y-3">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="input-modern w-full"
+                    placeholder="Yeni e-posta adresiniz"
+                    maxLength={255}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setEditEmail(false); setNewEmail(""); }}
+                      className="flex-1 btn-secondary py-2 text-sm"
+                    >
+                      İptal
+                    </button>
+                    <button
+                      onClick={handleUpdateEmail}
+                      disabled={!newEmail.trim()}
+                      className="flex-1 btn-primary py-2 text-sm"
+                    >
+                      Kaydet
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Inline code verification */}
               {verifyingEmail && !emailVerified && (

@@ -53,13 +53,17 @@ export function ProjectListSkeleton({ count = 3 }: { count?: number }) {
 
 export function TransactionCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/10 p-4 flex items-center gap-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
-      <div className={`${shimmer} w-10 h-10 rounded-full shrink-0`} />
-      <div className="flex-1 space-y-2">
-        <div className={`${shimmer} h-4 w-1/2 rounded-lg`} />
-        <div className={`${shimmer} h-3 w-1/4 rounded-lg`} />
+    <div className="border-b border-white/10 pb-4">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 space-y-2">
+          <div className={`${shimmer} h-4 w-2/3 rounded-lg`} />
+          <div className={`${shimmer} h-3 w-1/3 rounded-lg`} />
+        </div>
+        <div className="text-right space-y-2 ml-4">
+          <div className={`${shimmer} h-5 w-16 rounded-lg ml-auto`} />
+          <div className={`${shimmer} h-3 w-20 rounded-lg ml-auto`} />
+        </div>
       </div>
-      <div className={`${shimmer} h-5 w-16 rounded-lg shrink-0`} />
     </div>
   );
 }
