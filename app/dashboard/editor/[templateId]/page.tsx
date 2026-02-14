@@ -1788,7 +1788,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
             </div>
           )}
           {/* Desktop toolbar */}
-          <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end" style={{ borderRadius: '3rem' }}>
             {loading ? (
               <div className="text-sm text-zinc-400">Yükleniyor...</div>
             ) : (
