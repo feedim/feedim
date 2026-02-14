@@ -40,7 +40,7 @@ const steps = [
 const faqs = [
   {
     q: "Komisyon oranım nasıl belirlenir?",
-    a: "Takipçilerinize verdiğiniz indirim ne kadar düşükse, komisyonunuz o kadar yüksek olur. Örneğin: %5 indirim → %35 komisyon, %10 indirim → %30 komisyon, %20 indirim → %20 komisyon. Minimum indirim oranı %5'tir.",
+    a: "Takipçilerinize verdiğiniz indirim ne kadar düşükse, komisyonunuz o kadar yüksek olur. Örneğin: %5 indirim → %30 komisyon, %10 indirim → %25 komisyon, %20 indirim → %15 komisyon. Minimum indirim oranı %5'tir.",
   },
   {
     q: "Ödemeler nasıl yapılır?",
@@ -77,7 +77,7 @@ export default function AffiliatePage() {
             <span className="block text-pink-500 mt-3">Affiliate Program</span>
           </h1>
           <p className="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">
-            Takipçilerinize özel indirim linkleri oluşturun, her satıştan %20 ile %30 arası komisyon kazanın.
+            Takipçilerinize özel indirim linkleri oluşturun, her satıştan %15 ile %30 arası komisyon kazanın.
           </p>
           <Link href="/contact" className="btn-primary px-8 py-3 text-lg">
             Başvuru Yap
@@ -115,10 +115,10 @@ export default function AffiliatePage() {
               <div className="p-4">100 TRY Satışta</div>
             </div>
             {[
-              { discount: 5, commission: 35 },
-              { discount: 10, commission: 30 },
-              { discount: 15, commission: 25 },
-              { discount: 20, commission: 20 },
+              { discount: 5, commission: 30 },
+              { discount: 10, commission: 25 },
+              { discount: 15, commission: 20 },
+              { discount: 20, commission: 15 },
             ].map((row) => (
               <div key={row.discount} className="grid grid-cols-3 gap-0 text-center text-sm border-b border-white/5 last:border-0">
                 <div className="p-4 text-pink-400 font-medium">%{row.discount}</div>

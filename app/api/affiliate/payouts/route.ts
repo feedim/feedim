@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const MIN_PAYOUT = 100;
-const TOTAL_ALLOCATION = 40;
+const TOTAL_ALLOCATION = 35;
 
 async function verifyAffiliate(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();

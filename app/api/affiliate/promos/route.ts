@@ -3,9 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_AFFILIATE_DISCOUNT = 20;
-// Commission formula: affiliate earns (40 - discount)% of each sale
-// e.g. 20% discount → 20% commission, 10% discount → 30% commission
-const TOTAL_ALLOCATION = 40;
+// Commission formula: affiliate earns (35 - discount)% of each sale
+// e.g. 5% discount → 30% commission, 20% discount → 15% commission
+const TOTAL_ALLOCATION = 35;
 
 async function verifyAffiliate(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
