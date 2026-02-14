@@ -35,10 +35,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!user.email_confirmed_at) {
-      return NextResponse.json({ error: "Önce e-posta adresinizi doğrulayın" }, { status: 400 });
-    }
-
     const body = await request.json();
     const { action } = body;
 

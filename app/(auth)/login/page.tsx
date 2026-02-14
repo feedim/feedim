@@ -47,12 +47,10 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // Sadece geliştirme ortamında log'la (production'da görünmez)
         if (process.env.NODE_ENV === 'development') {
           console.log('Login error:', error.message);
         }
 
-        // Kullanıcı dostu hata mesajları
         if (error.message === 'Invalid login credentials') {
           toast.error("E-posta veya şifre yanlış. Tekrar deneyin.");
         } else if (error.message.includes('Email not confirmed')) {
@@ -63,6 +61,29 @@ export default function LoginPage() {
         return;
       }
 
+      // Check if MFA is enabled for this user
+      if (data.user) {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("mfa_enabled")
+            .eq("user_id", data.user.id)
+            .single();
+
+          if (profile?.mfa_enabled) {
+            // Sign out (destroy password session)
+            await supabase.auth.signOut();
+            // Store email for verify-mfa page
+            sessionStorage.setItem("mfa_email", email);
+            // Redirect to MFA verification
+            router.push("/verify-mfa");
+            return;
+          }
+        } catch {
+          // If profile check fails, continue with normal login
+        }
+      }
+
       if (rememberMe) {
         localStorage.setItem("forilove_remember_email", email);
       } else {
@@ -71,7 +92,6 @@ export default function LoginPage() {
 
       toast.success("Giriş başarılı!");
 
-      // Wait a bit for session to be set
       await new Promise(resolve => setTimeout(resolve, 500));
 
       router.push("/dashboard");

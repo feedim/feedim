@@ -14,7 +14,6 @@ export default function SecurityPage() {
   const [enabling, setEnabling] = useState(false);
   const [disabling, setDisabling] = useState(false);
   const [userEmail, setUserEmail] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -28,7 +27,6 @@ export default function SecurityPage() {
       if (!user) { router.push("/login"); return; }
 
       setUserEmail(user.email || "");
-      setEmailVerified(!!user.email_confirmed_at);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -68,7 +66,7 @@ export default function SecurityPage() {
         toast.error(data.error || "2FA etkinleştirilemedi");
         return;
       }
-      toast.success("İki faktörlü doğrulama etkinleştirildi!");
+      toast.success("İki faktörlü doğrulama etkinleştirildi! Bir sonraki girişte e-postanıza kod gelecek.");
       setMfaEnabled(true);
     } catch {
       toast.error("Bir hata oluştu");
@@ -120,7 +118,7 @@ export default function SecurityPage() {
                 <h2 className="font-semibold text-lg">İki Faktörlü Doğrulama (2FA)</h2>
               </div>
               <p className="text-xs text-zinc-500 mb-6">
-                Hesabınızı ekstra güvenlik katmanıyla koruyun. E-posta doğrulaması ile 2FA etkinleştirin.
+                Hesabınızı ekstra güvenlik katmanıyla koruyun. 2FA etkinleştirildiğinde her girişte e-postanıza doğrulama kodu gönderilir.
               </p>
 
               {mfaEnabled ? (
@@ -129,7 +127,7 @@ export default function SecurityPage() {
                     <Check className="h-5 w-5 text-pink-500 shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-pink-400">2FA Etkin</p>
-                      <p className="text-xs text-zinc-400">Hesabınız iki faktörlü doğrulama ile korunuyor.</p>
+                      <p className="text-xs text-zinc-400">Her girişte {userEmail} adresine doğrulama kodu gönderilecek.</p>
                     </div>
                   </div>
 
@@ -157,14 +155,6 @@ export default function SecurityPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {!emailVerified && (
-                    <div className="bg-white/5 rounded-xl p-4">
-                      <p className="text-xs text-zinc-400">
-                        2FA etkinleştirmek için önce e-posta adresinizi doğrulamanız gerekmektedir. Kayıt sırasında gönderilen doğrulama e-postasını kontrol edin.
-                      </p>
-                    </div>
-                  )}
-
                   {role === "affiliate" && (
                     <div className="bg-pink-500/10 border border-pink-500/20 rounded-xl p-4">
                       <p className="text-xs text-pink-400">
@@ -175,7 +165,7 @@ export default function SecurityPage() {
 
                   <button
                     onClick={handleEnable}
-                    disabled={enabling || !emailVerified}
+                    disabled={enabling}
                     className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {enabling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
@@ -187,10 +177,10 @@ export default function SecurityPage() {
 
             {/* Info */}
             <div className="bg-zinc-900 rounded-2xl p-6">
-              <h3 className="font-semibold mb-3">2FA Hakkında</h3>
+              <h3 className="font-semibold mb-3">2FA Nasıl Çalışır?</h3>
               <ul className="space-y-2 text-sm text-zinc-400">
-                <li>• E-posta adresiniz doğrulanmış olmalıdır.</li>
-                <li>• 2FA etkinleştirildiğinde giriş yaparken e-posta doğrulaması istenir.</li>
+                <li>• 2FA etkinleştirildiğinde her girişte e-postanıza 6 haneli kod gönderilir.</li>
+                <li>• Kodu girerek giriş işleminizi tamamlarsınız.</li>
                 <li>• Affiliate hesapları için 2FA zorunludur.</li>
                 <li>• 2FA etkinleştirildikten sonra IBAN ve link işlemlerinizi yapabilirsiniz.</li>
               </ul>

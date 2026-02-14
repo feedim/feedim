@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
 
   const isHomePage = pathname === '/'
   const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/creator')
-  const isAuthPage = pathname === '/login' || pathname === '/register'
+  const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/verify-mfa'
 
   if (!isProtected && !isAuthPage && !isHomePage) {
     return NextResponse.next()
@@ -159,5 +159,6 @@ export const config = {
     '/creator/:path*',
     '/login',
     '/register',
+    '/verify-mfa',
   ],
 }
