@@ -1863,7 +1863,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                       style={{ borderRadius: '3rem', padding: '4px' }}
                     >
                       <div className="flex items-center gap-2 w-fit ml-auto">
-                      <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
+                      <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }} data-tour="undo-redo">
                         <button
                           onClick={undo}
                           disabled={!canUndo}
@@ -1903,6 +1903,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                             setShowSectionsModal(true);
                           }}
                           className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap"
+                          data-tour="sections"
                         >
                           <LayoutGrid className="h-4 w-4" />
                           Bölümler
@@ -2018,7 +2019,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
               <div
                 className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto scrollbar-hide py-2"
               >
-                <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
+                <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }} data-tour="undo-redo-mobile">
                   <button
                     onClick={undo}
                     disabled={!canUndo}
@@ -2107,6 +2108,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                           setShowSectionsModal(true);
                         }}
                     className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm whitespace-nowrap"
+                    data-tour="sections-mobile"
                   >
                     <LayoutGrid className="h-4 w-4" />
                     Bölümler

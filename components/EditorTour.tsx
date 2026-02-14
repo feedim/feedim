@@ -9,35 +9,58 @@ import { ChevronRight } from "lucide-react";
 /* ------------------------------------------------------------------ */
 
 interface TourStep {
-  /** data-tour attribute on a parent-page element (null = iframe-based) */
+  /** data-tour attr on parent page (null = iframe-based) */
   target: string | null;
   targetMobile: string | null;
-  /** For iframe-based steps: selector to find inside iframe */
+  /** CSS selector inside iframe */
   iframeSelector?: string;
   title: string;
   description: string;
+  /** Skip this step if the target element doesn't exist */
+  optional?: boolean;
 }
 
 const STEPS: TourStep[] = [
   {
     target: null,
     targetMobile: null,
-    iframeSelector: '[data-editable]:not([data-type="image"]):not([data-type="background-image"]):not([data-type="color"])',
+    iframeSelector:
+      '[data-editable]:not([data-type="image"]):not([data-type="background-image"]):not([data-type="color"]):not([data-type="list"])',
     title: "Metni Düzenle",
-    description: "Bir metne dokunarak düzenleyebilirsin. Açılan pencereden değiştir ve kaydet.",
+    description:
+      "Herhangi bir metne dokunarak düzenle. Açılan pencereden yaz ve kaydet.",
   },
   {
     target: null,
     targetMobile: null,
-    iframeSelector: '[data-editable][data-type="image"], [data-editable][data-type="background-image"]',
+    iframeSelector:
+      '[data-editable][data-type="image"], [data-editable][data-type="background-image"]',
     title: "Görseli Değiştir",
-    description: "Bir görsele dokunarak değiştirebilirsin. Galerinden veya kamerandan yükle.",
+    description:
+      "Bir görsele dokunarak değiştir. Galerinden veya kamerandan yeni bir fotoğraf yükle.",
+    optional: true,
+  },
+  {
+    target: "undo-redo",
+    targetMobile: "undo-redo-mobile",
+    title: "Geri Al / Yinele",
+    description:
+      "Yaptığın değişiklikleri geri alabilir veya tekrar uygulayabilirsin.",
   },
   {
     target: "ai-fill",
     targetMobile: "ai-fill-mobile",
     title: "AI ile Doldur",
-    description: "Tüm alanları yapay zeka ile otomatik doldur.",
+    description:
+      "Tek cümleyle tüm alanları yapay zeka ile otomatik doldur.",
+  },
+  {
+    target: "sections",
+    targetMobile: "sections-mobile",
+    title: "Bölümler",
+    description:
+      "İstemediğin bölümleri gizleyerek sayfanı özelleştir.",
+    optional: true,
   },
   {
     target: "music",
@@ -68,69 +91,99 @@ interface EditorTourProps {
 }
 
 export default function EditorTour({ onComplete }: EditorTourProps) {
+  const [activeSteps, setActiveSteps] = useState<TourStep[]>([]);
   const [current, setCurrent] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  /* ---- helpers ---- */
-
-  /** Resolve the bounding rect for the current step's target element */
-  const measureStep = useCallback(
-    (step: TourStep): DOMRect | null => {
-      // --- iframe-based target ---
+  /* ---- filter optional steps that don't exist ---- */
+  useEffect(() => {
+    const available = STEPS.filter((step) => {
+      if (!step.optional) return true;
+      // Check if target exists
       if (step.iframeSelector) {
         const iframe = document.querySelector("iframe") as HTMLIFrameElement | null;
+        try {
+          return !!iframe?.contentDocument?.querySelector(step.iframeSelector);
+        } catch { return false; }
+      }
+      const attr = (window.innerWidth < 768 ? step.targetMobile : step.target);
+      if (!attr) return false;
+      return !!document.querySelector(`[data-tour="${attr}"]`);
+    });
+    setActiveSteps(available);
+  }, []);
+
+  const step = activeSteps[current];
+  const totalSteps = activeSteps.length;
+
+  /* ---- helpers ---- */
+
+  /** Find iframe element inside the editor page */
+  const getIframe = useCallback(
+    () => document.querySelector("iframe") as HTMLIFrameElement | null,
+    []
+  );
+
+  /** Get viewport-relative rect for the current step */
+  const measureStep = useCallback(
+    (s: TourStep): DOMRect | null => {
+      // --- iframe-based ---
+      if (s.iframeSelector) {
+        const iframe = getIframe();
         if (!iframe) return null;
         try {
           const iDoc = iframe.contentDocument;
           if (!iDoc) return null;
-          const el = iDoc.querySelector(step.iframeSelector) as HTMLElement | null;
+          const el = iDoc.querySelector(s.iframeSelector) as HTMLElement | null;
           if (!el) return null;
-          const iframeRect = iframe.getBoundingClientRect();
-          const elRect = el.getBoundingClientRect();
-          // Translate iframe-local coords to viewport coords
+          const iRect = iframe.getBoundingClientRect();
+          const eRect = el.getBoundingClientRect();
           return new DOMRect(
-            iframeRect.left + elRect.left,
-            iframeRect.top + elRect.top,
-            elRect.width,
-            elRect.height
+            iRect.left + eRect.left,
+            iRect.top + eRect.top,
+            eRect.width,
+            eRect.height
           );
-        } catch {
-          return null;
-        }
+        } catch { return null; }
       }
-
-      // --- normal data-tour target ---
-      const attr = isMobile ? step.targetMobile : step.target;
+      // --- data-tour ---
+      const attr = isMobile ? s.targetMobile : s.target;
       if (!attr) return null;
       const el = document.querySelector(`[data-tour="${attr}"]`) as HTMLElement | null;
-      if (!el) return null;
-      return el.getBoundingClientRect();
+      return el ? el.getBoundingClientRect() : null;
     },
-    [isMobile]
+    [isMobile, getIframe]
   );
 
   const measure = useCallback(() => {
-    setRect(measureStep(STEPS[current]));
-  }, [current, measureStep]);
+    if (!step) return;
+    setRect(measureStep(step));
+  }, [step, measureStep]);
 
-  /** Scroll a data-tour element into view (toolbar items) */
+  /** Scroll target into view — works for both toolbar items and iframe content */
   const scrollTargetIntoView = useCallback(
-    (step: TourStep) => {
-      if (step.iframeSelector) return; // iframe elements don't need parent scroll
-      const attr = isMobile ? step.targetMobile : step.target;
+    (s: TourStep) => {
+      if (s.iframeSelector) {
+        // Scroll inside iframe
+        const iframe = getIframe();
+        try {
+          const el = iframe?.contentDocument?.querySelector(s.iframeSelector) as HTMLElement | null;
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch {}
+        return;
+      }
+      const attr = isMobile ? s.targetMobile : s.target;
       if (!attr) return;
       const el = document.querySelector(`[data-tour="${attr}"]`) as HTMLElement | null;
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     },
-    [isMobile]
+    [isMobile, getIframe]
   );
 
   /* ---- effects ---- */
 
-  // Detect mobile
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -138,40 +191,52 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // On step change: scroll into view + measure multiple times to catch animations
+  // On step change: scroll + measure
   useEffect(() => {
-    scrollTargetIntoView(STEPS[current]);
+    if (!step) return;
+    scrollTargetIntoView(step);
     measure();
     const t1 = setTimeout(measure, 300);
     const t2 = setTimeout(measure, 600);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [current, scrollTargetIntoView, measure]);
+  }, [step, scrollTargetIntoView, measure]);
 
   // Re-measure on resize / scroll
   useEffect(() => {
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
+    // Also listen for iframe scroll
+    const iframe = getIframe();
+    let iDoc: Document | null = null;
+    try { iDoc = iframe?.contentDocument ?? null; } catch {}
+    iDoc?.addEventListener("scroll", measure, true);
     return () => {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
+      iDoc?.removeEventListener("scroll", measure, true);
     };
-  }, [measure]);
+  }, [measure, getIframe]);
 
   /* ---- actions ---- */
 
   const next = () => {
-    if (current < STEPS.length - 1) setCurrent((c) => c + 1);
+    if (current < totalSteps - 1) setCurrent((c) => c + 1);
     else onComplete();
   };
   const skip = () => onComplete();
 
-  /* ---- rendering calculations ---- */
+  /* ---- rendering ---- */
+
+  if (!step || totalSteps === 0) return null;
 
   const PAD = 8;
   const vw = typeof window !== "undefined" ? window.innerWidth : 400;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 
-  // Clip-path: punch a hole where the target is
+  // Pink accent color
+  const ACCENT = "#ec4899";
+
+  // Clip-path: dark overlay with hole
   const clipPath = rect
     ? (() => {
         const x = Math.max(0, rect.left - PAD);
@@ -182,20 +247,20 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
       })()
     : undefined;
 
-  // Responsive tooltip width
+  // Tooltip sizing
   const tooltipW = isMobile ? Math.min(vw - 24, 280) : 300;
   const GAP = 12;
-  const EST_H = 140; // estimated tooltip height
+  const EST_H = 140;
 
   const tooltipStyle: React.CSSProperties = { width: tooltipW };
 
   if (rect) {
-    // Horizontal: center on target, clamp to viewport edges
+    // Horizontal: center on target, clamp
     let left = rect.left + rect.width / 2 - tooltipW / 2;
     left = Math.max(12, Math.min(left, vw - tooltipW - 12));
     tooltipStyle.left = left;
 
-    // Vertical: prefer below target, go above if not enough room
+    // Vertical: prefer below, go above if needed
     const spaceBelow = vh - rect.bottom - PAD - GAP;
     const spaceAbove = rect.top - PAD - GAP;
 
@@ -205,13 +270,10 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
       tooltipStyle.bottom = Math.max(vh - rect.top + PAD + GAP, 12);
     }
   } else {
-    // Fallback: center of screen
     tooltipStyle.top = "50%";
     tooltipStyle.left = "50%";
     tooltipStyle.transform = "translate(-50%, -50%)";
   }
-
-  /* ---- JSX ---- */
 
   const overlay = (
     <div
@@ -220,22 +282,24 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
       style={{ zIndex: 99999 }}
       onClick={(e) => { if (e.target === overlayRef.current) next(); }}
     >
-      {/* Dark overlay with spotlight hole */}
+      {/* Dark overlay */}
       <div
         className="absolute inset-0 bg-black/70"
         style={{ clipPath, transition: "clip-path 0.3s ease", pointerEvents: "none" }}
       />
 
-      {/* Spotlight glow ring */}
+      {/* Pink spotlight border */}
       {rect && (
         <div
-          className="absolute rounded-xl pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
             left: rect.left - PAD,
             top: rect.top - PAD,
             width: rect.width + PAD * 2,
             height: rect.height + PAD * 2,
-            boxShadow: "0 0 0 2px rgba(255,255,255,0.15), 0 0 20px rgba(255,255,255,0.05)",
+            borderRadius: 12,
+            border: `2px solid ${ACCENT}`,
+            boxShadow: `0 0 0 1px ${ACCENT}40, 0 0 24px ${ACCENT}30`,
             transition: "all 0.3s ease",
           }}
         />
@@ -255,7 +319,7 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
         />
       )}
 
-      {/* Tooltip card */}
+      {/* Tooltip */}
       <div
         className="absolute bg-[#161616]/95 backdrop-blur-xl rounded-2xl p-4"
         style={{
@@ -265,20 +329,20 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h4 className="text-white font-bold text-[15px] mb-1">{STEPS[current].title}</h4>
-        <p className="text-zinc-400 text-sm leading-relaxed mb-4">{STEPS[current].description}</p>
+        <h4 className="text-white font-bold text-[15px] mb-1">{step.title}</h4>
+        <p className="text-zinc-400 text-sm leading-relaxed mb-4">{step.description}</p>
 
         <div className="flex items-center justify-between">
           <span className="text-zinc-500 text-xs font-medium">
-            {current + 1}/{STEPS.length}
+            {current + 1}/{totalSteps}
           </span>
           <div className="flex items-center gap-3">
             <button onClick={skip} className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
               Atla
             </button>
             <button onClick={next} className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5">
-              {current === STEPS.length - 1 ? "Bitir" : "İleri"}
-              {current < STEPS.length - 1 && <ChevronRight className="h-3.5 w-3.5" />}
+              {current === totalSteps - 1 ? "Bitir" : "İleri"}
+              {current < totalSteps - 1 && <ChevronRight className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
