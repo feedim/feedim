@@ -517,6 +517,18 @@ export default function ProfilePage() {
                 <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
+            <Link href="/dashboard/admin/affiliate-applications" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <User className="h-5 w-5 text-pink-500" />
+                  <div>
+                    <h3 className="font-semibold">Affiliate Başvuruları</h3>
+                    <p className="text-xs text-gray-500">Başvuruları incele ve onayla</p>
+                  </div>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
           </div>
         )}
 

@@ -159,6 +159,22 @@ export default function AffiliatePage() {
         </div>
       </section>
 
+      {/* Affiliate Panel Preview */}
+      <section className="border-t border-white/10 py-20">
+        <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
+          <h2 className="text-3xl font-bold mb-4">Affiliate Paneliniz</h2>
+          <p className="text-gray-400 mb-10">Kazançlarınızı, kayıtları ve satışları gerçek zamanlı takip edin.</p>
+          <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            <div className="rounded-2xl overflow-hidden border border-white/10">
+              <img src="/affiliate/panel-1.jpg" alt="Affiliate Panel - Kazanç Takibi" className="w-full" />
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-white/10">
+              <img src="/affiliate/panel-2.jpeg" alt="Affiliate Panel - Link Yönetimi" className="w-full" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
@@ -183,6 +199,10 @@ export default function AffiliatePage() {
           <Link href="/register" className="btn-primary px-8 py-3 text-lg">
             Şimdi Başvur
           </Link>
+          <p className="text-xs text-gray-500 mt-6">
+            Aklınıza takılan sorular ve destek için: <a href="mailto:affiliate@forilove.com" className="text-pink-500 hover:text-pink-400">affiliate@forilove.com</a>
+          </p>
+          <p className="text-xs text-gray-600 mt-1">Beklenmedik durumlarda e-posta adresiniz üzerinden iletişime geçilecektir.</p>
         </div>
       </section>
 
