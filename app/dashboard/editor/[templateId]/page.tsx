@@ -1680,7 +1680,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-lg sm:text-xl font-bold max-w-[200px] sm:max-w-[300px] truncate md:absolute md:left-[120px] md:border-l md:border-white/10 md:pl-4">{template?.name}</h1>
+          <h1 className="text-lg sm:text-xl font-bold truncate md:border-l md:border-white/10 md:pl-4 shrink-0 max-w-[140px] sm:max-w-[200px] md:max-w-[300px]">{template?.name}</h1>
           {/* Mobile: Paylaş button in header */}
           {!loading && (
             <div className="md:hidden">
@@ -1696,8 +1696,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
               </button>
             </div>
           )}
-          {/* Desktop buttons - hidden on mobile, max-width prevents overlap with absolute title */}
-          <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end ml-4">
+          {/* Desktop toolbar */}
+          <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end">
             {loading ? (
               <div className="text-sm text-zinc-400">Yükleniyor...</div>
             ) : (
