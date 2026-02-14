@@ -16,6 +16,7 @@ export default function AffiliatePaymentPage() {
   const [balance, setBalance] = useState<any>(null);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [requesting, setRequesting] = useState(false);
+  const [visiblePayouts, setVisiblePayouts] = useState(10);
   const router = useRouter();
   const supabase = createClient();
 
@@ -123,8 +124,8 @@ export default function AffiliatePaymentPage() {
 
   const statusLabel = (status: string) => {
     switch (status) {
-      case "pending": return { text: "Bekliyor", color: "text-yellow-500", icon: Clock };
-      case "approved": return { text: "Onaylandı", color: "text-green-500", icon: CheckCircle };
+      case "pending": return { text: "Bekliyor", color: "text-pink-300", icon: Clock };
+      case "approved": return { text: "Onaylandı", color: "text-pink-500", icon: CheckCircle };
       case "rejected": return { text: "Reddedildi", color: "text-red-500", icon: XCircle };
       default: return { text: status, color: "text-gray-400", icon: Clock };
     }
@@ -169,11 +170,11 @@ export default function AffiliatePaymentPage() {
                   </div>
                   <div className="bg-white/5 rounded-xl p-3">
                     <p className="text-xs text-gray-400 mb-1">Ödenen</p>
-                    <p className="text-lg font-bold text-green-500">{balance.totalPaidOut.toLocaleString('tr-TR')} <span className="text-xs text-gray-400">TRY</span></p>
+                    <p className="text-lg font-bold text-pink-400">{balance.totalPaidOut.toLocaleString('tr-TR')} <span className="text-xs text-gray-400">TRY</span></p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-3">
                     <p className="text-xs text-gray-400 mb-1">Bekleyen Talep</p>
-                    <p className="text-lg font-bold text-yellow-500">{balance.totalPending.toLocaleString('tr-TR')} <span className="text-xs text-gray-400">TRY</span></p>
+                    <p className="text-lg font-bold text-pink-300">{balance.totalPending.toLocaleString('tr-TR')} <span className="text-xs text-gray-400">TRY</span></p>
                   </div>
                 </div>
 
@@ -246,7 +247,7 @@ export default function AffiliatePaymentPage() {
               <h3 className="font-semibold mb-4">Ödeme Geçmişi</h3>
               {payouts.length > 0 ? (
                 <div className="space-y-3">
-                  {payouts.map((payout) => {
+                  {payouts.slice(0, visiblePayouts).map((payout) => {
                     const status = statusLabel(payout.status);
                     const StatusIcon = status.icon;
                     return (
@@ -267,6 +268,14 @@ export default function AffiliatePaymentPage() {
                       </div>
                     );
                   })}
+                  {visiblePayouts < payouts.length && (
+                    <button
+                      onClick={() => setVisiblePayouts(prev => prev + 10)}
+                      className="w-full py-2 text-sm text-pink-500 hover:text-pink-400 font-medium transition"
+                    >
+                      Daha Fazla Göster ({payouts.length - visiblePayouts} kalan)
+                    </button>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">Henüz ödeme talebi yok.</p>

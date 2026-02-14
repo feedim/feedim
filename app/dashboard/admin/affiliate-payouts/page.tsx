@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminAffiliatePayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -14,6 +16,7 @@ export default function AdminAffiliatePayoutsPage() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const router = useRouter();
   const supabase = createClient();
 
@@ -50,6 +53,11 @@ export default function AdminAffiliatePayoutsPage() {
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset visible count when filter changes
+  useEffect(() => {
+    setVisibleCount(ITEMS_PER_PAGE);
+  }, [filter]);
+
   const handleAction = async (payoutId: string, action: "approve" | "reject") => {
     setProcessing(payoutId);
     try {
@@ -77,6 +85,8 @@ export default function AdminAffiliatePayoutsPage() {
   };
 
   const filteredPayouts = payouts.filter(p => filter === "all" || p.status === filter);
+  const visiblePayouts = filteredPayouts.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredPayouts.length;
 
   const formatIban = (iban: string | null) => {
     if (!iban) return "—";
@@ -108,16 +118,16 @@ export default function AdminAffiliatePayoutsPage() {
             {summary && (
               <div className="grid grid-cols-3 gap-3 mb-6">
                 <div className="bg-zinc-900 rounded-2xl p-4 text-center">
-                  <Clock className="h-5 w-5 text-yellow-500 mx-auto mb-1" />
-                  <p className="text-xl font-bold text-yellow-500">{summary.pendingCount}</p>
+                  <Clock className="h-5 w-5 text-pink-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold text-pink-500">{summary.pendingCount}</p>
                   <p className="text-xs text-gray-400">Bekleyen</p>
-                  <p className="text-xs text-yellow-500 font-medium">{summary.pendingTotal.toLocaleString('tr-TR')} TRY</p>
+                  <p className="text-xs text-pink-500 font-medium">{summary.pendingTotal.toLocaleString('tr-TR')} TRY</p>
                 </div>
                 <div className="bg-zinc-900 rounded-2xl p-4 text-center">
-                  <CheckCircle className="h-5 w-5 text-green-500 mx-auto mb-1" />
-                  <p className="text-xl font-bold text-green-500">{summary.approvedCount}</p>
+                  <CheckCircle className="h-5 w-5 text-pink-400 mx-auto mb-1" />
+                  <p className="text-xl font-bold text-pink-400">{summary.approvedCount}</p>
                   <p className="text-xs text-gray-400">Onaylanan</p>
-                  <p className="text-xs text-green-500 font-medium">{summary.approvedTotal.toLocaleString('tr-TR')} TRY</p>
+                  <p className="text-xs text-pink-400 font-medium">{summary.approvedTotal.toLocaleString('tr-TR')} TRY</p>
                 </div>
                 <div className="bg-zinc-900 rounded-2xl p-4 text-center">
                   <XCircle className="h-5 w-5 text-red-500 mx-auto mb-1" />
@@ -139,7 +149,7 @@ export default function AdminAffiliatePayoutsPage() {
                 >
                   {f === "all" ? "Tümü" : f === "pending" ? "Bekleyen" : f === "approved" ? "Onaylanan" : "Reddedilen"}
                   {f === "pending" && summary?.pendingCount > 0 && (
-                    <span className="ml-1.5 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full">{summary.pendingCount}</span>
+                    <span className="ml-1.5 bg-pink-600 text-white text-xs px-1.5 py-0.5 rounded-full">{summary.pendingCount}</span>
                   )}
                 </button>
               ))}
@@ -155,73 +165,85 @@ export default function AdminAffiliatePayoutsPage() {
                   </p>
                 </div>
               ) : (
-                filteredPayouts.map((payout) => (
-                  <div key={payout.id} className="bg-zinc-900 rounded-2xl p-5 border border-white/5">
-                    {/* Üst: Tutar + Durum */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="text-2xl font-bold">{Number(payout.amount).toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {new Date(payout.requested_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                        payout.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
-                        payout.status === "approved" ? "bg-green-500/20 text-green-500" :
-                        "bg-red-500/20 text-red-500"
-                      }`}>
-                        {payout.status === "pending" ? "Bekliyor" : payout.status === "approved" ? "Onaylandı" : "Reddedildi"}
-                      </span>
-                    </div>
-
-                    {/* Affiliate Bilgileri */}
-                    <div className="bg-white/5 rounded-xl p-3 mb-3 space-y-1">
-                      <p className="text-sm"><span className="text-gray-400">Ad:</span> {payout.affiliate_name}</p>
-                      <p className="text-sm"><span className="text-gray-400">E-posta:</span> {payout.affiliate_email}</p>
-                      <p className="text-sm font-mono"><span className="text-gray-400">IBAN:</span> {formatIban(payout.affiliate_iban)}</p>
-                      <p className="text-sm"><span className="text-gray-400">Hesap Sahibi:</span> {payout.affiliate_holder_name || "—"}</p>
-                    </div>
-
-                    {/* İşlenmiş ise not göster */}
-                    {payout.status !== "pending" && payout.processed_at && (
-                      <p className="text-xs text-gray-500 mb-2">
-                        İşlenme: {new Date(payout.processed_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {payout.admin_note && ` — Not: ${payout.admin_note}`}
-                      </p>
-                    )}
-
-                    {/* Bekleyen ise onay/red butonları */}
-                    {payout.status === "pending" && (
-                      <div className="space-y-3 mt-3 pt-3 border-t border-white/5">
-                        <input
-                          type="text"
-                          placeholder="Admin notu (isteğe bağlı)"
-                          value={noteInput[payout.id] || ""}
-                          onChange={(e) => setNoteInput({ ...noteInput, [payout.id]: e.target.value })}
-                          className="input-modern w-full text-sm"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAction(payout.id, "approve")}
-                            disabled={processing === payout.id}
-                            className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Onayla
-                          </button>
-                          <button
-                            onClick={() => handleAction(payout.id, "reject")}
-                            disabled={processing === payout.id}
-                            className="flex-1 py-2.5 bg-red-600/80 hover:bg-red-600 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
-                          >
-                            <XCircle className="h-4 w-4" />
-                            Reddet
-                          </button>
+                <>
+                  {visiblePayouts.map((payout) => (
+                    <div key={payout.id} className="bg-zinc-900 rounded-2xl p-5 border border-white/5">
+                      {/* Üst: Tutar + Durum */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="text-2xl font-bold">{Number(payout.amount).toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(payout.requested_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
                         </div>
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                          payout.status === "pending" ? "bg-pink-500/20 text-pink-500" :
+                          payout.status === "approved" ? "bg-pink-400/20 text-pink-400" :
+                          "bg-red-500/20 text-red-500"
+                        }`}>
+                          {payout.status === "pending" ? "Bekliyor" : payout.status === "approved" ? "Onaylandı" : "Reddedildi"}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))
+
+                      {/* Affiliate Bilgileri */}
+                      <div className="bg-white/5 rounded-xl p-3 mb-3 space-y-1">
+                        <p className="text-sm"><span className="text-gray-400">Ad:</span> {payout.affiliate_name}</p>
+                        <p className="text-sm"><span className="text-gray-400">E-posta:</span> {payout.affiliate_email}</p>
+                        <p className="text-sm font-mono"><span className="text-gray-400">IBAN:</span> {formatIban(payout.affiliate_iban)}</p>
+                        <p className="text-sm"><span className="text-gray-400">Hesap Sahibi:</span> {payout.affiliate_holder_name || "—"}</p>
+                      </div>
+
+                      {/* İşlenmiş ise not göster */}
+                      {payout.status !== "pending" && payout.processed_at && (
+                        <p className="text-xs text-gray-500 mb-2">
+                          İşlenme: {new Date(payout.processed_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {payout.admin_note && ` — Not: ${payout.admin_note}`}
+                        </p>
+                      )}
+
+                      {/* Bekleyen ise onay/red butonları */}
+                      {payout.status === "pending" && (
+                        <div className="space-y-3 mt-3 pt-3 border-t border-white/5">
+                          <input
+                            type="text"
+                            placeholder="Admin notu (isteğe bağlı)"
+                            value={noteInput[payout.id] || ""}
+                            onChange={(e) => setNoteInput({ ...noteInput, [payout.id]: e.target.value })}
+                            className="input-modern w-full text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAction(payout.id, "approve")}
+                              disabled={processing === payout.id}
+                              className="flex-1 py-2.5 bg-pink-600 hover:bg-pink-500 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Onayla
+                            </button>
+                            <button
+                              onClick={() => handleAction(payout.id, "reject")}
+                              disabled={processing === payout.id}
+                              className="flex-1 py-2.5 bg-red-600/80 hover:bg-red-600 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Reddet
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Load More */}
+                  {hasMore && (
+                    <button
+                      onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
+                      className="w-full py-3 text-sm text-pink-500 hover:text-pink-400 font-medium transition"
+                    >
+                      Daha Fazla Göster ({filteredPayouts.length - visibleCount} kalan)
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </>

@@ -33,6 +33,8 @@ export default function ProfilePage() {
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
   const [sponsorAnalytics, setSponsorAnalytics] = useState<any>(null);
   const [sponsorUsers, setSponsorUsers] = useState<any[]>([]);
+  const [visibleCoupons, setVisibleCoupons] = useState(10);
+  const [visiblePromos, setVisiblePromos] = useState(10);
   const router = useRouter();
   const supabase = createClient();
 
@@ -597,7 +599,7 @@ export default function ProfilePage() {
             {coupons.filter(c => c.coupon_type === 'general').length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Mevcut Kuponlar</p>
-                {coupons.filter(c => c.coupon_type === 'general').map((coupon) => (
+                {coupons.filter(c => c.coupon_type === 'general').slice(0, visibleCoupons).map((coupon) => (
                   <div key={coupon.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -616,6 +618,14 @@ export default function ProfilePage() {
                     </button>
                   </div>
                 ))}
+                {visibleCoupons < coupons.filter(c => c.coupon_type === 'general').length && (
+                  <button
+                    onClick={() => setVisibleCoupons(prev => prev + 10)}
+                    className="w-full py-2 text-sm text-pink-500 hover:text-pink-400 font-medium transition"
+                  >
+                    Daha Fazla Göster
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -793,7 +803,7 @@ export default function ProfilePage() {
             {promos.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Aktif Promolar</p>
-                {promos.map((promo) => (
+                {promos.slice(0, visiblePromos).map((promo) => (
                   <div key={promo.id} className="p-3 rounded-xl bg-white/5">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
@@ -823,6 +833,14 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ))}
+                {visiblePromos < promos.length && (
+                  <button
+                    onClick={() => setVisiblePromos(prev => prev + 10)}
+                    className="w-full py-2 text-sm text-pink-500 hover:text-pink-400 font-medium transition"
+                  >
+                    Daha Fazla Göster
+                  </button>
+                )}
               </div>
             )}
           </div>
