@@ -993,6 +993,7 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
+              <p className="text-xs text-pink-400">İlk ödemeye kadar kod ve oran değiştirilebilir, sonrasında değiştirilemez.</p>
               <button
                 onClick={handleCreatePromo}
                 disabled={promoCreating || promoForm.code.trim().length < 3}

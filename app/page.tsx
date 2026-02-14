@@ -309,7 +309,7 @@ export default function Home() {
         <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="max-w-5xl mx-auto">
             <div ref={testimonialReveal.ref} className={`text-center mb-12 ${testimonialReveal.isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Kullanıcılarımız Ne Diyor?</h2>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">Kullanıcılarımız Ne Diyor?</h2>
               <p className="text-gray-400 text-lg">Gerçek kullanıcılardan gerçek hikayeler</p>
             </div>
 
