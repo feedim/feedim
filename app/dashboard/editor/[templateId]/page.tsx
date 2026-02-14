@@ -680,9 +680,27 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         }
       });
 
-      // Add tap highlight reset style
+      // Add editor override styles: disable template interactivity, ensure editables are always clickable
       const tapStyle = doc.createElement('style');
-      tapStyle.textContent = '* { -webkit-tap-highlight-color: transparent !important; }';
+      tapStyle.textContent = `
+        * { -webkit-tap-highlight-color: transparent !important; }
+        /* Disable all template buttons/navs/links that interfere with editing */
+        button:not([data-editable]), a:not([data-editable]), [onclick]:not([data-editable]) {
+          pointer-events: none !important;
+        }
+        /* Ensure editable elements are always on top and clickable */
+        [data-editable] {
+          position: relative !important;
+          z-index: 9999 !important;
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+        /* Disable template scripts navigation overlays */
+        .fl-nav, .fl-dots, .fl-dot, [class*="nav"], [class*="swipe"] {
+          pointer-events: none !important;
+          opacity: 0.3 !important;
+        }
+      `;
       doc.head.appendChild(tapStyle);
 
       // Add click event listener script
