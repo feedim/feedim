@@ -2194,7 +2194,6 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                               </select>
                             </div>
                           </div>
-                          <p className="text-xs text-gray-400 text-center">{String(selDay).padStart(2,'0')}.{String(selMonth).padStart(2,'0')}.{selYear}</p>
                         </div>
                       );
                     })()
