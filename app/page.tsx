@@ -322,7 +322,7 @@ export default function Home() {
                 >
                   <div className="flex gap-0.5 mb-4">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <Star key={i} className="h-4 w-4 text-pink-500 fill-pink-500" />
                     ))}
                   </div>
                   <p className="text-gray-300 mb-4 leading-relaxed">&ldquo;{t.text}&rdquo;</p>

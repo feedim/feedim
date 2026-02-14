@@ -77,6 +77,14 @@ export default function ProfilePage() {
             setPromos(promosData.promos || []);
           }
         } catch { /* silent */ }
+      } else if (profileData?.role === 'sponsor') {
+        try {
+          const promosRes = await fetch('/api/sponsor/promos');
+          if (promosRes.ok) {
+            const promosData = await promosRes.json();
+            setPromos(promosData.promos || []);
+          }
+        } catch { /* silent */ }
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -206,11 +214,13 @@ export default function ProfilePage() {
     }
     setPromoCreating(true);
     try {
-      const res = await fetch('/api/admin/coupons', {
+      const isSponsor = profile?.role === 'sponsor';
+      const apiUrl = isSponsor ? '/api/sponsor/promos' : '/api/admin/coupons';
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'promo',
+          ...(isSponsor ? {} : { type: 'promo' }),
           code: promoForm.code,
           discountPercent: promoForm.isFree ? 100 : promoForm.discountPercent,
           maxSignups: promoForm.maxSignups,
@@ -234,7 +244,9 @@ export default function ProfilePage() {
 
   const handleDeletePromo = async (promoId: string) => {
     try {
-      const res = await fetch('/api/admin/coupons', {
+      const isSponsor = profile?.role === 'sponsor';
+      const apiUrl = isSponsor ? '/api/sponsor/promos' : '/api/admin/coupons';
+      const res = await fetch(apiUrl, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ promoId }),
@@ -251,7 +263,7 @@ export default function ProfilePage() {
   };
 
   const copyPromoLink = async (code: string) => {
-    const url = `${window.location.origin}/register?promo=${code}`;
+    const url = `${window.location.origin}/?promo=${code}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedPromo(code);
@@ -591,8 +603,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Admin: Promo Linkleri */}
-        {profile?.role === 'admin' && (
+        {/* Promo Linkleri - Admin & Sponsor */}
+        {(profile?.role === 'admin' || profile?.role === 'sponsor') && (
           <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-2 mb-1">
               <Globe className="h-5 w-5 text-pink-500" />
