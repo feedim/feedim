@@ -216,7 +216,7 @@ export default function AffiliatePaymentPage() {
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-lg font-semibold">Ödeme Bilgileri</h1>
+          <h1 className="text-lg font-semibold">Ödeme</h1>
           <div className="w-16" />
         </nav>
       </header>

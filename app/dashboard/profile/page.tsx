@@ -579,30 +579,52 @@ export default function ProfilePage() {
                 <span className="text-sm">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
               </div>
 
+            </div>
+          </div>
+
+          {/* Güvenlik */}
+          <div className="bg-zinc-900 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/5">
+              <h3 className="font-semibold text-sm text-zinc-400 uppercase tracking-wider">Güvenlik</h3>
+            </div>
+            <div className="divide-y divide-white/5">
+              {/* E-posta: Doğrulama + Değiştirme tek yerde */}
               <div className="px-5 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Mail className="h-5 w-5 text-zinc-400" />
-                    <span className="text-zinc-400">E-posta</span>
+                    <div>
+                      <span className="text-zinc-400">E-posta</span>
+                      <p className="text-sm text-white mt-0.5">{user?.email || "-"}</p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setEditEmail(!editEmail)}
-                    className="text-sm text-white hover:text-zinc-200 font-semibold transition-colors"
-                  >
-                    Değiştir
-                  </button>
-                </div>
-                {!editEmail ? (
-                  <div className="pl-8 mt-1">
-                    <span className="text-sm text-white">{user?.email || '-'}</span>
+                  <div className="flex items-center gap-3">
                     {emailVerified ? (
-                      <span className="text-xs text-pink-400 font-semibold ml-2">Onaylandı</span>
-                    ) : (
-                      <span className="text-xs text-red-400 ml-2">Onaylanmadı</span>
-                    )}
+                      <span className="flex items-center gap-1.5 text-xs text-pink-400 font-semibold">
+                        <Check className="h-3.5 w-3.5" />
+                        Onaylandı
+                      </span>
+                    ) : !verifyingEmail ? (
+                      <button
+                        onClick={handleSendEmailCode}
+                        disabled={sendingCode}
+                        className="text-xs text-pink-500 hover:text-pink-400 font-semibold transition-colors"
+                      >
+                        {sendingCode ? "..." : "Doğrula"}
+                      </button>
+                    ) : null}
+                    <button
+                      onClick={() => setEditEmail(!editEmail)}
+                      className="text-xs text-zinc-400 hover:text-white font-semibold transition-colors"
+                    >
+                      Değiştir
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-3 mt-3">
+                </div>
+
+                {/* Email change form */}
+                {editEmail && (
+                  <div className="space-y-3 mt-3 pl-8">
                     <input
                       type="email"
                       value={newEmail}
@@ -613,10 +635,7 @@ export default function ProfilePage() {
                     />
                     <div className="flex gap-2">
                       <button
-                        onClick={() => {
-                          setEditEmail(false);
-                          setNewEmail("");
-                        }}
+                        onClick={() => { setEditEmail(false); setNewEmail(""); }}
                         className="flex-1 btn-secondary py-2 text-sm"
                       >
                         İptal
@@ -630,43 +649,6 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-
-          {/* Güvenlik */}
-          <div className="bg-zinc-900 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/5">
-              <h3 className="font-semibold text-sm text-zinc-400 uppercase tracking-wider">Güvenlik</h3>
-            </div>
-            <div className="divide-y divide-white/5">
-              <div className="px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-zinc-400" />
-                    <span className="text-zinc-400">E-posta Doğrulaması</span>
-                  </div>
-                  {emailVerified ? (
-                    <span className="flex items-center gap-1.5 text-xs text-pink-400 font-semibold">
-                      <Check className="h-3.5 w-3.5" />
-                      Onaylandı
-                    </span>
-                  ) : !verifyingEmail ? (
-                    <button
-                      onClick={handleSendEmailCode}
-                      disabled={sendingCode}
-                      className="text-sm text-pink-500 hover:text-pink-400 font-semibold transition-colors"
-                    >
-                      {sendingCode ? "Gönderiliyor..." : "Onayla"}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="pl-8 mt-1">
-                  <span className="text-sm text-white">{user?.email || "-"}</span>
-                  {!emailVerified && !verifyingEmail && (
-                    <span className="text-xs text-red-400 ml-2">Onaylanmadı</span>
-                  )}
-                </div>
 
                 {/* Inline code verification */}
                 {verifyingEmail && !emailVerified && (
