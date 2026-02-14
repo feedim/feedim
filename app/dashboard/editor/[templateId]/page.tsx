@@ -1806,9 +1806,10 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                     </button>
                     <div
                       id="editor-toolbar-scroll"
-                      className="flex-1 min-w-0 flex items-center justify-end gap-2 overflow-x-auto scrollbar-hide ml-[5px] bg-white/5"
+                      className="flex-1 min-w-0 overflow-x-auto scrollbar-hide ml-[5px]"
                       style={{ borderRadius: '3rem', padding: '4px' }}
                     >
+                      <div className="flex items-center gap-2 w-fit ml-auto">
                       <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
                         <button
                           onClick={undo}
@@ -1909,6 +1910,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         <Eye className="h-4 w-4" />
                         Önizleme
                       </button>
+                      </div>
                     </div>
                     <button
                       onClick={() => {
