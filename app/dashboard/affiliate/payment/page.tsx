@@ -46,7 +46,8 @@ export default function AffiliatePaymentPage() {
       if (promoRes.ok) {
         const data = await promoRes.json();
         if (data.paymentInfo) {
-          setIban(data.paymentInfo.iban || "");
+          const loadedIban = data.paymentInfo.iban || "";
+          setIban(loadedIban.startsWith("TR") ? loadedIban : loadedIban ? "TR" + loadedIban : "");
           setHolderName(data.paymentInfo.holderName || "");
         }
         if (data.balance) {
@@ -130,8 +131,22 @@ export default function AffiliatePaymentPage() {
   };
 
   const formatIban = (val: string) => {
-    const clean = val.replace(/\s/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // Ensure TR prefix + only digits
+    let clean = val.replace(/\s/g, "").toUpperCase();
+    if (!clean.startsWith("TR")) clean = "TR" + clean.replace(/[^0-9]/g, "");
+    else clean = "TR" + clean.slice(2).replace(/[^0-9]/g, "");
+    // TR IBAN = 26 chars total (TR + 24 digits)
+    clean = clean.slice(0, 26);
     return clean.replace(/(.{4})/g, "$1 ").trim();
+  };
+
+  const handleIbanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\s/g, "").toUpperCase();
+    // Remove TR prefix for processing, keep only digits
+    if (raw.startsWith("TR")) raw = raw.slice(2);
+    raw = raw.replace(/[^0-9]/g, "");
+    // Store as TR + digits, max 24 digits after TR
+    setIban("TR" + raw.slice(0, 24));
   };
 
   const statusLabel = (status: string) => {
@@ -262,10 +277,11 @@ export default function AffiliatePaymentPage() {
                   <label className="block text-sm text-gray-400 mb-2">IBAN</label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={formatIban(iban)}
-                    onChange={(e) => setIban(e.target.value.replace(/\s/g, "").toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                    onChange={handleIbanChange}
                     placeholder="TR00 0000 0000 0000 0000 0000 00"
-                    maxLength={40}
+                    maxLength={32}
                     className="input-modern w-full font-mono tracking-wider"
                   />
                 </div>

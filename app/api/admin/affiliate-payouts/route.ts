@@ -160,8 +160,11 @@ export async function PUT(request: NextRequest) {
       const totalPaidOut = (otherPayouts || [])
         .filter(p => p.status === "approved")
         .reduce((sum, p) => sum + Number(p.amount), 0);
+      const totalOtherPending = (otherPayouts || [])
+        .filter(p => p.status === "pending")
+        .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      const availableBalance = Math.round((totalEarnings - totalPaidOut) * 100) / 100;
+      const availableBalance = Math.round((totalEarnings - totalPaidOut - totalOtherPending) * 100) / 100;
 
       if (Number(payout.amount) > availableBalance) {
         return NextResponse.json({
