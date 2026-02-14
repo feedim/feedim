@@ -17,15 +17,23 @@ const ALLOWED_DOMAINS = [
 
 function isValidSocialUrl(url: string): boolean {
   try {
-    const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
-    return ALLOWED_DOMAINS.includes(parsed.hostname.toLowerCase());
+    const fullUrl = url.startsWith("http") ? url : `https://${url}`;
+    const parsed = new URL(fullUrl);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+    const hostname = parsed.hostname.toLowerCase();
+    return ALLOWED_DOMAINS.some(d => hostname === d);
   } catch {
     return false;
   }
 }
 
 function sanitizeText(text: string): string {
-  return text.replace(/<[^>]*>/g, "").replace(/[<>"'&]/g, "").trim();
+  return text
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+\s*=/gi, "")
+    .trim();
 }
 
 // GET: Check existing application
@@ -73,16 +81,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Zaten affiliate veya admin hesabınız var" }, { status: 400 });
     }
 
-    // Check pending application
-    const { data: existing } = await admin
+    // Check pending or recently rejected application (rate limit: 1 per hour)
+    const { data: recentApp } = await admin
       .from("affiliate_applications")
-      .select("id, status")
+      .select("id, status, created_at")
       .eq("user_id", user.id)
-      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (existing) {
+    if (recentApp?.status === "pending") {
       return NextResponse.json({ error: "Zaten bekleyen bir başvurunuz var" }, { status: 400 });
+    }
+    if (recentApp) {
+      const cooldown = Date.now() - new Date(recentApp.created_at).getTime();
+      if (cooldown < 60 * 60 * 1000) {
+        return NextResponse.json({ error: "Bir saat içinde tekrar başvuramazsınız" }, { status: 429 });
+      }
     }
 
     const body = await request.json();
@@ -92,16 +107,21 @@ export async function POST(request: NextRequest) {
     if (!socialMedia || typeof socialMedia !== "string" || !socialMedia.trim()) {
       return NextResponse.json({ error: "Sosyal medya hesabı zorunludur" }, { status: 400 });
     }
-    if (!isValidSocialUrl(socialMedia.trim())) {
+    const cleanSocialMedia = sanitizeText(socialMedia.trim()).slice(0, 200);
+    if (!isValidSocialUrl(cleanSocialMedia)) {
       return NextResponse.json({ error: "Geçerli bir sosyal medya linki girin (Instagram, TikTok, YouTube, X vb.)" }, { status: 400 });
     }
 
-    // Validate followers - only digits
+    // Validate followers - only digits, max safe integer
     if (!followers || typeof followers !== "string" || !followers.trim()) {
       return NextResponse.json({ error: "Takipçi sayısı zorunludur" }, { status: 400 });
     }
     const cleanFollowers = followers.trim().replace(/\D/g, "");
-    if (!cleanFollowers || cleanFollowers.length === 0 || cleanFollowers.length > 15) {
+    if (!cleanFollowers || cleanFollowers.length === 0 || cleanFollowers.length > 12) {
+      return NextResponse.json({ error: "Geçerli bir takipçi sayısı girin" }, { status: 400 });
+    }
+    const followersNum = parseInt(cleanFollowers, 10);
+    if (!Number.isFinite(followersNum) || followersNum <= 0) {
       return NextResponse.json({ error: "Geçerli bir takipçi sayısı girin" }, { status: 400 });
     }
 
@@ -116,7 +136,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         email: user.email,
         full_name: sanitizeText(fullName).slice(0, 100),
-        social_media: socialMedia.trim().slice(0, 200),
+        social_media: cleanSocialMedia,
         followers: cleanFollowers,
         description: cleanDescription,
         status: "pending",

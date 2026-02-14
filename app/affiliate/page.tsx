@@ -214,7 +214,7 @@ export default function AffiliatePage() {
           <p className="text-xs text-gray-500 mt-6">
             Aklınıza takılan sorular ve destek için: <a href="mailto:affiliate@forilove.com" className="text-pink-500 hover:text-pink-400">affiliate@forilove.com</a>
           </p>
-          <p className="text-xs text-gray-600 mt-1">Beklenmedik durumlarda e-posta adresiniz üzerinden iletişime geçilecektir.</p>
+          <p className="text-xs text-gray-300 mt-1">Beklenmedik durumlarda e-posta adresiniz üzerinden iletişime geçilecektir.</p>
         </div>
       </section>
 

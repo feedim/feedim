@@ -265,6 +265,7 @@ export default function AffiliateApplyPage() {
                   className="input-modern w-full text-sm"
                   maxLength={15}
                 />
+                <p className="text-[10px] text-gray-600 mt-0.5">Takipçi sayısı zorunlu değildir ancak onay ihtimalinizi arttırır.</p>
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Neden Başvuruyorsunuz? <span className="text-gray-600">(opsiyonel)</span></label>

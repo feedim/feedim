@@ -12,11 +12,11 @@ async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
     .eq("user_id", user.id)
     .single();
 
-  if (profile?.role !== "admin") return null;
+  if (!profile || profile.role !== "admin") return null;
   return user;
 }
 
-// GET: List all applications
+// GET: List all applications (paginated)
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -29,21 +29,23 @@ export async function GET() {
     const { data: applications, error } = await admin
       .from("affiliate_applications")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
 
     if (error) throw error;
 
-    const pending = (applications || []).filter(a => a.status === "pending");
-    const approved = (applications || []).filter(a => a.status === "approved");
-    const rejected = (applications || []).filter(a => a.status === "rejected");
+    const all = applications || [];
+    const pending = all.filter(a => a.status === "pending");
+    const approved = all.filter(a => a.status === "approved");
+    const rejected = all.filter(a => a.status === "rejected");
 
     return NextResponse.json({
-      applications: applications || [],
+      applications: all,
       summary: {
         pendingCount: pending.length,
         approvedCount: approved.length,
         rejectedCount: rejected.length,
-        totalCount: (applications || []).length,
+        totalCount: all.length,
       },
     });
   } catch (error) {
@@ -61,10 +63,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { applicationId, action } = await request.json();
+    const body = await request.json();
+    const { applicationId, action } = body;
 
-    if (!applicationId || !["approve", "reject"].includes(action)) {
-      return NextResponse.json({ error: "Geçersiz istek" }, { status: 400 });
+    if (!applicationId || typeof applicationId !== "string") {
+      return NextResponse.json({ error: "Geçersiz başvuru ID" }, { status: 400 });
+    }
+    // UUID format check
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId)) {
+      return NextResponse.json({ error: "Geçersiz başvuru ID formatı" }, { status: 400 });
+    }
+    if (!action || !["approve", "reject"].includes(action)) {
+      return NextResponse.json({ error: "Geçersiz işlem" }, { status: 400 });
     }
 
     const admin = createAdminClient();
@@ -83,7 +93,7 @@ export async function PUT(request: NextRequest) {
 
     const newStatus = action === "approve" ? "approved" : "rejected";
 
-    // Update application status
+    // Update application status (idempotent — only if still pending)
     const { error: updateError } = await admin
       .from("affiliate_applications")
       .update({

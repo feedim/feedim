@@ -177,10 +177,23 @@ export default function AdminAffiliateApplicationsPage() {
                       <div className="bg-white/5 rounded-xl p-3 mb-3 space-y-1.5">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-400">Sosyal Medya</span>
-                          <a href={app.social_media.startsWith("http") ? app.social_media : `https://${app.social_media}`} target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-300 flex items-center gap-1 truncate max-w-[220px]">
-                            {app.social_media.replace(/^https?:\/\/(www\.)?/, "")}
-                            <ExternalLink className="h-3 w-3 shrink-0" />
-                          </a>
+                          {(() => {
+                            try {
+                              const url = app.social_media.startsWith("http") ? app.social_media : `https://${app.social_media}`;
+                              const parsed = new URL(url);
+                              if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+                                return (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-300 flex items-center gap-1 truncate max-w-[220px]">
+                                    {app.social_media.replace(/^https?:\/\/(www\.)?/, "")}
+                                    <ExternalLink className="h-3 w-3 shrink-0" />
+                                  </a>
+                                );
+                              }
+                              return <span className="text-gray-300 truncate max-w-[220px]">{app.social_media}</span>;
+                            } catch {
+                              return <span className="text-gray-300 truncate max-w-[220px]">{app.social_media}</span>;
+                            }
+                          })()}
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-400">Takipçi</span>

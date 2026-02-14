@@ -14,7 +14,7 @@ async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
     .eq("user_id", user.id)
     .single();
 
-  if (profile?.role !== "admin") return null;
+  if (!profile || profile.role !== "admin") return null;
   return user;
 }
 
@@ -28,35 +28,51 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    // Get all payouts with affiliate info
+    // Get payouts with pagination limit
     const { data: payouts, error } = await admin
       .from("affiliate_payouts")
       .select("*")
-      .order("requested_at", { ascending: false });
+      .order("requested_at", { ascending: false })
+      .limit(500);
 
     if (error) throw error;
 
-    // Enrich with affiliate details
-    const enriched = await Promise.all(
-      (payouts || []).map(async (payout) => {
-        const { data: profile } = await admin
-          .from("profiles")
-          .select("name, surname, affiliate_iban, affiliate_holder_name")
-          .eq("user_id", payout.affiliate_user_id)
-          .single();
+    const payoutList = payouts || [];
 
-        // Get email
-        const { data: authUser } = await admin.auth.admin.getUserById(payout.affiliate_user_id);
+    // Batch fetch profiles (fix N+1 query)
+    const affiliateIds = [...new Set(payoutList.map(p => p.affiliate_user_id))];
+    let profileMap = new Map<string, any>();
 
-        return {
-          ...payout,
-          affiliate_name: profile ? `${profile.name || ""} ${profile.surname || ""}`.trim() : "—",
-          affiliate_email: authUser?.user?.email || "—",
-          affiliate_iban: profile?.affiliate_iban || null,
-          affiliate_holder_name: profile?.affiliate_holder_name || null,
-        };
-      })
-    );
+    if (affiliateIds.length > 0) {
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("user_id, name, surname, affiliate_iban, affiliate_holder_name")
+        .in("user_id", affiliateIds);
+
+      if (profiles) {
+        profileMap = new Map(profiles.map(p => [p.user_id, p]));
+      }
+    }
+
+    // Batch fetch emails
+    const emailMap = new Map<string, string>();
+    for (const id of affiliateIds) {
+      try {
+        const { data: authUser } = await admin.auth.admin.getUserById(id);
+        if (authUser?.user?.email) emailMap.set(id, authUser.user.email);
+      } catch { /* skip */ }
+    }
+
+    const enriched = payoutList.map(payout => {
+      const profile = profileMap.get(payout.affiliate_user_id);
+      return {
+        ...payout,
+        affiliate_name: profile ? `${profile.name || ""} ${profile.surname || ""}`.trim() : "—",
+        affiliate_email: emailMap.get(payout.affiliate_user_id) || "—",
+        affiliate_iban: profile?.affiliate_iban || null,
+        affiliate_holder_name: profile?.affiliate_holder_name || null,
+      };
+    });
 
     // Summary
     const pending = enriched.filter(p => p.status === "pending");
@@ -89,9 +105,20 @@ export async function PUT(request: NextRequest) {
 
     const { payoutId, action, adminNote } = await request.json();
 
-    if (!payoutId || !["approve", "reject"].includes(action)) {
+    if (!payoutId || typeof payoutId !== "string") {
+      return NextResponse.json({ error: "Geçersiz ödeme ID" }, { status: 400 });
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payoutId)) {
+      return NextResponse.json({ error: "Geçersiz ödeme ID formatı" }, { status: 400 });
+    }
+    if (!["approve", "reject"].includes(action)) {
       return NextResponse.json({ error: "Geçersiz istek" }, { status: 400 });
     }
+
+    // Sanitize admin note
+    const cleanNote = adminNote
+      ? String(adminNote).replace(/<[^>]*>/g, "").replace(/javascript:/gi, "").slice(0, 500).trim()
+      : null;
 
     const admin = createAdminClient();
 
@@ -113,11 +140,11 @@ export async function PUT(request: NextRequest) {
     if (action === "approve") {
       const affiliateId = payout.affiliate_user_id;
 
-      // Calculate total earnings per-promo
       const { data: promos } = await admin
         .from("promo_links")
         .select("id, discount_percent")
-        .eq("created_by", affiliateId);
+        .eq("created_by", affiliateId)
+        .limit(100);
 
       let totalEarnings = 0;
       if (promos && promos.length > 0) {
@@ -125,7 +152,8 @@ export async function PUT(request: NextRequest) {
         const { data: signups } = await admin
           .from("promo_signups")
           .select("user_id, promo_link_id")
-          .in("promo_link_id", promoIds);
+          .in("promo_link_id", promoIds)
+          .limit(50000);
 
         if (signups && signups.length > 0) {
           for (const promo of promos) {
@@ -140,7 +168,8 @@ export async function PUT(request: NextRequest) {
               .from("coin_payments")
               .select("price_paid")
               .in("user_id", promoUserIds)
-              .eq("status", "completed");
+              .eq("status", "completed")
+              .limit(50000);
 
             const revenue = payments?.reduce((sum, p) => sum + (p.price_paid || 0), 0) || 0;
             const rate = TOTAL_ALLOCATION - promo.discount_percent;
@@ -150,12 +179,12 @@ export async function PUT(request: NextRequest) {
       }
       totalEarnings = Math.round(totalEarnings * 100) / 100;
 
-      // Get all approved/pending payouts EXCEPT this one
       const { data: otherPayouts } = await admin
         .from("affiliate_payouts")
         .select("amount, status")
         .eq("affiliate_user_id", affiliateId)
-        .neq("id", payoutId);
+        .neq("id", payoutId)
+        .limit(10000);
 
       const totalPaidOut = (otherPayouts || [])
         .filter(p => p.status === "approved")
@@ -180,7 +209,7 @@ export async function PUT(request: NextRequest) {
         status: newStatus,
         processed_at: new Date().toISOString(),
         processed_by: user.id,
-        admin_note: adminNote || null,
+        admin_note: cleanNote,
       })
       .eq("id", payoutId)
       .eq("status", "pending")
