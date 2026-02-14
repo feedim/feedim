@@ -16,13 +16,14 @@ export default function PromoBanner() {
       const urlPromo = searchParams.get("promo");
       if (urlPromo && /^[a-zA-Z0-9]{3,20}$/.test(urlPromo)) {
         // Save to localStorage immediately
-        localStorage.setItem(PROMO_STORAGE_KEY, urlPromo);
+        const normalizedCode = urlPromo.toUpperCase();
+        localStorage.setItem(PROMO_STORAGE_KEY, normalizedCode);
         // Validate via API
         try {
-          const res = await fetch(`/api/promo/check?code=${urlPromo}`);
+          const res = await fetch(`/api/promo/check?code=${normalizedCode}`);
           const data = await res.json();
           if (data.valid) {
-            const info = { code: urlPromo, discount: data.discount_percent };
+            const info = { code: normalizedCode, discount: data.discount_percent };
             localStorage.setItem(PROMO_INFO_KEY, JSON.stringify(info));
             setPromoInfo(info);
           } else {

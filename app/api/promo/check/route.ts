@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const { data } = await supabase
     .from("promo_links")
     .select("discount_percent, max_signups, current_signups, expires_at, is_active")
-    .eq("code", code)
+    .ilike("code", code)
     .eq("is_active", true)
     .single();
 
