@@ -172,7 +172,7 @@ export default function TemplateCard({
             <div className="flex items-center gap-3">
               {showPrice && (
                 template.coin_price === 0 ? (
-                  <span className="text-lg font-bold text-emerald-400 shrink-0">Ücretsiz</span>
+                  <span className="text-lg font-bold text-orange-400 shrink-0">Ücretsiz</span>
                 ) : (
                   <>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -197,7 +197,7 @@ export default function TemplateCard({
                 )
               )}
               <div className="btn-primary flex-1 py-2.5 text-sm text-center pointer-events-none">
-                {isPurchased ? 'Yayına Al' : template.coin_price === 0 ? 'Keşfet' : 'Satın Al'}
+                {isPurchased ? 'Yayına Al' : template.coin_price === 0 ? 'Düzenle' : 'Satın Al'}
               </div>
             </div>
           )}
