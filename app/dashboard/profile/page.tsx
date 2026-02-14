@@ -463,18 +463,32 @@ export default function ProfilePage() {
 
         {/* Admin: Yayınlanan Sayfalar Link */}
         {profile?.role === 'admin' && (
-          <Link href="/dashboard/admin/projects" className="block bg-zinc-900 rounded-2xl p-5 mb-6 hover:bg-zinc-800 transition group">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-pink-500" />
-                <div>
-                  <h3 className="font-semibold">Yayınlanan Sayfalar</h3>
-                  <p className="text-xs text-gray-500">{adminStats?.publishedPages || 0} sayfa yayında</p>
+          <div className="space-y-3 mb-6">
+            <Link href="/dashboard/admin/projects" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Globe className="h-5 w-5 text-pink-500" />
+                  <div>
+                    <h3 className="font-semibold">Yayınlanan Sayfalar</h3>
+                    <p className="text-xs text-gray-500">{adminStats?.publishedPages || 0} sayfa yayında</p>
+                  </div>
                 </div>
+                <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
               </div>
-              <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </Link>
+            </Link>
+            <Link href="/dashboard/admin/affiliate-payouts" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Wallet className="h-5 w-5 text-pink-500" />
+                  <div>
+                    <h3 className="font-semibold">Affiliate Ödemeleri</h3>
+                    <p className="text-xs text-gray-500">Ödeme taleplerini yönet</p>
+                  </div>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </div>
         )}
 
         {/* Admin: Son Üyeler */}
