@@ -77,6 +77,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   const pendingUploadsRef = useRef<Record<string, File>>({});
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewInitRef = useRef(false);
+  const previewHtmlRef = useRef<string>("");
   const oldImageUrlRef = useRef<string>('');
   const valuesRef = useRef<Record<string, string>>({});
   const undoStackRef = useRef<Record<string, string>[]>([]);
@@ -1103,10 +1104,11 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
 
   // Write HTML to iframe — first time uses srcDoc, subsequent times write directly (no white flash)
   const writeToPreview = (html: string) => {
-    // Always update state so handlePreview gets latest HTML (with hidden areas, edits, etc.)
-    setPreviewHtml(html);
+    // Always keep ref up to date for handlePreview
+    previewHtmlRef.current = html;
     const iframe = iframeRef.current;
     if (previewInitRef.current && iframe?.contentDocument) {
+      // Subsequent updates: write directly to iframe (no React re-render, no scroll reset)
       const doc = iframe.contentDocument;
       const scrollY = doc.documentElement?.scrollTop || doc.body?.scrollTop || 0;
       doc.open();
@@ -1117,6 +1119,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
         if (doc.body) doc.body.scrollTop = scrollY;
       });
     } else {
+      // First render: set state so srcDoc gets initial HTML
+      setPreviewHtml(html);
       previewInitRef.current = true;
     }
   };
@@ -1461,7 +1465,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   const handlePreview = () => {
     // Save current editor state to sessionStorage and open preview page
     localStorage.setItem('forilove_preview', JSON.stringify({
-      html: previewHtml,
+      html: previewHtmlRef.current || previewHtml,
       musicUrl: musicUrl || '',
       templateName: template?.name || 'Önizleme',
     }));
@@ -1788,7 +1792,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
             </div>
           )}
           {/* Desktop toolbar */}
-          <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end ml-[15px]">
             {loading ? (
               <div className="text-sm text-zinc-400">Yükleniyor...</div>
             ) : (
