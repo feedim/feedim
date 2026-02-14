@@ -1761,11 +1761,9 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   }
 
   return (
-    <div className="h-[100dvh] bg-black text-white flex flex-col overflow-hidden relative" style={{ overscrollBehavior: 'none' }}>
-      {/* Pink glow line — sits behind header's backdrop-blur */}
-      <div className="absolute top-[72px] left-0 right-0 h-[3px] z-40" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(236,72,153,0.6) 20%, rgba(236,72,153,0.8) 50%, rgba(236,72,153,0.6) 80%, transparent 100%)', boxShadow: '0 0 12px 2px rgba(236,72,153,0.3)' }} />
+    <div className="h-[100dvh] bg-black text-white flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       {/* Header */}
-      <header className="shrink-0 z-50 bg-black/90 backdrop-blur-2xl min-h-[73px] relative">
+      <header className="shrink-0 z-50 bg-black/90 backdrop-blur-2xl min-h-[73px] relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-pink-500/60 after:-z-10">
         <nav className="w-full px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
           <button onClick={() => { if (guestMode) { router.push('/templates'); } else if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
