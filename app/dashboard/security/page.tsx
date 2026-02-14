@@ -300,7 +300,7 @@ export default function SecurityPage() {
               {/* Inline code verification */}
               {verifyingEmail && !emailVerified && (
                 <div className="mt-4 space-y-3">
-                  <p className="text-xs text-zinc-400">E-postanıza gönderilen 8 haneli kodu girin.</p>
+                  <p className="text-xs text-zinc-400">E-postanıza gönderilen 8 haneli kodu girin. Spam veya diğer klasörleri de kontrol edin.</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
