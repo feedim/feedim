@@ -689,38 +689,23 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       const script = doc.createElement('script');
       script.textContent = `
         document.addEventListener('DOMContentLoaded', function() {
-          // Neutralize large overlay elements that block editing
-          // Find elements covering >40% of viewport width/height with high z-index
-          (function() {
-            var all = document.querySelectorAll('*');
-            var vw = window.innerWidth || document.documentElement.clientWidth;
-            var vh = window.innerHeight || document.documentElement.clientHeight;
-            for (var i = 0; i < all.length; i++) {
-              var el = all[i];
-              if (el.hasAttribute('data-editable')) continue;
-              var st = window.getComputedStyle(el);
-              var zi = parseInt(st.zIndex);
-              if (isNaN(zi) || zi < 10) continue;
-              var rect = el.getBoundingClientRect();
-              var coversWide = rect.width > vw * 0.4 && rect.height > vh * 0.4;
-              if (coversWide && st.position !== 'static') {
-                el.style.pointerEvents = 'none';
-                // Keep child buttons/icons clickable for navigation
-                var icons = el.querySelectorAll('span, svg, img, i');
-                for (var j = 0; j < icons.length; j++) {
-                  icons[j].style.pointerEvents = 'auto';
-                }
+          // Capture ALL clicks at document level - check if click point has an editable underneath
+          document.addEventListener('click', function(e) {
+            var els = document.elementsFromPoint(e.clientX, e.clientY);
+            for (var i = 0; i < els.length; i++) {
+              var editable = els[i].closest ? els[i].closest('[data-editable]') : null;
+              if (!editable) editable = els[i].hasAttribute && els[i].hasAttribute('data-editable') ? els[i] : null;
+              if (editable) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                window.parent.postMessage({ type: 'EDIT_HOOK', key: editable.getAttribute('data-editable') }, '*');
+                return;
               }
             }
-          })();
+          }, true);
 
           document.querySelectorAll('[data-editable]').forEach(function(el) {
-            el.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              var key = el.getAttribute('data-editable');
-              window.parent.postMessage({ type: 'EDIT_HOOK', key: key }, '*');
-            });
 
             // Hover effect
             el.style.outline = '2px solid transparent';
