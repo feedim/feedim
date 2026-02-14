@@ -1808,11 +1808,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                     )}
                     <div
                       id="editor-toolbar-scroll"
-                      className="flex-1 min-w-0 flex items-center justify-end gap-2 overflow-x-auto ml-[5px]"
-                      style={{
-                        scrollbarWidth: 'none',
-                        WebkitOverflowScrolling: 'touch',
-                      }}
+                      className="flex-1 min-w-0 flex items-center justify-end gap-2 overflow-x-auto scrollbar-hide ml-[5px]"
                     >
                       <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
                         <button
@@ -1964,11 +1960,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
             <div className="flex items-center">
               <div
-                className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto py-2"
-                style={{
-                  scrollbarWidth: 'none',
-                  WebkitOverflowScrolling: 'touch',
-                }}
+                className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto scrollbar-hide py-2"
               >
                 <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
                   <button
@@ -2435,7 +2427,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         />
                       </div>
                       {/* Instagram-style fixed palette — horizontally scrollable */}
-                      <div className="overflow-x-auto -mx-2 px-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                      <div className="overflow-x-auto scrollbar-hide -mx-2 px-2">
                         <div className="flex gap-2 w-max pb-1">
                           {[
                             '#FFFFFF', '#000000', '#F5F5F5', '#1A1A1A',
