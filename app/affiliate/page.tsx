@@ -23,7 +23,7 @@ const steps = [
   {
     icon: Users,
     title: "Başvuru Yapın",
-    description: "Affiliate programına katılmak için bizimle iletişime geçin. Sosyal medya hesaplarınızı paylaşın.",
+    description: "Affiliate programına katılmak için affiliate@forilove.com adresine başvurun. Sosyal medya hesaplarınızı paylaşın.",
   },
   {
     icon: Percent,
@@ -40,7 +40,7 @@ const steps = [
 const faqs = [
   {
     q: "Komisyon oranım nasıl belirlenir?",
-    a: "Toplam havuz %40'tır. Takipçilerinize verdiğiniz indirim ne kadar düşükse, komisyonunuz o kadar yüksek olur. Örneğin: %10 indirim → %30 komisyon, %20 indirim → %20 komisyon.",
+    a: "Takipçilerinize verdiğiniz indirim ne kadar düşükse, komisyonunuz o kadar yüksek olur. Örneğin: %5 indirim → %35 komisyon, %10 indirim → %30 komisyon, %20 indirim → %20 komisyon. Minimum indirim oranı %5'tir.",
   },
   {
     q: "Ödemeler nasıl yapılır?",
@@ -52,7 +52,7 @@ const faqs = [
   },
   {
     q: "Maksimum indirim oranı nedir?",
-    a: "Affiliate'ler en fazla %20 indirim sunabilir. İndirim oranınızı düşük tutarak daha yüksek komisyon kazanabilirsiniz.",
+    a: "Affiliate'ler en az %5, en fazla %20 indirim sunabilir. İndirim oranınızı düşük tutarak daha yüksek komisyon kazanabilirsiniz.",
   },
   {
     q: "Kazançlarımı nasıl takip edebilirim?",
@@ -107,7 +107,7 @@ export default function AffiliatePage() {
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
           <h2 className="text-3xl font-bold text-center mb-4">Komisyon Tablosu</h2>
-          <p className="text-gray-400 text-center mb-10">İndiriminiz ne kadar düşükse, komisyonunuz o kadar yüksek!</p>
+          <p className="text-gray-400 text-center mb-10">İndiriminiz ne kadar düşükse, komisyonunuz o kadar yüksek! (Min. %5 — Maks. %20)</p>
           <div className="bg-zinc-900 rounded-2xl overflow-hidden border border-white/10">
             <div className="grid grid-cols-3 gap-0 text-center text-sm font-semibold border-b border-white/10 bg-white/5">
               <div className="p-4">İndirim</div>
@@ -178,7 +178,8 @@ export default function AffiliatePage() {
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-2xl text-center">
           <h2 className="text-3xl font-bold mb-4">Hazır mısınız?</h2>
-          <p className="text-gray-400 mb-8">Affiliate programına katılın ve içeriklerinizden gelir elde etmeye başlayın.</p>
+          <p className="text-gray-400 mb-4">Affiliate programına katılın ve içeriklerinizden gelir elde etmeye başlayın.</p>
+          <p className="text-sm text-gray-500 mb-8">Başvuru için: <a href="mailto:affiliate@forilove.com" className="text-pink-500 hover:text-pink-400">affiliate@forilove.com</a></p>
           <Link href="/contact" className="btn-primary px-8 py-3 text-lg">
             Şimdi Başvur
           </Link>

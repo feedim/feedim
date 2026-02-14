@@ -54,6 +54,18 @@ export default function ContactPage() {
                 support@forilove.com
               </a>
             </div>
+
+            <div>
+              <p className="text-gray-400 mb-2">
+                Affiliate Program başvuru ve destek için:
+              </p>
+              <a
+                href="mailto:affiliate@forilove.com"
+                className="text-pink-500 hover:text-pink-400 font-medium"
+              >
+                affiliate@forilove.com
+              </a>
+            </div>
           </div>
 
           <div className="border border-white/10 rounded-xl p-8">

@@ -158,6 +158,7 @@ export default function AffiliatePaymentPage() {
                 <li>• Minimum odeme tutari 100 TRY&apos;dir.</li>
                 <li>• IBAN bilginizin dogru oldugundan emin olun.</li>
                 <li>• Odeme bilgilerinizi istediginiz zaman güncelleyebilirsiniz.</li>
+                <li>• Sorulariniz icin: <a href="mailto:affiliate@forilove.com" className="text-pink-500 hover:text-pink-400">affiliate@forilove.com</a></li>
               </ul>
             </div>
           </>

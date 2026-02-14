@@ -172,8 +172,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Promo kodu 3-10 karakter olmali" }, { status: 400 });
     }
 
-    // Affiliates max 20% discount
-    const effectiveDiscount = Math.min(discountPercent || 1, user.role === "admin" ? 100 : MAX_AFFILIATE_DISCOUNT);
+    // Affiliates: min 5%, max 20% discount
+    const MIN_AFFILIATE_DISCOUNT = 5;
+    const effectiveDiscount = Math.min(discountPercent || MIN_AFFILIATE_DISCOUNT, user.role === "admin" ? 100 : MAX_AFFILIATE_DISCOUNT);
+    if (user.role === "affiliate" && effectiveDiscount < MIN_AFFILIATE_DISCOUNT) {
+      return NextResponse.json({ error: "Indirim en az %5 olmali" }, { status: 400 });
+    }
     if (effectiveDiscount < 1) {
       return NextResponse.json({ error: "Indirim en az %1 olmali" }, { status: 400 });
     }

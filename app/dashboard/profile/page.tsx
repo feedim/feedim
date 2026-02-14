@@ -625,14 +625,14 @@ export default function ProfilePage() {
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-1">Komisyon Oranı</p>
-                <p className="text-2xl font-bold text-green-500">%{sponsorAnalytics.commissionRate}</p>
+                <p className="text-2xl font-bold text-pink-500">%{sponsorAnalytics.commissionRate}</p>
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-1">Toplam Kazanc</p>
-                <p className="text-2xl font-bold text-green-500">{sponsorAnalytics.totalEarnings.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
+                <p className="text-2xl font-bold text-pink-500">{sponsorAnalytics.totalEarnings.toLocaleString('tr-TR')} <span className="text-sm text-gray-400">TRY</span></p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">Indiriminiz ne kadar dusukse, komisyonunuz o kadar yuksek olur. (Toplam: %40)</p>
+            <p className="text-xs text-gray-500 mt-3">Indiriminiz ne kadar dusukse, komisyonunuz o kadar yuksek olur. (Min. %5 — Maks. %20)</p>
           </div>
         )}
 
@@ -697,7 +697,7 @@ export default function ProfilePage() {
           <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-2 mb-1">
               <Globe className="h-5 w-5 text-pink-500" />
-              <h3 className="font-semibold">{profile?.role === 'affiliate' ? 'Indirim Linkim' : 'Indirim Linkleri'}</h3>
+              <h3 className="font-semibold">{profile?.role === 'affiliate' ? 'Affiliate Link' : 'Indirim Linkleri'}</h3>
             </div>
             <p className="text-xs text-gray-500 mb-4">{profile?.role === 'affiliate' ? 'Takipcilerinize paylasacaginiz indirim linkiniz. Max %20 indirim.' : 'Kayit linklerinden gelen kullanicilar otomatik kupon alir.'}</p>
 
@@ -716,12 +716,12 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Indirim % {profile?.role === 'affiliate' ? '(max 20)' : ''}</label>
+                  <label className="block text-xs text-gray-400 mb-1">Indirim % {profile?.role === 'affiliate' ? '(min 5, max 20)' : ''}</label>
                   <input
                     type="number"
                     value={promoForm.isFree ? 100 : promoForm.discountPercent}
-                    onChange={(e) => setPromoForm({ ...promoForm, discountPercent: Math.min(profile?.role === 'affiliate' ? 20 : 100, Math.max(1, parseInt(e.target.value) || 1)) })}
-                    min={1}
+                    onChange={(e) => setPromoForm({ ...promoForm, discountPercent: Math.min(profile?.role === 'affiliate' ? 20 : 100, Math.max(profile?.role === 'affiliate' ? 5 : 1, parseInt(e.target.value) || 5)) })}
+                    min={profile?.role === 'affiliate' ? 5 : 1}
                     max={profile?.role === 'affiliate' ? 20 : 100}
                     disabled={promoForm.isFree}
                     className="input-modern w-full text-sm disabled:opacity-50"
