@@ -74,6 +74,12 @@ export default function PublicFooter() {
           </div>
           <p className="text-sm text-gray-500">&copy; 2026 Forilove</p>
         </div>
+        <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-center gap-2">
+          <img src="https://venivex.com/assets/images/logo.png" alt="Venivex" className="h-5 w-auto opacity-60" />
+          <a href="https://venivex.com" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:text-gray-300 transition">
+            VENİVEX Tarafından geliştirildi
+          </a>
+        </div>
       </div>
     </footer>
   );
