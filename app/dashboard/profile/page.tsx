@@ -702,19 +702,13 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* 2FA Link - only for affiliate/admin */}
-              {(profile?.role === "affiliate" || profile?.role === "admin") && (
-                <Link href="/dashboard/security" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Shield className="h-5 w-5 text-zinc-400" />
-                    <div>
-                      <span className="font-medium">İki Faktörlü Doğrulama (2FA)</span>
-                      <p className="text-xs text-zinc-500">Her girişte e-postanıza kod gönderilir</p>
-                    </div>
-                  </div>
-                  <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
-                </Link>
-              )}
+              <Link href="/dashboard/security" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-zinc-400" />
+                  <span className="font-medium">Güvenlik Ayarları</span>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
+              </Link>
             </div>
           </div>
 

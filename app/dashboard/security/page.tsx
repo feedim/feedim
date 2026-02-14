@@ -50,12 +50,7 @@ export default function SecurityPage() {
         .eq("user_id", user.id)
         .single();
 
-      if (profile?.role !== "affiliate" && profile?.role !== "admin") {
-        router.push("/dashboard/profile");
-        return;
-      }
-
-      setRole(profile.role);
+      setRole(profile?.role || null);
       setEmailVerified(profile?.email_verified || false);
 
       const res = await fetch("/api/auth/mfa");
@@ -262,8 +257,8 @@ export default function SecurityPage() {
               )}
             </div>
 
-            {/* 2FA Status */}
-            <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+            {/* 2FA Status - only for affiliate/admin */}
+            {(role === "affiliate" || role === "admin") && <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="h-5 w-5 text-pink-500" />
                 <h2 className="font-semibold text-lg">İki Faktörlü Doğrulama (2FA)</h2>
@@ -356,18 +351,20 @@ export default function SecurityPage() {
                   )}
                 </div>
               )}
-            </div>
+            </div>}
 
-            {/* Info */}
-            <div className="bg-zinc-900 rounded-2xl p-6">
-              <h3 className="font-semibold mb-3">2FA Nasıl Çalışır?</h3>
-              <ul className="space-y-2 text-sm text-zinc-400">
-                <li>• 2FA etkinleştirildiğinde her girişte e-postanıza 8 haneli kod gönderilir.</li>
-                <li>• Kodu girerek giriş işleminizi tamamlarsınız.</li>
-                <li>• Affiliate hesapları için 2FA zorunludur.</li>
-                <li>• 2FA etkinleştirildikten sonra IBAN ve link işlemlerinizi yapabilirsiniz.</li>
-              </ul>
-            </div>
+            {/* Info - only for affiliate/admin */}
+            {(role === "affiliate" || role === "admin") && (
+              <div className="bg-zinc-900 rounded-2xl p-6">
+                <h3 className="font-semibold mb-3">2FA Nasıl Çalışır?</h3>
+                <ul className="space-y-2 text-sm text-zinc-400">
+                  <li>• 2FA etkinleştirildiğinde her girişte e-postanıza 8 haneli kod gönderilir.</li>
+                  <li>• Kodu girerek giriş işleminizi tamamlarsınız.</li>
+                  <li>• Affiliate hesapları için 2FA zorunludur.</li>
+                  <li>• 2FA etkinleştirildikten sonra IBAN ve link işlemlerinizi yapabilirsiniz.</li>
+                </ul>
+              </div>
+            )}
           </>
         )}
       </main>
