@@ -209,7 +209,7 @@ export default function AffiliateApplyPage() {
         ) : (
           <>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center">
+              <div className="w-12 h-12 min-w-[48px] rounded-full bg-pink-500/10 flex items-center justify-center shrink-0">
                 <TrendingUp className="h-6 w-6 text-pink-500" />
               </div>
               <div>
