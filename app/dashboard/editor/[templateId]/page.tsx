@@ -337,7 +337,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             },
             onError: (event: any) => {
               // 2=invalid param, 5=HTML5 error, 100=not found, 101/150=embed disabled
-              console.warn('YT player error:', event.data);
+              if (process.env.NODE_ENV === 'development') console.warn('YT player error:', event.data);
               if (editorYtDestroyedRef.current) return;
               setEditorMusicPlaying(false);
               stopTracking();
@@ -346,7 +346,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           },
         });
       } catch (e) {
-        console.warn('YT.Player init failed:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('YT.Player init failed:', e);
         editorYtReadyRef.current = false;
       }
     };
@@ -354,7 +354,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
     // Init timeout — if player never becomes ready in 15s, reset state
     initTimeout = setTimeout(() => {
       if (!editorYtReadyRef.current && !editorYtDestroyedRef.current) {
-        console.warn('YT player init timeout');
+        if (process.env.NODE_ENV === 'development') console.warn('YT player init timeout');
         setEditorMusicPlaying(false);
         editorYtReadyRef.current = false;
       }

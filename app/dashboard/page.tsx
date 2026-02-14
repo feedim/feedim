@@ -239,10 +239,10 @@ export default function DashboardPage() {
         supabase.from("saved_templates").select("template_id").eq("user_id", user.id),
       ]);
 
-      if (purchasesResult.error) {
+      if (purchasesResult.error && process.env.NODE_ENV === 'development') {
         console.warn('Failed to load purchases:', purchasesResult.error.message);
       }
-      if (savedResult.error) {
+      if (savedResult.error && process.env.NODE_ENV === 'development') {
         console.warn('Failed to load saved templates:', savedResult.error.message);
       }
 
