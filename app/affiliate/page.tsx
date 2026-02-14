@@ -141,17 +141,17 @@ export default function AffiliatePage() {
               <p className="text-sm text-gray-400">İlk 24 saat içindeki satışlardan elde edilen kazançlar peşin olarak ödenir.</p>
             </div>
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
-              <Wallet className="h-8 w-8 text-green-500 mb-3" />
+              <Wallet className="h-8 w-8 text-pink-500 mb-3" />
               <h3 className="font-bold mb-2">Haftalık Ödemeler</h3>
               <p className="text-sm text-gray-400">Sonrasında kazançlarınız haftada bir (7 günde bir) IBAN hesabınıza aktarılır.</p>
             </div>
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
-              <Shield className="h-8 w-8 text-blue-500 mb-3" />
+              <Shield className="h-8 w-8 text-pink-500 mb-3" />
               <h3 className="font-bold mb-2">Minimum Ödeme</h3>
               <p className="text-sm text-gray-400">Minimum ödeme tutarı 100 TRY&apos;dir. Bu tutarın altındaki bakiyeler bir sonraki ödeme dönemine aktarılır.</p>
             </div>
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
-              <TrendingUp className="h-8 w-8 text-yellow-500 mb-3" />
+              <TrendingUp className="h-8 w-8 text-pink-500 mb-3" />
               <h3 className="font-bold mb-2">Gerçek Zamanlı Takip</h3>
               <p className="text-sm text-gray-400">Profilinizdeki panelden tüm kayıtları, satışları ve kazancınızı anlık olarak izleyin.</p>
             </div>
