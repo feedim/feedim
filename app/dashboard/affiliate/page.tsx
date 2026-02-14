@@ -239,14 +239,14 @@ export default function AffiliateDashboardPage() {
                           setGeneratedUrl("");
                         }
                       }}
-                      className="px-4 py-2.5 bg-pink-600 hover:bg-pink-500 rounded-lg text-xs font-bold transition shrink-0"
+                      className="btn-primary px-4 py-2.5 text-xs font-bold shrink-0"
                     >
                       Üret
                     </button>
                   </div>
                   {generatedUrl && (
                     <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-3">
-                      <p className="text-sm text-pink-400 flex-1 break-all font-mono">{generatedUrl}</p>
+                      <p className="text-sm text-pink-500 flex-1 break-all font-mono">{generatedUrl}</p>
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(generatedUrl);
@@ -272,33 +272,33 @@ export default function AffiliateDashboardPage() {
             </div>
 
             {/* Promo Kullanım Notu */}
-            <div className="bg-pink-500/5 border border-pink-500/20 rounded-2xl p-5 mb-6">
+            <div className="rounded-2xl p-5 mb-6">
               <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-pink-400 shrink-0 mt-0.5" />
+                <Info className="h-5 w-5 text-pink-500 shrink-0 mt-0.5" />
                 <div>
                   {promoCode ? (
                     <>
-                      <h4 className="text-sm font-semibold text-pink-400 mb-2">Promo Kodunuz: {promoCode}</h4>
+                      <h4 className="text-sm font-semibold text-pink-500 mb-2">Promo Kodunuz: {promoCode}</h4>
                       <p className="text-xs text-zinc-400 leading-relaxed mb-3">
-                        Herhangi bir Forilove URL&apos;sinin sonuna <span className="text-pink-400 font-mono">?promo={promoCode}</span> ekleyerek indirimli link paylaşabilirsiniz. Bu linkten giren kullanıcılar kayıt olana kadar takip edilir.
+                        Herhangi bir Forilove URL&apos;sinin sonuna <span className="text-pink-500 font-mono">?promo={promoCode}</span> ekleyerek indirimli link paylaşabilirsiniz. Bu linkten giren kullanıcılar kayıt olana kadar takip edilir.
                       </p>
                       <div className="space-y-1.5 text-xs text-zinc-500 font-mono">
-                        <p>forilove.com<span className="text-pink-400">?promo={promoCode}</span></p>
-                        <p>forilove.com/templates<span className="text-pink-400">?promo={promoCode}</span></p>
-                        <p>forilove.com/editor/...<span className="text-pink-400">?promo={promoCode}</span></p>
-                        <p>forilove.com/register<span className="text-pink-400">?promo={promoCode}</span></p>
+                        <p>forilove.com<span className="text-pink-500">?promo={promoCode}</span></p>
+                        <p>forilove.com/templates<span className="text-pink-500">?promo={promoCode}</span></p>
+                        <p>forilove.com/editor/...<span className="text-pink-500">?promo={promoCode}</span></p>
+                        <p>forilove.com/register<span className="text-pink-500">?promo={promoCode}</span></p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <h4 className="text-sm font-semibold text-pink-400 mb-2">Nasıl Çalışır?</h4>
+                      <h4 className="text-sm font-semibold text-pink-500 mb-2">Nasıl Çalışır?</h4>
                       <p className="text-xs text-zinc-400 leading-relaxed mb-3">
-                        Promo kodunuzu oluşturduktan sonra herhangi bir Forilove URL&apos;sinin sonuna <span className="text-pink-400 font-mono">?promo=KODUNUZ</span> ekleyerek indirimli link paylaşabilirsiniz. Bu linkten giren kullanıcılar kayıt olana kadar takip edilir.
+                        Promo kodunuzu oluşturduktan sonra herhangi bir Forilove URL&apos;sinin sonuna <span className="text-pink-500 font-mono">?promo=KODUNUZ</span> ekleyerek indirimli link paylaşabilirsiniz. Bu linkten giren kullanıcılar kayıt olana kadar takip edilir.
                       </p>
                       <div className="space-y-1.5 text-xs text-zinc-500 font-mono">
-                        <p>forilove.com<span className="text-pink-400">?promo=KODUNUZ</span></p>
-                        <p>forilove.com/templates<span className="text-pink-400">?promo=KODUNUZ</span></p>
-                        <p>forilove.com/register<span className="text-pink-400">?promo=KODUNUZ</span></p>
+                        <p>forilove.com<span className="text-pink-500">?promo=KODUNUZ</span></p>
+                        <p>forilove.com/templates<span className="text-pink-500">?promo=KODUNUZ</span></p>
+                        <p>forilove.com/register<span className="text-pink-500">?promo=KODUNUZ</span></p>
                       </div>
                     </>
                   )}
