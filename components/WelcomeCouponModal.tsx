@@ -43,11 +43,11 @@ export default function WelcomeCouponModal({ code, discountPercent, expiresAt, o
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999999] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999999] flex items-end justify-center bg-black/50 backdrop-blur-md"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[500px] bg-zinc-900 rounded-t-[32px] p-6 flex flex-col items-center gap-5 animate-[slideUp_0.25s_ease-out]"
+        className="w-full max-w-[500px] bg-[#161616]/85 backdrop-blur-2xl rounded-t-[32px] p-6 flex flex-col items-center gap-5 animate-[slideUp_0.25s_ease-out]"
       >
         {/* Gift Icon */}
         <div className="w-16 h-16 rounded-full bg-pink-500/10 flex items-center justify-center">

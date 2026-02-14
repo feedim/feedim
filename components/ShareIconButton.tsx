@@ -100,9 +100,9 @@ export function ShareSheet({ url, title = "", isOpen, onClose }: ShareSheetProps
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center",
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
       }}
     >
       <div
@@ -110,7 +110,9 @@ export function ShareSheet({ url, title = "", isOpen, onClose }: ShareSheetProps
         style={{
           width: "100%",
           maxWidth: 500,
-          background: "#18181b",
+          background: "rgba(22,22,22,0.85)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
           borderRadius: "32px 32px 0 0",
           padding: 20,
           display: "flex",

@@ -238,11 +238,11 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999999] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999999] flex items-end justify-center bg-black/50 backdrop-blur-md"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[500px] bg-zinc-900 rounded-t-[32px] p-6 flex flex-col gap-4 animate-[slideUp_0.25s_ease-out] max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-[500px] bg-[#161616]/85 backdrop-blur-2xl rounded-t-[32px] p-6 flex flex-col gap-4 animate-[slideUp_0.25s_ease-out] max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -414,7 +414,7 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
             <div className="w-full border-t border-white/10"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-zinc-900 text-zinc-500">veya</span>
+            <span className="px-4 bg-[#161616] text-zinc-500">veya</span>
           </div>
         </div>
 
