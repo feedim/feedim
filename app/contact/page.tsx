@@ -57,7 +57,7 @@ export default function ContactPage() {
 
             <div>
               <p className="text-zinc-400 mb-2">
-                Affiliate Program başvuru ve destek için:
+                Satış Ortaklığı başvuru ve destek için:
               </p>
               <a
                 href="mailto:affiliate@forilove.com"

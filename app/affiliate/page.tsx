@@ -5,11 +5,11 @@ import PublicFooter from "@/components/PublicFooter";
 import { Users, Percent, Wallet, Clock, TrendingUp, Shield, Heart, Gift, PartyPopper, Sparkles, CalendarHeart } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Affiliate Program | Forilove",
-  description: "Forilove Affiliate Program ile takipçilerinize özel indirim linkleri oluşturun ve her satıştan komisyon kazanın. İçerik üreticileri için gelir fırsatı.",
-  keywords: ["affiliate program", "influencer", "içerik üretici", "komisyon", "kazanç", "indirim linki", "forilove"],
+  title: "Satış Ortaklığı | Forilove",
+  description: "Forilove Satış Ortaklığı ile takipçilerinize özel indirim linkleri oluşturun ve her satıştan komisyon kazanın. İçerik üreticileri için gelir fırsatı.",
+  keywords: ["satış ortaklığı", "affiliate program", "influencer", "içerik üretici", "komisyon", "kazanç", "indirim linki", "forilove"],
   openGraph: {
-    title: "Affiliate Program | Forilove",
+    title: "Satış Ortaklığı | Forilove",
     description: "Takipçilerinize özel indirim linkleri oluşturun ve her satıştan komisyon kazanın.",
     type: "website",
   },
@@ -56,7 +56,7 @@ const faqs = [
   },
   {
     q: "Kazançlarımı nasıl takip edebilirim?",
-    a: "Profilinizdeki Affiliate Program bölümünden toplam kayıt, satış, komisyon oranı ve kazancınızı gerçek zamanlı takip edebilirsiniz.",
+    a: "Profilinizdeki Satış Ortaklığı bölümünden toplam kayıt, satış, komisyon oranı ve kazancınızı gerçek zamanlı takip edebilirsiniz.",
   },
   {
     q: "Ödeme bilgilerimi nasıl girerim?",
@@ -72,9 +72,9 @@ export default function AffiliatePage() {
       {/* Hero */}
       <section className="py-20 sm:py-28">
         <div className="container mx-auto px-4 sm:px-6 max-w-4xl text-center">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6" style={{ lineHeight: 1.1 }}>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-6" style={{ lineHeight: 1.1 }}>
             Forilove
-            <span className="block text-pink-500 mt-3">Affiliate Program</span>
+            <span className="block text-pink-500 mt-3">Satış Ortaklığı</span>
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
             Takipçilerinize özel indirim linkleri oluşturun, her satıştan %15 ile %30 arası komisyon kazanın.
@@ -85,7 +85,7 @@ export default function AffiliatePage() {
       {/* Forilove Nedir? */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
-          <h2 className="text-3xl font-bold text-center mb-4">Forilove Nedir?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">Forilove Nedir?</h2>
           <p className="text-zinc-400 text-center mb-4 max-w-2xl mx-auto">
             Forilove, sevdikleriniz için özel dijital davetiyeler ve hediye sayfaları oluşturmanızı sağlayan bir platformdur. Hiçbir teknik bilgi gerektirmez — herkes çok basit bir editör panelinden birkaç dakikada kendi sayfasını oluşturabilir.
           </p>
@@ -133,7 +133,7 @@ export default function AffiliatePage() {
       {/* How It Works */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
-          <h2 className="text-3xl font-bold text-center mb-12">Nasıl Çalışır?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">Nasıl Çalışır?</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {steps.map((step, i) => (
               <div key={i} className="bg-zinc-900 border border-white/10 rounded-2xl p-6 text-center">
@@ -151,7 +151,7 @@ export default function AffiliatePage() {
       {/* Commission Table */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
-          <h2 className="text-3xl font-bold text-center mb-4">Komisyon Tablosu</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">Komisyon Tablosu</h2>
           <p className="text-zinc-400 text-center mb-10">İndiriminiz ne kadar düşükse, komisyonunuz o kadar yüksek! (Min. %5 — Maks. %20)</p>
           <div className="bg-zinc-900 rounded-2xl overflow-hidden border border-white/10">
             <div className="grid grid-cols-3 gap-0 text-center text-sm font-semibold border-b border-white/10 bg-white/5">
@@ -178,7 +178,7 @@ export default function AffiliatePage() {
       {/* Payment Info */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
-          <h2 className="text-3xl font-bold text-center mb-10">Ödeme Bilgilendirmesi</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10">Ödeme Bilgilendirmesi</h2>
           <div className="grid sm:grid-cols-2 gap-6">
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
               <Clock className="h-8 w-8 text-pink-500 mb-3" />
@@ -207,7 +207,7 @@ export default function AffiliatePage() {
       {/* Affiliate Panel Preview */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
-          <h2 className="text-3xl font-bold mb-4">Affiliate Paneliniz</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Satış Ortaklığı Paneliniz</h2>
           <p className="text-zinc-400 mb-10">Kazançlarınızı, kayıtları ve satışları gerçek zamanlı takip edin.</p>
           <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <div className="rounded-2xl overflow-hidden border border-white/10">
@@ -235,7 +235,7 @@ export default function AffiliatePage() {
       {/* FAQ */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
-          <h2 className="text-3xl font-bold text-center mb-10">Sıkça Sorulan Sorular</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10">Sıkça Sorulan Sorular</h2>
           <div className="space-y-4">
             {faqs.map((faq, i) => (
               <div key={i} className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
@@ -250,7 +250,7 @@ export default function AffiliatePage() {
       {/* CTA */}
       <section className="border-t border-white/10 py-20">
         <div className="container mx-auto px-4 sm:px-6 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold mb-4">Hazır mısınız?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Hazır mısınız?</h2>
           <p className="text-zinc-400 mb-4">Affiliate programına katılın ve içeriklerinizden gelir elde etmeye başlayın.</p>
           <p className="text-sm text-zinc-500 mb-6">Başvuru için giriş yapmanız ve profilinizden başvurmanız gerekmektedir.</p>
           <Link href="/register" className="btn-primary px-8 py-3 text-lg">
