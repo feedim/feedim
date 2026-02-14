@@ -532,18 +532,6 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
       let purchaseData = purchaseRes.data;
       const templateData = templateRes.data;
 
-      // Auto-purchase free templates (coin_price === 0)
-      if (!purchaseData && templateData.coin_price === 0) {
-        const { data: autoPurchase } = await supabase.from("purchases").insert({
-          user_id: user.id,
-          template_id: resolvedParams.templateId,
-          coins_spent: 0,
-          payment_method: "coins",
-          payment_status: "completed",
-        }).select().single();
-        if (autoPurchase) purchaseData = autoPurchase;
-      }
-
       setIsPurchased(!!purchaseData);
 
       setTemplate(templateData);
@@ -551,9 +539,9 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
       const htmlContent = templateData.html_content;
 
       if (htmlContent) {
-        // Parse hooks for demo
         const parsedHooks = parseHooksFromHTML(htmlContent);
         const defaultValues = extractDefaults(parsedHooks);
+        setHooks(parsedHooks);
 
         // Parse removable areas
         const areaParser = new DOMParser();
@@ -567,23 +555,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
         });
         setAreas(parsedAreas);
 
-        // Show demo HTML with default values
-        let demoHtml = htmlContent;
-        if (demoHtml.includes('HOOK_')) {
-          Object.entries(defaultValues).forEach(([key, value]) => {
-            const regex = new RegExp(`HOOK_${key}`, 'g');
-            demoHtml = demoHtml.replace(regex, value || '');
-          });
-        }
-        setPreviewHtml(demoHtml);
-
-        // If purchased, parse hooks and load/create project
+        // If purchased, load/create project
         if (purchaseData) {
-          const parsedHooks = parseHooksFromHTML(htmlContent);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Parsed hooks:', parsedHooks);
-          }
-          setHooks(parsedHooks);
 
           // Load or create project
           const { data: existingProject, error: projectError } = await supabase
@@ -685,6 +658,19 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
               } catch {}
             }
           }
+        } else {
+          // Not purchased — allow editing locally (like guest mode)
+          setValues(defaultValues);
+
+          // Show demo HTML with default values
+          let demoHtml = htmlContent;
+          if (demoHtml.includes('HOOK_')) {
+            Object.entries(defaultValues).forEach(([key, value]) => {
+              const regex = new RegExp(`HOOK_${key}`, 'g');
+              demoHtml = demoHtml.replace(regex, value || '');
+            });
+          }
+          setPreviewHtml(demoHtml);
         }
       }
     } catch (error: any) {
@@ -1066,12 +1052,109 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
       handleGuestPublish();
       return;
     }
+    // Not purchased yet — purchase first, then redirect to full editor
+    if (!isPurchased) {
+      handleUnpurchasedPublish();
+      return;
+    }
     if (!project) return;
     // Pre-fill draft fields with current values
     setDraftTitle(project.title || "");
     setDraftSlug(project.slug?.replace(/-[a-z0-9]{6,}$/, "") || "");
     setDraftDescription(project.description || "");
     setShowDetailsModal(true);
+  };
+
+  const handleUnpurchasedPublish = async () => {
+    setPurchasing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+
+      const coinPrice = getActivePrice(template);
+
+      if (coinPrice === 0) {
+        // Free template — auto-purchase
+        const { error: purchaseError } = await supabase.from("purchases").insert({
+          user_id: user.id,
+          template_id: resolvedParams.templateId,
+          coins_spent: 0,
+          payment_method: "coins",
+          payment_status: "completed",
+        });
+        if (purchaseError) {
+          toast.error("Satın alma hatası");
+          setPurchasing(false);
+          return;
+        }
+      } else {
+        // Paid template — show purchase modal
+        let displayOriginalPrice: number | undefined;
+        let displayDiscountLabel: string | undefined;
+        if (isDiscountActive(template)) {
+          displayOriginalPrice = template.coin_price;
+          displayDiscountLabel = template.discount_label;
+        }
+
+        const purchaseResult = await confirm({
+          itemName: template.name,
+          description: "Şablonu satın alıp yayınlayın",
+          coinCost: coinPrice,
+          originalPrice: displayOriginalPrice,
+          discountLabel: displayDiscountLabel,
+          currentBalance: coinBalance,
+          icon: "template",
+          allowCoupon: true,
+          onConfirm: async (couponInfo?: CouponInfo) => {
+            let verifiedPrice = coinPrice;
+            if (couponInfo) {
+              const { data: couponCheck } = await supabase.rpc("validate_coupon", { p_code: couponInfo.code, p_user_id: user.id });
+              if (couponCheck?.valid) {
+                verifiedPrice = Math.max(0, Math.round(verifiedPrice * (1 - couponCheck.discount_percent / 100)));
+              } else {
+                return { success: false, error: couponCheck?.error || "Kupon doğrulanamadı" };
+              }
+            }
+            let newBalance = 0;
+            if (verifiedPrice > 0) {
+              const { data: spendResult, error: spendError } = await supabase.rpc("spend_coins", {
+                p_user_id: user.id, p_amount: verifiedPrice,
+                p_description: `Şablon satın alındı: ${template.name}`,
+                p_reference_id: template.id, p_reference_type: "template",
+              });
+              if (spendError) throw spendError;
+              if (!spendResult[0]?.success) return { success: false, error: spendResult[0]?.message || "Coin harcama başarısız" };
+              newBalance = spendResult[0].new_balance;
+            } else {
+              const { data: balanceData } = await supabase.from("profiles").select("coin_balance").eq("user_id", user.id).single();
+              newBalance = balanceData?.coin_balance ?? 0;
+            }
+            const { error: pErr } = await supabase.from("purchases").insert({
+              user_id: user.id, template_id: template.id, coins_spent: verifiedPrice,
+              payment_method: "coins", payment_status: "completed",
+            });
+            if (pErr) throw pErr;
+            return { success: true, newBalance };
+          },
+        });
+        if (!purchaseResult?.success) { setPurchasing(false); return; }
+        setCoinBalance(purchaseResult.newBalance);
+      }
+
+      // Save current edits to localStorage, reload as purchased
+      localStorage.setItem('forilove_guest_edits', JSON.stringify({
+        templateId: resolvedParams.templateId,
+        values: valuesRef.current,
+      }));
+
+      toast.success("Satın alındı! Yükleniyor...");
+      setIsPurchased(true);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Bir hata oluştu");
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   const handleGuestPublish = async () => {
@@ -1578,132 +1661,6 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
     }
   };
 
-  const handlePurchase = async () => {
-    const coinPrice = getActivePrice(template);
-
-    // Determine discount display
-    let displayOriginalPrice: number | undefined;
-    let displayDiscountLabel: string | undefined;
-
-    if (isDiscountActive(template)) {
-      displayOriginalPrice = template.coin_price;
-      displayDiscountLabel = template.discount_label;
-    }
-
-    const result = await confirm({
-      itemName: template.name,
-      description: "Şablonu satın alıp düzenlemeye başlayın",
-      coinCost: coinPrice,
-      originalPrice: displayOriginalPrice,
-      discountLabel: displayDiscountLabel,
-      currentBalance: coinBalance,
-      icon: 'template',
-      allowCoupon: true,
-      onConfirm: async (couponInfo?: CouponInfo) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Oturum bulunamadı');
-
-        // Verify template is still active before purchase
-        const { data: freshTemplate } = await supabase
-          .from('templates')
-          .select('is_active, coin_price, discount_price, discount_expires_at')
-          .eq('id', template.id)
-          .single();
-
-        if (!freshTemplate?.is_active) {
-          return { success: false, error: 'Bu şablon artık satışta değil.' };
-        }
-
-        // Use fresh price from DB (expiry-aware, prevent client-side manipulation)
-        let verifiedPrice = getActivePrice(freshTemplate);
-
-        // Apply coupon discount if provided (re-validate server-side)
-        if (couponInfo) {
-          const { data: couponCheck } = await supabase.rpc('validate_coupon', {
-            p_code: couponInfo.code,
-            p_user_id: user.id,
-          });
-          if (couponCheck?.valid) {
-            verifiedPrice = Math.max(0, Math.round(verifiedPrice * (1 - couponCheck.discount_percent / 100)));
-          } else {
-            return { success: false, error: couponCheck?.error || 'Kupon doğrulanamadı' };
-          }
-        }
-
-        // Spend coins (skip if free via coupon)
-        const couponNote = couponInfo ? ` (Kupon: ${couponInfo.code})` : '';
-        let newBalance = 0;
-
-        if (verifiedPrice > 0) {
-          const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
-            p_user_id: user.id,
-            p_amount: verifiedPrice,
-            p_description: `Şablon satın alındı: ${template.name}${couponNote}`,
-            p_reference_id: template.id,
-            p_reference_type: 'template'
-          });
-
-          if (spendError) throw spendError;
-          if (!spendResult[0]?.success) {
-            return { success: false, error: spendResult[0]?.message || 'Coin harcama başarısız' };
-          }
-          newBalance = spendResult[0].new_balance;
-        } else {
-          // Free purchase - get current balance
-          const { data: balanceData } = await supabase.from('profiles').select('coin_balance').eq('user_id', user.id).single();
-          newBalance = balanceData?.coin_balance ?? 0;
-        }
-
-        // Record purchase
-        const { data: purchaseData, error } = await supabase.from("purchases").insert({
-          user_id: user.id,
-          template_id: template.id,
-          coins_spent: verifiedPrice,
-          payment_method: "coins",
-          payment_status: "completed",
-        }).select().single();
-
-        if (error) throw error;
-
-        // Process referral commission (5% to referrer if user was referred)
-        if (purchaseData?.id && verifiedPrice > 0) {
-          try {
-            const { data: commissionResult, error: commissionError } = await supabase.rpc(
-              'process_referral_commission',
-              {
-                buyer_user_id: user.id,
-                purchase_id_param: purchaseData.id,
-                purchase_amount: verifiedPrice
-              }
-            );
-
-            if (commissionError) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('Commission processing error:', commissionError);
-              }
-            } else if (commissionResult?.success) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('Commission processed:', commissionResult);
-              }
-            }
-          } catch (commissionErr) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('Commission error:', commissionErr);
-            }
-          }
-        }
-
-        return { success: true, newBalance };
-      },
-    });
-
-    if (!result?.success) return;
-
-    toast.success(`${template.name} satın alındı!`);
-    setCoinBalance(result.newBalance);
-    window.location.reload();
-  };
-
   const currentHook = editingHook ? hooks.find(h => h.key === editingHook) : null;
 
   if (loading) {
@@ -1725,7 +1682,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           </button>
           <h1 className="text-lg sm:text-xl font-bold max-w-[200px] sm:max-w-[300px] truncate md:absolute md:left-[120px] md:border-l md:border-white/10 md:pl-4">{template?.name}</h1>
           {/* Mobile: Paylaş button in header */}
-          {(guestMode || (isPurchased && project)) && (
+          {!loading && (
             <div className="md:hidden">
               <button
                 onClick={handlePublish}
@@ -1743,19 +1700,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           <div className="hidden md:flex items-center gap-2 flex-1 min-w-0 justify-end ml-4">
             {loading ? (
               <div className="text-sm text-zinc-400">Yükleniyor...</div>
-            ) : !isPurchased && !guestMode ? (
-              <button
-                onClick={handlePurchase}
-                disabled={purchasing}
-                className="btn-primary px-6 py-2 text-sm flex items-center gap-2"
-              >
-                <Coins className="h-4 w-4 text-yellow-300" />
-                {purchasing ? "..." : getActivePrice(template) === 0 ? "Ücretsiz" : `${getActivePrice(template)} FL`}
-              </button>
             ) : (
               <>
-                {(project || guestMode) && (
-                  <>
                     {/* Scrollable tools area with arrow buttons */}
                     {showLeftArrow && (
                       <button
@@ -1901,8 +1847,6 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         : (project?.is_published ? "Güncelle" : "Paylaş")
                       }
                     </button>
-                  </>
-                )}
               </>
             )}
           </div>
@@ -1921,30 +1865,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           />
         </div>
 
-        {/* Mobile Bottom Bar — Not Purchased (non-guest only) */}
-        {!isPurchased && !guestMode && !loading && (
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <button
-                onClick={handlePreview}
-                className="btn-secondary flex-1 py-2.5 text-sm text-center whitespace-nowrap truncate"
-              >
-                Önizleme
-              </button>
-              <button
-                onClick={handlePurchase}
-                disabled={purchasing}
-                className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-2 whitespace-nowrap truncate"
-              >
-                <Coins className="h-4 w-4 text-yellow-300" />
-                {purchasing ? "..." : getActivePrice(template) === 0 ? "Ücretsiz" : `${getActivePrice(template)} FL`}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Bottom Bar — Full Toolbar (Purchased or Guest Mode) */}
-        {((isPurchased && project) || guestMode) && (
+        {/* Mobile Bottom Bar — Full Toolbar */}
+        {!loading && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
             <div className="flex items-center">
               <div

@@ -171,33 +171,29 @@ export default function TemplateCard({
           ) : (
             <div className="flex items-center gap-3">
               {showPrice && (
-                template.coin_price === 0 ? (
-                  <span className="text-lg font-bold text-orange-400 shrink-0">Ücretsiz</span>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Coins className="h-6 w-6 text-yellow-500" />
-                      {hasDiscount ? (
-                        <>
-                          <span className="text-base font-bold text-zinc-500 line-through decoration-red-500/70 decoration-2">
-                            {template.coin_price}
-                          </span>
-                          <span className="text-3xl font-black text-yellow-500">
-                            {template.discount_price}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-3xl font-black text-yellow-500">
-                          {template.coin_price || 0}
+                <>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Coins className="h-6 w-6 text-yellow-500" />
+                    {hasDiscount ? (
+                      <>
+                        <span className="text-base font-bold text-zinc-500 line-through decoration-red-500/70 decoration-2">
+                          {template.coin_price}
                         </span>
-                      )}
-                    </div>
-                    <div className="w-px h-8 bg-white/20 shrink-0"></div>
-                  </>
-                )
+                        <span className="text-3xl font-black text-yellow-500">
+                          {template.discount_price}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-3xl font-black text-yellow-500">
+                        {template.coin_price || 0}
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-px h-8 bg-white/20 shrink-0"></div>
+                </>
               )}
               <div className="btn-primary flex-1 py-2.5 text-sm text-center pointer-events-none">
-                {isPurchased ? 'Yayına Al' : template.coin_price === 0 ? 'Düzenle' : 'Satın Al'}
+                Düzenle
               </div>
             </div>
           )}
