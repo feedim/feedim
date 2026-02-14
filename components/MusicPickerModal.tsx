@@ -199,7 +199,7 @@ export default function MusicPickerModal({
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/30 transition-all"
+              className="w-full bg-white/5 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-pink-500/30 transition-all"
               placeholder="YouTube'da şarkı ara..."
             />
           </div>
@@ -207,7 +207,7 @@ export default function MusicPickerModal({
 
         {/* Song List */}
         <div
-          className="flex-1 overflow-y-auto px-4 py-2.5 space-y-0.5"
+          className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5"
           style={{ minHeight: 0 }}
         >
           {searching && displayTracks.length === 0 ? (
@@ -228,11 +228,11 @@ export default function MusicPickerModal({
                 <button
                   key={track.id}
                   onClick={() => handleTrackClick(track)}
-                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all text-left ${
+                  className={`w-full flex items-center gap-2.5 p-1.5 rounded-xl transition-all text-left ${
                     isSelected ? "bg-pink-500/15" : "hover:bg-white/5"
                   }`}
                 >
-                  <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                  <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 bg-white/5">
                     <img
                       src={track.thumbnail || `https://img.youtube.com/vi/${track.id}/mqdefault.jpg`}
                       alt=""

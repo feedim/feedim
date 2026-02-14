@@ -37,6 +37,11 @@ export default function TemplateCard({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const hasDiscount = isDiscountActive(template);
 
+  // Deterministic fake social proof count (80–329 range) for templates with 0 purchases
+  const socialProofCount = template.purchase_count > 0
+    ? template.purchase_count
+    : ((template.id || '').split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 250) + 80;
+
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onSaveToggle) {
@@ -199,10 +204,10 @@ export default function TemplateCard({
           )}
 
           {/* Social proof */}
-          {template.purchase_count > 0 && !isPurchased && !isPublished && (
+          {!isPurchased && !isPublished && (
             <div className="flex items-center gap-1.5 mt-2">
               <Users className="h-3.5 w-3.5 text-zinc-500" />
-              <span className="text-xs text-zinc-500">{template.purchase_count} kişi kullandı</span>
+              <span className="text-xs text-zinc-500">{socialProofCount} kişi kullandı</span>
             </div>
           )}
         </div>

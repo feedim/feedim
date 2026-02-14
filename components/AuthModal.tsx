@@ -170,6 +170,26 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
   };
 
   const handleOAuth = async () => {
+    // Open popup IMMEDIATELY on click (before any async) to avoid browser blocking
+    const w = 500, h = 600;
+    const left = window.screenX + (window.innerWidth - w) / 2;
+    const top = window.screenY + (window.innerHeight - h) / 2;
+    const popup = window.open("about:blank", "oauth_popup", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+
+    if (!popup) {
+      // Popup blocked (common on mobile) — fallback to full redirect
+      localStorage.setItem("forilove_auth_return", window.location.pathname);
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (oauthError) setError("Google ile giriş yapılamadı.");
+      return;
+    }
+
+    // Show loading in popup while we fetch OAuth URL
+    popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#18181b;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui,sans-serif}p{color:#a1a1aa;font-size:14px}</style></head><body><p>Yükleniyor...</p></body></html>`);
+
     const redirectUrl = `${window.location.origin}/auth/callback?popup=true`;
 
     const { data: oauthData, error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -178,21 +198,13 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
     });
 
     if (oauthError || !oauthData?.url) {
+      popup.close();
       setError("Google ile giriş yapılamadı.");
       return;
     }
 
-    // Open OAuth in popup — main page stays intact
-    const w = 500, h = 600;
-    const left = window.screenX + (window.innerWidth - w) / 2;
-    const top = window.screenY + (window.innerHeight - h) / 2;
-    const popup = window.open(oauthData.url, "oauth_popup", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
-
-    if (!popup) {
-      setError("Popup engellenmiş olabilir. Lütfen popup izni verin.");
-      return;
-    }
-
+    // Navigate the already-open popup to OAuth URL
+    popup.location.href = oauthData.url;
     setLoading(true);
 
     // Listen for postMessage from callback page
@@ -202,7 +214,6 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
         window.removeEventListener("message", handleMessage);
         clearInterval(pollTimer);
         setLoading(false);
-        // Session cookies are set — get user
         supabase.auth.getUser().then(({ data: { user } }) => {
           if (user) onSuccess(user);
           else setError("Giriş doğrulanamadı. Lütfen tekrar deneyin.");
@@ -217,7 +228,6 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
         clearInterval(pollTimer);
         window.removeEventListener("message", handleMessage);
         setLoading(false);
-        // Check if auth completed before popup closed
         supabase.auth.getUser().then(({ data: { user } }) => {
           if (user) onSuccess(user);
         });
@@ -261,7 +271,7 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
         <div className="flex rounded-xl bg-white/5 p-1">
           <button
             onClick={() => setTab("login")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all ${
               tab === "login" ? "text-white" : "text-zinc-400 hover:text-white"
             }`}
             style={tab === "login" ? { background: "lab(49.5493% 79.8381 2.31768)" } : undefined}
@@ -270,7 +280,7 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
           </button>
           <button
             onClick={() => setTab("register")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all ${
               tab === "register" ? "text-white" : "text-zinc-400 hover:text-white"
             }`}
             style={tab === "register" ? { background: "lab(49.5493% 79.8381 2.31768)" } : undefined}

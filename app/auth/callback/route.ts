@@ -100,14 +100,21 @@ export async function GET(request: NextRequest) {
     return popupResponse;
   }
 
-  // Normal flow — returnTo varsa editore don
+  // Normal flow — check localStorage returnTo (set by AuthModal fallback) or query param
   const returnTo = requestUrl.searchParams.get("returnTo");
   const safeReturnTo = returnTo?.startsWith('/editor/') ? returnTo : null;
-  const redirectTarget = safeReturnTo ? `${safeReturnTo}?auth_return=true` : "/dashboard";
 
   const normalResponse = new NextResponse(
     `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
-      <script>window.location.replace(${JSON.stringify(redirectTarget)})</script>
+      <script>
+        var saved = localStorage.getItem('forilove_auth_return');
+        if (saved) {
+          localStorage.removeItem('forilove_auth_return');
+          window.location.replace(saved);
+        } else {
+          window.location.replace(${JSON.stringify(safeReturnTo ? `${safeReturnTo}?auth_return=true` : "/dashboard")});
+        }
+      </script>
     </body></html>`,
     { headers: { "Content-Type": "text/html" } }
   );
