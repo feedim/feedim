@@ -245,7 +245,7 @@ export default function SecurityPage() {
                         <Check className="h-3 w-3" /> Onaylandı
                       </p>
                     ) : (
-                      <p className="text-xs text-red-400 mt-0.5">Onaylanmadı</p>
+                      <p className="text-xs text-pink-400 mt-0.5">Onaylanmadı</p>
                     )}
                   </div>
                 </div>
