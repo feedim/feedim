@@ -1681,7 +1681,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-lg sm:text-xl font-bold truncate md:border-l md:border-white/10 md:pl-4 shrink-0 max-w-[140px] sm:max-w-[200px] md:max-w-[300px]">{template?.name}</h1>
+          <h1 className="text-lg sm:text-xl font-bold truncate md:border-l md:border-white/10 md:pl-4 md:ml-4 shrink-0 max-w-[140px] sm:max-w-[200px] md:max-w-[300px]">{template?.name}</h1>
           {/* Mobile: Paylaş button in header */}
           {!loading && (
             <div className="md:hidden">
