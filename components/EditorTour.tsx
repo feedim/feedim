@@ -15,6 +15,8 @@ interface TourStep {
   title: string;
   description: string;
   optional?: boolean;
+  /** Display order: [desktop, mobile] — lower = earlier */
+  order: [number, number];
 }
 
 const STEPS: TourStep[] = [
@@ -26,6 +28,7 @@ const STEPS: TourStep[] = [
     title: "Metni Düzenle",
     description:
       "Herhangi bir metne dokunarak düzenle. Açılan pencereden yaz ve kaydet.",
+    order: [0, 0],
   },
   {
     target: null,
@@ -36,6 +39,7 @@ const STEPS: TourStep[] = [
     description:
       "Bir görsele dokunarak değiştir. Galerinden veya kamerandan yeni bir fotoğraf yükle.",
     optional: true,
+    order: [1, 1],
   },
   {
     target: "undo-redo",
@@ -43,6 +47,7 @@ const STEPS: TourStep[] = [
     title: "Geri Al / Yinele",
     description:
       "Yaptığın değişiklikleri geri alabilir veya tekrar uygulayabilirsin.",
+    order: [2, 2],
   },
   {
     target: "ai-fill",
@@ -50,32 +55,38 @@ const STEPS: TourStep[] = [
     title: "AI ile Doldur",
     description:
       "Tek cümleyle tüm alanları yapay zeka ile otomatik doldur.",
+    order: [3, 3],
   },
   {
+    // Desktop: AI → Bölümler → Müzik  |  Mobile: AI → Müzik → Bölümler
     target: "sections",
     targetMobile: "sections-mobile",
     title: "Bölümler",
     description:
       "İstemediğin bölümleri gizleyerek sayfanı özelleştir.",
     optional: true,
+    order: [4, 6],
   },
   {
     target: "music",
     targetMobile: "music-mobile",
     title: "Müzik Ekle",
     description: "Sayfana arka plan müziği ekle.",
+    order: [5, 5],
   },
   {
     target: "preview-btn",
     targetMobile: "preview-btn-mobile",
     title: "Önizleme",
     description: "Sayfanın son halini tam ekran görüntüle.",
+    order: [7, 7],
   },
   {
     target: "publish",
     targetMobile: "publish-mobile",
     title: "Yayınla",
     description: "Sayfanı yayınla ve sevdiklerinle paylaş!",
+    order: [8, 8],
   },
 ];
 
@@ -107,8 +118,9 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
   const [isMobile, setIsMobile] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  /* ---- filter optional steps ---- */
+  /* ---- filter optional steps + sort by platform order ---- */
   useEffect(() => {
+    const mobile = window.innerWidth < 768;
     const available = STEPS.filter((s) => {
       if (!s.optional) return true;
       if (s.iframeSelector) {
@@ -116,8 +128,13 @@ export default function EditorTour({ onComplete }: EditorTourProps) {
         try { return !!iframe?.contentDocument?.querySelector(s.iframeSelector); }
         catch { return false; }
       }
-      const attr = window.innerWidth < 768 ? s.targetMobile : s.target;
+      const attr = mobile ? s.targetMobile : s.target;
       return attr ? !!document.querySelector(`[data-tour="${attr}"]`) : false;
+    });
+    // Sort by platform-specific order
+    available.sort((a, b) => {
+      const orderIdx = mobile ? 1 : 0;
+      return a.order[orderIdx] - b.order[orderIdx];
     });
     setActiveSteps(available);
   }, []);
