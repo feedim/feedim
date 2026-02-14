@@ -255,7 +255,7 @@ export default function AffiliateDashboardPage() {
                         }}
                         className="shrink-0 p-2 rounded-lg hover:bg-white/10 transition"
                       >
-                        {urlCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-zinc-400" />}
+                        {urlCopied ? <Check className="h-4 w-4 text-pink-500" /> : <Copy className="h-4 w-4 text-zinc-400" />}
                       </button>
                     </div>
                   )}
