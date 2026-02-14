@@ -2102,6 +2102,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         onSelect={(url) => {
           setMusicUrl(url);
           saveMusicToDb(url);
+          setEditorMusicPlaying(true);
           setShowMusicModal(false);
         }}
         currentUrl={musicUrl}
