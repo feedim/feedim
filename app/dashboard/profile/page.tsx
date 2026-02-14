@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, LogOut, Heart, Clock, Calendar, Wallet, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Ticket, Send, TrendingUp } from "lucide-react";
+import { ArrowLeft, User, Mail, LogOut, Heart, Clock, Calendar, Wallet, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Ticket, Send, TrendingUp, Check, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -28,6 +28,12 @@ export default function ProfilePage() {
   const [sponsorBalance, setSponsorBalance] = useState<any>(null);
   const [sponsorUsers, setSponsorUsers] = useState<any[]>([]);
   const [sponsorPeriod, setSponsorPeriod] = useState<"today" | "yesterday" | "last7d" | "last14d" | "thisMonth">("last7d");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const router = useRouter();
   const supabase = createClient();
 
@@ -47,13 +53,14 @@ export default function ProfilePage() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("user_id, name, surname, coin_balance, role")
+        .select("user_id, name, surname, coin_balance, role, email_verified")
         .eq("user_id", authUser.id)
         .single();
 
       setProfile(profileData);
       setFirstName(profileData?.name || "");
       setLastName(profileData?.surname || "");
+      setEmailVerified(profileData?.email_verified || false);
 
       if (profileData?.role === 'admin') {
         try {
@@ -141,6 +148,61 @@ export default function ProfilePage() {
       toast.error("Silme hatası: " + translateError(error.message));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Email verification cooldown timer
+  useEffect(() => {
+    if (emailCooldown <= 0) return;
+    const timer = setTimeout(() => setEmailCooldown(emailCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [emailCooldown]);
+
+  const handleSendEmailCode = async () => {
+    if (!user?.email) return;
+    setSendingCode(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: user.email,
+        options: { shouldCreateUser: false },
+      });
+      if (error) {
+        toast.error("Kod gönderilemedi");
+        return;
+      }
+      toast.success("Doğrulama kodu e-postanıza gönderildi");
+      setVerifyingEmail(true);
+      setEmailCooldown(60);
+    } catch {
+      toast.error("Bir hata oluştu");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    if (emailCode.length !== 6 || !user?.email) return;
+    setVerifyingCode(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: user.email,
+        token: emailCode,
+        type: "email",
+      });
+      if (error) {
+        toast.error("Kod geçersiz veya süresi dolmuş");
+        return;
+      }
+      // Mark as verified in profiles
+      await fetch("/api/auth/verify-email", { method: "POST" });
+      setEmailVerified(true);
+      setVerifyingEmail(false);
+      setEmailCode("");
+      toast.success("E-posta adresiniz doğrulandı!");
+    } catch {
+      toast.error("Bir hata oluştu");
+    } finally {
+      setVerifyingCode(false);
     }
   };
 
@@ -390,18 +452,6 @@ export default function ProfilePage() {
                 <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
-            <Link href="/dashboard/security" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Güvenlik (2FA)</h3>
-                    <p className="text-xs text-zinc-500">İki faktörlü doğrulama ayarları</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
           </div>
         )}
 
@@ -583,18 +633,6 @@ export default function ProfilePage() {
                 <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
-            <Link href="/dashboard/security" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Güvenlik (2FA)</h3>
-                    <p className="text-xs text-zinc-500">İki faktörlü doğrulama ayarları</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
             <Link href="/affiliate" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -744,6 +782,90 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Güvenlik */}
+          <div className="bg-zinc-900 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/5">
+              <h3 className="font-semibold text-sm text-zinc-400 uppercase tracking-wider">Güvenlik</h3>
+            </div>
+            <div className="divide-y divide-white/5">
+              <div className="px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-zinc-400" />
+                    <span className="text-zinc-400">E-posta Doğrulaması</span>
+                  </div>
+                  {emailVerified ? (
+                    <span className="flex items-center gap-1.5 text-xs text-green-400 font-semibold">
+                      <Check className="h-3.5 w-3.5" />
+                      Onaylandı
+                    </span>
+                  ) : !verifyingEmail ? (
+                    <button
+                      onClick={handleSendEmailCode}
+                      disabled={sendingCode}
+                      className="text-sm text-pink-500 hover:text-pink-400 font-semibold transition-colors"
+                    >
+                      {sendingCode ? "Gönderiliyor..." : "Onayla"}
+                    </button>
+                  ) : null}
+                </div>
+                <div className="pl-8 mt-1">
+                  <span className="text-sm text-white">{user?.email || "-"}</span>
+                  {!emailVerified && !verifyingEmail && (
+                    <span className="text-xs text-red-400 ml-2">Onaylanmadı</span>
+                  )}
+                </div>
+
+                {/* Inline code verification */}
+                {verifyingEmail && !emailVerified && (
+                  <div className="mt-3 pl-8 space-y-3">
+                    <p className="text-xs text-zinc-400">E-postanıza gönderilen 6 haneli kodu girin.</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={emailCode}
+                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="000000"
+                        maxLength={6}
+                        className="input-modern flex-1 text-center font-mono tracking-[0.3em]"
+                      />
+                      <button
+                        onClick={handleVerifyEmailCode}
+                        disabled={verifyingCode || emailCode.length !== 6}
+                        className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5"
+                      >
+                        {verifyingCode ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                        Doğrula
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleSendEmailCode}
+                      disabled={emailCooldown > 0 || sendingCode}
+                      className="text-xs text-zinc-500 hover:text-white transition disabled:opacity-50"
+                    >
+                      {emailCooldown > 0 ? `Tekrar gönder (${emailCooldown}s)` : "Kodu Tekrar Gönder"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 2FA Link - only for affiliate/admin */}
+              {(profile?.role === "affiliate" || profile?.role === "admin") && (
+                <Link href="/dashboard/security" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Shield className="h-5 w-5 text-zinc-400" />
+                    <div>
+                      <span className="font-medium">İki Faktörlü Doğrulama (2FA)</span>
+                      <p className="text-xs text-zinc-500">Her girişte e-postanıza kod gönderilir</p>
+                    </div>
+                  </div>
+                  <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
+                </Link>
+              )}
             </div>
           </div>
 

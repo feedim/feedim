@@ -135,6 +135,12 @@ export async function middleware(request: NextRequest) {
     }
 
     if ((pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')) && role !== 'admin') {
+      // Affiliates can access promos page
+      if (role === 'affiliate' && pathname === '/dashboard/admin/promos') {
+        const response = NextResponse.next()
+        response.cookies.set('fl-role', role, { maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
+        return response
+      }
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
     if (pathname.startsWith('/creator') && role !== 'creator' && role !== 'admin') {
