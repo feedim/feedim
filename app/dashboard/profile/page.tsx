@@ -173,17 +173,17 @@ export default function ProfilePage() {
     if (emailCode.length < 6 || !user?.email) return;
     setVerifyingCode(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: user.email,
-        token: emailCode,
-        type: "email",
+      // Send OTP to server for verification (prevents client-side bypass)
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: emailCode }),
       });
-      if (error) {
-        toast.error("Kod geçersiz veya süresi dolmuş");
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Kod geçersiz veya süresi dolmuş");
         return;
       }
-      // Mark as verified in profiles
-      await fetch("/api/auth/verify-email", { method: "POST" });
       setEmailVerified(true);
       setVerifyingEmail(false);
       setEmailCode("");

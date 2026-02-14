@@ -58,11 +58,10 @@ export async function GET(request: NextRequest) {
     await supabase.auth.signOut();
 
     // Redirect to verify-mfa (client will send OTP)
-    const safeEmail = user.email.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
     const mfaResponse = new NextResponse(
       `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
         <script>
-          sessionStorage.setItem('mfa_email', '${safeEmail}');
+          sessionStorage.setItem('mfa_email', ${JSON.stringify(user.email)});
           window.location.replace('/verify-mfa');
         </script>
       </body></html>`,

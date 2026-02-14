@@ -67,17 +67,6 @@ export async function DELETE() {
 
     const admin = createAdminClient();
 
-    // Check if affiliate - affiliates can't disable
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role === "affiliate") {
-      return NextResponse.json({ error: "Affiliate hesapları 2FA'yı kapatamaz" }, { status: 403 });
-    }
-
     await admin
       .from("profiles")
       .update({ mfa_enabled: false })
