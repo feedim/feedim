@@ -233,15 +233,17 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
       }, 500);
     };
 
-    // Create hidden container for YT player
+    // Create container for YT player - must be on-screen for mobile browsers
     const container = document.createElement('div');
-    container.style.cssText = 'position:fixed;width:0;height:0;overflow:hidden;top:-9999px;left:-9999px;';
+    container.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;overflow:hidden;';
     document.body.appendChild(container);
 
     const iframe = document.createElement('iframe');
     const iframeId = `editor-yt-${videoId}-${Date.now()}`;
     iframe.id = iframeId;
     iframe.allow = 'autoplay; encrypted-media';
+    iframe.setAttribute('playsinline', '');
+    iframe.setAttribute('webkit-playsinline', '');
     iframe.style.cssText = 'border:none;width:1px;height:1px;';
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1&loop=1&playlist=${videoId}&controls=0&disablekb=1&fs=0&modestbranding=1&playsinline=1&rel=0&origin=${encodeURIComponent(origin)}`;
@@ -262,6 +264,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
           onReady: () => {
             if (editorYtDestroyedRef.current) return;
             editorYtPlayerRef.current?.setVolume?.(80);
+            try { editorYtPlayerRef.current?.playVideo?.(); } catch {}
             startTracking();
           },
           onStateChange: (event: any) => {

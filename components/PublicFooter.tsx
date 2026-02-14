@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, Instagram, Twitter } from "lucide-react";
+import { Heart } from "lucide-react";
 
 export default function PublicFooter() {
   return (
@@ -13,16 +13,16 @@ export default function PublicFooter() {
             </div>
             <div className="flex items-center gap-3">
               <a href="https://instagram.com/forilove" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition" aria-label="Instagram">
-                <Instagram className="h-[18px] w-[18px]" />
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
               </a>
               <a href="https://tiktok.com/@forilove" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition" aria-label="TikTok">
-                <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.36a8.16 8.16 0 0 0 4.76 1.53v-3.4a4.85 4.85 0 0 1-1-.2z"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.36a8.16 8.16 0 0 0 4.76 1.53v-3.4a4.85 4.85 0 0 1-1-.2z"/></svg>
               </a>
               <a href="https://pinterest.com/forilove" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition" aria-label="Pinterest">
-                <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0a12 12 0 0 0-4.37 23.17c-.1-.94-.2-2.4.04-3.44l1.4-5.96s-.36-.72-.36-1.78c0-1.66.96-2.9 2.16-2.9 1.02 0 1.52.77 1.52 1.68 0 1.02-.66 2.56-.99 3.98-.28 1.18.59 2.15 1.76 2.15 2.11 0 3.73-2.22 3.73-5.44 0-2.84-2.04-4.83-4.96-4.83-3.38 0-5.36 2.53-5.36 5.15 0 1.02.39 2.11.88 2.71.1.12.11.22.08.34l-.33 1.34c-.05.22-.17.26-.4.16-1.5-.7-2.43-2.88-2.43-4.64 0-3.78 2.74-7.25 7.92-7.25 4.16 0 7.39 2.96 7.39 6.92 0 4.13-2.6 7.46-6.22 7.46-1.22 0-2.36-.63-2.75-1.37l-.75 2.85c-.27 1.04-1 2.35-1.49 3.14A12 12 0 1 0 12 0z"/></svg>
+                <svg width="18" height="18" viewBox="0 0 1024 1024" fill="currentColor"><path d="M467.669333 538.24c0.426667 1.408 0.768 2.858667 1.024 4.352C480.768 611.285333 512.426667 640 573.013333 640 669.610667 640 768 520.106667 768 395.093333 768 264.832 663.082667 170.666667 493.056 170.666667 345.728 170.666667 256 279.466667 256 395.093333c0 56.874667 11.690667 93.653333 32.085333 112.512a42.666667 42.666667 0 1 1-57.984 62.634667C189.482667 532.608 170.666667 473.514667 170.666667 395.093333 170.666667 235.52 294.570667 85.333333 493.056 85.333333 708.266667 85.333333 853.333333 215.509333 853.333333 395.093333c0 168.789333-132.437333 330.24-280.32 330.24-57.514667 0-103.424-18.474667-136.149333-53.546666l-53.973333 233.813333a42.666667 42.666667 0 1 1-83.114667-19.2l128-554.666667a42.666667 42.666667 0 0 1 83.114667 19.2l-43.221334 187.306667z"/></svg>
               </a>
-              <a href="https://twitter.com/forilove" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition" aria-label="Twitter">
-                <Twitter className="h-[18px] w-[18px]" />
+              <a href="https://twitter.com/forilove" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition" aria-label="X">
+                <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>
               </a>
             </div>
           </div>
