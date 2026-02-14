@@ -596,6 +596,9 @@ export default function ProfilePage() {
                     <div>
                       <span className="text-zinc-400">E-posta</span>
                       <p className="text-sm text-white mt-0.5">{user?.email || "-"}</p>
+                      {!emailVerified && (
+                        <p className="text-xs text-pink-400 mt-0.5">Onaylanmadı</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
