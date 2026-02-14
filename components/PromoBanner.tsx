@@ -34,8 +34,8 @@ export default function PromoBanner() {
         }
       }
 
-      // Don't show banner on dashboard (promo already applied after signup)
-      if (pathname?.startsWith("/dashboard")) {
+      // Don't show banner on dashboard, editor, or preview pages
+      if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/editor") || pathname?.startsWith("/preview")) {
         setPromoInfo(null);
         return;
       }
