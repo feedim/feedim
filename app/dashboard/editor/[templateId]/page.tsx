@@ -1763,7 +1763,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   return (
     <div className="h-[100dvh] bg-black text-white flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       {/* Header */}
-      <header className="shrink-0 z-50 bg-black/70 backdrop-blur-2xl min-h-[73px] border-b" style={{ borderColor: 'rgba(236,72,153,0.25)' }}>
+      <header className="shrink-0 z-50 bg-black/90 backdrop-blur-2xl min-h-[73px] border-b" style={{ borderColor: 'rgba(236,72,153,0.25)' }}>
         <nav className="w-full px-3 sm:px-6 flex items-center justify-between min-h-[73px]">
           <button onClick={() => { if (guestMode) { router.push('/templates'); } else if (window.history.length > 1) { router.back(); } else { router.push('/dashboard'); } }} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
