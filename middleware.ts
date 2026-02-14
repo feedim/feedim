@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const isHomePage = pathname === '/'
-  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/creator')
+  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/creator')
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/verify-mfa'
 
   if (!isProtected && !isAuthPage && !isHomePage) {
@@ -111,9 +111,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Role-based access control for admin/creator routes (includes /dashboard/admin/*)
-  if (isAuthenticated && userId && (pathname.startsWith('/admin') || pathname.startsWith('/creator') || pathname.startsWith('/dashboard/admin'))) {
-    // Check cached role cookie first (avoids Supabase REST call on every request)
+  // Role-based access control for creator routes
+  if (isAuthenticated && userId && pathname.startsWith('/creator')) {
     let role = request.cookies.get('fl-role')?.value || ''
 
     if (!role) {
@@ -134,20 +133,10 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    if ((pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')) && role !== 'admin') {
-      // Affiliates can access promos page
-      if (role === 'affiliate' && pathname === '/dashboard/admin/promos') {
-        const response = NextResponse.next()
-        response.cookies.set('fl-role', role, { maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
-        return response
-      }
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    if (pathname.startsWith('/creator') && role !== 'creator' && role !== 'admin') {
+    if (role !== 'creator' && role !== 'admin') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // Cache role in cookie for 5 minutes
     const response = NextResponse.next()
     response.cookies.set('fl-role', role, { maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
     return response
@@ -161,7 +150,6 @@ export const config = {
     '/',
     '/api/:path*',
     '/dashboard/:path*',
-    '/admin/:path*',
     '/creator/:path*',
     '/login',
     '/register',

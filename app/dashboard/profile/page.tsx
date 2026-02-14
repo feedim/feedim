@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, LogOut, Heart, Clock, Calendar, Wallet, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Ticket, TrendingUp, Check } from "lucide-react";
+import { ArrowLeft, User, Mail, LogOut, Heart, Clock, Calendar, Wallet, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, TrendingUp, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -21,7 +21,6 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [adminStats, setAdminStats] = useState<any>(null);
   const [hasAffiliateData, setHasAffiliateData] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const router = useRouter();
@@ -52,14 +51,7 @@ export default function ProfilePage() {
       setLastName(profileData?.surname || "");
       setEmailVerified(profileData?.email_verified || false);
 
-      if (profileData?.role === 'admin') {
-        try {
-          const statsRes = await fetch('/api/admin/stats');
-          if (statsRes.ok) {
-            setAdminStats(await statsRes.json());
-          }
-        } catch { /* silent */ }
-      } else if (profileData?.role === 'affiliate') {
+      if (profileData?.role === 'affiliate') {
         setHasAffiliateData(true);
       }
     } catch (error) {
@@ -262,140 +254,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Admin Analytics */}
-        {profile?.role === 'admin' && adminStats && (
-          <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="h-5 w-5 text-pink-500" />
-              <h3 className="font-semibold">Admin Analytics</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-zinc-400 mb-1">Toplam Kullanıcı</p>
-                <p className="text-2xl font-bold">{adminStats.totalUsers.toLocaleString('tr-TR')}</p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-zinc-400 mb-1">Bugün Satış</p>
-                <p className="text-2xl font-bold text-pink-500">{adminStats.todayRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">TRY</span></p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-zinc-400 mb-1">Toplam Satış</p>
-                <p className="text-2xl font-bold text-pink-500">{adminStats.totalRevenueTRY.toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">TRY</span></p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-zinc-400 mb-1">Toplam Ödeme</p>
-                <p className="text-2xl font-bold">{adminStats.totalPayments.toLocaleString('tr-TR')}</p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-zinc-400 mb-1">Toplam Coin</p>
-                <p className="text-2xl font-bold text-yellow-500">{adminStats.totalCoins.toLocaleString('tr-TR')}</p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-zinc-400 mb-1">Yayınlanan Sayfa</p>
-                <p className="text-2xl font-bold">{adminStats.publishedPages.toLocaleString('tr-TR')}</p>
-              </div>
-              <div className="bg-white/5 rounded-xl p-4 col-span-2">
-                <p className="text-xs text-zinc-400 mb-1">Bugün Ödeme</p>
-                <p className="text-2xl font-bold">{adminStats.todayPayments.toLocaleString('tr-TR')}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Admin: Yayınlanan Sayfalar Link */}
-        {profile?.role === 'admin' && (
-          <div className="space-y-3 mb-6">
-            <Link href="/dashboard/admin/projects" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Yayınlanan Sayfalar</h3>
-                    <p className="text-xs text-zinc-500">{adminStats?.publishedPages || 0} sayfa yayında</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-            <Link href="/dashboard/admin/affiliate-payouts" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Wallet className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Affiliate Ödemeleri</h3>
-                    <p className="text-xs text-zinc-500">Ödeme taleplerini yönet</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-            <Link href="/dashboard/admin/affiliate-applications" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <User className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Affiliate Başvuruları</h3>
-                    <p className="text-xs text-zinc-500">Başvuruları incele ve onayla</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-            <Link href="/dashboard/admin/promos" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Aktif Promolar</h3>
-                    <p className="text-xs text-zinc-500">İndirim linklerini yönet</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-            <Link href="/dashboard/admin/coupons" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Ticket className="h-5 w-5 text-pink-500" />
-                  <div>
-                    <h3 className="font-semibold">Kupon Yönetimi</h3>
-                    <p className="text-xs text-zinc-500">Kuponları oluştur ve yönet</p>
-                  </div>
-                </div>
-                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-          </div>
-        )}
-
-        {/* Admin: Son Üyeler */}
-        {profile?.role === 'admin' && adminStats?.recentUsers?.length > 0 && (
-          <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="h-5 w-5 text-pink-500" />
-              <h3 className="font-semibold">Son 10 Üye</h3>
-            </div>
-            <div className="space-y-3">
-              {adminStats.recentUsers.map((u: any, i: number) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold text-zinc-300 shrink-0">
-                      {(u.name || u.full_name || '?').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{u.full_name || [u.name, u.surname].filter(Boolean).join(' ') || 'İsimsiz'}</p>
-                      <p className="text-xs text-zinc-500">{new Date(u.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                  </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${u.hasPurchased || u.coin_balance ? 'bg-pink-500/20 text-pink-400' : 'bg-white/10 text-zinc-400'}`}>
-                    {u.hasPurchased || u.coin_balance ? 'Satın Aldı' : 'Kayıt'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Affiliate Program Link */}
         {profile?.role === 'affiliate' && (
           <div className="mb-6">
@@ -457,8 +315,8 @@ export default function ProfilePage() {
                 <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
               </Link>
 
-              {/* Creator Studio - Only for creators/admins */}
-              {(profile?.role === 'creator' || profile?.role === 'admin') && (
+              {/* Creator Studio - Only for creators */}
+              {(profile?.role === 'creator') && (
                 <Link href="/creator" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors bg-gradient-to-r from-pink-500/5 to-purple-500/5">
                   <div className="flex items-center gap-3">
                     <Sparkles className="h-5 w-5 text-pink-500" />
@@ -469,7 +327,7 @@ export default function ProfilePage() {
               )}
 
               {/* Satış Ortağı Başvuru - Normal kullanıcılar */}
-              {profile?.role !== 'affiliate' && profile?.role !== 'admin' && (
+              {profile?.role !== 'affiliate' && (
                 <Link href="/dashboard/affiliate-apply" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors bg-gradient-to-r from-pink-500/5 to-purple-500/5">
                   <div className="flex items-center gap-3">
                     <TrendingUp className="h-5 w-5 text-pink-500" />

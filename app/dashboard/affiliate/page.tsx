@@ -206,19 +206,7 @@ export default function AffiliateDashboardPage() {
                   <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
-              <Link href="/dashboard/admin/promos" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-5 w-5 text-pink-500" />
-                    <div>
-                      <h3 className="font-semibold">Affiliate Link</h3>
-                      <p className="text-xs text-zinc-500">İndirim linkinizi yönetin</p>
-                    </div>
-                  </div>
-                  <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-              <Link href="/dashboard/security" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
+<Link href="/dashboard/security" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Shield className="h-5 w-5 text-pink-500" />
