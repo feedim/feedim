@@ -25,10 +25,10 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [adminStats, setAdminStats] = useState<any>(null);
   const [coupons, setCoupons] = useState<any[]>([]);
-  const [couponForm, setCouponForm] = useState({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720 });
+  const [couponForm, setCouponForm] = useState({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720, isFree: false });
   const [couponCreating, setCouponCreating] = useState(false);
   const [promos, setPromos] = useState<any[]>([]);
-  const [promoForm, setPromoForm] = useState({ code: '', discountPercent: 15, maxSignups: 500, expiryHours: 720 });
+  const [promoForm, setPromoForm] = useState({ code: '', discountPercent: 15, maxSignups: 500, expiryHours: 720, isFree: false });
   const [promoCreating, setPromoCreating] = useState(false);
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
   const router = useRouter();
@@ -161,7 +161,7 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponForm.code,
-          discountPercent: couponForm.discountPercent,
+          discountPercent: couponForm.isFree ? 100 : couponForm.discountPercent,
           maxUses: couponForm.maxUses,
           expiryHours: couponForm.expiryHours,
         }),
@@ -173,7 +173,7 @@ export default function ProfilePage() {
       }
       toast.success(`Kupon oluşturuldu: ${data.coupon.code}`);
       setCoupons([data.coupon, ...coupons]);
-      setCouponForm({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720 });
+      setCouponForm({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720, isFree: false });
     } catch {
       toast.error('Bir hata oluştu');
     } finally {
@@ -181,7 +181,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeactivateCoupon = async (couponId: string) => {
+  const handleDeleteCoupon = async (couponId: string) => {
     try {
       const res = await fetch('/api/admin/coupons', {
         method: 'DELETE',
@@ -189,11 +189,11 @@ export default function ProfilePage() {
         body: JSON.stringify({ couponId }),
       });
       if (!res.ok) {
-        toast.error('Kupon deaktif edilemedi');
+        toast.error('Kupon silinemedi');
         return;
       }
-      setCoupons(coupons.map(c => c.id === couponId ? { ...c, is_active: false } : c));
-      toast.success('Kupon deaktif edildi');
+      setCoupons(coupons.filter(c => c.id !== couponId));
+      toast.success('Kupon silindi');
     } catch {
       toast.error('Bir hata olustu');
     }
@@ -212,7 +212,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           type: 'promo',
           code: promoForm.code,
-          discountPercent: promoForm.discountPercent,
+          discountPercent: promoForm.isFree ? 100 : promoForm.discountPercent,
           maxSignups: promoForm.maxSignups,
           expiryHours: promoForm.expiryHours,
         }),
@@ -224,7 +224,7 @@ export default function ProfilePage() {
       }
       toast.success(`Promo linki olusturuldu: ${data.promo.code}`);
       setPromos([data.promo, ...promos]);
-      setPromoForm({ code: '', discountPercent: 15, maxSignups: 500, expiryHours: 720 });
+      setPromoForm({ code: '', discountPercent: 15, maxSignups: 500, expiryHours: 720, isFree: false });
     } catch {
       toast.error('Bir hata olustu');
     } finally {
@@ -232,7 +232,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeactivatePromo = async (promoId: string) => {
+  const handleDeletePromo = async (promoId: string) => {
     try {
       const res = await fetch('/api/admin/coupons', {
         method: 'DELETE',
@@ -240,11 +240,11 @@ export default function ProfilePage() {
         body: JSON.stringify({ promoId }),
       });
       if (!res.ok) {
-        toast.error('Promo deaktif edilemedi');
+        toast.error('Promo silinemedi');
         return;
       }
-      setPromos(promos.map(p => p.id === promoId ? { ...p, is_active: false } : p));
-      toast.success('Promo deaktif edildi');
+      setPromos(promos.filter(p => p.id !== promoId));
+      toast.success('Promo silindi');
     } catch {
       toast.error('Bir hata olustu');
     }
@@ -513,14 +513,24 @@ export default function ProfilePage() {
                   <label className="block text-xs text-gray-400 mb-1">Indirim %</label>
                   <input
                     type="number"
-                    value={couponForm.discountPercent}
+                    value={couponForm.isFree ? 100 : couponForm.discountPercent}
                     onChange={(e) => setCouponForm({ ...couponForm, discountPercent: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)) })}
                     min={1}
                     max={100}
-                    className="input-modern w-full text-sm"
+                    disabled={couponForm.isFree}
+                    className="input-modern w-full text-sm disabled:opacity-50"
                   />
                 </div>
               </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={couponForm.isFree}
+                  onChange={(e) => setCouponForm({ ...couponForm, isFree: e.target.checked })}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm text-gray-400">Bedava (ucretsiz satin alma)</span>
+              </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Max Kullanim</label>
@@ -558,23 +568,22 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Mevcut Kuponlar</p>
                 {coupons.filter(c => c.coupon_type === 'general').map((coupon) => (
-                  <div key={coupon.id} className={`flex items-center justify-between p-3 rounded-xl ${coupon.is_active ? 'bg-white/5' : 'bg-white/[0.02] opacity-50'}`}>
+                  <div key={coupon.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-yellow-500 font-mono">{coupon.code}</span>
-                        <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">%{coupon.discount_percent}</span>
-                        {!coupon.is_active && <span className="text-xs bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full">deaktif</span>}
+                        <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">
+                          {coupon.discount_percent === 100 ? 'BEDAVA' : `%${coupon.discount_percent}`}
+                        </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         {coupon.current_uses}/{coupon.max_uses || '∞'} kullanim
                         {coupon.expires_at && ` · ${new Date(coupon.expires_at) > new Date() ? `${Math.ceil((new Date(coupon.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldi` : 'suresi dolmus'}`}
                       </p>
                     </div>
-                    {coupon.is_active && (
-                      <button onClick={() => handleDeactivateCoupon(coupon.id)} className="p-2 text-gray-500 hover:text-red-400 transition shrink-0" title="Deaktif et">
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
+                    <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-gray-500 hover:text-red-400 transition shrink-0" title="Sil">
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -609,14 +618,24 @@ export default function ProfilePage() {
                   <label className="block text-xs text-gray-400 mb-1">Indirim %</label>
                   <input
                     type="number"
-                    value={promoForm.discountPercent}
+                    value={promoForm.isFree ? 100 : promoForm.discountPercent}
                     onChange={(e) => setPromoForm({ ...promoForm, discountPercent: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)) })}
                     min={1}
                     max={100}
-                    className="input-modern w-full text-sm"
+                    disabled={promoForm.isFree}
+                    className="input-modern w-full text-sm disabled:opacity-50"
                   />
                 </div>
               </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={promoForm.isFree}
+                  onChange={(e) => setPromoForm({ ...promoForm, isFree: e.target.checked })}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm text-gray-400">Bedava (ucretsiz satin alma)</span>
+              </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Max Kayit</label>
@@ -654,13 +673,14 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Aktif Promolar</p>
                 {promos.map((promo) => (
-                  <div key={promo.id} className={`p-3 rounded-xl ${promo.is_active ? 'bg-white/5' : 'bg-white/[0.02] opacity-50'}`}>
+                  <div key={promo.id} className="p-3 rounded-xl bg-white/5">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-yellow-500 font-mono">{promo.code}</span>
-                          <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">%{promo.discount_percent}</span>
-                          {!promo.is_active && <span className="text-xs bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full">deaktif</span>}
+                          <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">
+                            {promo.discount_percent === 100 ? 'BEDAVA' : `%${promo.discount_percent}`}
+                          </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
                           {promo.current_signups}/{promo.max_signups || '∞'} kayit
@@ -668,19 +688,15 @@ export default function ProfilePage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {promo.is_active && (
-                          <button
-                            onClick={() => copyPromoLink(promo.code)}
-                            className="px-3 py-1.5 text-xs bg-white/10 text-gray-300 hover:text-white rounded-lg transition"
-                          >
-                            {copiedPromo === promo.code ? 'Kopyalandi!' : 'Linki Kopyala'}
-                          </button>
-                        )}
-                        {promo.is_active && (
-                          <button onClick={() => handleDeactivatePromo(promo.id)} className="p-2 text-gray-500 hover:text-red-400 transition" title="Deaktif et">
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => copyPromoLink(promo.code)}
+                          className="px-3 py-1.5 text-xs bg-white/10 text-gray-300 hover:text-white rounded-lg transition"
+                        >
+                          {copiedPromo === promo.code ? 'Kopyalandi!' : 'Linki Kopyala'}
+                        </button>
+                        <button onClick={() => handleDeletePromo(promo.id)} className="p-2 text-gray-500 hover:text-red-400 transition" title="Sil">
+                          <X className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   </div>

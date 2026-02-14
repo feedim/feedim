@@ -214,20 +214,20 @@ export async function DELETE(request: NextRequest) {
     const admin = createAdminClient();
 
     if (promoId) {
-      const { error } = await admin
-        .from("promo_links")
-        .update({ is_active: false })
-        .eq("id", promoId);
+      // Delete related signups first, then the promo link
+      await admin.from("promo_signups").delete().eq("promo_link_id", promoId);
+      // Delete coupons generated from this promo
+      await admin.from("coupons").delete().eq("promo_link_id", promoId);
+      const { error } = await admin.from("promo_links").delete().eq("id", promoId);
 
       if (error) throw error;
       return NextResponse.json({ success: true });
     }
 
     if (couponId) {
-      const { error } = await admin
-        .from("coupons")
-        .update({ is_active: false })
-        .eq("id", couponId);
+      // Delete related usages first, then the coupon
+      await admin.from("coupon_usages").delete().eq("coupon_id", couponId);
+      const { error } = await admin.from("coupons").delete().eq("id", couponId);
 
       if (error) throw error;
       return NextResponse.json({ success: true });
