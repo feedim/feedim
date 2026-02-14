@@ -451,7 +451,7 @@ export default function SecurityPage() {
                       {disableStep === 0 && (
                         <button
                           onClick={() => setDisableStep(1)}
-                          className="text-xs text-zinc-500 hover:text-pink-400 transition shrink-0 ml-3"
+                          className="text-xs text-zinc-400 hover:text-white font-semibold transition shrink-0 ml-3"
                         >
                           Kapat
                         </button>

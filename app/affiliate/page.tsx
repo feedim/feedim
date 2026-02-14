@@ -76,12 +76,9 @@ export default function AffiliatePage() {
             Forilove
             <span className="block text-pink-500 mt-3">Affiliate Program</span>
           </h1>
-          <p className="text-lg text-zinc-400 mb-10 max-w-2xl mx-auto">
+          <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
             Takipçilerinize özel indirim linkleri oluşturun, her satıştan %15 ile %30 arası komisyon kazanın.
           </p>
-          <Link href="/contact" className="btn-primary px-8 py-3 text-lg">
-            Başvuru Yap
-          </Link>
         </div>
       </section>
 

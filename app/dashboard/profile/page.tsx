@@ -404,7 +404,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <BarChart3 className="h-5 w-5 text-pink-500" />
                   <div>
-                    <h3 className="font-semibold">Affiliate Program</h3>
+                    <h3 className="font-semibold">Satış Programı</h3>
                     <p className="text-xs text-zinc-500">Analizler, kazançlar, linkler ve ayarlar</p>
                   </div>
                 </div>
@@ -588,7 +588,7 @@ export default function ProfilePage() {
               <Link href="/affiliate" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <TrendingUp className="h-5 w-5 text-zinc-400" />
-                  <span className="font-medium">Affiliate Program</span>
+                  <span className="font-medium">Satış Programı</span>
                 </div>
                 <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
               </Link>
