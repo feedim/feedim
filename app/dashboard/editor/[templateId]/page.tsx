@@ -65,7 +65,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiPrompt, setAIPrompt] = useState('');
   const [aiLoading, setAILoading] = useState(false);
-  const FIELD_UNLOCK_COST = 15;
+  const TEMPLATE_UNLOCK_COST = 29;
   const [unlockedFields, setUnlockedFields] = useState<Set<string>>(new Set());
   const [selectedVisibility, setSelectedVisibility] = useState<boolean | null>(null);
   const router = useRouter();
@@ -907,8 +907,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
               if (editable) {
                 var eKey = editable.getAttribute('data-editable');
                 if (LOCKED_SET.has(eKey)) {
-                  editable.style.outline = '2px solid rgba(255,255,255,0.4)';
-                  editable.style.boxShadow = '0 0 0 4px rgba(255,255,255,0.05)';
+                  editable.style.outline = '2px solid rgba(236,72,153,0.5)';
+                  editable.style.boxShadow = '0 0 0 4px rgba(236,72,153,0.1)';
                 } else {
                   editable.style.outline = '2px solid #ec4899';
                   editable.style.boxShadow = '0 0 0 4px rgba(236, 72, 153, 0.1)';
@@ -928,8 +928,8 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
             if (LOCKED_SET.has(elKey)) {
               el.style.position = el.style.position || 'relative';
               var overlay = document.createElement('div');
-              overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);pointer-events:none;z-index:2;border-radius:inherit;';
-              overlay.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+              overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(236,72,153,0.12);pointer-events:none;z-index:2;border-radius:inherit;';
+              overlay.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
               el.appendChild(overlay);
             }
 
@@ -1295,13 +1295,14 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
   };
 
   const handleFieldUnlock = async (hookKey: string) => {
-    const hook = hooks.find(h => h.key === hookKey);
-    if (!hook) return;
+    // Collect all locked field keys for bulk unlock
+    const allLockedKeys = hooks.filter(h => h.locked && !unlockedFields.has(h.key)).map(h => h.key);
+    if (allLockedKeys.length === 0) return;
 
     const result = await confirm({
-      itemName: `"${hook.label}" Kilidini Aç`,
-      description: "Bu alanı düzenlemek için kilidi açın",
-      coinCost: FIELD_UNLOCK_COST,
+      itemName: "Tüm Kilitleri Aç",
+      description: "Bu şablondaki tüm kilitli alanları düzenleyebilirsiniz",
+      coinCost: TEMPLATE_UNLOCK_COST,
       currentBalance: coinBalance,
       icon: 'template',
       allowCoupon: false,
@@ -1309,27 +1310,38 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Oturum bulunamadı');
 
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('unlock_template_field', {
+        // Spend coins
+        const { data: spendResult, error: spendError } = await supabase.rpc('spend_coins', {
           p_user_id: user.id,
-          p_project_id: project?.id,
-          p_field_key: hookKey,
-          p_cost: FIELD_UNLOCK_COST,
+          p_amount: TEMPLATE_UNLOCK_COST,
+          p_description: 'Ücretsiz şablon kilitleri açıldı',
+          p_reference_id: project?.id || null,
+          p_reference_type: 'template_unlock',
         });
 
-        if (rpcError) throw rpcError;
-        if (!rpcResult?.success) {
-          return { success: false, error: rpcResult?.error || 'Alan kilidi açılamadı' };
+        if (spendError) throw spendError;
+        if (!spendResult[0]?.success) {
+          return { success: false, error: spendResult[0]?.message || 'Coin harcama başarısız' };
         }
-        return { success: true, newBalance: rpcResult.new_balance };
+
+        // Update project unlocked_fields with all locked keys
+        const { error: updateError } = await supabase
+          .from('projects')
+          .update({ unlocked_fields: allLockedKeys, updated_at: new Date().toISOString() })
+          .eq('id', project?.id);
+
+        if (updateError) throw updateError;
+
+        return { success: true, newBalance: spendResult[0].new_balance };
       },
     });
 
     if (!result?.success) return;
 
     setCoinBalance(result.newBalance);
-    setUnlockedFields(prev => new Set([...prev, hookKey]));
+    setUnlockedFields(new Set(allLockedKeys));
 
-    // Open edit modal for the newly unlocked field
+    // Open edit modal for the clicked field
     openEditModal(hookKey);
   };
 
