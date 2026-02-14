@@ -1769,7 +1769,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <div className="flex items-center gap-2 md:border-l md:border-white/10 md:pl-4 md:ml-4 shrink-0 min-w-0">
+          <div className="flex items-center gap-2 border-l border-white/10 pl-4 ml-4 shrink-0 min-w-0">
             <h1 className="text-lg sm:text-xl font-bold truncate max-w-[120px] sm:max-w-[180px] md:max-w-[280px]">{template?.name}</h1>
             <button
               onClick={() => setShowShareModal(true)}
