@@ -268,10 +268,10 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex rounded-xl bg-white/5 p-1">
+        <div className="flex rounded-[5rem] bg-white/5 p-1">
           <button
             onClick={() => setTab("login")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all ${
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-[5rem] transition-all ${
               tab === "login" ? "text-white" : "text-zinc-400 hover:text-white"
             }`}
             style={tab === "login" ? { background: "lab(49.5493% 79.8381 2.31768)" } : undefined}
@@ -280,7 +280,7 @@ function AuthModalSheet({ onClose, onSuccess, returnPath }: SheetProps) {
           </button>
           <button
             onClick={() => setTab("register")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all ${
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-[5rem] transition-all ${
               tab === "register" ? "text-white" : "text-zinc-400 hover:text-white"
             }`}
             style={tab === "register" ? { background: "lab(49.5493% 79.8381 2.31768)" } : undefined}
