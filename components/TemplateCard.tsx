@@ -55,7 +55,6 @@ export default function TemplateCard({
 
   return (
     <div
-      onClick={onClick}
       className="group relative aspect-[3/4] bg-zinc-900 overflow-hidden border border-white/10 hover:border-pink-500/30 transition-all cursor-pointer"
       style={{ borderRadius: '29px' }}
     >
@@ -131,7 +130,7 @@ export default function TemplateCard({
       />
 
       {/* Content Overlay */}
-      <div className="absolute inset-0 p-6 flex flex-col justify-between bg-gradient-to-t from-black via-black/50 to-transparent">
+      <div onClick={onClick} className="absolute inset-0 p-6 flex flex-col justify-between bg-gradient-to-t from-black via-black/50 to-transparent">
         <div className="flex items-start">
           <div className="flex items-center gap-2">
             {hasDiscount && template.discount_label && !isPurchased && !isPublished && (
