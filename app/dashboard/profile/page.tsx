@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, LogOut, Heart, Clock, Calendar, Wallet, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Ticket, TrendingUp, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Mail, LogOut, Heart, Clock, Calendar, Wallet, Edit2, Bookmark, ShoppingBag, Sparkles, HelpCircle, FileText, Shield, MessageCircle, ScrollText, BarChart3, Globe, Ticket, TrendingUp, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -19,18 +19,11 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [editEmail, setEditEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [adminStats, setAdminStats] = useState<any>(null);
   const [hasAffiliateData, setHasAffiliateData] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [verifyingEmail, setVerifyingEmail] = useState(false);
-  const [emailCode, setEmailCode] = useState("");
-  const [sendingCode, setSendingCode] = useState(false);
-  const [verifyingCode, setVerifyingCode] = useState(false);
-  const [emailCooldown, setEmailCooldown] = useState(0);
   const router = useRouter();
   const supabase = createClient();
 
@@ -100,21 +93,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleUpdateEmail = async () => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail
-      });
-
-      if (error) throw error;
-
-      toast.success("E-posta güncelleme linki gönderildi! Lütfen e-postanızı kontrol edin.");
-      setEditEmail(false);
-      setNewEmail("");
-    } catch (error: any) {
-      toast.error("E-posta güncelleme hatası: " + translateError(error.message));
-    }
-  };
 
   const handleDeleteAccount = async () => {
     if (confirmDeleteText !== "DELETE") {
@@ -140,60 +118,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Email verification cooldown timer
-  useEffect(() => {
-    if (emailCooldown <= 0) return;
-    const timer = setTimeout(() => setEmailCooldown(emailCooldown - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [emailCooldown]);
-
-  const handleSendEmailCode = async () => {
-    if (!user?.email) return;
-    setSendingCode(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: user.email,
-        options: { shouldCreateUser: false },
-      });
-      if (error) {
-        toast.error("Kod gönderilemedi");
-        return;
-      }
-      toast.success("Doğrulama kodu e-postanıza gönderildi");
-      setVerifyingEmail(true);
-      setEmailCooldown(60);
-    } catch {
-      toast.error("Bir hata oluştu");
-    } finally {
-      setSendingCode(false);
-    }
-  };
-
-  const handleVerifyEmailCode = async () => {
-    if (emailCode.length < 6 || !user?.email) return;
-    setVerifyingCode(true);
-    try {
-      // Send OTP to server for verification (prevents client-side bypass)
-      const res = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: emailCode }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Kod geçersiz veya süresi dolmuş");
-        return;
-      }
-      setEmailVerified(true);
-      setVerifyingEmail(false);
-      setEmailCode("");
-      toast.success("E-posta adresiniz doğrulandı!");
-    } catch {
-      toast.error("Bir hata oluştu");
-    } finally {
-      setVerifyingCode(false);
-    }
-  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -588,104 +512,27 @@ export default function ProfilePage() {
               <h3 className="font-semibold text-sm text-zinc-400 uppercase tracking-wider">Güvenlik</h3>
             </div>
             <div className="divide-y divide-white/5">
-              {/* E-posta: Doğrulama + Değiştirme tek yerde */}
-              <div className="px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-zinc-400" />
-                    <div>
-                      <span className="text-zinc-400">E-posta</span>
-                      <p className="text-sm text-white mt-0.5">{user?.email || "-"}</p>
-                      {!emailVerified && (
-                        <p className="text-xs text-pink-400 mt-0.5">Onaylanmadı</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {emailVerified ? (
-                      <span className="flex items-center gap-1.5 text-xs text-pink-400 font-semibold">
-                        <Check className="h-3.5 w-3.5" />
-                        Onaylandı
-                      </span>
-                    ) : !verifyingEmail ? (
-                      <button
-                        onClick={handleSendEmailCode}
-                        disabled={sendingCode}
-                        className="text-xs text-pink-500 hover:text-pink-400 font-semibold transition-colors"
-                      >
-                        {sendingCode ? "..." : "Doğrula"}
-                      </button>
-                    ) : null}
-                    <button
-                      onClick={() => setEditEmail(!editEmail)}
-                      className="text-xs text-zinc-400 hover:text-white font-semibold transition-colors"
-                    >
-                      Değiştir
-                    </button>
+              {/* E-posta */}
+              <Link href="/dashboard/security" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-zinc-400" />
+                  <div>
+                    <span className="text-zinc-400">E-posta</span>
+                    <p className="text-sm text-white mt-0.5">{user?.email || "-"}</p>
+                    {!emailVerified && (
+                      <p className="text-xs text-pink-400 mt-0.5">Onaylanmadı</p>
+                    )}
                   </div>
                 </div>
-
-                {/* Email change form */}
-                {editEmail && (
-                  <div className="space-y-3 mt-3 pl-8">
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="input-modern w-full"
-                      placeholder="Yeni e-posta adresiniz"
-                      maxLength={255}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => { setEditEmail(false); setNewEmail(""); }}
-                        className="flex-1 btn-secondary py-2 text-sm"
-                      >
-                        İptal
-                      </button>
-                      <button
-                        onClick={handleUpdateEmail}
-                        className="flex-1 btn-primary py-2 text-sm"
-                      >
-                        Kaydet
-                      </button>
-                    </div>
-                  </div>
+                {emailVerified ? (
+                  <span className="flex items-center gap-1.5 text-xs text-pink-400 font-semibold">
+                    <Check className="h-3.5 w-3.5" />
+                    Onaylandı
+                  </span>
+                ) : (
+                  <span className="text-xs text-pink-500 font-semibold">Doğrula</span>
                 )}
-
-                {/* Inline code verification */}
-                {verifyingEmail && !emailVerified && (
-                  <div className="mt-3 pl-8 space-y-3">
-                    <p className="text-xs text-zinc-400">E-postanıza gönderilen 8 haneli kodu girin. Spam veya diğer klasörleri de kontrol edin.</p>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={emailCode}
-                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                        placeholder="00000000"
-                        maxLength={8}
-                        className="input-modern flex-1 text-center font-mono tracking-[0.3em]"
-                      />
-                      <button
-                        onClick={handleVerifyEmailCode}
-                        disabled={verifyingCode || emailCode.length < 6}
-                        className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5"
-                      >
-                        {verifyingCode ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                        Doğrula
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleSendEmailCode}
-                      disabled={emailCooldown > 0 || sendingCode}
-                      className="text-xs text-zinc-500 hover:text-white transition disabled:opacity-50"
-                    >
-                      {emailCooldown > 0 ? `Tekrar gönder (${emailCooldown}s)` : "Kodu Tekrar Gönder"}
-                    </button>
-                  </div>
-                )}
-              </div>
+              </Link>
 
               <Link href="/dashboard/security" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">

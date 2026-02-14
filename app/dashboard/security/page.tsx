@@ -440,7 +440,7 @@ export default function SecurityPage() {
                 {mfaEnabled ? (
                   <div className="space-y-4">
                     {/* 2FA Etkin badge + Kapat */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
                       <div className="flex items-center gap-3">
                         <Check className="h-5 w-5 text-pink-500 shrink-0" />
                         <div>
