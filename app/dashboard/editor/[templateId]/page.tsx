@@ -2198,7 +2198,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                       className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
                         isHidden
                           ? 'border-white/5 bg-white/[0.02] opacity-50'
-                          : 'border-white/10 bg-white/5'
+                          : 'border-white/10 bg-[#2a2a2a]'
                       }`}
                     >
                       <span className={`text-sm font-medium ${isHidden ? 'text-zinc-500 line-through' : 'text-white'}`}>
