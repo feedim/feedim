@@ -103,7 +103,7 @@ export default function VerifyMfaPage() {
   return (
     <AuthLayout
       title="Doğrulama Kodu"
-      subtitle={email ? `${email} adresine gönderilen 6 haneli kodu girin.` : "Doğrulama kodu bekleniyor..."}
+      subtitle={email ? `${email} adresine gönderilen 8 haneli kodu girin.` : "Doğrulama kodu bekleniyor..."}
     >
       <form onSubmit={handleVerify} className="space-y-4">
         <div className="flex items-center justify-center gap-2 text-pink-500 mb-2">

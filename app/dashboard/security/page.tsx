@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Shield, Mail, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Shield, Mail, Check, Loader2, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import PasswordInput from "@/components/PasswordInput";
 
 export default function SecurityPage() {
   const [loading, setLoading] = useState(true);
@@ -14,12 +15,27 @@ export default function SecurityPage() {
   const [enabling, setEnabling] = useState(false);
   const [disabling, setDisabling] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
+  // Email verification
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (emailCooldown <= 0) return;
+    const timer = setTimeout(() => setEmailCooldown(emailCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [emailCooldown]);
 
   const loadData = async () => {
     try {
@@ -30,7 +46,7 @@ export default function SecurityPage() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, email_verified")
         .eq("user_id", user.id)
         .single();
 
@@ -40,6 +56,7 @@ export default function SecurityPage() {
       }
 
       setRole(profile.role);
+      setEmailVerified(profile?.email_verified || false);
 
       const res = await fetch("/api/auth/mfa");
       if (res.ok) {
@@ -54,8 +71,24 @@ export default function SecurityPage() {
   };
 
   const handleEnable = async () => {
+    if (!password.trim()) {
+      toast.error("Şifrenizi girin");
+      return;
+    }
+
     setEnabling(true);
     try {
+      // Verify password first
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password,
+      });
+
+      if (authError) {
+        toast.error("Şifre yanlış");
+        return;
+      }
+
       const res = await fetch("/api/auth/mfa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,8 +99,10 @@ export default function SecurityPage() {
         toast.error(data.error || "2FA etkinleştirilemedi");
         return;
       }
-      toast.success("İki faktörlü doğrulama etkinleştirildi! Bir sonraki girişte e-postanıza kod gelecek.");
+      toast.success("İki faktörlü doğrulama etkinleştirildi!");
       setMfaEnabled(true);
+      setShowPasswordInput(false);
+      setPassword("");
     } catch {
       toast.error("Bir hata oluştu");
     } finally {
@@ -93,6 +128,53 @@ export default function SecurityPage() {
     }
   };
 
+  const handleSendEmailCode = async () => {
+    if (!userEmail) return;
+    setSendingCode(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: userEmail,
+        options: { shouldCreateUser: false },
+      });
+      if (error) {
+        toast.error("Kod gönderilemedi");
+        return;
+      }
+      toast.success("Doğrulama kodu e-postanıza gönderildi");
+      setVerifyingEmail(true);
+      setEmailCooldown(60);
+    } catch {
+      toast.error("Bir hata oluştu");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    if (emailCode.length < 6 || !userEmail) return;
+    setVerifyingCode(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: userEmail,
+        token: emailCode,
+        type: "email",
+      });
+      if (error) {
+        toast.error("Kod geçersiz veya süresi dolmuş");
+        return;
+      }
+      await fetch("/api/auth/verify-email", { method: "POST" });
+      setEmailVerified(true);
+      setVerifyingEmail(false);
+      setEmailCode("");
+      toast.success("E-posta adresiniz doğrulandı!");
+    } catch {
+      toast.error("Bir hata oluştu");
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl min-h-[73px]">
@@ -111,6 +193,75 @@ export default function SecurityPage() {
           <div className="bg-zinc-900 rounded-2xl p-6 animate-pulse h-40" />
         ) : (
           <>
+            {/* Email Verification */}
+            <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="h-5 w-5 text-pink-500" />
+                <h2 className="font-semibold text-lg">E-posta Doğrulaması</h2>
+              </div>
+              <p className="text-xs text-zinc-500 mb-4">
+                E-posta adresinizi doğrulayarak hesabınızın güvenliğini artırın.
+              </p>
+
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-zinc-400" />
+                  <div>
+                    <p className="text-sm font-medium">{userEmail}</p>
+                    {emailVerified ? (
+                      <p className="text-xs text-pink-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <Check className="h-3 w-3" /> Onaylandı
+                      </p>
+                    ) : (
+                      <p className="text-xs text-red-400 mt-0.5">Onaylanmadı</p>
+                    )}
+                  </div>
+                </div>
+                {!emailVerified && !verifyingEmail && (
+                  <button
+                    onClick={handleSendEmailCode}
+                    disabled={sendingCode}
+                    className="text-sm text-pink-500 hover:text-pink-400 font-semibold transition"
+                  >
+                    {sendingCode ? "..." : "Onayla"}
+                  </button>
+                )}
+              </div>
+
+              {/* Inline code verification */}
+              {verifyingEmail && !emailVerified && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs text-zinc-400">E-postanıza gönderilen 8 haneli kodu girin.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={emailCode}
+                      onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                      placeholder="00000000"
+                      maxLength={8}
+                      className="input-modern flex-1 text-center font-mono tracking-[0.3em]"
+                    />
+                    <button
+                      onClick={handleVerifyEmailCode}
+                      disabled={verifyingCode || emailCode.length < 6}
+                      className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5"
+                    >
+                      {verifyingCode ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                      Doğrula
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleSendEmailCode}
+                    disabled={emailCooldown > 0 || sendingCode}
+                    className="text-xs text-zinc-500 hover:text-white transition disabled:opacity-50"
+                  >
+                    {emailCooldown > 0 ? `Tekrar gönder (${emailCooldown}s)` : "Kodu Tekrar Gönder"}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* 2FA Status */}
             <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
               <div className="flex items-center gap-2 mb-2">
@@ -163,14 +314,46 @@ export default function SecurityPage() {
                     </div>
                   )}
 
-                  <button
-                    onClick={handleEnable}
-                    disabled={enabling}
-                    className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {enabling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-                    2FA Etkinleştir
-                  </button>
+                  {!showPasswordInput ? (
+                    <button
+                      onClick={() => setShowPasswordInput(true)}
+                      className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <Shield className="h-4 w-4" />
+                      2FA Etkinleştir
+                    </button>
+                  ) : (
+                    <div className="space-y-3 bg-white/5 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Lock className="h-4 w-4 text-zinc-400" />
+                        <p className="text-sm font-medium">Hesap şifrenizi girin</p>
+                      </div>
+                      <PasswordInput
+                        placeholder="Şifre"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        maxLength={128}
+                        autoComplete="current-password"
+                        className="input-modern w-full"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowPasswordInput(false); setPassword(""); }}
+                          className="flex-1 btn-secondary py-2.5 text-sm"
+                        >
+                          İptal
+                        </button>
+                        <button
+                          onClick={handleEnable}
+                          disabled={enabling || !password.trim()}
+                          className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2"
+                        >
+                          {enabling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                          Onayla
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -179,7 +362,7 @@ export default function SecurityPage() {
             <div className="bg-zinc-900 rounded-2xl p-6">
               <h3 className="font-semibold mb-3">2FA Nasıl Çalışır?</h3>
               <ul className="space-y-2 text-sm text-zinc-400">
-                <li>• 2FA etkinleştirildiğinde her girişte e-postanıza 6 haneli kod gönderilir.</li>
+                <li>• 2FA etkinleştirildiğinde her girişte e-postanıza 8 haneli kod gönderilir.</li>
                 <li>• Kodu girerek giriş işleminizi tamamlarsınız.</li>
                 <li>• Affiliate hesapları için 2FA zorunludur.</li>
                 <li>• 2FA etkinleştirildikten sonra IBAN ve link işlemlerinizi yapabilirsiniz.</li>
