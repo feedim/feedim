@@ -1400,6 +1400,12 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim() || aiLoading) return;
 
+    // Guest mode: require auth first
+    if (guestMode) {
+      const authUser = await requireAuth(`/editor/${resolvedParams.templateId}`);
+      if (!authUser) return;
+    }
+
     // Show purchase confirmation modal
     const result = await confirm({
       itemName: "AI ile Doldur",
@@ -1739,26 +1745,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           <div className="hidden md:flex items-center gap-2 max-w-[calc(100vw-480px)]">
             {loading ? (
               <div className="text-sm text-zinc-400">Yükleniyor...</div>
-            ) : guestMode ? (
-              <>
-                <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
-                  <button onClick={undo} disabled={!canUndo} className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed" style={{ height: 38 }} aria-label="Geri al" title="Geri Al (Ctrl+Z)">
-                    <Undo2 className="h-[25px] w-[25px] text-white/70" />
-                  </button>
-                  <div className="w-px h-5 bg-white/15 shrink-0" />
-                  <button onClick={redo} disabled={!canRedo} className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed" style={{ height: 38 }} aria-label="Yinele" title="Yinele (Ctrl+Shift+Z)">
-                    <Redo2 className="h-[25px] w-[25px] text-white/70" />
-                  </button>
-                </div>
-                <button onClick={handlePreview} className="btn-secondary shrink-0 flex items-center gap-2 px-4 py-2 text-sm whitespace-nowrap">
-                  <Eye className="h-4 w-4" />
-                  Önizleme
-                </button>
-                <button onClick={handlePublish} disabled={purchasing} className="btn-primary shrink-0 px-4 py-2 text-sm ml-2 whitespace-nowrap">
-                  {purchasing ? "Yükleniyor..." : "Yayına Al"}
-                </button>
-              </>
-            ) : !isPurchased ? (
+            ) : !isPurchased && !guestMode ? (
               <button
                 onClick={handlePurchase}
                 disabled={purchasing}
@@ -1769,7 +1756,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
               </button>
             ) : (
               <>
-                {project && (
+                {(project || guestMode) && (
                   <>
                     {/* Scrollable tools area with arrow buttons */}
                     {showLeftArrow && (
@@ -1908,12 +1895,14 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                     {/* Publish button - always visible */}
                     <button
                       onClick={handlePublish}
-                      disabled={saving}
+                      disabled={saving || purchasing}
                       className="btn-primary shrink-0 px-4 py-2 text-sm ml-2 whitespace-nowrap"
                     >
-                      {saving
-                        ? (project.is_published ? "Güncelleniyor..." : "Paylaşılıyor...")
-                        : (project.is_published ? "Güncelle" : "Paylaş")
+                      {guestMode
+                        ? (purchasing ? "Yükleniyor..." : "Yayına Al")
+                        : saving
+                          ? (project!.is_published ? "Güncelleniyor..." : "Paylaşılıyor...")
+                          : (project!.is_published ? "Güncelle" : "Paylaş")
                       }
                     </button>
                   </>
@@ -1936,48 +1925,30 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           />
         </div>
 
-        {/* Mobile Bottom Bar — Not Purchased (or Guest Mode toolbar) */}
-        {!isPurchased && !loading && (
+        {/* Mobile Bottom Bar — Not Purchased (non-guest only) */}
+        {!isPurchased && !guestMode && !loading && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
-            {guestMode ? (
-              <div className="flex items-center gap-2 px-3 py-2">
-                <div className="btn-secondary shrink-0 flex items-center rounded-full overflow-hidden" style={{ padding: '0 1rem' }}>
-                  <button onClick={undo} disabled={!canUndo} className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed" style={{ height: 38 }} aria-label="Geri al">
-                    <Undo2 className="h-[25px] w-[25px] text-white/70" />
-                  </button>
-                  <div className="w-px h-5 bg-white/15 shrink-0" />
-                  <button onClick={redo} disabled={!canRedo} className="flex items-center justify-center px-1.5 disabled:opacity-30 disabled:cursor-not-allowed" style={{ height: 38 }} aria-label="Yinele">
-                    <Redo2 className="h-[25px] w-[25px] text-white/70" />
-                  </button>
-                </div>
-                <button onClick={handlePreview} className="btn-secondary flex-1 py-2.5 text-sm flex items-center justify-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Önizleme
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 px-4 py-3">
-                <button
-                  onClick={handlePreview}
-                  className="btn-secondary flex-1 py-2.5 text-sm text-center whitespace-nowrap truncate"
-                >
-                  Önizleme
-                </button>
-                <button
-                  onClick={handlePurchase}
-                  disabled={purchasing}
-                  className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-2 whitespace-nowrap truncate"
-                >
-                  <Coins className="h-4 w-4 text-yellow-300" />
-                  {purchasing ? "..." : getActivePrice(template) === 0 ? "Ücretsiz" : `${getActivePrice(template)} FL`}
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <button
+                onClick={handlePreview}
+                className="btn-secondary flex-1 py-2.5 text-sm text-center whitespace-nowrap truncate"
+              >
+                Önizleme
+              </button>
+              <button
+                onClick={handlePurchase}
+                disabled={purchasing}
+                className="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-2 whitespace-nowrap truncate"
+              >
+                <Coins className="h-4 w-4 text-yellow-300" />
+                {purchasing ? "..." : getActivePrice(template) === 0 ? "Ücretsiz" : `${getActivePrice(template)} FL`}
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Mobile Bottom Bar — Purchased */}
-        {isPurchased && project && (
+        {/* Mobile Bottom Bar — Full Toolbar (Purchased or Guest Mode) */}
+        {((isPurchased && project) || guestMode) && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
             <div className="flex items-center">
               <div
