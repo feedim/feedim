@@ -1688,7 +1688,7 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                           }
                         }}
                         className="input-modern w-full min-h-[120px] resize-y text-base"
-                        placeholder="Konu veya kişiyi kısaca anlat. Örnek: Elif için yıldönümü sayfası, 3 yıldır birlikteyiz / Annem için doğum günü sürprizi / En yakın arkadaşım Zeynep'e veda hediyesi"
+                        placeholder="Örn: Elif için yıldönümü, 3 yıldır birlikteyiz"
                         maxLength={500}
                         autoFocus
                       />
@@ -2043,31 +2043,66 @@ export default function NewEditorPage({ params }: { params: Promise<{ templateId
                       </div>
                     </div>
                   ) : currentHook.type === 'date' ? (
-                    <div className="space-y-3">
-                      <input
-                        type="date"
-                        value={(() => {
-                          if (/^\d{2}\.\d{2}\.\d{4}$/.test(draftValue)) {
-                            const [d, m, y] = draftValue.split('.');
-                            return `${y}-${m}-${d}`;
-                          }
-                          return draftValue;
-                        })()}
-                        onChange={(e) => {
-                          const iso = e.target.value;
-                          if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-                            const [y, m, d] = iso.split('-');
-                            setDraftValue(`${d}.${m}.${y}`);
-                          } else {
-                            setDraftValue(iso);
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
-                        className="input-modern w-full text-base"
-                        autoFocus
-                      />
-                      <p className="text-xs text-gray-400">Tarih seçin (GG.AA.YYYY)</p>
-                    </div>
+                    (() => {
+                      const parsed = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(draftValue);
+                      const selDay = parsed ? parseInt(parsed[1]) : new Date().getDate();
+                      const selMonth = parsed ? parseInt(parsed[2]) : new Date().getMonth() + 1;
+                      const selYear = parsed ? parseInt(parsed[3]) : new Date().getFullYear();
+                      const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+                      const currentYear = new Date().getFullYear();
+                      const daysInMonth = new Date(selYear, selMonth, 0).getDate();
+                      const updateDate = (d: number, m: number, y: number) => {
+                        const maxD = new Date(y, m, 0).getDate();
+                        const safeD = Math.min(d, maxD);
+                        setDraftValue(`${String(safeD).padStart(2,'0')}.${String(m).padStart(2,'0')}.${y}`);
+                      };
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            {/* Gün */}
+                            <div className="flex-1">
+                              <label className="text-xs text-gray-500 mb-1 block">Gün</label>
+                              <select
+                                value={selDay}
+                                onChange={(e) => updateDate(parseInt(e.target.value), selMonth, selYear)}
+                                className="input-modern w-full text-base text-center appearance-none"
+                              >
+                                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {/* Ay */}
+                            <div className="flex-[2]">
+                              <label className="text-xs text-gray-500 mb-1 block">Ay</label>
+                              <select
+                                value={selMonth}
+                                onChange={(e) => updateDate(selDay, parseInt(e.target.value), selYear)}
+                                className="input-modern w-full text-base text-center appearance-none"
+                              >
+                                {months.map((name, i) => (
+                                  <option key={i} value={i + 1}>{name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {/* Yıl */}
+                            <div className="flex-1">
+                              <label className="text-xs text-gray-500 mb-1 block">Yıl</label>
+                              <select
+                                value={selYear}
+                                onChange={(e) => updateDate(selDay, selMonth, parseInt(e.target.value))}
+                                className="input-modern w-full text-base text-center appearance-none"
+                              >
+                                {Array.from({ length: currentYear - 1900 + 1 }, (_, i) => currentYear - i).map(y => (
+                                  <option key={y} value={y}>{y}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-400 text-center">{String(selDay).padStart(2,'0')}.{String(selMonth).padStart(2,'0')}.{selYear}</p>
+                        </div>
+                      );
+                    })()
                   ) : currentHook.type === 'url' ? (
                     <input
                       type="url"
