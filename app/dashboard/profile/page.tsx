@@ -687,7 +687,7 @@ export default function ProfilePage() {
               <Link href="/dashboard/security" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-zinc-400" />
-                  <span className="font-medium">Güvenlik Ayarları</span>
+                  <span className="font-medium">Güvenlik</span>
                 </div>
                 <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
               </Link>
@@ -732,6 +732,13 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <ScrollText className="h-5 w-5 text-zinc-400" />
                   <span className="font-medium">Mesafeli Satış Sözleşmesi</span>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
+              </Link>
+              <Link href="/affiliate" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-zinc-400" />
+                  <span className="font-medium">Affiliate Program</span>
                 </div>
                 <ArrowLeft className="h-4 w-4 text-zinc-400 rotate-180" />
               </Link>
