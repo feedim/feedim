@@ -40,6 +40,9 @@ export default function PublicFooter() {
               <Link href="/contact" className="text-gray-400 hover:text-white transition">
                 İletişim
               </Link>
+              <Link href="/affiliate" className="text-gray-400 hover:text-white transition">
+                Affiliate Program
+              </Link>
               <Link href="/distance-sales-contract" className="text-gray-400 hover:text-white transition">
                 Mesafeli Satış Sözleşmesi
               </Link>

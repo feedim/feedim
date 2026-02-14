@@ -168,8 +168,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { code, discountPercent, maxSignups, expiryHours } = body;
 
-    if (!code || typeof code !== "string" || code.trim().length < 3 || code.trim().length > 20) {
-      return NextResponse.json({ error: "Promo kodu 3-20 karakter olmali" }, { status: 400 });
+    if (!code || typeof code !== "string" || code.trim().length < 3 || code.trim().length > 10) {
+      return NextResponse.json({ error: "Promo kodu 3-10 karakter olmali" }, { status: 400 });
     }
 
     // Affiliates max 20% discount

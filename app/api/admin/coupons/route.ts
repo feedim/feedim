@@ -128,8 +128,8 @@ export async function POST(request: NextRequest) {
     if (type === "promo") {
       const { code, discountPercent, maxSignups, expiryHours } = body;
 
-      if (!code || typeof code !== "string" || code.trim().length < 3 || code.trim().length > 20) {
-        return NextResponse.json({ error: "Promo kodu 3-20 karakter olmali" }, { status: 400 });
+      if (!code || typeof code !== "string" || code.trim().length < 3 || code.trim().length > 10) {
+        return NextResponse.json({ error: "Promo kodu 3-10 karakter olmali" }, { status: 400 });
       }
       if (!discountPercent || discountPercent < 1 || discountPercent > 100) {
         return NextResponse.json({ error: "Indirim %1-%100 arasi olmali" }, { status: 400 });

@@ -161,6 +161,7 @@ export default function DashboardPage() {
       if (!pendingPromo) return;
       localStorage.removeItem('forilove_pending_promo');
       localStorage.removeItem('forilove_promo_info');
+      window.dispatchEvent(new Event('promo-cleared'));
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;

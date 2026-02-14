@@ -33,9 +33,6 @@ export default function ProfilePage() {
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
   const [sponsorAnalytics, setSponsorAnalytics] = useState<any>(null);
   const [sponsorUsers, setSponsorUsers] = useState<any[]>([]);
-  const [affiliateIban, setAffiliateIban] = useState("");
-  const [affiliateHolder, setAffiliateHolder] = useState("");
-  const [savingPayment, setSavingPayment] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -90,10 +87,6 @@ export default function ProfilePage() {
             setPromos(data.promos || []);
             setSponsorAnalytics(data.analytics || null);
             setSponsorUsers(data.recentUsers || []);
-            if (data.paymentInfo) {
-              setAffiliateIban(data.paymentInfo.iban || '');
-              setAffiliateHolder(data.paymentInfo.holderName || '');
-            }
           }
         } catch { /* silent */ }
       }
@@ -270,31 +263,6 @@ export default function ProfilePage() {
       toast.success('Promo silindi');
     } catch {
       toast.error('Bir hata olustu');
-    }
-  };
-
-  const handleSavePaymentInfo = async () => {
-    if (!affiliateIban.trim() || !affiliateHolder.trim()) {
-      toast.error("IBAN ve ad soyad gerekli");
-      return;
-    }
-    setSavingPayment(true);
-    try {
-      const res = await fetch('/api/affiliate/promos', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ iban: affiliateIban, holderName: affiliateHolder }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Kaydedilemedi');
-        return;
-      }
-      toast.success('Odeme bilgileri kaydedildi');
-    } catch {
-      toast.error('Bir hata olustu');
-    } finally {
-      setSavingPayment(false);
     }
   };
 
@@ -694,44 +662,33 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Affiliate Ödeme Bilgileri */}
+        {/* Affiliate Ödeme Bilgileri + Program Linki */}
         {profile?.role === 'affiliate' && (
-          <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Wallet className="h-5 w-5 text-pink-500" />
-              <h3 className="font-semibold">Odeme Bilgileri</h3>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">IBAN</label>
-                <input
-                  type="text"
-                  value={affiliateIban}
-                  onChange={(e) => setAffiliateIban(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                  placeholder="TR000000000000000000000000"
-                  maxLength={34}
-                  className="input-modern w-full text-sm font-mono tracking-wider"
-                />
+          <div className="space-y-3 mb-6">
+            <Link href="/dashboard/affiliate/payment" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Wallet className="h-5 w-5 text-pink-500" />
+                  <div>
+                    <h3 className="font-semibold">Odeme Bilgileri</h3>
+                    <p className="text-xs text-gray-500">IBAN ve hesap bilgilerinizi girin</p>
+                  </div>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Hesap Sahibi (Ad Soyad)</label>
-                <input
-                  type="text"
-                  value={affiliateHolder}
-                  onChange={(e) => setAffiliateHolder(e.target.value)}
-                  placeholder="Ad Soyad"
-                  maxLength={100}
-                  className="input-modern w-full text-sm"
-                />
+            </Link>
+            <Link href="/affiliate" className="block bg-zinc-900 rounded-2xl p-5 hover:bg-zinc-800 transition group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <HelpCircle className="h-5 w-5 text-pink-500" />
+                  <div>
+                    <h3 className="font-semibold">Affiliate Program</h3>
+                    <p className="text-xs text-gray-500">Aklınızda bir soru mu var?</p>
+                  </div>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
               </div>
-              <button
-                onClick={handleSavePaymentInfo}
-                disabled={savingPayment || !affiliateIban.trim() || !affiliateHolder.trim()}
-                className="btn-primary w-full py-2.5 text-sm"
-              >
-                {savingPayment ? 'Kaydediliyor...' : 'Odeme Bilgilerini Kaydet'}
-              </button>
-            </div>
+            </Link>
           </div>
         )}
 
@@ -753,8 +710,8 @@ export default function ProfilePage() {
                     type="text"
                     value={promoForm.code}
                     onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
-                    placeholder="SEVGILI14"
-                    maxLength={20}
+                    placeholder="ENES20"
+                    maxLength={10}
                     className="input-modern w-full text-sm font-mono tracking-wider"
                   />
                 </div>
