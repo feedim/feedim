@@ -125,11 +125,11 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
       toast.error("Açıklama en fazla 50 karakter olabilir");
       return;
     }
-    if (coinPrice < 1 || coinPrice > 9999) {
-      toast.error("Fiyat 1-9999 arasında olmalı");
+    if (coinPrice < 0 || coinPrice > 9999) {
+      toast.error("Fiyat 0-9999 arasında olmalı");
       return;
     }
-    if (discountPrice !== null && (discountPrice < 1 || discountPrice >= coinPrice)) {
+    if (coinPrice > 0 && discountPrice !== null && (discountPrice < 1 || discountPrice >= coinPrice)) {
       toast.error("İndirimli fiyat 1 ile orijinal fiyat arasında olmalı");
       return;
     }
@@ -144,7 +144,7 @@ export default function EditŞablonPage({ params }: { params: Promise<{ template
       const safeSlug = trimmedSlug.replace(/[^a-z0-9-]/g, '').substring(0, 40);
       const safeDescription = trimmedDesc.substring(0, 50);
       const safeDiscountLabel = discountLabel.trim().substring(0, 20);
-      const safeCoinPrice = Math.max(1, Math.min(9999, coinPrice));
+      const safeCoinPrice = Math.max(0, Math.min(9999, coinPrice));
       const safeDiscountPrice = discountPrice ? Math.max(1, Math.min(safeCoinPrice - 1, discountPrice)) : null;
 
       // Calculate discount_expires_at from duration if setting new discount
