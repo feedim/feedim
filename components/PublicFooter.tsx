@@ -52,7 +52,7 @@ export default function PublicFooter() {
         </div>
 
         {/* Bottom bar: Forilove + social | Venivex | Copyright */}
-        <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="py-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Left: Logo + Social */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
