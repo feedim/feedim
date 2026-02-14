@@ -1391,7 +1391,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
       musicUrl: musicUrl || '',
       templateName: template?.name || 'Önizleme',
     }));
-    window.open(`/dashboard/preview/${resolvedParams.templateId}`, '_blank');
+    const previewPath = (guestMode || !isPurchased) ? `/preview/${resolvedParams.templateId}` : `/dashboard/preview/${resolvedParams.templateId}`;
+    window.open(previewPath, '_blank');
   };
 
   const saveMusicToDb = async (url: string) => {
@@ -1717,7 +1718,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                     )}
                     <div
                       id="editor-toolbar-scroll"
-                      className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto"
+                      className="flex-1 min-w-0 flex items-center justify-end gap-2 overflow-x-auto ml-[5px]"
                       style={{
                         scrollbarWidth: 'none',
                         WebkitOverflowScrolling: 'touch',
