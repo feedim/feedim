@@ -101,6 +101,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   const previewHtmlRef = useRef<string>("");
   const oldImageUrlRef = useRef<string>('');
   const valuesRef = useRef<Record<string, string>>({});
+  const hooksRef = useRef<TemplateHook[]>([]);
   const undoStackRef = useRef<Record<string, string>[]>([]);
   const redoStackRef = useRef<Record<string, string>[]>([]);
   const [canUndo, setCanUndo] = useState(false);
@@ -127,6 +128,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
     return migrated;
   };
   valuesRef.current = values;
+  hooksRef.current = hooks;
 
   const isFieldLocked = (hookKey: string): boolean => {
     if (template?.coin_price > 0) return false;
@@ -273,7 +275,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
       } else if (event.data?.type === 'EDIT_HOOK' && typeof event.data.key === 'string' && /^[a-zA-Z0-9_-]+$/.test(event.data.key)) {
         // Use valuesRef to avoid stale closure
         setIsChangingImage(false);
-        setDraftValue(valuesRef.current[event.data.key] || '');
+        const hookForEdit = hooksRef.current.find(h => h.key === event.data.key);
+        setDraftValue(valuesRef.current[event.data.key] || hookForEdit?.defaultValue || '');
         setDraftColor(valuesRef.current[`__color_${event.data.key}`] || '');
         oldImageUrlRef.current = valuesRef.current[event.data.key] || '';
         setEditingHook(event.data.key);
@@ -1628,12 +1631,12 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
   };
 
   const openEditModal = (hookKey: string) => {
-    const val = values[hookKey] || '';
+    const hook = hooks.find(h => h.key === hookKey);
+    const val = values[hookKey] || hook?.defaultValue || '';
     setDraftValue(val);
     setDraftColor(values[`__color_${hookKey}`] || '');
     setIsChangingImage(false);
     oldImageUrlRef.current = val;
-    const hook = hooks.find(h => h.key === hookKey);
     if (hook?.type === 'list') {
       try { setDraftListItems(JSON.parse(val || '[]')); } catch { setDraftListItems(['']); }
     }
@@ -2596,7 +2599,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         onChange={(e) => setDraftValue(e.target.value.slice(0, 1000))}
                         onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEditModal(); } }}
                         className="input-modern w-full min-h-[200px] resize-y text-base"
-                        placeholder={currentHook.defaultValue}
+                        placeholder="Metninizi yazın..."
                         maxLength={1000}
                         autoFocus
                       />
@@ -2834,7 +2837,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         onChange={(e) => setDraftValue(e.target.value.slice(0, 1000))}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
                         className="input-modern w-full text-base"
-                        placeholder={currentHook.defaultValue}
+                        placeholder="Metninizi yazın..."
                         maxLength={1000}
                         autoFocus
                       />
