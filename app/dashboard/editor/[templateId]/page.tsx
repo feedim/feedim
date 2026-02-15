@@ -223,10 +223,12 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [supabase]);
 
+  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (template?.html_content) {
-      const timer = setTimeout(() => updatePreview(), 200);
-      return () => clearTimeout(timer);
+      if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
+      updateTimerRef.current = setTimeout(() => updatePreview(), 200);
+      return () => { if (updateTimerRef.current) clearTimeout(updateTimerRef.current); };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values, template, unlockedFields]);
@@ -1771,12 +1773,14 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
     if (!aiPrompt.trim() || aiLoading) return;
 
     // Guest mode: require auth first
+    let currentCoinBalance = coinBalance;
     if (guestMode) {
       const authUser = await requireAuth(`/editor/${resolvedParams.templateId}`);
       if (!authUser) return;
       setGuestMode(false);
       const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", authUser.id).single();
-      setCoinBalance(profile?.coin_balance ?? 0);
+      currentCoinBalance = profile?.coin_balance ?? 0;
+      setCoinBalance(currentCoinBalance);
     }
 
     // Show purchase confirmation modal
@@ -1784,7 +1788,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       itemName: "AI ile Doldur",
       description: "Tek cümleyle tüm alanları doldurun",
       coinCost: AI_COST,
-      currentBalance: coinBalance,
+      currentBalance: currentCoinBalance,
       icon: 'ai',
       allowCoupon: true,
       onConfirm: async () => {
@@ -1861,12 +1865,14 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
     if (allLockedKeys.length === 0) return;
 
     // Guest mode: require auth first
+    let currentCoinBalance = coinBalance;
     if (guestMode) {
       const authUser = await requireAuth(`/editor/${resolvedParams.templateId}`);
       if (!authUser) return;
       setGuestMode(false);
       const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", authUser.id).single();
-      setCoinBalance(profile?.coin_balance ?? 0);
+      currentCoinBalance = profile?.coin_balance ?? 0;
+      setCoinBalance(currentCoinBalance);
     }
 
     // Ücretsiz şablon satın alınmamışsa önce satın al
@@ -1897,7 +1903,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       itemName: "Tüm Kilitleri Aç",
       description: "Bu şablondaki tüm kilitli alanları düzenleyebilirsiniz",
       coinCost: TEMPLATE_UNLOCK_COST,
-      currentBalance: coinBalance,
+      currentBalance: currentCoinBalance,
       icon: 'template',
       allowCoupon: true,
       onConfirm: async () => {
