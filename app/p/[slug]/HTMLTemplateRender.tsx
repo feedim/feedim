@@ -251,6 +251,21 @@ function processTemplateHtml(rawHtml: string, htmlData: Record<string, any>): { 
   });
   sanitizedHtml = sanitizedHtml.replace(/\s*data-(?:editable|type|hook|locked|label|clickable|area|area-label|css-property|list-[a-z-]+|duplicate)="[^"]*"/g, '');
 
+  // Strip overflow:hidden and height:100% from html/body styles — they block page scroll
+  sanitizedHtml = sanitizedHtml.replace(
+    /(<style[^>]*>)([\s\S]*?)(<\/style>)/gi,
+    (_, open, css, close) => {
+      const fixed = css
+        .replace(/(html|body)\s*\{([^}]*)}/gi, (_m: string, sel: string, rules: string) => {
+          const cleaned = rules
+            .replace(/overflow\s*:\s*hidden\s*;?/gi, '')
+            .replace(/height\s*:\s*100%\s*;?/gi, '');
+          return `${sel}{${cleaned}}`;
+        });
+      return open + fixed + close;
+    }
+  );
+
   // SEO: nofollow for external links
   sanitizedHtml = sanitizedHtml.replace(/<a\s([^>]*?)>/gi, (match, attrs: string) => {
     const hrefMatch = attrs.match(/href="([^"]*)"/);
