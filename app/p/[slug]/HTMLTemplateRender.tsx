@@ -7,13 +7,12 @@ import DOMPurify from 'isomorphic-dompurify';
 import MusicPlayer from "@/components/MusicPlayer";
 import ShareIconButton from "@/components/ShareIconButton";
 
-// SSR-safe: remove an element (and its children) matching a specific attribute from HTML string
+// Remove an element (and its children) matching a specific attribute from HTML string
 function removeElementByAttr(html: string, attr: string, value: string): string {
   const needle = `${attr}="${value}"`;
   const idx = html.indexOf(needle);
   if (idx === -1) return html;
 
-  // Walk back to find the '<' of the opening tag
   let tagStart = html.lastIndexOf('<', idx);
   if (tagStart === -1) return html;
 
@@ -22,7 +21,6 @@ function removeElementByAttr(html: string, attr: string, value: string): string 
 
   const openTag = html.substring(tagStart, tagEnd + 1);
 
-  // Self-closing tag — just remove it
   if (openTag.endsWith('/>')) {
     return html.substring(0, tagStart) + html.substring(tagEnd + 1);
   }
@@ -31,7 +29,6 @@ function removeElementByAttr(html: string, attr: string, value: string): string 
   if (!tagNameMatch) return html;
   const tagName = tagNameMatch[1].toLowerCase();
 
-  // Count depth to find the matching closing tag
   let depth = 1;
   let pos = tagEnd + 1;
   const openRe = new RegExp(`<${tagName}(?=[\\s>/])`, 'gi');
@@ -63,7 +60,6 @@ function removeElementByAttr(html: string, attr: string, value: string): string 
 function extractScripts(html: string): { cleanHtml: string; scripts: string[] } {
   const scripts: string[] = [];
   const cleanHtml = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (match, attrs, content) => {
-    // Skip application/json scripts (palette data etc.) — don't execute them
     if (/type\s*=\s*["']application\/json["']/i.test(attrs)) return '';
     const trimmed = content.trim();
     if (trimmed) scripts.push(trimmed);
@@ -72,68 +68,12 @@ function extractScripts(html: string): { cleanHtml: string; scripts: string[] } 
   return { cleanHtml, scripts };
 }
 
-export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicUrl?: string }) {
-  const template = project.templates;
-  const htmlData = project.hook_values || {};
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isEmbed, setIsEmbed] = useState(false);
+// All HTML processing — runs client-side only
+function processTemplateHtml(rawHtml: string, htmlData: Record<string, any>): { sanitizedHtml: string; scripts: string[] } {
+  let html = rawHtml;
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setIsEmbed(params.get('embed') === '1');
-    // Reset layout background so template CSS takes effect
-    document.documentElement.style.backgroundColor = 'transparent';
-    document.body.style.backgroundColor = 'transparent';
-    return () => {
-      document.documentElement.style.backgroundColor = '';
-      document.body.style.backgroundColor = '';
-    };
-  }, []);
-
-  // Anti-theft: block devtools shortcuts, right-click, selection on public pages
-  useEffect(() => {
-    const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'F12') { e.preventDefault(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'S') { e.preventDefault(); return; }
-    };
-    const handleContextMenu = (e: MouseEvent) => { e.preventDefault(); };
-    document.addEventListener('keydown', handleKeydown, true);
-    document.addEventListener('contextmenu', handleContextMenu);
-    return () => {
-      document.removeEventListener('keydown', handleKeydown, true);
-      document.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, []);
-
-  // Add error handling for template scripts
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      // Suppress null textContent errors from template scripts
-      if (event.message.includes("textContent") || event.message.includes("Cannot set properties of null")) {
-        event.preventDefault();
-        if (process.env.NODE_ENV === 'development') {
-          console.warn("Template script error suppressed:", event.message);
-        }
-      }
-    };
-
-    window.addEventListener("error", handleError);
-
-    return () => {
-      window.removeEventListener("error", handleError);
-    };
-  }, []);
-
-  if (!template?.html_content?.trim()) {
-    return <div>Şablon bulunamadı</div>;
-  }
-
-  let html = template.html_content;
-
-  const r2Domains = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const r2Domains = ['pub-104d06222a3641f0853ce1540130365b.r2.dev', 'pub-180c00d0fd394407a8fe289a038f2de2.r2.dev'];
   const toProxyUrl = (val: string) => {
     for (const d of r2Domains) {
       if (val.includes(d)) return val.replace(`https://${d}/`, `${origin}/api/r2/`);
@@ -141,99 +81,68 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     return val;
   };
 
-  // Simple string replacement for rendering with XSS protection
+  // String replacement for rendering with XSS protection
   Object.entries(htmlData).forEach(([key, value]) => {
     const stringValue = toProxyUrl(String(value));
 
-    // Match data-editable elements and replace their content/attributes
     const regex = new RegExp(`(<[^>]*data-editable="${key}"[^>]*>)(.*?)(<\\/[^>]+>)`, 'gs');
     html = html.replace(regex, (match: string, openTag: string, content: string, closeTag: string) => {
-      // List: skip in regex pass, handled by DOMParser below
-      if (openTag.includes('data-type="list"')) {
-        return match;
-      }
-      // Image: update src attribute
+      if (openTag.includes('data-type="list"')) return match;
       if (openTag.includes('data-type="image"')) {
-        const sanitizedUrl = sanitizeUrl(stringValue);
-        return openTag.replace(/src="[^"]*"/, `src="${sanitizedUrl}"`) + content + closeTag;
+        return openTag.replace(/src="[^"]*"/, `src="${sanitizeUrl(stringValue)}"`) + content + closeTag;
       }
-      // URL: update href attribute
       if (openTag.includes('data-type="url"')) {
-        const sanitizedUrl = sanitizeUrl(stringValue);
-        return openTag.replace(/href="[^"]*"/, `href="${sanitizedUrl}"`) + content + closeTag;
+        return openTag.replace(/href="[^"]*"/, `href="${sanitizeUrl(stringValue)}"`) + content + closeTag;
       }
-      // Tel: update href with tel: protocol
       if (openTag.includes('data-type="tel"')) {
-        const safePhone = escapeHtml(stringValue);
-        return openTag.replace(/href="[^"]*"/, `href="tel:${safePhone}"`) + content + closeTag;
+        return openTag.replace(/href="[^"]*"/, `href="tel:${escapeHtml(stringValue)}"`) + content + closeTag;
       }
-      // Email: update href with mailto: protocol
       if (openTag.includes('data-type="email"')) {
-        const safeEmail = escapeHtml(stringValue);
-        return openTag.replace(/href="[^"]*"/, `href="mailto:${safeEmail}"`) + content + closeTag;
+        return openTag.replace(/href="[^"]*"/, `href="mailto:${escapeHtml(stringValue)}"`) + content + closeTag;
       }
-      // WhatsApp: update href with wa.me link
       if (openTag.includes('data-type="whatsapp"')) {
         const digits = stringValue.replace(/\D/g, '');
         return openTag.replace(/href="[^"]*"/, `href="https://wa.me/${escapeHtml(digits)}"`) + content + closeTag;
       }
-      // Background-image: update style attribute, keep original content
       if (openTag.includes('data-type="background-image"')) {
-        const sanitizedUrl = sanitizeUrl(stringValue);
-        const updatedTag = openTag.replace(
-          /style="([^"]*)"/,
-          (_, existingStyle: string) => `style="${existingStyle}; background-image: url('${sanitizedUrl}');"`
-        );
+        const updatedTag = openTag.replace(/style="([^"]*)"/, (_, s: string) => `style="${s}; background-image: url('${sanitizeUrl(stringValue)}');"`);
         return updatedTag + content + closeTag;
       }
-      // Color: update inline style with color value
       if (openTag.includes('data-type="color"')) {
         const safeColor = escapeHtml(stringValue);
         const cssPropMatch = openTag.match(/data-css-property="([^"]*)"/);
         const cssProp = cssPropMatch ? cssPropMatch[1] : 'background-color';
         if (openTag.includes('style="')) {
-          const updatedTag = openTag.replace(
-            /style="([^"]*)"/,
-            (_, existingStyle: string) => `style="${existingStyle}; ${cssProp}: ${safeColor};"`
-          );
-          return updatedTag + content + closeTag;
+          return openTag.replace(/style="([^"]*)"/, (_, s: string) => `style="${s}; ${cssProp}: ${safeColor};"`) + content + closeTag;
         } else {
-          const updatedTag = openTag.replace(/>/, ` style="${cssProp}: ${safeColor};">`);
-          return updatedTag + content + closeTag;
+          return openTag.replace(/>/, ` style="${cssProp}: ${safeColor};">`) + content + closeTag;
         }
       }
-      // For text content - escape HTML to prevent XSS
       const sanitizedText = escapeHtml(stringValue);
-      // Check for text color override (__color_ prefix)
       const colorKey = `__color_${key}`;
       const colorValue = htmlData[colorKey];
       if (colorValue) {
         const safeColor = escapeHtml(String(colorValue));
         if (openTag.includes('style="')) {
-          const coloredTag = openTag.replace(/style="([^"]*)"/, (_, s: string) => `style="${s}; color: ${safeColor};"`);
-          return coloredTag + sanitizedText + closeTag;
+          return openTag.replace(/style="([^"]*)"/, (_, s: string) => `style="${s}; color: ${safeColor};"`) + sanitizedText + closeTag;
         } else {
-          const coloredTag = openTag.replace(/>$/, ` style="color: ${safeColor};">`);
-          return coloredTag + sanitizedText + closeTag;
+          return openTag.replace(/>$/, ` style="color: ${safeColor};">`) + sanitizedText + closeTag;
         }
       }
       return openTag + sanitizedText + closeTag;
     });
 
-    // Handle src attributes for images
     const imgSrcRegex = new RegExp(`(<img[^>]*data-editable="${key}"[^>]*src=")[^"]*"`, 'g');
-    const sanitizedUrl = sanitizeUrl(stringValue);
-    html = html.replace(imgSrcRegex, `$1${sanitizedUrl}"`);
+    html = html.replace(imgSrcRegex, `$1${sanitizeUrl(stringValue)}"`);
   });
 
-  // Process list types (SSR-safe — regex instead of DOMParser)
+  // Process list types
   const listKeys = Object.entries(htmlData).filter(([key]) => {
     return html.includes(`data-editable="${key}"`) && html.includes('data-type="list"');
   });
 
   if (listKeys.length > 0) {
     listKeys.forEach(([key, value]) => {
-      // Match opening tag that has both data-editable="key" AND data-type="list"
       const listRegex = new RegExp(
         `(<[^>]*data-editable="${key}"[^>]*data-type="list"[^>]*>)` +
         `|(<[^>]*data-type="list"[^>]*data-editable="${key}"[^>]*>)`,
@@ -243,8 +152,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
       if (!m) return;
 
       const openTag = m[1] || m[2];
-      const openStart = m.index;
-      const openEnd = openStart + openTag.length;
+      const openEnd = m.index + openTag.length;
 
       try {
         const items = JSON.parse(String(value));
@@ -269,12 +177,10 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         let inner = buildItems(items);
         if (duplicate) inner += buildItems(items);
 
-        // Find the tag name from open tag
         const tagNameMatch = openTag.match(/^<(\w+)/);
         if (!tagNameMatch) return;
         const tagName = tagNameMatch[1].toLowerCase();
 
-        // Find matching closing tag
         let depth = 1;
         let pos = openEnd;
         const openRe = new RegExp(`<${tagName}(?=[\\s>/])`, 'gi');
@@ -302,7 +208,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     });
   }
 
-  // Remove hidden data-area sections (SSR-safe — no DOMParser)
+  // Remove hidden data-area sections
   const hiddenAreas = Object.entries(htmlData)
     .filter(([key, value]) => key.startsWith('__area_') && value === 'hidden')
     .map(([key]) => key.replace('__area_', ''));
@@ -311,7 +217,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     html = removeElementByAttr(html, 'data-area', areaName);
   });
 
-  // Apply palette override CSS on public page
+  // Apply palette override CSS
   const paletteMatch = html.match(/<script[^>]*data-palettes[^>]*>([\s\S]*?)<\/script>/i);
   if (paletteMatch) {
     try {
@@ -323,22 +229,19 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         if (pal) {
           const colors = pal[mode];
           if (selectedId === pd.default && mode === 'light') {
-            // Default palette + light mode: only body-bg override (CSS vars already match :root)
-            const bgCss = `<style data-palette-override>body{background:${colors['body-bg']}!important}</style>`;
-            html = html.replace('</head>', bgCss + '</head>');
+            html = html.replace('</head>', `<style data-palette-override>body{background:${colors['body-bg']}!important}</style></head>`);
           } else {
-            const overrideCss = `<style data-palette-override>:root{--text:${colors.text};--muted:${colors.muted};--light:${colors.light};--border:${colors.border};--accent:${colors.accent};--accent-light:${colors['accent-light']}}body{background:${colors['body-bg']}!important}</style>`;
-            html = html.replace('</head>', overrideCss + '</head>');
+            html = html.replace('</head>', `<style data-palette-override>:root{--text:${colors.text};--muted:${colors.muted};--light:${colors.light};--border:${colors.border};--accent:${colors.accent};--accent-light:${colors['accent-light']}}body{background:${colors['body-bg']}!important}</style></head>`);
           }
         }
       }
     } catch {}
   }
 
-  // Extract scripts before DOMPurify strips them
-  const { cleanHtml, scripts: templateScripts } = extractScripts(html);
+  // Extract scripts before DOMPurify
+  const { cleanHtml, scripts } = extractScripts(html);
 
-  // Sanitize HTML and strip template metadata to hinder HTML theft
+  // Sanitize HTML
   let sanitizedHtml = DOMPurify.sanitize(cleanHtml, {
     WHOLE_DOCUMENT: true,
     ADD_TAGS: ['iframe', 'video', 'audio', 'source', 'style', 'link'],
@@ -347,7 +250,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   });
   sanitizedHtml = sanitizedHtml.replace(/\s*data-(?:editable|type|hook|locked|label|clickable|area|area-label|css-property|list-[a-z-]+|duplicate)="[^"]*"/g, '');
 
-  // SEO: nofollow for external links, dofollow for forilove (SSR-safe — regex)
+  // SEO: nofollow for external links
   sanitizedHtml = sanitizedHtml.replace(/<a\s([^>]*?)>/gi, (match, attrs: string) => {
     const hrefMatch = attrs.match(/href="([^"]*)"/);
     if (!hrefMatch) return match;
@@ -357,19 +260,76 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
       const url = new URL(href, 'https://forilove.com');
       const isInternal = url.hostname === 'forilove.com' || url.hostname.endsWith('.forilove.com');
       const rel = isInternal ? 'noopener noreferrer' : 'nofollow noopener noreferrer';
-      const cleanAttrs = attrs.replace(/\s*rel="[^"]*"/g, '');
-      return `<a ${cleanAttrs} rel="${rel}">`;
+      return `<a ${attrs.replace(/\s*rel="[^"]*"/g, '')} rel="${rel}">`;
     } catch {
-      const cleanAttrs = attrs.replace(/\s*rel="[^"]*"/g, '');
-      return `<a ${cleanAttrs} rel="nofollow noopener noreferrer">`;
+      return `<a ${attrs.replace(/\s*rel="[^"]*"/g, '')} rel="nofollow noopener noreferrer">`;
     }
   });
 
-  // Inject font <link> tags into document <head> for reliable cross-platform loading
+  return { sanitizedHtml, scripts };
+}
+
+export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicUrl?: string }) {
+  const template = project.templates;
+  const htmlData = project.hook_values || {};
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isEmbed, setIsEmbed] = useState(false);
+  const [processedHtml, setProcessedHtml] = useState('');
+  const [scripts, setScripts] = useState<string[]>([]);
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsEmbed(params.get('embed') === '1');
+    document.documentElement.style.backgroundColor = 'transparent';
+    document.body.style.backgroundColor = 'transparent';
+    return () => {
+      document.documentElement.style.backgroundColor = '';
+      document.body.style.backgroundColor = '';
+    };
+  }, []);
+
+  // Anti-theft: block devtools shortcuts, right-click
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === 'F12') { e.preventDefault(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'S') { e.preventDefault(); return; }
+    };
+    const handleContextMenu = (e: MouseEvent) => { e.preventDefault(); };
+    document.addEventListener('keydown', handleKeydown, true);
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('keydown', handleKeydown, true);
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+
+  // Suppress template script errors
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      if (event.message.includes("textContent") || event.message.includes("Cannot set properties of null")) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("error", handleError);
+    return () => { window.removeEventListener("error", handleError); };
+  }, []);
+
+  // Process HTML — client-side only (avoids jsdom/DOMPurify crash on Vercel serverless)
+  useEffect(() => {
+    if (!template?.html_content?.trim()) return;
+    const { sanitizedHtml, scripts: extractedScripts } = processTemplateHtml(template.html_content, htmlData);
+    setProcessedHtml(sanitizedHtml);
+    setScripts(extractedScripts);
+  }, [template, htmlData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Inject font <link> tags into document <head>
+  useEffect(() => {
+    if (!processedHtml) return;
     const fontLinkRegex = /<link[^>]*href="[^"]*fonts\.googleapis\.com[^"]*"[^>]*>/gi;
     const preconnectRegex = /<link[^>]*rel="preconnect"[^>]*href="[^"]*fonts\.[^"]*"[^>]*>/gi;
-    const allLinks = [...(sanitizedHtml.match(fontLinkRegex) || []), ...(sanitizedHtml.match(preconnectRegex) || [])];
+    const allLinks = [...(processedHtml.match(fontLinkRegex) || []), ...(processedHtml.match(preconnectRegex) || [])];
     const injected: HTMLLinkElement[] = [];
     allLinks.forEach(linkTag => {
       const hrefMatch = linkTag.match(/href="([^"]*)"/);
@@ -388,16 +348,16 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
       injected.push(link);
     });
     return () => { injected.forEach(l => l.remove()); };
-  }, [sanitizedHtml]);
+  }, [processedHtml]);
 
-  // Run extracted template scripts after DOM render — wait for paint then execute
+  // Execute template scripts after DOM render
   useEffect(() => {
-    if (!templateScripts.length) return;
+    if (!scripts.length || !processedHtml) return;
     let cancelled = false;
     const rafId = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return;
-        templateScripts.forEach((code) => {
+        scripts.forEach((code) => {
           try { new Function(code)(); } catch (e) {
             if (process.env.NODE_ENV === 'development') console.warn('Template script error:', e);
           }
@@ -405,13 +365,22 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
       });
     });
     return () => { cancelled = true; cancelAnimationFrame(rafId); };
-  }, [sanitizedHtml]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [processedHtml, scripts]);
+
+  if (!template?.html_content?.trim()) {
+    return <div>Şablon bulunamadı</div>;
+  }
+
+  // Loading placeholder during client-side processing
+  if (!processedHtml) {
+    return <div style={{ minHeight: '100vh', background: '#000' }} />;
+  }
 
   return (
     <>
       <div
         ref={containerRef}
-        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        dangerouslySetInnerHTML={{ __html: processedHtml }}
         className="html-template-render"
         suppressHydrationWarning
       />
@@ -425,10 +394,8 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.3)' }} />
         <span className="text-white" style={{ fontSize: 11, fontWeight: 500, opacity: 0.9 }}>Hemen Dene &rarr;</span>
       </a>
-      {/* Spacer for music player */}
       {musicUrl && <div style={{ height: 72, background: 'lab(49.5493% 79.8381 2.31768)' }} />}
 
-      {/* Share Button — hidden in embed/inspect mode */}
       {!isEmbed && (
         <ShareIconButton
           url={`${typeof window !== "undefined" ? window.location.href : ""}`}
@@ -438,7 +405,6 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         />
       )}
 
-      {/* Music Player */}
       {musicUrl && <MusicPlayer musicUrl={musicUrl} />}
     </>
   );
