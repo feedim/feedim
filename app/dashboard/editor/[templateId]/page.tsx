@@ -45,8 +45,9 @@ interface PaletteData {
   palettes: PaletteDefinition[];
 }
 
-export default function NewEditorPage({ params, guestMode = false }: { params: Promise<{ templateId: string }>; guestMode?: boolean }) {
+export default function NewEditorPage({ params, guestMode: initialGuestMode = false }: { params: Promise<{ templateId: string }>; guestMode?: boolean }) {
   const resolvedParams = use(params);
+  const [guestMode, setGuestMode] = useState(initialGuestMode);
   const [template, setTemplate] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
   const [hooks, setHooks] = useState<TemplateHook[]>([]);
@@ -1379,11 +1380,57 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
       const user = await requireAuth(`/editor/${resolvedParams.templateId}`);
       if (!user) { setPurchasing(false); return; }
 
-      // Save guest edits to localStorage before redirect
-      localStorage.setItem('forilove_guest_edits', JSON.stringify({
-        templateId: resolvedParams.templateId,
-        values: valuesRef.current,
-      }));
+      // --- Guest → logged-in transition: create project in-place, no redirect ---
+
+      // Check if project already exists for this user+template
+      let currentProject = project;
+      const { data: existingProject } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("template_id", resolvedParams.templateId)
+        .maybeSingle();
+
+      if (existingProject) {
+        // Merge guest edits into existing project
+        const mergedValues = { ...existingProject.hook_values, ...valuesRef.current };
+        await supabase.from("projects").update({ hook_values: mergedValues }).eq("id", existingProject.id);
+        existingProject.hook_values = mergedValues;
+        currentProject = existingProject;
+        setProject(existingProject);
+        setValues(mergedValues);
+      } else {
+        // Create new project with guest edits
+        const titleSlug = (template?.name || 'sayfa')
+          .toLowerCase()
+          .replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[ıİ]/g, 'i')
+          .replace(/[öÖ]/g, 'o').replace(/[şŞ]/g, 's').replace(/[üÜ]/g, 'u')
+          .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
+          .substring(0, 40).replace(/-$/, '');
+        const randomId = Math.random().toString(36).substring(2, 8);
+        const slug = `${titleSlug}-${randomId}`;
+
+        const { data: newProject, error: insertError } = await supabase
+          .from("projects")
+          .insert({
+            user_id: user.id,
+            template_id: resolvedParams.templateId,
+            title: template?.name,
+            slug,
+            hook_values: valuesRef.current,
+            is_published: false,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          toast.error("Proje oluşturulamadı");
+          setPurchasing(false);
+          return;
+        }
+        currentProject = newProject;
+        setProject(newProject);
+      }
 
       // Check if already purchased
       const { data: existingPurchase } = await supabase
@@ -1463,14 +1510,26 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
             },
           });
           if (!purchaseResult?.success) { setPurchasing(false); return; }
+          setCoinBalance(purchaseResult.newBalance);
         }
       }
 
-      toast.success("Yönlendiriliyorsunuz...");
-      router.push(`/dashboard/editor/${resolvedParams.templateId}`);
+      // Load coin balance
+      const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", user.id).single();
+      setCoinBalance(profile?.coin_balance ?? 0);
+
+      // Switch from guest mode to logged-in mode — no page change
+      setGuestMode(false);
+      setIsPurchased(true);
+      setPurchasing(false);
+
+      // Open publish details modal directly
+      setDraftTitle(currentProject?.title || template?.name || "");
+      setDraftSlug(currentProject?.slug?.replace(/-[a-z0-9]{6,}$/, "") || "");
+      setDraftDescription(currentProject?.description || template?.description || "");
+      setShowDetailsModal(true);
     } catch (err: any) {
       toast.error(err.message || "Bir hata oluştu");
-    } finally {
       setPurchasing(false);
     }
   };
@@ -1712,6 +1771,9 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
     if (guestMode) {
       const authUser = await requireAuth(`/editor/${resolvedParams.templateId}`);
       if (!authUser) return;
+      setGuestMode(false);
+      const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", authUser.id).single();
+      setCoinBalance(profile?.coin_balance ?? 0);
     }
 
     // Show purchase confirmation modal
@@ -1799,18 +1861,16 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
     if (guestMode) {
       const authUser = await requireAuth(`/editor/${resolvedParams.templateId}`);
       if (!authUser) return;
-      // Save edits before purchase flow
-      localStorage.setItem('forilove_guest_edits', JSON.stringify({
-        templateId: resolvedParams.templateId,
-        values: valuesRef.current,
-      }));
+      setGuestMode(false);
+      const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", authUser.id).single();
+      setCoinBalance(profile?.coin_balance ?? 0);
     }
 
     const result = await confirm({
       itemName: "Tüm Kilitleri Aç",
       description: "Bu şablondaki tüm kilitli alanları düzenleyebilirsiniz",
       coinCost: TEMPLATE_UNLOCK_COST,
-      currentBalance: guestMode ? 0 : coinBalance,
+      currentBalance: coinBalance,
       icon: 'template',
       allowCoupon: true,
       onConfirm: async () => {
