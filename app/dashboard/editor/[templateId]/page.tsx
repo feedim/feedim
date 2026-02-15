@@ -2866,8 +2866,20 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         placeholder="Varsayılan renk"
                       />
                     </div>
-                    <div className="overflow-x-auto scrollbar-hide -mx-2 px-2">
-                      <div className="flex gap-2 w-max pb-1">
+                    <div className="overflow-x-auto scrollbar-hide -mx-2 px-2 py-1">
+                      <div className="flex gap-2.5 w-max pb-1">
+                        {/* Hiçbiri — palet renkleri geçerli olsun */}
+                        <button onClick={() => setDraftColor('')}
+                          className="w-11 h-11 shrink-0 rounded-full border-2 transition-all active:scale-90 flex items-center justify-center"
+                          style={{
+                            background: 'repeating-conic-gradient(rgba(255,255,255,0.12) 0% 25%, transparent 0% 50%) 50%/10px 10px',
+                            borderColor: !draftColor ? '#FF2D55' : 'rgba(255,255,255,0.1)',
+                            boxShadow: !draftColor ? '0 0 0 2px #FF2D55' : 'none',
+                          }}
+                          aria-label="Hiçbiri"
+                        >
+                          <X className="w-4 h-4 text-zinc-500" />
+                        </button>
                         {[
                           '#FFFFFF', '#000000', '#1A1A1A', '#F5F5F5',
                           '#FF3B30', '#FF6B6B', '#FF9500', '#FFCC00',
@@ -2875,7 +2887,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                           '#5856D6', '#AF52DE', '#FF2D55', '#AC8E68',
                         ].map((color) => (
                           <button key={color} onClick={() => setDraftColor(color)}
-                            className="w-9 h-9 shrink-0 rounded-full border-2 transition-all active:scale-90"
+                            className="w-11 h-11 shrink-0 rounded-full border-2 transition-all active:scale-90"
                             style={{
                               backgroundColor: color,
                               borderColor: draftColor === color ? '#FF2D55' : 'rgba(255,255,255,0.1)',
