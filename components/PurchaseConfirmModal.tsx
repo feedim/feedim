@@ -183,7 +183,12 @@ function PurchaseConfirmSheet({ options, onClose, onResult }: SheetProps) {
 
   const handleConfirm = async () => {
     if (insufficientBalance) {
-      window.open("/dashboard/coins", "_blank");
+      const w = window.open("/dashboard/coins", "_blank");
+      if (!w) {
+        // Popup blocked (common on mobile) — navigate in same tab
+        // Editor's pagehide listener will auto-save draft to localStorage
+        window.location.href = "/dashboard/coins";
+      }
       onClose();
       return;
     }

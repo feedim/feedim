@@ -223,6 +223,41 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [supabase]);
 
+  // Auto-save editor draft to localStorage (debounced)
+  useEffect(() => {
+    if (Object.keys(values).length === 0) return;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          `forilove_editor_draft_${resolvedParams.templateId}`,
+          JSON.stringify({ values, savedAt: Date.now() })
+        );
+      } catch {}
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [values, resolvedParams.templateId]);
+
+  // Save draft immediately on page hide / beforeunload (mobile-safe)
+  useEffect(() => {
+    const saveDraft = () => {
+      const v = valuesRef.current;
+      if (Object.keys(v).length > 0) {
+        try {
+          localStorage.setItem(
+            `forilove_editor_draft_${resolvedParams.templateId}`,
+            JSON.stringify({ values: v, savedAt: Date.now() })
+          );
+        } catch {}
+      }
+    };
+    window.addEventListener('pagehide', saveDraft);
+    window.addEventListener('beforeunload', saveDraft);
+    return () => {
+      window.removeEventListener('pagehide', saveDraft);
+      window.removeEventListener('beforeunload', saveDraft);
+    };
+  }, [resolvedParams.templateId]);
+
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (template?.html_content) {
@@ -571,6 +606,23 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
   }, [editorMusicPlaying]);
 
   const loadData = async () => {
+    // Restore draft from localStorage (if saved within 30 min)
+    const restoreDraft = (baseValues: Record<string, string>): Record<string, string> => {
+      try {
+        const raw = localStorage.getItem(`forilove_editor_draft_${resolvedParams.templateId}`);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft.values && draft.savedAt && Date.now() - draft.savedAt < 30 * 60 * 1000) {
+            localStorage.removeItem(`forilove_editor_draft_${resolvedParams.templateId}`);
+            return { ...baseValues, ...draft.values };
+          }
+          // Expired — remove
+          localStorage.removeItem(`forilove_editor_draft_${resolvedParams.templateId}`);
+        }
+      } catch {}
+      return baseValues;
+    };
+
     try {
       // Guest mode: skip auth, just load template
       if (guestMode) {
@@ -628,7 +680,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
             }
           } catch {}
 
-          setValues(initialValues);
+          setValues(restoreDraft(initialValues));
         }
 
         setLoading(false);
@@ -712,7 +764,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
               console.log('Existing project found:', existingProject);
             }
             setProject(existingProject);
-            setValues(migrateR2Urls(existingProject.hook_values || extractDefaults(parsedHooks)));
+            setValues(restoreDraft(migrateR2Urls(existingProject.hook_values || extractDefaults(parsedHooks))));
             setMusicUrl(existingProject.music_url || "");
             setUnlockedFields(new Set(existingProject.unlocked_fields || []));
           } else {
@@ -768,13 +820,13 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
                 created_at: new Date().toISOString(),
               };
               setProject(tempProject as any);
-              setValues(defaultValues);
+              setValues(restoreDraft(defaultValues));
             } else {
               if (process.env.NODE_ENV === 'development') {
                 console.log('New project created:', newProject);
               }
               setProject(newProject);
-              setValues(defaultValues);
+              setValues(restoreDraft(defaultValues));
 
               // Load guest edits from localStorage (from guest editor)
               try {
@@ -795,7 +847,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
           }
         } else {
           // Not purchased — allow editing locally (like guest mode)
-          setValues(defaultValues);
+          setValues(restoreDraft(defaultValues));
         }
       }
     } catch (error: any) {
@@ -1624,6 +1676,9 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
         .eq("id", project.id);
 
       if (error) throw error;
+
+      // Draft no longer needed — published successfully
+      localStorage.removeItem(`forilove_editor_draft_${resolvedParams.templateId}`);
 
       await minDelay;
       toast.success("Değişiklikler kaydedildi!");
