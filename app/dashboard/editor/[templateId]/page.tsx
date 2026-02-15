@@ -24,7 +24,7 @@ function extractVideoId(url: string): string | null {
 
 interface TemplateHook {
   key: string;
-  type: 'text' | 'image' | 'textarea' | 'color' | 'date' | 'url' | 'background-image' | 'list';
+  type: 'text' | 'image' | 'textarea' | 'color' | 'date' | 'url' | 'background-image' | 'list' | 'tel' | 'email' | 'whatsapp';
   label: string;
   defaultValue: string;
   locked?: boolean;
@@ -897,6 +897,16 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           defaultValue = bgMatch ? bgMatch[1] : '';
         } else if (type === 'url') {
           defaultValue = element.getAttribute('href') || '';
+        } else if (type === 'tel') {
+          const href = element.getAttribute('href') || '';
+          defaultValue = href.startsWith('tel:') ? href.slice(4) : href;
+        } else if (type === 'email') {
+          const href = element.getAttribute('href') || '';
+          defaultValue = href.startsWith('mailto:') ? href.slice(7) : href;
+        } else if (type === 'whatsapp') {
+          const href = element.getAttribute('href') || '';
+          const waMatch = href.match(/wa\.me\/(\d+)/);
+          defaultValue = waMatch ? waMatch[1] : href.replace(/\D/g, '');
         } else {
           defaultValue = element.textContent?.trim() || '';
         }
@@ -1024,6 +1034,12 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
           }
         } else if (type === 'url') {
           if (isSafeUrl(value)) element.setAttribute('href', value);
+        } else if (type === 'tel') {
+          element.setAttribute('href', `tel:${value}`);
+        } else if (type === 'email') {
+          element.setAttribute('href', `mailto:${value}`);
+        } else if (type === 'whatsapp') {
+          element.setAttribute('href', `https://wa.me/${value.replace(/\D/g, '')}`);
         } else if (type === 'list') {
           try {
             const items = JSON.parse(value);
@@ -2410,7 +2426,7 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 overflow-y-auto flex-1 min-h-0">
+              <div className="space-y-2 overflow-y-auto flex-1 min-h-0">
                 {palettes.palettes.map((pal) => {
                   const isSelected = draftPaletteId === pal.id;
                   const colors = pal[draftThemeMode];
@@ -2418,21 +2434,18 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                     <button
                       key={pal.id}
                       onClick={() => setDraftPaletteId(pal.id)}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
                         isSelected
-                          ? 'border-pink-500 bg-pink-500/10'
-                          : 'border-white/10 bg-white/[0.02] hover:bg-white/5'
+                          ? 'border-white/10 bg-[#2a2a2a]'
+                          : 'border-white/5 bg-white/[0.02] hover:bg-white/5'
                       }`}
                     >
-                      <div className="flex items-center gap-1">
+                      <span className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-zinc-400'}`}>{pal.name}</span>
+                      <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 rounded-full border border-white/20" style={{ background: colors.accent }} />
                         <div className="w-5 h-5 rounded-full border border-white/20" style={{ background: colors.text }} />
                         <div className="w-5 h-5 rounded-full border border-white/20" style={{ background: colors['body-bg'] }} />
                       </div>
-                      <span className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-zinc-400'}`}>{pal.name}</span>
-                      {isSelected && (
-                        <div className="w-2 h-2 rounded-full" style={{ background: 'lab(49.5493% 79.8381 2.31768)' }} />
-                      )}
                     </button>
                   );
                 })}
@@ -2448,7 +2461,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                       : 'bg-white/[0.03] text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  <span>☀️</span> Açık
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                  Açık
                 </button>
                 <button
                   onClick={() => setDraftThemeMode('dark')}
@@ -2458,7 +2472,8 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                       : 'bg-white/[0.03] text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  <span>🌙</span> Koyu
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  Koyu
                 </button>
               </div>
 
@@ -2755,6 +2770,36 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
                         </div>
                       );
                     })()
+                  ) : currentHook.type === 'tel' ? (
+                    <input
+                      type="tel"
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
+                      className="input-modern w-full text-base"
+                      placeholder="+90 555 123 4567"
+                      autoFocus
+                    />
+                  ) : currentHook.type === 'email' ? (
+                    <input
+                      type="email"
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
+                      className="input-modern w-full text-base"
+                      placeholder="ornek@email.com"
+                      autoFocus
+                    />
+                  ) : currentHook.type === 'whatsapp' ? (
+                    <input
+                      type="tel"
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditModal(); } }}
+                      className="input-modern w-full text-base"
+                      placeholder="+90 555 123 4567"
+                      autoFocus
+                    />
                   ) : currentHook.type === 'url' ? (
                     <input
                       type="url"

@@ -110,6 +110,21 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         const sanitizedUrl = sanitizeUrl(stringValue);
         return openTag.replace(/href="[^"]*"/, `href="${sanitizedUrl}"`) + content + closeTag;
       }
+      // Tel: update href with tel: protocol
+      if (openTag.includes('data-type="tel"')) {
+        const safePhone = escapeHtml(stringValue);
+        return openTag.replace(/href="[^"]*"/, `href="tel:${safePhone}"`) + content + closeTag;
+      }
+      // Email: update href with mailto: protocol
+      if (openTag.includes('data-type="email"')) {
+        const safeEmail = escapeHtml(stringValue);
+        return openTag.replace(/href="[^"]*"/, `href="mailto:${safeEmail}"`) + content + closeTag;
+      }
+      // WhatsApp: update href with wa.me link
+      if (openTag.includes('data-type="whatsapp"')) {
+        const digits = stringValue.replace(/\D/g, '');
+        return openTag.replace(/href="[^"]*"/, `href="https://wa.me/${escapeHtml(digits)}"`) + content + closeTag;
+      }
       // Background-image: update style attribute, keep original content
       if (openTag.includes('data-type="background-image"')) {
         const sanitizedUrl = sanitizeUrl(stringValue);
@@ -223,10 +238,26 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   let sanitizedHtml = DOMPurify.sanitize(cleanHtml, {
     WHOLE_DOCUMENT: true,
     ADD_TAGS: ['iframe', 'video', 'audio', 'source', 'style', 'link'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'media'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'media', 'rel'],
     ALLOW_DATA_ATTR: false,
   });
   sanitizedHtml = sanitizedHtml.replace(/\s*data-(?:editable|type|hook|locked|label|clickable|area|area-label|css-property|list-[a-z-]+|duplicate)="[^"]*"/g, '');
+
+  // SEO: nofollow for external links, dofollow for forilove
+  const relParser = new DOMParser();
+  const relDoc = relParser.parseFromString(sanitizedHtml, 'text/html');
+  relDoc.querySelectorAll('a[href]').forEach(anchor => {
+    const href = anchor.getAttribute('href') || '';
+    if (!href || href.startsWith('#') || href.startsWith('/') || href.startsWith('tel:') || href.startsWith('mailto:')) return;
+    try {
+      const url = new URL(href, 'https://forilove.com');
+      const isInternal = url.hostname === 'forilove.com' || url.hostname.endsWith('.forilove.com');
+      anchor.setAttribute('rel', isInternal ? 'noopener noreferrer' : 'nofollow noopener noreferrer');
+    } catch {
+      anchor.setAttribute('rel', 'nofollow noopener noreferrer');
+    }
+  });
+  sanitizedHtml = relDoc.documentElement.outerHTML;
 
   // Run extracted template scripts after DOM render — wait for paint then execute
   useEffect(() => {

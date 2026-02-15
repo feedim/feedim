@@ -44,11 +44,12 @@ export function sanitizeUrl(url: string): string {
     }
   }
 
-  // Only allow http, https, mailto, and relative URLs
+  // Only allow http, https, mailto, tel, and relative URLs
   if (
     !trimmedUrl.startsWith('http://') &&
     !trimmedUrl.startsWith('https://') &&
     !trimmedUrl.startsWith('mailto:') &&
+    !trimmedUrl.startsWith('tel:') &&
     !trimmedUrl.startsWith('/') &&
     !trimmedUrl.startsWith('#')
   ) {
