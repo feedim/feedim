@@ -33,7 +33,8 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   icons: {
-    icon: "/favicon.png?v=2",
+    icon: "/favicon.png",
+    apple: "/apple-icon.png",
   },
   openGraph: {
     title: "Forilove - Sevginizi Ölümsüzleştirin",
