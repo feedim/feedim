@@ -110,6 +110,7 @@ export default function CoinsPage() {
       bonus_coins: pkg.bonus_coins,
     }));
 
+    try { (window as any).ttq?.track('InitiateCheckout', { content_type: 'product', value: pkg.price_try, currency: 'TRY' }); } catch {}
     router.push('/dashboard/payment');
   };
 

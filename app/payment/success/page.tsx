@@ -53,6 +53,7 @@ export default function PaymentSuccessPage() {
             setVerified(true);
             setCoinBalance(body.coin_balance);
             setCoinsAdded(body.coins_added);
+            try { (window as any).ttq?.track('CompletePayment', { content_type: 'product', value: body.coins_added, currency: 'TRY' }); } catch {}
             setVerifying(false);
             return;
           }

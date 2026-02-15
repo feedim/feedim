@@ -139,12 +139,12 @@ function RegisterForm() {
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
-    
+        try { (window as any).ttq?.track('CompleteRegistration'); } catch {}
         toast.success("Kayıt başarılı! Lütfen e-postanızı kontrol edin ve doğrulayın.");
         router.push("/login");
       } else if (data.session) {
         // User is automatically logged in with session
-    
+        try { (window as any).ttq?.track('CompleteRegistration'); } catch {}
         toast.success("Kayıt başarılı! Hoş geldiniz!");
 
         // Wait a bit for session to be fully set

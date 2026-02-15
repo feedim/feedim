@@ -1401,6 +1401,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       }
 
       if (coinPrice > 0) toast.success("Satın alındı!");
+      try { (window as any).ttq?.track('PlaceAnOrder', { content_type: 'product', content_id: template.id, content_name: template.name }); } catch {}
       setIsPurchased(true);
       setPurchasing(false);
       // Open publish details modal directly without page reload
@@ -1565,6 +1566,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       setGuestMode(false);
       setIsPurchased(true);
       setPurchasing(false);
+      try { (window as any).ttq?.track('PlaceAnOrder', { content_type: 'product', content_id: template.id, content_name: template.name }); } catch {}
 
       // Paylaş modalını aç
       setDraftTitle(currentProject?.title || template?.name || "");
@@ -1682,6 +1684,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
 
       await minDelay;
       toast.success("Değişiklikler kaydedildi!");
+      try { (window as any).ttq?.track('Subscribe', { content_type: 'product', content_id: resolvedParams.templateId }); } catch {}
       setProject({ ...project, ...updateData });
       setShowShareModal(true);
     } catch (error: any) {
