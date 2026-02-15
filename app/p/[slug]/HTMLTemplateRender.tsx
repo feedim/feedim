@@ -7,6 +7,58 @@ import DOMPurify from 'isomorphic-dompurify';
 import MusicPlayer from "@/components/MusicPlayer";
 import ShareIconButton from "@/components/ShareIconButton";
 
+// SSR-safe: remove an element (and its children) matching a specific attribute from HTML string
+function removeElementByAttr(html: string, attr: string, value: string): string {
+  const needle = `${attr}="${value}"`;
+  const idx = html.indexOf(needle);
+  if (idx === -1) return html;
+
+  // Walk back to find the '<' of the opening tag
+  let tagStart = html.lastIndexOf('<', idx);
+  if (tagStart === -1) return html;
+
+  let tagEnd = html.indexOf('>', tagStart);
+  if (tagEnd === -1) return html;
+
+  const openTag = html.substring(tagStart, tagEnd + 1);
+
+  // Self-closing tag — just remove it
+  if (openTag.endsWith('/>')) {
+    return html.substring(0, tagStart) + html.substring(tagEnd + 1);
+  }
+
+  const tagNameMatch = openTag.match(/^<(\w+)/);
+  if (!tagNameMatch) return html;
+  const tagName = tagNameMatch[1].toLowerCase();
+
+  // Count depth to find the matching closing tag
+  let depth = 1;
+  let pos = tagEnd + 1;
+  const openRe = new RegExp(`<${tagName}(?=[\\s>/])`, 'gi');
+  const closeRe = new RegExp(`</${tagName}\\s*>`, 'gi');
+
+  while (depth > 0 && pos < html.length) {
+    openRe.lastIndex = pos;
+    closeRe.lastIndex = pos;
+    const nextOpen = openRe.exec(html);
+    const nextClose = closeRe.exec(html);
+
+    if (!nextClose) break;
+
+    if (nextOpen && nextOpen.index < nextClose.index) {
+      depth++;
+      pos = nextOpen.index + nextOpen[0].length;
+    } else {
+      depth--;
+      if (depth === 0) {
+        return html.substring(0, tagStart) + html.substring(nextClose.index + nextClose[0].length);
+      }
+      pos = nextClose.index + nextClose[0].length;
+    }
+  }
+  return html;
+}
+
 // Extract <script> contents from HTML before DOMPurify strips them
 function extractScripts(html: string): { cleanHtml: string; scripts: string[] } {
   const scripts: string[] = [];
@@ -174,27 +226,39 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     html = html.replace(imgSrcRegex, `$1${sanitizedUrl}"`);
   });
 
-  // Process list types via DOMParser
+  // Process list types (SSR-safe — regex instead of DOMParser)
   const listKeys = Object.entries(htmlData).filter(([key]) => {
     return html.includes(`data-editable="${key}"`) && html.includes('data-type="list"');
   });
 
   if (listKeys.length > 0) {
-    const listParser = new DOMParser();
-    const listDoc = listParser.parseFromString(html, 'text/html');
-
     listKeys.forEach(([key, value]) => {
-      const el = listDoc.querySelector(`[data-editable="${key}"]`);
-      if (!el || el.getAttribute('data-type') !== 'list') return;
+      // Match opening tag that has both data-editable="key" AND data-type="list"
+      const listRegex = new RegExp(
+        `(<[^>]*data-editable="${key}"[^>]*data-type="list"[^>]*>)` +
+        `|(<[^>]*data-type="list"[^>]*data-editable="${key}"[^>]*>)`,
+        'g'
+      );
+      const m = listRegex.exec(html);
+      if (!m) return;
+
+      const openTag = m[1] || m[2];
+      const openStart = m.index;
+      const openEnd = openStart + openTag.length;
 
       try {
         const items = JSON.parse(String(value));
         if (!Array.isArray(items)) return;
 
-        const itemClass = el.getAttribute('data-list-item-class') || '';
-        const sepClass = el.getAttribute('data-list-sep-class') || '';
-        const sepHtml = el.getAttribute('data-list-sep-html') || '';
-        const duplicate = el.getAttribute('data-list-duplicate') === 'true';
+        const attr = (name: string) => {
+          const r = openTag.match(new RegExp(`${name}="([^"]*)"`));
+          return r ? r[1] : '';
+        };
+
+        const itemClass = attr('data-list-item-class');
+        const sepClass = attr('data-list-sep-class');
+        const sepHtml = attr('data-list-sep-html');
+        const duplicate = attr('data-list-duplicate') === 'true';
 
         const buildItems = (arr: string[]) => arr.map(text => {
           let s = `<span class="${escapeHtml(itemClass)}">${escapeHtml(text)}</span>`;
@@ -204,27 +268,48 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
 
         let inner = buildItems(items);
         if (duplicate) inner += buildItems(items);
-        el.innerHTML = inner;
+
+        // Find the tag name from open tag
+        const tagNameMatch = openTag.match(/^<(\w+)/);
+        if (!tagNameMatch) return;
+        const tagName = tagNameMatch[1].toLowerCase();
+
+        // Find matching closing tag
+        let depth = 1;
+        let pos = openEnd;
+        const openRe = new RegExp(`<${tagName}(?=[\\s>/])`, 'gi');
+        const closeRe = new RegExp(`</${tagName}\\s*>`, 'gi');
+
+        while (depth > 0 && pos < html.length) {
+          openRe.lastIndex = pos;
+          closeRe.lastIndex = pos;
+          const nextOpen = openRe.exec(html);
+          const nextClose = closeRe.exec(html);
+          if (!nextClose) break;
+          if (nextOpen && nextOpen.index < nextClose.index) {
+            depth++;
+            pos = nextOpen.index + nextOpen[0].length;
+          } else {
+            depth--;
+            if (depth === 0) {
+              html = html.substring(0, openEnd) + inner + html.substring(nextClose.index);
+              break;
+            }
+            pos = nextClose.index + nextClose[0].length;
+          }
+        }
       } catch {}
     });
-
-    html = listDoc.documentElement.outerHTML;
   }
 
-  // Remove hidden data-area sections
+  // Remove hidden data-area sections (SSR-safe — no DOMParser)
   const hiddenAreas = Object.entries(htmlData)
     .filter(([key, value]) => key.startsWith('__area_') && value === 'hidden')
     .map(([key]) => key.replace('__area_', ''));
 
-  if (hiddenAreas.length > 0) {
-    const areaParser = new DOMParser();
-    const areaDoc = areaParser.parseFromString(html, 'text/html');
-    hiddenAreas.forEach(areaName => {
-      const el = areaDoc.querySelector(`[data-area="${areaName}"]`);
-      if (el) el.remove();
-    });
-    html = areaDoc.documentElement.outerHTML;
-  }
+  hiddenAreas.forEach(areaName => {
+    html = removeElementByAttr(html, 'data-area', areaName);
+  });
 
   // Apply palette override CSS on public page
   const paletteMatch = html.match(/<script[^>]*data-palettes[^>]*>([\s\S]*?)<\/script>/i);
@@ -262,21 +347,23 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   });
   sanitizedHtml = sanitizedHtml.replace(/\s*data-(?:editable|type|hook|locked|label|clickable|area|area-label|css-property|list-[a-z-]+|duplicate)="[^"]*"/g, '');
 
-  // SEO: nofollow for external links, dofollow for forilove
-  const relParser = new DOMParser();
-  const relDoc = relParser.parseFromString(sanitizedHtml, 'text/html');
-  relDoc.querySelectorAll('a[href]').forEach(anchor => {
-    const href = anchor.getAttribute('href') || '';
-    if (!href || href.startsWith('#') || href.startsWith('/') || href.startsWith('tel:') || href.startsWith('mailto:')) return;
+  // SEO: nofollow for external links, dofollow for forilove (SSR-safe — regex)
+  sanitizedHtml = sanitizedHtml.replace(/<a\s([^>]*?)>/gi, (match, attrs: string) => {
+    const hrefMatch = attrs.match(/href="([^"]*)"/);
+    if (!hrefMatch) return match;
+    const href = hrefMatch[1];
+    if (!href || href.startsWith('#') || href.startsWith('/') || href.startsWith('tel:') || href.startsWith('mailto:')) return match;
     try {
       const url = new URL(href, 'https://forilove.com');
       const isInternal = url.hostname === 'forilove.com' || url.hostname.endsWith('.forilove.com');
-      anchor.setAttribute('rel', isInternal ? 'noopener noreferrer' : 'nofollow noopener noreferrer');
+      const rel = isInternal ? 'noopener noreferrer' : 'nofollow noopener noreferrer';
+      const cleanAttrs = attrs.replace(/\s*rel="[^"]*"/g, '');
+      return `<a ${cleanAttrs} rel="${rel}">`;
     } catch {
-      anchor.setAttribute('rel', 'nofollow noopener noreferrer');
+      const cleanAttrs = attrs.replace(/\s*rel="[^"]*"/g, '');
+      return `<a ${cleanAttrs} rel="nofollow noopener noreferrer">`;
     }
   });
-  sanitizedHtml = relDoc.documentElement.outerHTML;
 
   // Inject font <link> tags into document <head> for reliable cross-platform loading
   useEffect(() => {
