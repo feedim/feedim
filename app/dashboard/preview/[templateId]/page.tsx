@@ -75,7 +75,7 @@ export default function PreviewPage() {
       const data = JSON.parse(raw);
       const { cleanHtml, scripts } = extractScripts(data.html || "");
       // Sanitize then strip template metadata attributes to hinder HTML theft
-      let sanitized = DOMPurify.sanitize(cleanHtml, { WHOLE_DOCUMENT: true, ADD_TAGS: ["style", "link", "iframe"], ADD_ATTR: ["target", "allow", "allowfullscreen", "frameborder"], ALLOW_DATA_ATTR: false, ADD_DATA_URI_TAGS: ["img", "a", "source"] });
+      let sanitized = DOMPurify.sanitize(cleanHtml, { WHOLE_DOCUMENT: true, ADD_TAGS: ['iframe', 'video', 'audio', 'source', 'style', 'link'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'media', 'rel', 'crossorigin', 'href', 'as'], ALLOW_DATA_ATTR: false });
       // Remove data-area attributes too (used for section toggling)
       sanitized = sanitized.replace(/\s*data-(?:editable|type|hook|locked|label|clickable|area|area-label|css-property|list-[a-z-]+|duplicate)="[^"]*"/g, '');
       setHtml(sanitized);
@@ -87,6 +87,32 @@ export default function PreviewPage() {
     } catch (e) { if (process.env.NODE_ENV === 'development') console.warn('Operation failed:', e); }
     setLoaded(true);
   }, []);
+
+  // Inject font <link> tags into document <head> for reliable cross-platform loading
+  useEffect(() => {
+    if (!html) return;
+    const fontLinkRegex = /<link[^>]*href="[^"]*fonts\.googleapis\.com[^"]*"[^>]*>/gi;
+    const preconnectRegex = /<link[^>]*rel="preconnect"[^>]*href="[^"]*fonts\.[^"]*"[^>]*>/gi;
+    const allLinks = [...(html.match(fontLinkRegex) || []), ...(html.match(preconnectRegex) || [])];
+    const injected: HTMLLinkElement[] = [];
+    allLinks.forEach(linkTag => {
+      const hrefMatch = linkTag.match(/href="([^"]*)"/);
+      if (!hrefMatch) return;
+      const href = hrefMatch[1];
+      if (document.querySelector(`link[href="${href}"]`)) return;
+      const link = document.createElement('link');
+      if (linkTag.includes('rel="preconnect"')) {
+        link.rel = 'preconnect';
+        if (linkTag.includes('crossorigin')) link.crossOrigin = 'anonymous';
+      } else {
+        link.rel = 'stylesheet';
+      }
+      link.href = href;
+      document.head.appendChild(link);
+      injected.push(link);
+    });
+    return () => { injected.forEach(l => l.remove()); };
+  }, [html]);
 
   // Run extracted template scripts after DOM render — wait for paint then execute
   useEffect(() => {

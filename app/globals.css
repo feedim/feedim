@@ -128,6 +128,56 @@
   }
 }
 
+/* Reset Tailwind preflight inside template renders — restore browser defaults */
+:where(.html-template-render) *,
+:where(.html-template-render) *::before,
+:where(.html-template-render) *::after {
+  border-color: revert;
+  outline: revert;
+}
+:where(.html-template-render) h1,
+:where(.html-template-render) h2,
+:where(.html-template-render) h3,
+:where(.html-template-render) h4,
+:where(.html-template-render) h5,
+:where(.html-template-render) h6 {
+  font-size: revert;
+  font-weight: revert;
+  margin: revert;
+}
+:where(.html-template-render) img,
+:where(.html-template-render) video,
+:where(.html-template-render) svg {
+  display: revert;
+  vertical-align: revert;
+}
+:where(.html-template-render) a {
+  color: revert;
+  text-decoration: revert;
+}
+:where(.html-template-render) ol,
+:where(.html-template-render) ul {
+  list-style: revert;
+  margin: revert;
+  padding: revert;
+}
+:where(.html-template-render) p,
+:where(.html-template-render) blockquote,
+:where(.html-template-render) figure {
+  margin: revert;
+}
+:where(.html-template-render) hr {
+  border: revert;
+  height: revert;
+}
+:where(.html-template-render) button,
+:where(.html-template-render) input,
+:where(.html-template-render) select,
+:where(.html-template-render) textarea {
+  font: revert;
+  color: revert;
+}
+
 /* Mobile Touch */
 html, body {
   -webkit-tap-highlight-color: transparent;
