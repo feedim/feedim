@@ -235,10 +235,16 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
         const selectedId = (htmlData.__palette as string) || pd.default;
         const mode = ((htmlData.__theme_mode as string) || 'light') as 'light' | 'dark';
         const pal = pd.palettes.find((p: any) => p.id === selectedId);
-        if (pal && !(selectedId === pd.default && mode === 'light')) {
+        if (pal) {
           const colors = pal[mode];
-          const overrideCss = `<style data-palette-override>:root{--text:${colors.text};--muted:${colors.muted};--light:${colors.light};--border:${colors.border};--accent:${colors.accent};--accent-light:${colors['accent-light']}}body{background:${colors['body-bg']}!important}</style>`;
-          html = html.replace('</head>', overrideCss + '</head>');
+          if (selectedId === pd.default && mode === 'light') {
+            // Default palette + light mode: only body-bg override (CSS vars already match :root)
+            const bgCss = `<style data-palette-override>body{background:${colors['body-bg']}!important}</style>`;
+            html = html.replace('</head>', bgCss + '</head>');
+          } else {
+            const overrideCss = `<style data-palette-override>:root{--text:${colors.text};--muted:${colors.muted};--light:${colors.light};--border:${colors.border};--accent:${colors.accent};--accent-light:${colors['accent-light']}}body{background:${colors['body-bg']}!important}</style>`;
+            html = html.replace('</head>', overrideCss + '</head>');
+          }
         }
       }
     } catch {}
@@ -251,7 +257,7 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
   let sanitizedHtml = DOMPurify.sanitize(cleanHtml, {
     WHOLE_DOCUMENT: true,
     ADD_TAGS: ['iframe', 'video', 'audio', 'source', 'style', 'link'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'media', 'rel'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'media', 'rel', 'crossorigin', 'href', 'as'],
     ALLOW_DATA_ATTR: false,
   });
   sanitizedHtml = sanitizedHtml.replace(/\s*data-(?:editable|type|hook|locked|label|clickable|area|area-label|css-property|list-[a-z-]+|duplicate)="[^"]*"/g, '');
@@ -271,6 +277,31 @@ export function HTMLTemplateRender({ project, musicUrl }: { project: any; musicU
     }
   });
   sanitizedHtml = relDoc.documentElement.outerHTML;
+
+  // Inject font <link> tags into document <head> for reliable cross-platform loading
+  useEffect(() => {
+    const fontLinkRegex = /<link[^>]*href="[^"]*fonts\.googleapis\.com[^"]*"[^>]*>/gi;
+    const preconnectRegex = /<link[^>]*rel="preconnect"[^>]*href="[^"]*fonts\.[^"]*"[^>]*>/gi;
+    const allLinks = [...(sanitizedHtml.match(fontLinkRegex) || []), ...(sanitizedHtml.match(preconnectRegex) || [])];
+    const injected: HTMLLinkElement[] = [];
+    allLinks.forEach(linkTag => {
+      const hrefMatch = linkTag.match(/href="([^"]*)"/);
+      if (!hrefMatch) return;
+      const href = hrefMatch[1];
+      if (document.querySelector(`link[href="${href}"]`)) return;
+      const link = document.createElement('link');
+      if (linkTag.includes('rel="preconnect"')) {
+        link.rel = 'preconnect';
+        if (linkTag.includes('crossorigin')) link.crossOrigin = 'anonymous';
+      } else {
+        link.rel = 'stylesheet';
+      }
+      link.href = href;
+      document.head.appendChild(link);
+      injected.push(link);
+    });
+    return () => { injected.forEach(l => l.remove()); };
+  }, [sanitizedHtml]);
 
   // Run extracted template scripts after DOM render — wait for paint then execute
   useEffect(() => {

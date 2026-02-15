@@ -35,7 +35,7 @@ export default function PromoBanner() {
       }
 
       // Don't show banner on dashboard, editor, or preview pages
-      if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/editor") || pathname?.startsWith("/preview")) {
+      if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/editor") || pathname?.startsWith("/preview") || pathname?.startsWith("/p/")) {
         setPromoInfo(null);
         return;
       }

@@ -1359,15 +1359,13 @@ export default function NewEditorPage({ params, guestMode = false }: { params: P
         setCoinBalance(purchaseResult.newBalance);
       }
 
-      // Save current edits to localStorage, reload as purchased
-      localStorage.setItem('forilove_guest_edits', JSON.stringify({
-        templateId: resolvedParams.templateId,
-        values: valuesRef.current,
-      }));
-
-      toast.success("Satın alındı! Yükleniyor...");
+      toast.success("Satın alındı!");
       setIsPurchased(true);
-      window.location.reload();
+      // Open publish details modal directly without page reload
+      setDraftTitle(template?.name || "");
+      setDraftSlug("");
+      setDraftDescription(template?.description || "");
+      setShowDetailsModal(true);
     } catch (err: any) {
       toast.error(err.message || "Bir hata oluştu");
     } finally {
