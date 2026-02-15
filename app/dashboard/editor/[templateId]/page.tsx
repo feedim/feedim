@@ -1380,37 +1380,55 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       const user = await requireAuth(`/editor/${resolvedParams.templateId}`);
       if (!user) { setPurchasing(false); return; }
 
-      // --- Guest → logged-in transition: always create NEW project, never touch existing ones ---
+      // --- Guest → logged-in transition: template tek kullanımlık ---
+      // Mevcut proje varsa guest editleri ona uygula, yoksa yeni oluştur
 
-      const titleSlug = (template?.name || 'sayfa')
-        .toLowerCase()
-        .replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[ıİ]/g, 'i')
-        .replace(/[öÖ]/g, 'o').replace(/[şŞ]/g, 's').replace(/[üÜ]/g, 'u')
-        .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
-        .substring(0, 40).replace(/-$/, '');
-      const randomId = Math.random().toString(36).substring(2, 8);
-      const slug = `${titleSlug}-${randomId}`;
-
-      const { data: newProject, error: insertError } = await supabase
+      let currentProject = project;
+      const { data: existingProject } = await supabase
         .from("projects")
-        .insert({
-          user_id: user.id,
-          template_id: resolvedParams.templateId,
-          title: template?.name,
-          slug,
-          hook_values: valuesRef.current,
-          is_published: false,
-        })
-        .select()
-        .single();
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("template_id", resolvedParams.templateId)
+        .maybeSingle();
 
-      if (insertError) {
-        toast.error("Proje oluşturulamadı");
-        setPurchasing(false);
-        return;
+      if (existingProject) {
+        // Sadece hook_values güncelle — slug, title, is_published vs. koru
+        const mergedValues = { ...existingProject.hook_values, ...valuesRef.current };
+        await supabase.from("projects").update({ hook_values: mergedValues }).eq("id", existingProject.id);
+        currentProject = { ...existingProject, hook_values: mergedValues };
+        setProject(currentProject);
+        setValues(mergedValues);
+      } else {
+        const titleSlug = (template?.name || 'sayfa')
+          .toLowerCase()
+          .replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[ıİ]/g, 'i')
+          .replace(/[öÖ]/g, 'o').replace(/[şŞ]/g, 's').replace(/[üÜ]/g, 'u')
+          .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
+          .substring(0, 40).replace(/-$/, '');
+        const randomId = Math.random().toString(36).substring(2, 8);
+        const slug = `${titleSlug}-${randomId}`;
+
+        const { data: newProject, error: insertError } = await supabase
+          .from("projects")
+          .insert({
+            user_id: user.id,
+            template_id: resolvedParams.templateId,
+            title: template?.name,
+            slug,
+            hook_values: valuesRef.current,
+            is_published: false,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          toast.error("Proje oluşturulamadı");
+          setPurchasing(false);
+          return;
+        }
+        currentProject = newProject;
+        setProject(newProject);
       }
-      const currentProject = newProject;
-      setProject(newProject);
 
       // Check if already purchased
       const { data: existingPurchase } = await supabase
