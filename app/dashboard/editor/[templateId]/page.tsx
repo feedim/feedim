@@ -1857,34 +1857,25 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       currentCoinBalance = initResult.balance;
     }
 
-    // Show purchase confirmation modal
+    // Show purchase confirmation modal — coin harcama server-side /api/ai/generate içinde
     const result = await confirm({
       itemName: "AI ile Doldur",
       description: "Tek cümleyle tüm alanları doldurun",
       coinCost: AI_COST,
       currentBalance: currentCoinBalance,
       icon: 'ai',
-      allowCoupon: true,
-      onConfirm: async (couponInfo?: CouponInfo) => {
-        const res = await fetch("/api/purchase/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectId: (project?.id && project.id !== 'temp') ? project.id : null,
-            couponCode: couponInfo?.code,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          return { success: false, error: data.error || "Coin harcama başarısız" };
-        }
-        return { success: true, newBalance: data.newBalance };
+      allowCoupon: false,
+      onConfirm: async () => {
+        // Sadece onay — coin harcama AI generate içinde yapılacak
+        const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", (await supabase.auth.getUser()).data.user!.id).single();
+        const bal = profile?.coin_balance ?? 0;
+        if (bal < AI_COST) return { success: false, error: "Yetersiz bakiye" };
+        return { success: true, newBalance: bal };
       },
     });
 
     if (!result?.success) return;
 
-    setCoinBalance(result.newBalance);
     setAILoading(true);
     try {
       // Only send AI-fillable hooks (no images, no area toggles)
@@ -1908,6 +1899,9 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'AI hatası');
+
+      // Coin bakiyesini server response'dan güncelle
+      if (data.newBalance !== undefined) setCoinBalance(data.newBalance);
 
       // Push undo snapshot before applying AI values
       pushUndo({ ...valuesRef.current });

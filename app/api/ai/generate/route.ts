@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { AI_COST } from "@/lib/constants";
 import Anthropic from "@anthropic-ai/sdk";
 
 interface HookInput {
@@ -109,6 +111,26 @@ export async function POST(req: NextRequest) {
         { status: 429 }
       );
     }
+
+    // Server-side coin harcama — client atlatmasını engelle
+    const admin = createAdminClient();
+    const { data: spendResult, error: spendError } = await admin.rpc("spend_coins", {
+      p_user_id: user.id,
+      p_amount: AI_COST,
+      p_description: "AI ile Doldur kullanımı",
+      p_reference_id: null,
+      p_reference_type: "ai_generate",
+    });
+    if (spendError) {
+      return NextResponse.json({ error: "Coin harcama hatası" }, { status: 500 });
+    }
+    if (!spendResult[0]?.success) {
+      return NextResponse.json(
+        { error: spendResult[0]?.message || "Yetersiz bakiye" },
+        { status: 402 }
+      );
+    }
+    const newBalance = spendResult[0].new_balance;
 
     const contentLength = req.headers.get("content-length");
     if (contentLength && parseInt(contentLength) > 200_000) {
@@ -265,7 +287,7 @@ Tüm ${hooks.length} alanı doldur: ${requiredKeys}`;
     const aiFilledCount = Object.keys(aiValues).filter(k => validKeys.has(k)).length;
     console.log(`AI generate: ${aiFilledCount}/${hooks.length} fields filled by AI, ${hooks.length - aiFilledCount} used defaults`);
 
-    return NextResponse.json({ values: filteredValues });
+    return NextResponse.json({ values: filteredValues, newBalance });
   } catch (error: any) {
     if (process.env.NODE_ENV === "development") console.error("AI generate error:", error);
     const message = error.message || "AI oluşturma hatası";
