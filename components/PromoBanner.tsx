@@ -56,13 +56,24 @@ export default function PromoBanner() {
         return;
       }
 
-      // Show banner from localStorage
+      // Show banner from localStorage — re-validate against API
       const stored = localStorage.getItem(PROMO_INFO_KEY);
       if (stored) {
         try {
           const info = JSON.parse(stored);
           if (info.code && info.discount) {
-            setPromoInfo(info);
+            // Re-validate: promo silinmiş veya geçersiz olabilir
+            const res = await fetch(`/api/promo/check?code=${info.code}`);
+            const data = await res.json();
+            if (data.valid) {
+              setPromoInfo({ code: info.code, discount: data.discount_percent });
+              localStorage.setItem(PROMO_INFO_KEY, JSON.stringify({ code: info.code, discount: data.discount_percent }));
+            } else {
+              // Promo artık geçersiz — temizle
+              localStorage.removeItem(PROMO_STORAGE_KEY);
+              localStorage.removeItem(PROMO_INFO_KEY);
+              setPromoInfo(null);
+            }
           }
         } catch {
           localStorage.removeItem(PROMO_INFO_KEY);
