@@ -12,5 +12,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <div className="max-w-[1400px] mx-auto w-full">
+      {children}
+    </div>
+  );
 }
