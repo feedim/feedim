@@ -229,7 +229,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, template]);
+  }, [values, template, unlockedFields]);
 
   // Editor tour: show once after template loads
   useEffect(() => {
@@ -1867,6 +1867,30 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
       setGuestMode(false);
       const { data: profile } = await supabase.from("profiles").select("coin_balance").eq("user_id", authUser.id).single();
       setCoinBalance(profile?.coin_balance ?? 0);
+    }
+
+    // Ücretsiz şablon satın alınmamışsa önce satın al
+    if (!isPurchased && getActivePrice(template) === 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: existingPurchase } = await supabase
+          .from("purchases")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("template_id", resolvedParams.templateId)
+          .eq("payment_status", "completed")
+          .maybeSingle();
+        if (!existingPurchase) {
+          await supabase.from("purchases").insert({
+            user_id: user.id,
+            template_id: resolvedParams.templateId,
+            coins_spent: 0,
+            payment_method: "coins",
+            payment_status: "completed",
+          });
+        }
+        setIsPurchased(true);
+      }
     }
 
     const result = await confirm({
