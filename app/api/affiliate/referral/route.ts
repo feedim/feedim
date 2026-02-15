@@ -84,6 +84,17 @@ export async function GET() {
       });
     }
 
+    // Count approved affiliates among referred users
+    let approvedReferredCount = 0;
+    if (referredIds.length > 0) {
+      const { data: approvedProfiles } = await admin
+        .from("profiles")
+        .select("user_id")
+        .in("user_id", referredIds)
+        .eq("role", "affiliate");
+      approvedReferredCount = approvedProfiles?.length || 0;
+    }
+
     // Total referral earnings
     const { data: allEarnings } = await admin
       .from("affiliate_referral_earnings")
@@ -105,6 +116,7 @@ export async function GET() {
       referralCode,
       referralLink: referralCode ? `https://forilove.com/affiliate?ref=${referralCode}` : null,
       referredCount: referralList.length,
+      approvedReferredCount,
       referredAffiliates,
       totalReferralEarnings,
       wasReferred: !!myReferral,

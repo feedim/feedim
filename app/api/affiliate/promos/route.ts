@@ -174,12 +174,15 @@ export async function GET() {
       }).length;
     };
 
+    const last3m = new Date(now.getTime() - 90 * 86400000);
+
     const periodAnalytics = {
       today: { ...calcPeriod(todayStart), signups: countSignups(todayStart) },
       yesterday: { ...calcPeriod(yesterdayStart, todayStart), signups: countSignups(yesterdayStart, todayStart) },
       last7d: { ...calcPeriod(last7d), signups: countSignups(last7d) },
       last14d: { ...calcPeriod(last14d), signups: countSignups(last14d) },
       thisMonth: { ...calcPeriod(monthStart), signups: countSignups(monthStart) },
+      last3m: { ...calcPeriod(last3m), signups: countSignups(last3m) },
     };
 
     // Calculate commission for each promo based on its discount

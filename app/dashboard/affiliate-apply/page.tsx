@@ -52,7 +52,7 @@ export default function AffiliateApplyPage() {
 
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("user_id, name, surname, role, email_verified")
+          .select("user_id, name, surname, role, email_verified, affiliate_referral_code")
           .eq("user_id", authUser.id)
           .single();
 
@@ -64,10 +64,12 @@ export default function AffiliateApplyPage() {
         setProfile(profileData);
         setEmailVerified(profileData?.email_verified || false);
 
-        // Load referral code from localStorage (captured from /affiliate?ref=CODE)
+        // Load referral code from profile first, then fallback to localStorage
+        const profileRef = profileData?.affiliate_referral_code;
         const storedRef = localStorage.getItem("forilove_affiliate_ref");
-        if (storedRef) {
-          setForm(prev => ({ ...prev, referralCode: storedRef }));
+        const refCode = profileRef || storedRef || "";
+        if (refCode) {
+          setForm(prev => ({ ...prev, referralCode: refCode }));
         }
 
         // Check existing application
@@ -124,6 +126,12 @@ export default function AffiliateApplyPage() {
         return;
       }
       setExistingApplication({ status: "pending", created_at: new Date().toISOString(), social_media: form.socialMedia, followers: form.followers, description: form.description });
+      // Save referral code to profile
+      if (form.referralCode.trim() && user) {
+        await supabase.from("profiles")
+          .update({ affiliate_referral_code: form.referralCode.trim() })
+          .eq("user_id", user.id);
+      }
       localStorage.removeItem("forilove_affiliate_ref");
       toast.success("Başvurunuz alındı!");
     } catch {
@@ -314,8 +322,13 @@ export default function AffiliateApplyPage() {
                   placeholder="Sizi davet eden kişinin kodu"
                   className="input-modern w-full text-sm"
                   maxLength={20}
+                  readOnly={existingApplication?.status === "approved"}
                 />
-                <p className="text-[10px] text-zinc-600 mt-0.5">Bir affiliate tarafından davet edildiyseniz kodunu girin.</p>
+                {existingApplication?.status === "approved" ? (
+                  <p className="text-[10px] text-zinc-500 mt-0.5">Referans kodunuz onaylanmış başvurunuza bağlıdır ve değiştirilemez.</p>
+                ) : (
+                  <p className="text-[10px] text-zinc-600 mt-0.5">Bir affiliate tarafından davet edildiyseniz kodunu girin.</p>
+                )}
               </div>
 
               <button

@@ -112,6 +112,14 @@ function RegisterForm() {
           })
           .eq('user_id', data.user.id);
 
+        // Save affiliate referral code to profile
+        const storedAffRef = localStorage.getItem("forilove_affiliate_ref");
+        if (storedAffRef && data.user) {
+          await supabase.from("profiles")
+            .update({ affiliate_referral_code: storedAffRef })
+            .eq("user_id", data.user.id);
+        }
+
         // Process referral if code was provided
         if (referralCode) {
           try {

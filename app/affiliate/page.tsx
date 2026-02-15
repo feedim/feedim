@@ -4,7 +4,7 @@ import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import PublicFooter from "@/components/PublicFooter";
 import AffiliateRefCapture from "./AffiliateRefCapture";
-import { Users, Percent, Wallet, Clock, TrendingUp, Shield, Heart, Gift, PartyPopper, Sparkles, CalendarHeart, UserPlus } from "lucide-react";
+import { Users, Percent, Wallet, Clock, TrendingUp, Shield, Heart, Gift, PartyPopper, Sparkles, CalendarHeart } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Satış Ortaklığı | Forilove",
@@ -65,7 +65,7 @@ const faqs = [
     a: "Profilinizdeki 'Ödeme Bilgileri' sayfasından IBAN ve hesap sahibi bilgilerinizi girebilirsiniz.",
   },
   {
-    q: "Affiliate davet programı nasıl çalışır?",
+    q: "Satış Ortağı Çember Sistemi nasıl çalışır?",
     a: "Referans linkinizi paylaşarak diğer içerik üreticilerini davet edebilirsiniz. Davet ettiğiniz affiliate her ödeme aldığında, ödeme tutarının %5'i kadar ek kazanç elde edersiniz. Bu tutar platform tarafından karşılanır, davet edilen kişinin komisyonundan kesilmez.",
   },
 ];
@@ -241,43 +241,14 @@ export default function AffiliatePage() {
         </div>
       </section>
 
-      {/* Referral Program */}
+      {/* Çember Programı Teaser */}
       <section className="border-t border-white/10 py-20">
-        <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">Affiliate Davet Programı</h2>
-          <p className="text-zinc-400 text-center mb-10">Affiliate olarak arkadaşlarınızı da platforma davet edin, onların kazançlarından %5 ek gelir elde edin.</p>
-          <div className="grid sm:grid-cols-2 gap-6">
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
-              <UserPlus className="h-8 w-8 text-pink-500 mb-3" />
-              <h3 className="font-bold mb-2">Arkadaşını Davet Et</h3>
-              <p className="text-sm text-zinc-400">Kendi referans linkinizi paylaşarak diğer içerik üreticilerini Forilove affiliate programına davet edin.</p>
-            </div>
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
-              <TrendingUp className="h-8 w-8 text-pink-500 mb-3" />
-              <h3 className="font-bold mb-2">%5 Ek Kazanç</h3>
-              <p className="text-sm text-zinc-400">Davet ettiğiniz affiliate her ödeme aldığında, ödeme tutarının %5&apos;i kadar ek kazanç elde edersiniz. Bu tutar platform tarafından karşılanır.</p>
-            </div>
-          </div>
-          <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 mt-6">
-            <h3 className="font-bold mb-3 text-center">Nasıl Çalışır?</h3>
-            <div className="space-y-3 text-sm text-zinc-400">
-              <div className="flex items-start gap-3">
-                <span className="bg-pink-500/20 text-pink-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                <p>Affiliate panelinizden referans linkinizi kopyalayın ve paylaşın.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="bg-pink-500/20 text-pink-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                <p>Davet ettiğiniz kişi affiliate başvurusu yapar ve onaylanır.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="bg-pink-500/20 text-pink-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                <p>Davet ettiğiniz affiliate her ödeme aldığında, ödeme tutarının %5&apos;i sizin bakiyenize eklenir.</p>
-              </div>
-            </div>
-            <p className="text-xs text-zinc-500 mt-4 text-center">
-              Örnek: Davet ettiğiniz affiliate 100 TRY satış yaptı ve %30 komisyon aldı (30 TRY). Siz 30 TRY&apos;nin %5&apos;i olan 1,50 TRY ek kazanç elde edersiniz. Bu tutar affiliate&apos;ın komisyonundan kesilmez, platform tarafından karşılanır.
-            </p>
-          </div>
+        <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Affiliate Çember Programı</h2>
+          <p className="text-zinc-400 mb-6">Affiliate olarak arkadaşlarınızı da platforma davet edin, onların kazançlarından %5 ek gelir elde edin. Davet ettiğiniz her affiliate, kazanç çemberinizi büyütür.</p>
+          <Link href="/affiliate/circle" className="btn-primary px-8 py-3 text-lg inline-block">
+            Detaylı Bilgi →
+          </Link>
         </div>
       </section>
 

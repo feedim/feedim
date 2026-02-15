@@ -155,6 +155,14 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
+    // Save referral code to profile
+    if (cleanReferralCode) {
+      await admin
+        .from("profiles")
+        .update({ affiliate_referral_code: cleanReferralCode })
+        .eq("user_id", user.id);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (process.env.NODE_ENV === "development") console.error("Affiliate apply error:", error);
