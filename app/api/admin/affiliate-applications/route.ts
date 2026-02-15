@@ -121,6 +121,39 @@ export async function PUT(request: NextRequest) {
           .eq("id", applicationId);
         return NextResponse.json({ error: "Rol güncellenemedi" }, { status: 500 });
       }
+
+      // Create affiliate referral relationship if referral_code exists
+      if (application.referral_code) {
+        try {
+          const { data: referrerPromo } = await admin
+            .from("promo_links")
+            .select("created_by")
+            .ilike("code", application.referral_code)
+            .maybeSingle();
+
+          if (referrerPromo && referrerPromo.created_by !== application.user_id) {
+            // Verify referrer is an affiliate
+            const { data: referrerProfile } = await admin
+              .from("profiles")
+              .select("role")
+              .eq("user_id", referrerPromo.created_by)
+              .single();
+
+            if (referrerProfile?.role === "affiliate" || referrerProfile?.role === "admin") {
+              await admin
+                .from("affiliate_referrals")
+                .insert({
+                  referrer_id: referrerPromo.created_by,
+                  referred_id: application.user_id,
+                  referral_code: application.referral_code,
+                })
+                .single();
+            }
+          }
+        } catch {
+          // Non-critical: referral creation failure doesn't block approval
+        }
+      }
     }
 
     return NextResponse.json({ success: true, status: newStatus });

@@ -33,8 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# supabase local config & migrations (sensitive)
-/supabase/
+# supabase local config (sensitive) — keep migrations tracked
+/supabase/*
+!/supabase/migrations/
 
 # vercel
 .vercel

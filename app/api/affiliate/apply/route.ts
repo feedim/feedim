@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { socialMedia, followers, description } = body;
+    const { socialMedia, followers, description, referralCode } = body;
 
     // Validate social media URL
     if (!socialMedia || typeof socialMedia !== "string" || !socialMedia.trim()) {
@@ -135,6 +135,11 @@ export async function POST(request: NextRequest) {
 
     const fullName = [profile?.name, profile?.surname].filter(Boolean).join(" ") || user.email?.split("@")[0] || "";
 
+    // Validate referral code if provided
+    const cleanReferralCode = referralCode
+      ? String(referralCode).replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 20)
+      : null;
+
     const { error } = await admin
       .from("affiliate_applications")
       .insert({
@@ -145,6 +150,7 @@ export async function POST(request: NextRequest) {
         followers: cleanFollowers,
         description: cleanDescription,
         status: "pending",
+        referral_code: cleanReferralCode,
       });
 
     if (error) throw error;

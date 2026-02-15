@@ -20,7 +20,7 @@ async function verifyAffiliate(supabase: Awaited<ReturnType<typeof createClient>
   return { ...user, role: profile?.role };
 }
 
-// Calculate affiliate earnings per-promo (correct calculation)
+// Calculate affiliate earnings per-promo (correct calculation) + referral earnings
 async function calculateEarnings(admin: ReturnType<typeof createAdminClient>, userId: string) {
   const { data: promos } = await admin
     .from("promo_links")
@@ -66,7 +66,20 @@ async function calculateEarnings(admin: ReturnType<typeof createAdminClient>, us
   totalEarnings = Math.round(totalEarnings * 100) / 100;
   const commissionRate = TOTAL_ALLOCATION - promos[0].discount_percent;
 
-  return { totalEarnings, commissionRate };
+  // Add referral earnings (5% of invited affiliates' payouts)
+  const { data: referralEarnings } = await admin
+    .from("affiliate_referral_earnings")
+    .select("earning_amount")
+    .eq("referrer_id", userId);
+
+  const totalReferralEarnings = (referralEarnings || []).reduce(
+    (sum, e) => sum + Number(e.earning_amount), 0
+  );
+
+  return {
+    totalEarnings: Math.round((totalEarnings + totalReferralEarnings) * 100) / 100,
+    commissionRate,
+  };
 }
 
 export async function GET() {

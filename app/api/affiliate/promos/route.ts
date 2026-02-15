@@ -192,17 +192,22 @@ export async function GET() {
       };
     });
 
-    // Get affiliate payment info + payout data
-    const [paymentInfoRes, payoutsRes] = await Promise.all([
+    // Get affiliate payment info + payout data + referral earnings
+    const [paymentInfoRes, payoutsRes, referralEarningsRes] = await Promise.all([
       admin.from("profiles").select("affiliate_iban, affiliate_holder_name").eq("user_id", user.id).single(),
       admin.from("affiliate_payouts").select("amount, status").eq("affiliate_user_id", user.id),
+      admin.from("affiliate_referral_earnings").select("earning_amount").eq("referrer_id", user.id),
     ]);
 
     const paymentInfo = paymentInfoRes.data;
     const payoutsList = payoutsRes.data || [];
     const totalPaidOut = payoutsList.filter((p: any) => p.status === "approved").reduce((sum: number, p: any) => sum + Number(p.amount), 0);
     const totalPending = payoutsList.filter((p: any) => p.status === "pending").reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    const availableBalance = Math.round((totalEarnings - totalPaidOut - totalPending) * 100) / 100;
+
+    // Add referral earnings to total
+    const referralEarnings = (referralEarningsRes.data || []).reduce((sum: number, e: any) => sum + Number(e.earning_amount), 0);
+    const combinedEarnings = Math.round((totalEarnings + referralEarnings) * 100) / 100;
+    const availableBalance = Math.round((combinedEarnings - totalPaidOut - totalPending) * 100) / 100;
 
     return NextResponse.json({
       promos,
@@ -210,12 +215,13 @@ export async function GET() {
         totalSignups,
         totalPurchases: allPayments.length,
         totalRevenue: Math.round(totalRevenue * 100) / 100,
-        totalEarnings,
+        totalEarnings: combinedEarnings,
         commissionRate,
         periods: periodAnalytics,
+        referralEarnings: Math.round(referralEarnings * 100) / 100,
       },
       balance: {
-        totalEarnings,
+        totalEarnings: combinedEarnings,
         totalPaidOut: Math.round(totalPaidOut * 100) / 100,
         totalPending: Math.round(totalPending * 100) / 100,
         available: Math.max(0, availableBalance),

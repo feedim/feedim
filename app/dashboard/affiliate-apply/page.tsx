@@ -36,7 +36,7 @@ export default function AffiliateApplyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [existingApplication, setExistingApplication] = useState<any>(null);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [form, setForm] = useState({ socialMedia: "", followers: "", description: "" });
+  const [form, setForm] = useState({ socialMedia: "", followers: "", description: "", referralCode: "" });
   const router = useRouter();
   const supabase = createClient();
 
@@ -63,6 +63,12 @@ export default function AffiliateApplyPage() {
 
         setProfile(profileData);
         setEmailVerified(profileData?.email_verified || false);
+
+        // Load referral code from localStorage (captured from /affiliate?ref=CODE)
+        const storedRef = localStorage.getItem("forilove_affiliate_ref");
+        if (storedRef) {
+          setForm(prev => ({ ...prev, referralCode: storedRef }));
+        }
 
         // Check existing application
         const res = await fetch("/api/affiliate/apply");
@@ -109,6 +115,7 @@ export default function AffiliateApplyPage() {
           socialMedia: form.socialMedia.trim(),
           followers: form.followers.trim(),
           description: form.description.trim(),
+          referralCode: form.referralCode.trim() || null,
         }),
       });
       const data = await res.json();
@@ -117,6 +124,7 @@ export default function AffiliateApplyPage() {
         return;
       }
       setExistingApplication({ status: "pending", created_at: new Date().toISOString(), social_media: form.socialMedia, followers: form.followers, description: form.description });
+      localStorage.removeItem("forilove_affiliate_ref");
       toast.success("Başvurunuz alındı!");
     } catch {
       toast.error("Bir hata oluştu");
@@ -293,6 +301,21 @@ export default function AffiliateApplyPage() {
                   maxLength={300}
                 />
                 <p className="text-[10px] text-zinc-600 text-right mt-0.5">{form.description.length}/300</p>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Referans Kodu <span className="text-zinc-600">(opsiyonel)</span></label>
+                <input
+                  type="text"
+                  value={form.referralCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 20);
+                    setForm({ ...form, referralCode: val });
+                  }}
+                  placeholder="Sizi davet eden kişinin kodu"
+                  className="input-modern w-full text-sm"
+                  maxLength={20}
+                />
+                <p className="text-[10px] text-zinc-600 mt-0.5">Bir affiliate tarafından davet edildiyseniz kodunu girin.</p>
               </div>
 
               <button

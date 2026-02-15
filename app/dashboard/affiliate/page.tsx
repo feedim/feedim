@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, User, Wallet, Send, Globe, HelpCircle, Shield, Link2, Copy, Check, Info } from "lucide-react";
+import { ArrowLeft, BarChart3, User, Wallet, Send, Globe, HelpCircle, Shield, Link2, Copy, Check, Info, UserPlus, Users, History } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
@@ -17,6 +17,9 @@ export default function AffiliateDashboardPage() {
   const [urlInput, setUrlInput] = useState("");
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [urlCopied, setUrlCopied] = useState(false);
+  const [referralData, setReferralData] = useState<any>(null);
+  const [refLinkCopied, setRefLinkCopied] = useState(false);
+  const [payouts, setPayouts] = useState<any[]>([]);
   const router = useRouter();
   const supabase = createClient();
 
@@ -40,7 +43,12 @@ export default function AffiliateDashboardPage() {
         return;
       }
 
-      const res = await fetch("/api/affiliate/promos");
+      const [res, refRes, payoutRes] = await Promise.all([
+        fetch("/api/affiliate/promos"),
+        fetch("/api/affiliate/referral"),
+        fetch("/api/affiliate/payouts"),
+      ]);
+
       if (res.ok) {
         const data = await res.json();
         setSponsorAnalytics(data.analytics || null);
@@ -49,6 +57,16 @@ export default function AffiliateDashboardPage() {
         if (data.promos && data.promos.length > 0) {
           setPromoCode(data.promos[0].code || "");
         }
+      }
+
+      if (refRes.ok) {
+        const refData = await refRes.json();
+        setReferralData(refData);
+      }
+
+      if (payoutRes.ok) {
+        const payoutData = await payoutRes.json();
+        setPayouts(payoutData.payouts || []);
       }
     } catch {
       /* silent */
@@ -269,6 +287,157 @@ export default function AffiliateDashboardPage() {
                   </Link>
                 </div>
               )}
+            </div>
+
+            {/* Affiliate Davet (Referral) */}
+            <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <UserPlus className="h-5 w-5 text-pink-500" />
+                <h3 className="font-semibold">Affiliate Davet Et</h3>
+              </div>
+              <p className="text-xs text-zinc-500 mb-4">
+                Referans linkinizi paylaşarak diğer içerik üreticilerini davet edin. Davet ettiğiniz affiliate her ödeme aldığında, ödeme tutarının %5&apos;i kadar ek kazanç elde edersiniz.
+              </p>
+
+              {referralData?.referralLink ? (
+                <>
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-3 mb-3">
+                    <p className="text-sm text-pink-500 flex-1 break-all font-mono">{referralData.referralLink}</p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(referralData.referralLink);
+                        setRefLinkCopied(true);
+                        setTimeout(() => setRefLinkCopied(false), 2000);
+                      }}
+                      className="shrink-0 p-2 rounded-lg hover:bg-white/10 transition"
+                    >
+                      {refLinkCopied ? <Check className="h-4 w-4 text-pink-500" /> : <Copy className="h-4 w-4 text-zinc-400" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-zinc-600 mb-4">Referans kodunuz: <span className="text-pink-500 font-mono">{referralData.referralCode}</span></p>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+                      <p className="text-[10px] text-zinc-500 mb-0.5">Davet Edilen</p>
+                      <p className="text-lg font-bold text-pink-500">{referralData.referredCount || 0}</p>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+                      <p className="text-[10px] text-zinc-500 mb-0.5">Referans Kazancı</p>
+                      <p className="text-lg font-bold text-pink-500">{(referralData.totalReferralEarnings || 0).toLocaleString('tr-TR')} <span className="text-[10px] text-zinc-500">TRY</span></p>
+                    </div>
+                  </div>
+
+                  {/* Referred affiliates list */}
+                  {referralData.referredAffiliates && referralData.referredAffiliates.length > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4 text-pink-500" />
+                        <p className="text-xs text-zinc-400 font-medium">Davet Ettikleriniz</p>
+                      </div>
+                      <div className="space-y-2">
+                        {referralData.referredAffiliates.map((a: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold text-zinc-300">
+                                {a.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{a.name}</p>
+                                <p className="text-[10px] text-zinc-500">{new Date(a.joinedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs font-semibold text-pink-400">{a.totalEarnings > 0 ? `+${a.totalEarnings.toLocaleString('tr-TR')} TRY` : '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-white/5 rounded-xl p-4">
+                  <p className="text-sm text-zinc-400">Referans linki oluşturmak için önce bir promo kodu oluşturun. Promo kodunuz aynı zamanda referans kodunuz olarak kullanılır.</p>
+                </div>
+              )}
+            </div>
+
+            {/* İşlem Geçmişi */}
+            <div className="bg-zinc-900 rounded-2xl p-6 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <History className="h-5 w-5 text-pink-500" />
+                <h3 className="font-semibold">İşlem Geçmişi</h3>
+              </div>
+              {(() => {
+                // Build combined transaction list
+                const transactions: { type: string; amount: number; date: string; detail: string }[] = [];
+
+                // Add payouts
+                for (const p of payouts) {
+                  if (p.status === 'approved') {
+                    transactions.push({
+                      type: 'payout',
+                      amount: -Number(p.amount),
+                      date: p.processed_at || p.requested_at,
+                      detail: 'Ödeme çekimi',
+                    });
+                  }
+                }
+
+                // Add referral earnings
+                if (referralData?.referredAffiliates) {
+                  for (const a of referralData.referredAffiliates) {
+                    if (a.totalEarnings > 0) {
+                      transactions.push({
+                        type: 'referral',
+                        amount: a.totalEarnings,
+                        date: a.joinedAt,
+                        detail: `Referans kazancı (${a.name})`,
+                      });
+                    }
+                  }
+                }
+
+                // Sort by date descending
+                transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                if (transactions.length === 0) {
+                  return (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-zinc-500">Henüz işlem geçmişi yok.</p>
+                      <p className="text-xs text-zinc-600 mt-1">Satış komisyonları ve referans kazançları burada görünecektir.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {transactions.slice(0, 15).map((tx, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            tx.type === 'payout' ? 'bg-red-500/10' : tx.type === 'referral' ? 'bg-purple-500/10' : 'bg-pink-500/10'
+                          }`}>
+                            {tx.type === 'payout' ? (
+                              <Send className="h-3.5 w-3.5 text-red-400" />
+                            ) : tx.type === 'referral' ? (
+                              <UserPlus className="h-3.5 w-3.5 text-purple-400" />
+                            ) : (
+                              <Wallet className="h-3.5 w-3.5 text-pink-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{tx.detail}</p>
+                            <p className="text-[10px] text-zinc-500">{new Date(tx.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <span className={`text-sm font-bold shrink-0 ${tx.amount >= 0 ? 'text-pink-500' : 'text-red-400'}`}>
+                          {tx.amount >= 0 ? '+' : ''}{tx.amount.toLocaleString('tr-TR')} TRY
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Promo Kullanım Notu */}
