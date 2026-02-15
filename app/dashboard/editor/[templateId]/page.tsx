@@ -1795,7 +1795,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
           p_user_id: user.id,
           p_amount: AI_COST,
           p_description: 'AI ile Doldur kullanımı',
-          p_reference_id: project?.id || null,
+          p_reference_id: (project?.id && project.id !== 'temp') ? project.id : null,
           p_reference_type: 'ai_generate',
         });
 
@@ -1909,7 +1909,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
           p_user_id: user.id,
           p_amount: TEMPLATE_UNLOCK_COST,
           p_description: 'Ücretsiz şablon kilitleri açıldı',
-          p_reference_id: project?.id || null,
+          p_reference_id: (project?.id && project.id !== 'temp') ? project.id : null,
           p_reference_type: 'template_unlock',
         });
 
@@ -1919,12 +1919,13 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
         }
 
         // Update project unlocked_fields with all locked keys
-        const { error: updateError } = await supabase
-          .from('projects')
-          .update({ unlocked_fields: allLockedKeys, updated_at: new Date().toISOString() })
-          .eq('id', project?.id);
-
-        if (updateError) throw updateError;
+        if (project?.id && project.id !== 'temp') {
+          const { error: updateError } = await supabase
+            .from('projects')
+            .update({ unlocked_fields: allLockedKeys, updated_at: new Date().toISOString() })
+            .eq('id', project.id);
+          if (updateError) throw updateError;
+        }
 
         return { success: true, newBalance: spendResult[0].new_balance };
       },
