@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import crypto from "crypto";
+
+function generateRefId(): string {
+  // 8-char uppercase alphanumeric: e.g. "A7K3M9X2"
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I confusion
+  const bytes = crypto.randomBytes(8);
+  return Array.from(bytes).map(b => chars[b % chars.length]).join("");
+}
 
 async function verifyAffiliate(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,16 +35,38 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    // Get affiliate's first (oldest) promo code — deterministic referral code
-    const { data: promo } = await admin
-      .from("promo_links")
-      .select("code")
-      .eq("created_by", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // Get or generate affiliate_ref_id (immutable referral code)
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("affiliate_ref_id")
+      .eq("user_id", user.id)
+      .single();
 
-    const referralCode = promo?.code || null;
+    let referralCode = profile?.affiliate_ref_id || null;
+
+    // Lazy-generate for existing affiliates who don't have one yet
+    if (!referralCode) {
+      let newRefId = generateRefId();
+      // Ensure uniqueness (retry up to 3 times)
+      for (let i = 0; i < 3; i++) {
+        const { data: existing } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("affiliate_ref_id", newRefId)
+          .maybeSingle();
+        if (!existing) break;
+        newRefId = generateRefId();
+      }
+
+      const { error: updateErr } = await admin
+        .from("profiles")
+        .update({ affiliate_ref_id: newRefId })
+        .eq("user_id", user.id);
+
+      if (!updateErr) {
+        referralCode = newRefId;
+      }
+    }
 
     // Get affiliates referred by this user
     const { data: referrals } = await admin

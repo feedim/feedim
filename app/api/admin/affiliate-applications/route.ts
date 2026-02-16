@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import crypto from "crypto";
+
+function generateRefId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.randomBytes(8);
+  return Array.from(bytes).map(b => chars[b % chars.length]).join("");
+}
 
 async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -105,11 +112,23 @@ export async function PUT(request: NextRequest) {
 
     if (updateError) throw updateError;
 
-    // If approved, update user role to affiliate
+    // If approved, update user role to affiliate + generate unique ref ID
     if (action === "approve") {
+      // Generate unique affiliate_ref_id
+      let newRefId = generateRefId();
+      for (let i = 0; i < 3; i++) {
+        const { data: existing } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("affiliate_ref_id", newRefId)
+          .maybeSingle();
+        if (!existing) break;
+        newRefId = generateRefId();
+      }
+
       const { error: roleError } = await admin
         .from("profiles")
-        .update({ role: "affiliate" })
+        .update({ role: "affiliate", affiliate_ref_id: newRefId })
         .eq("user_id", application.user_id);
 
       if (roleError) {
@@ -125,49 +144,19 @@ export async function PUT(request: NextRequest) {
       // Create affiliate referral relationship if referral_code exists
       if (application.referral_code) {
         try {
-          // First check active promo codes
-          let { data: referrerPromo } = await admin
-            .from("promo_links")
-            .select("created_by")
-            .ilike("code", application.referral_code)
+          // Look up referrer by their affiliate_ref_id
+          const { data: referrerProfile } = await admin
+            .from("profiles")
+            .select("user_id, role")
+            .eq("affiliate_ref_id", application.referral_code.toUpperCase())
             .maybeSingle();
 
-          // If not found, check promo_code_history (code may have been renamed)
-          if (!referrerPromo) {
-            const { data: historyMatch } = await admin
-              .from("promo_code_history")
-              .select("promo_link_id")
-              .ilike("old_code", application.referral_code)
-              .order("changed_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (historyMatch) {
-              const { data: linkedPromo } = await admin
-                .from("promo_links")
-                .select("created_by")
-                .eq("id", historyMatch.promo_link_id)
-                .maybeSingle();
-
-              if (linkedPromo) {
-                referrerPromo = linkedPromo;
-              }
-            }
-          }
-
-          if (referrerPromo && referrerPromo.created_by !== application.user_id) {
-            // Verify referrer is an affiliate
-            const { data: referrerProfile } = await admin
-              .from("profiles")
-              .select("role")
-              .eq("user_id", referrerPromo.created_by)
-              .single();
-
-            if (referrerProfile?.role === "affiliate" || referrerProfile?.role === "admin") {
+          if (referrerProfile && referrerProfile.user_id !== application.user_id) {
+            if (referrerProfile.role === "affiliate" || referrerProfile.role === "admin") {
               await admin
                 .from("affiliate_referrals")
                 .insert({
-                  referrer_id: referrerPromo.created_by,
+                  referrer_id: referrerProfile.user_id,
                   referred_id: application.user_id,
                   referral_code: application.referral_code,
                 })

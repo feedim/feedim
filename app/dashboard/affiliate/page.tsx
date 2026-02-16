@@ -330,7 +330,8 @@ export default function AffiliateDashboardPage() {
                       {refLinkCopied ? <Check className="h-4 w-4 text-pink-500" /> : <Copy className="h-4 w-4 text-zinc-400" />}
                     </button>
                   </div>
-                  <p className="text-sm text-zinc-600 mb-4">Referans kodunuz: <span className="text-base font-bold text-pink-500 font-mono">{referralData.referralCode}</span></p>
+                  <p className="text-sm text-zinc-600 mb-1">Referans kodunuz: <span className="text-base font-bold text-pink-500 font-mono">{referralData.referralCode}</span></p>
+                  <p className="text-[10px] text-zinc-600 mb-4">Referans kodunuz sistem tarafından oluşturulmuştur ve değiştirilemez. Değişiklik talebi için <a href="mailto:support@forilove.com" className="text-pink-500 hover:text-pink-400">support@forilove.com</a></p>
 
                   {/* Stats */}
                   <div className="mb-3">
