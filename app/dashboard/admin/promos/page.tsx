@@ -319,6 +319,7 @@ export default function AdminPromosPage() {
                             value={promoForm.maxSignups}
                             onChange={(e) => setPromoForm({ ...promoForm, maxSignups: Math.max(1, parseInt(e.target.value) || 1) })}
                             min={1}
+                            max={999999}
                             className="input-modern w-full text-sm"
                           />
                         </div>
@@ -329,6 +330,7 @@ export default function AdminPromosPage() {
                             value={promoForm.expiryHours}
                             onChange={(e) => setPromoForm({ ...promoForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
                             min={1}
+                            max={87600}
                             className="input-modern w-full text-sm"
                           />
                         </div>

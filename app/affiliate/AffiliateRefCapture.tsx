@@ -12,7 +12,7 @@ export default function AffiliateRefCapture() {
   useEffect(() => {
     const ref = searchParams.get("ref");
     if (ref && /^[a-zA-Z0-9]{3,20}$/.test(ref)) {
-      const code = ref.toUpperCase();
+      const code = ref.toLocaleUpperCase('tr-TR');
       localStorage.setItem(AFFILIATE_REF_KEY, code);
 
       // If user is logged in, persist to profile (only if not already set)

@@ -316,7 +316,7 @@ export default function AffiliateApplyPage() {
                   type="text"
                   value={form.referralCode}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 20);
+                    const val = e.target.value.replace(/[^a-zA-Z0-9İŞĞÜÖÇışğüöç]/g, "").toLocaleUpperCase('tr-TR').slice(0, 20);
                     setForm({ ...form, referralCode: val });
                   }}
                   placeholder="Sizi davet eden kişinin kodu"

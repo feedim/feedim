@@ -117,8 +117,9 @@ export default function AdminProjectsPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value.slice(0, 100))}
               placeholder="Sayfa, kullanıcı veya slug ara..."
+              maxLength={100}
               className="w-full bg-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-400"
             />
           </div>

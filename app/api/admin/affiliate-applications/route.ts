@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest) {
           const { data: referrerProfile } = await admin
             .from("profiles")
             .select("user_id, role")
-            .eq("affiliate_ref_id", application.referral_code.toUpperCase())
+            .eq("affiliate_ref_id", application.referral_code.toLocaleUpperCase('tr-TR'))
             .maybeSingle();
 
           if (referrerProfile && referrerProfile.user_id !== application.user_id) {

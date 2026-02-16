@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  if (!code || !/^[a-zA-Z0-9]{3,20}$/.test(code)) {
+  if (!code || !/^[a-zA-ZİŞĞÜÖÇışğüöç0-9]{3,20}$/.test(code)) {
     return NextResponse.json({ valid: false });
   }
 

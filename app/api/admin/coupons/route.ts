@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Only allow alphanumeric
-      const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cleanCode = code.trim().toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '');
       if (cleanCode.length < 3) {
         return NextResponse.json({ error: "Promo kodu en az 3 harf/rakam olmali" }, { status: 400 });
       }
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only allow alphanumeric, max 9
-    const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const cleanCode = code.trim().toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '');
     if (cleanCode.length < 3 || cleanCode.length > 9) {
       return NextResponse.json({ error: "Kupon kodu 3-9 karakter olmali (harf/rakam)" }, { status: 400 });
     }

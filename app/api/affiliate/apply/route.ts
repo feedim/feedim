@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     // Validate referral code if provided
     const cleanReferralCode = referralCode
-      ? String(referralCode).replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 20)
+      ? String(referralCode).replace(/[^a-zA-Z0-9İŞĞÜÖÇışğüöç]/g, "").toLocaleUpperCase('tr-TR').slice(0, 20)
       : null;
 
     const { error } = await admin

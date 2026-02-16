@@ -135,7 +135,7 @@ export default function AdminCouponsPage() {
                   <input
                     type="text"
                     value={couponForm.code}
-                    onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
+                    onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '') })}
                     placeholder="YENI2026"
                     maxLength={9}
                     className="input-modern w-full text-sm font-mono tracking-wider"
@@ -171,6 +171,7 @@ export default function AdminCouponsPage() {
                     value={couponForm.maxUses}
                     onChange={(e) => setCouponForm({ ...couponForm, maxUses: Math.max(1, parseInt(e.target.value) || 1) })}
                     min={1}
+                    max={999999}
                     className="input-modern w-full text-sm"
                   />
                 </div>
@@ -181,6 +182,7 @@ export default function AdminCouponsPage() {
                     value={couponForm.expiryHours}
                     onChange={(e) => setCouponForm({ ...couponForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
                     min={1}
+                    max={87600}
                     className="input-modern w-full text-sm"
                   />
                 </div>
