@@ -16,6 +16,14 @@ async function verifyAffiliate(supabase: Awaited<ReturnType<typeof createClient>
   return { ...user, role: profile?.role };
 }
 
+function maskName(name?: string, surname?: string): string {
+  const n = name || "?";
+  const s = surname || "";
+  const maskedN = n.length > 1 ? n.charAt(0) + "***" : n;
+  const maskedS = s.length > 1 ? s.charAt(0) + "***" : s;
+  return `${maskedN} ${maskedS}`.trim();
+}
+
 const PAGE_SIZE = 20;
 
 export async function GET(request: NextRequest) {
@@ -61,7 +69,24 @@ export async function GET(request: NextRequest) {
     const startIso = startDate.toISOString();
     const admin = createAdminClient();
 
-    // Fetch approved payouts
+    // 1. Satış komisyonları (affiliate_commissions — kendi satışları)
+    const { data: commissions } = await admin
+      .from("affiliate_commissions")
+      .select("id, sale_amount, commission_rate, commission_amount, created_at")
+      .eq("affiliate_user_id", user.id)
+      .gte("created_at", startIso)
+      .order("created_at", { ascending: false });
+
+    // 2. Referans kazançları (affiliate_commissions — referrer olarak)
+    const { data: refCommissions } = await admin
+      .from("affiliate_commissions")
+      .select("id, affiliate_user_id, referrer_earning, created_at")
+      .eq("referrer_id", user.id)
+      .gt("referrer_earning", 0)
+      .gte("created_at", startIso)
+      .order("created_at", { ascending: false });
+
+    // 3. Onaylanmış ödeme çekimleri
     const { data: payouts } = await admin
       .from("affiliate_payouts")
       .select("id, amount, status, requested_at, processed_at")
@@ -70,28 +95,44 @@ export async function GET(request: NextRequest) {
       .gte("requested_at", startIso)
       .order("requested_at", { ascending: false });
 
-    // Fetch referral earnings
-    const { data: referralEarnings } = await admin
-      .from("affiliate_referral_earnings")
-      .select("id, referred_id, earning_amount, created_at")
-      .eq("referrer_id", user.id)
-      .gte("created_at", startIso)
-      .order("created_at", { ascending: false });
-
-    // Get referred profiles for masking
-    const referredIds = [...new Set((referralEarnings || []).map(e => e.referred_id))];
+    // Get profiles for referral commission masking
+    const refAffiliateIds = [...new Set((refCommissions || []).map(e => e.affiliate_user_id))];
     let profileMap = new Map<string, { name: string; surname: string }>();
-    if (referredIds.length > 0) {
+    if (refAffiliateIds.length > 0) {
       const { data: profiles } = await admin
         .from("profiles")
         .select("user_id, name, surname")
-        .in("user_id", referredIds);
+        .in("user_id", refAffiliateIds);
       profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
     }
 
     // Build combined transaction list
     const transactions: { id: string; type: string; amount: number; date: string; detail: string }[] = [];
 
+    // Satış komisyonları
+    for (const c of (commissions || [])) {
+      transactions.push({
+        id: `comm_${c.id}`,
+        type: "commission",
+        amount: Number(c.commission_amount),
+        date: c.created_at,
+        detail: `Satış komisyonu (%${c.commission_rate}) — ${Number(c.sale_amount).toFixed(2)} TL satış`,
+      });
+    }
+
+    // Referans kazançları
+    for (const rc of (refCommissions || [])) {
+      const prof = profileMap.get(rc.affiliate_user_id);
+      transactions.push({
+        id: `refcomm_${rc.id}`,
+        type: "referral",
+        amount: Number(rc.referrer_earning),
+        date: rc.created_at,
+        detail: `Referans kazancı (${maskName(prof?.name, prof?.surname)})`,
+      });
+    }
+
+    // Ödeme çekimleri
     for (const p of (payouts || [])) {
       transactions.push({
         id: `payout_${p.id}`,
@@ -99,20 +140,6 @@ export async function GET(request: NextRequest) {
         amount: -Number(p.amount),
         date: p.processed_at || p.requested_at,
         detail: "Ödeme çekimi",
-      });
-    }
-
-    for (const e of (referralEarnings || [])) {
-      const prof = profileMap.get(e.referred_id);
-      const n = prof?.name || "?";
-      const s = prof?.surname || "";
-      const maskedName = (n.length > 1 ? n.charAt(0) + "***" : n) + " " + (s.length > 1 ? s.charAt(0) + "***" : s);
-      transactions.push({
-        id: `ref_${e.id}`,
-        type: "referral",
-        amount: Number(e.earning_amount),
-        date: e.created_at,
-        detail: `Referans kazancı (${maskedName.trim()})`,
       });
     }
 

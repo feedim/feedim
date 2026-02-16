@@ -203,7 +203,7 @@ export async function GET() {
     const [paymentInfoRes, payoutsRes, referralEarningsRes] = await Promise.all([
       admin.from("profiles").select("affiliate_iban, affiliate_holder_name").eq("user_id", user.id).single(),
       admin.from("affiliate_payouts").select("amount, status").eq("affiliate_user_id", user.id),
-      admin.from("affiliate_referral_earnings").select("earning_amount, created_at").eq("referrer_id", user.id),
+      admin.from("affiliate_commissions").select("referrer_earning, created_at").eq("referrer_id", user.id).gt("referrer_earning", 0),
     ]);
 
     const paymentInfo = paymentInfoRes.data;
@@ -219,7 +219,7 @@ export async function GET() {
           const d = new Date(e.created_at);
           return d >= start && (!end || d < end);
         })
-        .reduce((sum: number, e: any) => sum + Number(e.earning_amount), 0);
+        .reduce((sum: number, e: any) => sum + Number(e.referrer_earning), 0);
     };
 
     // Attach referral earnings to each period
@@ -229,7 +229,7 @@ export async function GET() {
     }
 
     // Add referral earnings to total
-    const referralEarnings = allReferralEarnings.reduce((sum: number, e: any) => sum + Number(e.earning_amount), 0);
+    const referralEarnings = allReferralEarnings.reduce((sum: number, e: any) => sum + Number(e.referrer_earning), 0);
     const combinedEarnings = Math.round((totalEarnings + referralEarnings) * 100) / 100;
     const availableBalance = Math.round((combinedEarnings - totalPaidOut - totalPending) * 100) / 100;
 

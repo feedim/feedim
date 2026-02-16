@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const TOTAL_ALLOCATION = 35;
-const REFERRAL_COMMISSION_RATE = 0.05; // 5% of payout amount
 
 async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -180,14 +179,15 @@ export async function PUT(request: NextRequest) {
       }
       totalEarnings = Math.round(totalEarnings * 100) / 100;
 
-      // Include referral earnings in balance verification
+      // Include referral earnings in balance verification (from affiliate_commissions)
       const { data: refEarnings } = await admin
-        .from("affiliate_referral_earnings")
-        .select("earning_amount")
-        .eq("referrer_id", affiliateId);
+        .from("affiliate_commissions")
+        .select("referrer_earning")
+        .eq("referrer_id", affiliateId)
+        .gt("referrer_earning", 0);
 
       const totalRefEarnings = (refEarnings || []).reduce(
-        (sum, e) => sum + Number(e.earning_amount), 0
+        (sum: number, e: any) => sum + Number(e.referrer_earning), 0
       );
       totalEarnings = Math.round((totalEarnings + totalRefEarnings) * 100) / 100;
 
@@ -232,35 +232,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Ödeme talebi zaten işlenmiş" }, { status: 409 });
     }
 
-    // On approval: credit 5% referral commission to the person who invited this affiliate
-    if (action === "approve") {
-      try {
-        const { data: referral } = await admin
-          .from("affiliate_referrals")
-          .select("referrer_id")
-          .eq("referred_id", payout.affiliate_user_id)
-          .maybeSingle();
-
-        if (referral) {
-          const payoutAmount = Number(payout.amount);
-          const earningAmount = Math.round(payoutAmount * REFERRAL_COMMISSION_RATE * 100) / 100;
-
-          if (earningAmount > 0) {
-            await admin
-              .from("affiliate_referral_earnings")
-              .insert({
-                referrer_id: referral.referrer_id,
-                referred_id: payout.affiliate_user_id,
-                payout_id: payoutId,
-                payout_amount: payoutAmount,
-                earning_amount: earningAmount,
-              });
-          }
-        }
-      } catch {
-        // Non-critical: referral earning failure doesn't block payout approval
-      }
-    }
+    // Referral earnings are now automatically tracked per-sale in affiliate_commissions table
+    // (via processAffiliateCommission in payment callback)
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (error) {

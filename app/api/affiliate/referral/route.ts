@@ -95,17 +95,18 @@ export async function GET() {
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
 
-      // Get referral earnings grouped by referred_id
+      // Get referral earnings grouped by referred affiliate (from affiliate_commissions)
       const { data: earnings } = await admin
-        .from("affiliate_referral_earnings")
-        .select("referred_id, earning_amount")
-        .eq("referrer_id", user.id);
+        .from("affiliate_commissions")
+        .select("affiliate_user_id, referrer_earning")
+        .eq("referrer_id", user.id)
+        .gt("referrer_earning", 0);
 
       const earningsByReferred = new Map<string, number>();
       for (const e of (earnings || [])) {
         earningsByReferred.set(
-          e.referred_id,
-          (earningsByReferred.get(e.referred_id) || 0) + Number(e.earning_amount)
+          e.affiliate_user_id,
+          (earningsByReferred.get(e.affiliate_user_id) || 0) + Number(e.referrer_earning)
         );
       }
 
@@ -140,14 +141,15 @@ export async function GET() {
       }
     }
 
-    // Total referral earnings
+    // Total referral earnings (from affiliate_commissions)
     const { data: allEarnings } = await admin
-      .from("affiliate_referral_earnings")
-      .select("earning_amount")
-      .eq("referrer_id", user.id);
+      .from("affiliate_commissions")
+      .select("referrer_earning")
+      .eq("referrer_id", user.id)
+      .gt("referrer_earning", 0);
 
     const totalReferralEarnings = Math.round(
-      (allEarnings || []).reduce((sum, e) => sum + Number(e.earning_amount), 0) * 100
+      (allEarnings || []).reduce((sum, e) => sum + Number(e.referrer_earning), 0) * 100
     ) / 100;
 
     // Check if this user was referred by someone
