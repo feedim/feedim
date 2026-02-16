@@ -68,15 +68,22 @@ export async function GET() {
       }
     }
 
-    // Get affiliates referred by this user
+    // Get last 10 affiliates referred by this user
     const { data: referrals } = await admin
       .from("affiliate_referrals")
       .select("referred_id, referral_code, created_at")
       .eq("referrer_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(10);
 
     const referralList = referrals || [];
     const referredIds = referralList.map(r => r.referred_id);
+
+    // Total referred count (not limited to 10)
+    const { count: totalReferredCount } = await admin
+      .from("affiliate_referrals")
+      .select("id", { count: "exact", head: true })
+      .eq("referrer_id", user.id);
 
     // Get referred affiliates' profiles (masked)
     let referredAffiliates: { name: string; joinedAt: string; totalEarnings: number }[] = [];
@@ -115,15 +122,22 @@ export async function GET() {
       });
     }
 
-    // Count approved affiliates among referred users
+    // Count ALL approved affiliates among referred users (not limited to 10)
     let approvedReferredCount = 0;
-    if (referredIds.length > 0) {
-      const { data: approvedProfiles } = await admin
-        .from("profiles")
-        .select("user_id")
-        .in("user_id", referredIds)
-        .eq("role", "affiliate");
-      approvedReferredCount = approvedProfiles?.length || 0;
+    {
+      const { data: allReferrals } = await admin
+        .from("affiliate_referrals")
+        .select("referred_id")
+        .eq("referrer_id", user.id);
+      const allReferredIds = (allReferrals || []).map(r => r.referred_id);
+      if (allReferredIds.length > 0) {
+        const { data: approvedProfiles } = await admin
+          .from("profiles")
+          .select("user_id")
+          .in("user_id", allReferredIds)
+          .eq("role", "affiliate");
+        approvedReferredCount = approvedProfiles?.length || 0;
+      }
     }
 
     // Total referral earnings
@@ -146,7 +160,7 @@ export async function GET() {
     return NextResponse.json({
       referralCode,
       referralLink: referralCode ? `https://forilove.com/affiliate?ref=${referralCode}` : null,
-      referredCount: referralList.length,
+      referredCount: totalReferredCount || referralList.length,
       approvedReferredCount,
       referredAffiliates,
       totalReferralEarnings,

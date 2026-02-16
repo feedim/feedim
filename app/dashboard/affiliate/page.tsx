@@ -346,10 +346,10 @@ export default function AffiliateDashboardPage() {
                     <div className="mt-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Users className="h-4 w-4 text-pink-500" />
-                        <p className="text-xs text-zinc-400 font-medium">Davet Ettikleriniz</p>
+                        <p className="text-xs text-zinc-400 font-medium">Davet Ettikleriniz (son 10)</p>
                       </div>
                       <div className="space-y-2">
-                        {referralData.referredAffiliates.map((a: any, i: number) => (
+                        {referralData.referredAffiliates.slice(0, 10).map((a: any, i: number) => (
                           <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold text-zinc-300">
