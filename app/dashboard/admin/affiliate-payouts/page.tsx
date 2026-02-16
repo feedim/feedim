@@ -106,7 +106,7 @@ export default function AdminAffiliatePayoutsPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-3xl">
+      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 sm:py-8 pb-24 md:pb-16">
         {loading ? (
           <div className="space-y-4">
             <div className="bg-zinc-900 rounded-2xl p-6 animate-pulse h-24" />
@@ -171,7 +171,12 @@ export default function AdminAffiliatePayoutsPage() {
                       {/* Üst: Tutar + Durum */}
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <p className="text-2xl font-bold">{Number(payout.amount).toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">TRY</span></p>
+                          <p className="text-2xl font-bold">
+                            {Number(payout.amount).toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">{payout.currency || "TRY"}</span>
+                          </p>
+                          {payout.currency === "USD" && payout.exchange_rate && (
+                            <p className="text-xs text-zinc-500">kur: 1 USD = {Number(payout.exchange_rate).toLocaleString('tr-TR')} TRY</p>
+                          )}
                           <p className="text-xs text-zinc-500 mt-1">
                             {new Date(payout.requested_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>

@@ -1,0 +1,3 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS payout_currency TEXT DEFAULT 'TRY';
+ALTER TABLE affiliate_payouts ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'TRY';
+ALTER TABLE affiliate_payouts ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(10,4);

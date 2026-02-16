@@ -206,6 +206,17 @@ export async function GET() {
       admin.from("affiliate_commissions").select("referrer_earning, created_at").eq("referrer_id", user.id).gt("referrer_earning", 0),
     ]);
 
+    // Fetch payout_currency separately (column may not exist yet if migration is pending)
+    let payoutCurrency = "TRY";
+    try {
+      const { data: currencyData } = await admin
+        .from("profiles")
+        .select("payout_currency")
+        .eq("user_id", user.id)
+        .single();
+      if (currencyData?.payout_currency) payoutCurrency = currencyData.payout_currency;
+    } catch { /* column may not exist yet */ }
+
     const paymentInfo = paymentInfoRes.data;
     const payoutsList = payoutsRes.data || [];
     const totalPaidOut = payoutsList.filter((p: any) => p.status === "approved").reduce((sum: number, p: any) => sum + Number(p.amount), 0);
@@ -256,6 +267,7 @@ export async function GET() {
       paymentInfo: paymentInfo ? {
         iban: paymentInfo.affiliate_iban || null,
         holderName: paymentInfo.affiliate_holder_name || null,
+        payoutCurrency: payoutCurrency,
       } : null,
     });
   } catch (error) {
@@ -419,7 +431,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { iban, holderName } = body;
+    const { iban, holderName, payoutCurrency } = body;
+
+    // Allow updating only payoutCurrency without IBAN
+    if (payoutCurrency && !iban) {
+      if (payoutCurrency !== "TRY" && payoutCurrency !== "USD") {
+        return NextResponse.json({ error: "Geçersiz para birimi" }, { status: 400 });
+      }
+      const admin = createAdminClient();
+      try {
+        await admin
+          .from("profiles")
+          .update({ payout_currency: payoutCurrency })
+          .eq("user_id", user.id);
+      } catch { /* column may not exist yet */ }
+      return NextResponse.json({ success: true });
+    }
 
     if (!iban || typeof iban !== "string" || !holderName || typeof holderName !== "string") {
       return NextResponse.json({ error: "IBAN ve ad soyad gerekli" }, { status: 400 });
@@ -453,6 +480,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    // Save IBAN info
     const { error } = await admin
       .from("profiles")
       .update({
@@ -462,6 +491,16 @@ export async function PUT(request: NextRequest) {
       .eq("user_id", user.id);
 
     if (error) throw error;
+
+    // Save payout currency separately (column may not exist yet)
+    if (payoutCurrency === "TRY" || payoutCurrency === "USD") {
+      try {
+        await admin
+          .from("profiles")
+          .update({ payout_currency: payoutCurrency })
+          .eq("user_id", user.id);
+      } catch { /* column may not exist yet */ }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

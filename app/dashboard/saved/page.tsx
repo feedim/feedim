@@ -13,11 +13,14 @@ import { usePurchaseConfirm } from "@/components/PurchaseConfirmModal";
 import { getActivePrice, isDiscountActive } from "@/lib/discount";
 import type { CouponInfo } from "@/components/PurchaseConfirmModal";
 
+const ITEMS_PER_PAGE = 12;
+
 export default function SavedTemplatesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<string[]>([]);
   const [coinBalance, setCoinBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const router = useRouter();
   const supabase = createClient();
   const { confirm } = usePurchaseConfirm();
@@ -224,7 +227,7 @@ export default function SavedTemplatesPage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="container mx-auto px-3 sm:px-6 py-8 pb-24 md:pb-16">
+        <main className="w-full px-3 sm:px-6 lg:px-10 py-8 pb-24 md:pb-16">
           <TemplateGridSkeleton count={3} />
         </main>
         <MobileBottomNav />
@@ -258,24 +261,36 @@ export default function SavedTemplatesPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {templates.map((template) => {
-              const isPurchased = purchases.includes(template.id);
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-[1400px] mx-auto">
+              {templates.slice(0, visibleCount).map((template) => {
+                const isPurchased = purchases.includes(template.id);
 
-              return (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  isSaved={true}
-                  isPurchased={isPurchased}
-                  showPrice={!isPurchased}
-                  showSaveButton={true}
-                  onSaveToggle={handleUnsave}
-                  onClick={() => handleTemplateClick(template)}
-                />
-              );
-            })}
-          </div>
+                return (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    isSaved={true}
+                    isPurchased={isPurchased}
+                    showPrice={!isPurchased}
+                    showSaveButton={true}
+                    onSaveToggle={handleUnsave}
+                    onClick={() => handleTemplateClick(template)}
+                  />
+                );
+              })}
+            </div>
+            {visibleCount < templates.length && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
+                  className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-medium transition"
+                >
+                  Daha Fazla Göster ({templates.length - visibleCount} kalan)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 

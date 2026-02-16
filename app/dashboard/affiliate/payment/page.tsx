@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wallet, Check, Clock, CheckCircle, XCircle, Send, Calendar, Shield } from "lucide-react";
@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
 type PeriodKey = "all" | "thisMonth" | "last3m" | "last6m";
+type Currency = "TRY" | "USD";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -25,8 +26,26 @@ export default function AffiliatePaymentPage() {
   const [historyPeriod, setHistoryPeriod] = useState<PeriodKey>("all");
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<Currency>("TRY");
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rateLoading, setRateLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  const loadExchangeRate = async () => {
+    setRateLoading(true);
+    try {
+      const res = await fetch("/api/exchange-rate");
+      if (res.ok) {
+        const data = await res.json();
+        setExchangeRate(data.usdTry);
+      }
+    } catch {
+      // silent
+    } finally {
+      setRateLoading(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -65,6 +84,9 @@ export default function AffiliatePaymentPage() {
           const loadedIban = data.paymentInfo.iban || "";
           setIban(loadedIban.startsWith("TR") ? loadedIban : loadedIban ? "TR" + loadedIban : "");
           setHolderName(data.paymentInfo.holderName || "");
+          if (data.paymentInfo.payoutCurrency === "USD" || data.paymentInfo.payoutCurrency === "TRY") {
+            setCurrency(data.paymentInfo.payoutCurrency);
+          }
         }
         if (data.balance) {
           setBalance(data.balance);
@@ -77,6 +99,9 @@ export default function AffiliatePaymentPage() {
         const data = await payoutRes.json();
         setPayouts(data.payouts || []);
       }
+
+      // Load exchange rate
+      await loadExchangeRate();
     } catch (e) {
       if (process.env.NODE_ENV === "development") console.warn(e);
     } finally {
@@ -93,6 +118,30 @@ export default function AffiliatePaymentPage() {
     setVisiblePayouts(ITEMS_PER_PAGE);
   }, [historyPeriod]);
 
+  // Save currency preference when changed
+  const handleCurrencyChange = useCallback(async (newCurrency: Currency) => {
+    setCurrency(newCurrency);
+    try {
+      await fetch("/api/affiliate/promos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payoutCurrency: newCurrency }),
+      });
+    } catch {
+      // silent — preference save is best-effort
+    }
+  }, []);
+
+  // Convert TRY amount to selected currency
+  const convertAmount = useCallback((tryAmount: number): string => {
+    if (currency === "TRY" || !exchangeRate) {
+      return tryAmount.toLocaleString('tr-TR');
+    }
+    return (tryAmount / exchangeRate).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }, [currency, exchangeRate]);
+
+  const currencyLabel = currency === "TRY" ? "TRY" : "USD";
+
   const handleSave = async () => {
     if (!iban.trim() || !holderName.trim()) {
       toast.error("IBAN ve ad soyad gerekli");
@@ -103,7 +152,7 @@ export default function AffiliatePaymentPage() {
       const res = await fetch("/api/affiliate/promos", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ iban, holderName }),
+        body: JSON.stringify({ iban, holderName, payoutCurrency: currency }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -130,7 +179,7 @@ export default function AffiliatePaymentPage() {
       const res = await fetch("/api/affiliate/payouts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ currency }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -221,7 +270,7 @@ export default function AffiliatePaymentPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-2xl">
+      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 sm:py-8 pb-24 md:pb-16">
         {loading ? (
           <div className="space-y-4">
             <div className="bg-zinc-900 rounded-2xl p-6 animate-pulse h-40" />
@@ -237,11 +286,42 @@ export default function AffiliatePaymentPage() {
                   <h2 className="font-semibold text-lg">Bakiye</h2>
                 </div>
 
+                {/* Para Birimi Seçici */}
+                <div className="mb-4">
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => handleCurrencyChange("TRY")}
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${
+                        currency === "TRY"
+                          ? "bg-pink-500 text-white"
+                          : "bg-white/5 text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      TRY
+                    </button>
+                    <button
+                      onClick={() => handleCurrencyChange("USD")}
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${
+                        currency === "USD"
+                          ? "bg-pink-500 text-white"
+                          : "bg-white/5 text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      USD
+                    </button>
+                  </div>
+                  {exchangeRate && (
+                    <p className="text-xs text-zinc-500 text-center">
+                      {rateLoading ? "Kur yükleniyor..." : `Anlık kur: 1 USD = ${exchangeRate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TRY`}
+                    </p>
+                  )}
+                </div>
+
                 {/* Çekilebilir + Çek Butonu */}
                 <div className="flex items-center justify-between bg-pink-500/10 border border-pink-500/20 rounded-xl p-4 mb-3">
                   <div>
                     <p className="text-xs text-pink-300 mb-0.5">Çekilebilir Bakiye</p>
-                    <p className="text-3xl font-bold text-pink-500">{balance.available.toLocaleString('tr-TR')} <span className="text-sm text-zinc-400">TRY</span></p>
+                    <p className="text-3xl font-bold text-pink-500">{convertAmount(balance.available)} <span className="text-sm text-zinc-400">{currencyLabel}</span></p>
                   </div>
                   <button
                     onClick={handleRequestPayout}
@@ -257,11 +337,11 @@ export default function AffiliatePaymentPage() {
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="bg-white/5 rounded-xl p-3">
                     <p className="text-[10px] text-zinc-500">Bekleyen Talep</p>
-                    <p className="text-lg font-bold text-pink-300">{balance.totalPending.toLocaleString('tr-TR')} <span className="text-xs text-zinc-500">TRY</span></p>
+                    <p className="text-lg font-bold text-pink-300">{convertAmount(balance.totalPending)} <span className="text-xs text-zinc-500">{currencyLabel}</span></p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-3">
                     <p className="text-[10px] text-zinc-500">Toplam Ödenen</p>
-                    <p className="text-lg font-bold text-pink-400">{balance.totalPaidOut.toLocaleString('tr-TR')} <span className="text-xs text-zinc-500">TRY</span></p>
+                    <p className="text-lg font-bold text-pink-400">{convertAmount(balance.totalPaidOut)} <span className="text-xs text-zinc-500">{currencyLabel}</span></p>
                   </div>
                 </div>
 
@@ -272,7 +352,7 @@ export default function AffiliatePaymentPage() {
                       ? balance.nextAutoDate
                         ? `Sonraki otomatik çekim: ${new Date(balance.nextAutoDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}`
                         : "Bakiye yeterli — 7 gün dolduğunda otomatik talep oluşur"
-                      : `Min. 100 TRY bakiyeye ulaştığınızda 7 günde bir otomatik talep oluşur.`}
+                      : `Min. ${convertAmount(balance.minPayout)} ${currencyLabel} bakiyeye ulaştığınızda 7 günde bir otomatik talep oluşur.`}
                     {" "}
                     <span className="text-pink-400">Manuel çekim için &quot;Çek&quot; butonunu kullanın.</span>
                   </p>
@@ -376,11 +456,11 @@ export default function AffiliatePaymentPage() {
                 <div className="flex gap-3 mb-4">
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center">
                     <p className="text-[10px] text-zinc-500">Onaylanan</p>
-                    <p className="text-sm font-bold text-pink-500">{periodSummary.approvedAmount.toLocaleString('tr-TR')} TRY</p>
+                    <p className="text-sm font-bold text-pink-500">{convertAmount(periodSummary.approvedAmount)} {currencyLabel}</p>
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center">
                     <p className="text-[10px] text-zinc-500">Bekleyen</p>
-                    <p className="text-sm font-bold text-pink-300">{periodSummary.pendingAmount.toLocaleString('tr-TR')} TRY</p>
+                    <p className="text-sm font-bold text-pink-300">{convertAmount(periodSummary.pendingAmount)} {currencyLabel}</p>
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl p-3 text-center">
                     <p className="text-[10px] text-zinc-500">Talep</p>
@@ -395,12 +475,18 @@ export default function AffiliatePaymentPage() {
                   {filteredPayouts.slice(0, visiblePayouts).map((payout) => {
                     const status = statusLabel(payout.status);
                     const StatusIcon = status.icon;
+                    const payoutCurrency = payout.currency || "TRY";
                     return (
                       <div key={payout.id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
                         <div className="flex items-center gap-3 min-w-0">
                           <StatusIcon className={`h-5 w-5 shrink-0 ${status.color}`} />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium">{Number(payout.amount).toLocaleString('tr-TR')} TRY</p>
+                            <p className="text-sm font-medium">
+                              {Number(payout.amount).toLocaleString('tr-TR')} {payoutCurrency}
+                              {payoutCurrency === "USD" && payout.exchange_rate && (
+                                <span className="text-xs text-zinc-500 ml-1">(kur: {Number(payout.exchange_rate).toLocaleString('tr-TR')})</span>
+                              )}
+                            </p>
                             <p className="text-xs text-zinc-500">
                               {new Date(payout.requested_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </p>
@@ -438,6 +524,7 @@ export default function AffiliatePaymentPage() {
                 <li>• Minimum ödeme tutarı 100 TRY&apos;dir.</li>
                 <li>• IBAN bilginizin doğru olduğundan emin olun.</li>
                 <li>• Ödeme bilgilerinizi istediğiniz zaman güncelleyebilirsiniz.</li>
+                <li>• USD seçildiğinde tutar anlık kur ile çevrilir.</li>
                 <li>• Sorularınız için: <a href="mailto:affiliate@forilove.com" className="text-pink-500 hover:text-pink-400">affiliate@forilove.com</a></li>
               </ul>
             </div>

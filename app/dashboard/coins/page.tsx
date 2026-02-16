@@ -124,7 +124,7 @@ export default function CoinsPage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="container mx-auto px-3 sm:px-6 pt-16 pb-24 md:pb-16 max-w-[600px]">
+        <main className="w-full px-3 sm:px-6 lg:px-10 pt-16 pb-24 md:pb-16">
           <CoinPageSkeleton />
         </main>
         <MobileBottomNav />
@@ -151,7 +151,7 @@ export default function CoinsPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 pt-16 pb-24 md:pb-16 max-w-[600px]">
+      <main className="w-full px-3 sm:px-6 lg:px-10 pt-16 pb-24 md:pb-16">
         {packages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
             <Coins className="h-14 w-14 sm:h-20 sm:w-20 text-yellow-500 mb-3 sm:mb-4" />

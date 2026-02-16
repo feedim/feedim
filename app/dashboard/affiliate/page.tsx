@@ -83,7 +83,7 @@ export default function AffiliateDashboardPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-2xl">
+      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 sm:py-8 pb-24 md:pb-16">
         {loading ? (
           <div className="space-y-4">
             <div className="bg-zinc-900 rounded-2xl p-6 animate-pulse h-60" />

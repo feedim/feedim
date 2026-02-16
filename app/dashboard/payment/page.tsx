@@ -115,7 +115,7 @@ export default function PaymentPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 pt-6 pb-24 md:pb-16 max-w-[520px]">
+      <main className="w-full px-3 sm:px-6 lg:px-10 pt-6 pb-24 md:pb-16">
         {/* Order Summary */}
         {data && (
           <div className="bg-zinc-900 rounded-2xl p-5 mb-6">

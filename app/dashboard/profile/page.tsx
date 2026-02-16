@@ -134,7 +134,7 @@ export default function ProfilePage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="container mx-auto px-3 sm:px-6 py-8 pb-24 md:pb-16">
+        <main className="w-full px-3 sm:px-6 lg:px-10 py-8 pb-24 md:pb-16">
           <ProfileSkeleton />
         </main>
         <MobileBottomNav />
@@ -178,7 +178,7 @@ export default function ProfilePage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-2xl">
+      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 sm:py-8 pb-24 md:pb-16">
         {/* Profile Header - Minimal */}
         <div className="flex items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">

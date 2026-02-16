@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const body = await request.json().catch(() => ({}));
     const isAuto = body?.auto === true;
+    const requestedCurrency = (body?.currency === "USD" ? "USD" : "TRY") as "TRY" | "USD";
 
     // Check for existing pending payout
     const { data: existingPending } = await admin
@@ -217,17 +218,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Önce ödeme bilgilerinizi (IBAN) kaydedin" }, { status: 400 });
     }
 
+    // Fetch exchange rate if USD requested
+    let payoutAmount = available;
+    let payoutExchangeRate: number | null = null;
+    let payoutCurrency = requestedCurrency;
+
+    if (requestedCurrency === "USD") {
+      try {
+        const rateRes = await fetch(new URL("/api/exchange-rate", request.url).toString());
+        if (rateRes.ok) {
+          const rateData = await rateRes.json();
+          if (rateData.usdTry && typeof rateData.usdTry === "number") {
+            payoutExchangeRate = rateData.usdTry;
+            payoutAmount = Math.round((available / rateData.usdTry) * 100) / 100;
+          } else {
+            payoutCurrency = "TRY"; // fallback to TRY if rate unavailable
+          }
+        } else {
+          payoutCurrency = "TRY";
+        }
+      } catch {
+        payoutCurrency = "TRY";
+      }
+    }
+
     // Create payout request (unique index prevents duplicates at DB level)
-    const { data: payout, error } = await admin
-      .from("affiliate_payouts")
-      .insert({
-        affiliate_user_id: user.id,
-        amount: available,
-        status: "pending",
-        admin_note: isAuto ? "Otomatik talep (7 gün)" : null,
-      })
-      .select()
-      .single();
+    // Build insert data — currency/exchange_rate columns may not exist yet
+    const insertData: Record<string, any> = {
+      affiliate_user_id: user.id,
+      amount: payoutAmount,
+      status: "pending",
+      admin_note: isAuto ? "Otomatik talep (7 gün)" : null,
+    };
+
+    // Try with currency fields first, fall back without them
+    let payout: any = null;
+    let error: any = null;
+
+    try {
+      const res = await admin
+        .from("affiliate_payouts")
+        .insert({ ...insertData, currency: payoutCurrency, exchange_rate: payoutExchangeRate })
+        .select()
+        .single();
+      payout = res.data;
+      error = res.error;
+    } catch {
+      // If currency columns don't exist, insert without them
+      const res = await admin
+        .from("affiliate_payouts")
+        .insert(insertData)
+        .select()
+        .single();
+      payout = res.data;
+      error = res.error;
+    }
+
+    // If first attempt failed due to column not existing, retry without currency fields
+    if (error && (error.message?.includes('currency') || error.message?.includes('exchange_rate') || error.code === '42703')) {
+      const res = await admin
+        .from("affiliate_payouts")
+        .insert(insertData)
+        .select()
+        .single();
+      payout = res.data;
+      error = res.error;
+    }
 
     if (error) {
       // Unique index violation = already has pending payout

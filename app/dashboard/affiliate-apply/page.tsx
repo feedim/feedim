@@ -151,8 +151,8 @@ export default function AffiliateApplyPage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="container mx-auto px-3 sm:px-6 py-8 pb-24 md:pb-16">
-          <div className="animate-pulse space-y-4 max-w-lg mx-auto">
+        <main className="w-full px-3 sm:px-6 lg:px-10 py-8 pb-24 md:pb-16">
+          <div className="animate-pulse space-y-4">
             <div className="h-10 bg-zinc-800 rounded-xl" />
             <div className="h-10 bg-zinc-800 rounded-xl" />
             <div className="h-10 bg-zinc-800 rounded-xl" />
@@ -176,7 +176,7 @@ export default function AffiliateApplyPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-lg">
+      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 sm:py-8 pb-24 md:pb-16">
         {existingApplication ? (
           <div className="bg-zinc-900 rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-5">
