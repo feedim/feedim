@@ -143,7 +143,7 @@ export default function AdminPromosPage() {
   };
 
   const handleRename = async (promoId: string) => {
-    const trimmed = renameValue.trim().toLocaleUpperCase('en-US').replace(/[^A-Z0-9]/g, '');
+    const trimmed = renameValue.trim().toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '');
     if (trimmed.length < 3 || trimmed.length > 8) {
       toast.error("Promo kodu 3-8 karakter olmalı");
       return;
@@ -254,7 +254,7 @@ export default function AdminPromosPage() {
                     <input
                       type="text"
                       value={promoForm.code}
-                      onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toLocaleUpperCase('en-US').replace(/[^A-Z0-9]/g, '').slice(0, 8) })}
+                      onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '').slice(0, 8) })}
                       placeholder="ENES20"
                       maxLength={8}
                       className="input-modern w-full text-sm font-mono tracking-wider"
@@ -358,7 +358,7 @@ export default function AdminPromosPage() {
                         <input
                           type="text"
                           value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value.toLocaleUpperCase('en-US').replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                          onChange={(e) => setRenameValue(e.target.value.toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '').slice(0, 8))}
                           placeholder="Yeni kod"
                           maxLength={8}
                           className="flex-1 bg-transparent border border-pink-500/50 rounded-lg px-3 py-2 text-sm text-white font-mono tracking-wider focus:outline-none"

@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const cleanCode = code.trim().toLocaleUpperCase('en-US').replace(/[^A-Z0-9]/g, '');
+    const cleanCode = code.trim().toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '');
     if (cleanCode.length < 3) {
       return NextResponse.json({ error: "Promo kodu en az 3 harf/rakam olmalı" }, { status: 400 });
     }
@@ -480,7 +480,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Promo ID ve yeni kod gerekli" }, { status: 400 });
     }
 
-    const cleanNewCode = newCode.trim().toLocaleUpperCase('en-US').replace(/[^A-Z0-9]/g, '');
+    const cleanNewCode = newCode.trim().toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '');
     if (cleanNewCode.length < 3 || cleanNewCode.length > 8) {
       return NextResponse.json({ error: "Promo kodu 3-8 karakter olmalı" }, { status: 400 });
     }
