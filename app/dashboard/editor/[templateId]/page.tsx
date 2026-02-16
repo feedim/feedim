@@ -2026,7 +2026,7 @@ export default function NewEditorPage({ params, guestMode: initialGuestMode = fa
   }
 
   return (
-    <div className="h-[100dvh] bg-black text-white flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
+    <div className="h-[100dvh] bg-black text-white flex flex-col overflow-hidden max-w-none w-screen relative left-1/2 -translate-x-1/2" style={{ overscrollBehavior: 'none' }}>
       {/* Header */}
       <header className="shrink-0 z-50 bg-[#161616]/85 backdrop-blur-2xl min-h-[73px]">
         <nav className="w-full px-3 sm:px-6 flex items-center justify-between min-h-[73px]">

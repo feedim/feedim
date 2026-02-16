@@ -178,7 +178,7 @@ export default function MyPagesPage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="w-full px-3 sm:px-6 lg:px-10 py-4 pb-24 md:pb-16">
+        <main className="container mx-auto px-3 sm:px-6 py-4 pb-24 md:pb-16 max-w-2xl">
           <ProjectListSkeleton count={4} />
         </main>
         <MobileBottomNav />

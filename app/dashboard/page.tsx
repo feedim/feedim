@@ -428,7 +428,7 @@ export default function DashboardPage() {
           />
         ) : (
           <>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-[1400px] mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {templates && templates.length > 0 ? templates.map((template) => {
                 const isPurchased = purchases.includes(template.id);
                 const isSaved = savedTemplates.includes(template.id);

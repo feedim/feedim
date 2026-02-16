@@ -227,7 +227,7 @@ export default function SavedTemplatesPage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="w-full px-3 sm:px-6 lg:px-10 py-8 pb-24 md:pb-16">
+        <main className="container mx-auto px-3 sm:px-6 py-8 pb-24 md:pb-16">
           <TemplateGridSkeleton count={3} />
         </main>
         <MobileBottomNav />
@@ -262,7 +262,7 @@ export default function SavedTemplatesPage() {
           </div>
         ) : (
           <>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-[1400px] mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {templates.slice(0, visibleCount).map((template) => {
                 const isPurchased = purchases.includes(template.id);
 

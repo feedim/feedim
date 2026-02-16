@@ -131,7 +131,7 @@ export default function TransactionsPage() {
             <div className="w-16" />
           </nav>
         </header>
-        <main className="w-full px-3 sm:px-6 lg:px-10 pt-16 pb-24 md:pb-16">
+        <main className="container mx-auto px-3 sm:px-6 pt-16 pb-24 md:pb-16 max-w-4xl">
           <TransactionListSkeleton count={6} />
         </main>
         <MobileBottomNav />

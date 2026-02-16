@@ -103,7 +103,7 @@ export default function AdminProjectsPage() {
         </nav>
       </header>
 
-      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 pb-24 md:pb-8">
+      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 pb-24 md:pb-8 max-w-3xl mx-auto">
         {loading ? (
           <div className="space-y-3">
             {[1,2,3,4,5].map(i => (

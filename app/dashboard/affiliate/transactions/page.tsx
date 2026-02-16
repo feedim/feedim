@@ -108,7 +108,7 @@ export default function AffiliateTransactionsPage() {
         </nav>
       </header>
 
-      <main className="w-full px-3 sm:px-6 lg:px-10 py-4 sm:py-8 pb-24 md:pb-16">
+      <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-2xl">
         <p className="text-xs text-zinc-500 mb-4">Son 3 aya ait satış komisyonları, referans kazançları ve ödeme çekimleriniz.</p>
 
         {/* Dönem Filtresi */}
