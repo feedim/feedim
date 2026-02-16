@@ -14,6 +14,7 @@ export default function AffiliateDashboardPage() {
   const [sponsorUsers, setSponsorUsers] = useState<any[]>([]);
   const [sponsorPeriod, setSponsorPeriod] = useState<"today" | "yesterday" | "last7d" | "last14d" | "thisMonth" | "last3m">("last7d");
   const [promoCode, setPromoCode] = useState<string>("");
+  const [allPromoCodes, setAllPromoCodes] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [urlCopied, setUrlCopied] = useState(false);
@@ -54,6 +55,7 @@ export default function AffiliateDashboardPage() {
         setSponsorUsers(data.recentUsers || []);
         if (data.promos && data.promos.length > 0) {
           setPromoCode(data.promos[0].code || "");
+          setAllPromoCodes(data.promos.map((p: any) => p.code).filter(Boolean));
         }
       }
 
@@ -224,7 +226,22 @@ export default function AffiliateDashboardPage() {
               </div>
               {promoCode ? (
                 <>
-                  <p className="text-xs text-zinc-500 mb-3">Herhangi bir Forilove URL'sini yapıştırın, promo kodunuz otomatik eklenir.</p>
+                  <p className="text-xs text-zinc-500 mb-3">Herhangi bir Forilove URL&apos;sini yapıştırın, promo kodunuz otomatik eklenir.</p>
+                  {allPromoCodes.length > 1 && (
+                    <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                      {allPromoCodes.map((code) => (
+                        <button
+                          key={code}
+                          onClick={() => { setPromoCode(code); setGeneratedUrl(""); setUrlCopied(false); }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium font-mono transition shrink-0 ${
+                            promoCode === code ? "bg-pink-500 text-white" : "bg-white/5 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex gap-2 mb-3">
                     <input
                       type="text"

@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Globe, Plus, X, Shield } from "lucide-react";
+import { ArrowLeft, Globe, Plus, X, Shield, Pencil, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
 const ITEMS_PER_PAGE = 10;
+const MAX_AFFILIATE_PROMOS = 5;
 
 export default function AdminPromosPage() {
   const [loading, setLoading] = useState(true);
@@ -19,6 +20,9 @@ export default function AdminPromosPage() {
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
   const [visiblePromos, setVisiblePromos] = useState(ITEMS_PER_PAGE);
   const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -91,8 +95,7 @@ export default function AdminPromosPage() {
           ...(isSponsor ? {} : { type: 'promo' }),
           code: promoForm.code,
           discountPercent: promoForm.isFree ? 100 : promoForm.discountPercent,
-          maxSignups: promoForm.maxSignups,
-          expiryHours: promoForm.expiryHours,
+          ...(isSponsor ? {} : { maxSignups: promoForm.maxSignups, expiryHours: promoForm.expiryHours }),
         }),
       });
       const data = await res.json();
@@ -131,6 +134,35 @@ export default function AdminPromosPage() {
     }
   };
 
+  const handleRename = async (promoId: string) => {
+    const trimmed = renameValue.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (trimmed.length < 3) {
+      toast.error("Promo kodu en az 3 karakter olmalı");
+      return;
+    }
+    setRenaming(true);
+    try {
+      const res = await fetch('/api/affiliate/promos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promoId, newCode: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Kod değiştirilemedi');
+        return;
+      }
+      setPromos(promos.map(p => p.id === promoId ? { ...p, code: trimmed } : p));
+      toast.success(`Kod değiştirildi: ${data.oldCode} → ${data.newCode}`);
+      setRenamingId(null);
+      setRenameValue("");
+    } catch {
+      toast.error('Bir hata olustu');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   const copyPromoLink = async (code: string) => {
     const url = `${window.location.origin}/?promo=${code}`;
     try {
@@ -144,6 +176,7 @@ export default function AdminPromosPage() {
   };
 
   const isAffiliate = role === 'affiliate';
+  const canCreateMore = !isAffiliate || (promos.length < MAX_AFFILIATE_PROMOS && mfaEnabled);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -153,7 +186,7 @@ export default function AdminPromosPage() {
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>
-          <h1 className="text-lg font-semibold">{isAffiliate ? 'Affiliate Link' : 'İndirim Linkleri'}</h1>
+          <h1 className="text-lg font-semibold">{isAffiliate ? 'Affiliate Linkler' : 'İndirim Linkleri'}</h1>
           <div className="w-16" />
         </nav>
       </header>
@@ -167,9 +200,13 @@ export default function AdminPromosPage() {
           <div className="bg-zinc-900 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-1">
               <Globe className="h-5 w-5 text-pink-500" />
-              <h3 className="font-semibold">{isAffiliate ? 'Affiliate Link' : 'İndirim Linkleri'}</h3>
+              <h3 className="font-semibold">{isAffiliate ? 'Affiliate Linkler' : 'İndirim Linkleri'}</h3>
             </div>
-            <p className="text-xs text-zinc-500 mb-4">{isAffiliate ? 'Takipçilerinize paylaşacağınız indirim linkiniz. Max %20 indirim.' : 'Kayıt linklerinden gelen kullanıcılar otomatik kupon alır.'}</p>
+            <p className="text-xs text-zinc-500 mb-4">
+              {isAffiliate
+                ? `En fazla ${MAX_AFFILIATE_PROMOS} indirim kodu oluşturabilirsiniz. Her kod farklı indirim oranına sahip olabilir. (${promos.length}/${MAX_AFFILIATE_PROMOS})`
+                : 'Kayıt linklerinden gelen kullanıcılar otomatik kupon alır.'}
+            </p>
 
             {/* 2FA Gate for Affiliates */}
             {isAffiliate && !mfaEnabled && (
@@ -188,8 +225,8 @@ export default function AdminPromosPage() {
               </div>
             )}
 
-            {/* Create Promo Form - sponsors limited to 1 */}
-            {(!isAffiliate || (promos.length === 0 && mfaEnabled)) && (
+            {/* Create Promo Form */}
+            {canCreateMore && (
               <div className="space-y-3 mb-5">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -217,39 +254,43 @@ export default function AdminPromosPage() {
                   </div>
                 </div>
                 {!isAffiliate && (
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={promoForm.isFree}
-                      onChange={(e) => setPromoForm({ ...promoForm, isFree: e.target.checked })}
-                      className="cursor-pointer"
-                    />
-                    <span className="text-sm text-zinc-400">Bedava (ucretsiz satin alma)</span>
-                  </label>
+                  <>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={promoForm.isFree}
+                        onChange={(e) => setPromoForm({ ...promoForm, isFree: e.target.checked })}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-zinc-400">Bedava (ucretsiz satin alma)</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">Max Kayit</label>
+                        <input
+                          type="number"
+                          value={promoForm.maxSignups}
+                          onChange={(e) => setPromoForm({ ...promoForm, maxSignups: Math.max(1, parseInt(e.target.value) || 1) })}
+                          min={1}
+                          className="input-modern w-full text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">Sure (saat)</label>
+                        <input
+                          type="number"
+                          value={promoForm.expiryHours}
+                          onChange={(e) => setPromoForm({ ...promoForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
+                          min={1}
+                          className="input-modern w-full text-sm"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-zinc-400 mb-1">Max Kayit</label>
-                    <input
-                      type="number"
-                      value={promoForm.maxSignups}
-                      onChange={(e) => setPromoForm({ ...promoForm, maxSignups: Math.max(1, parseInt(e.target.value) || 1) })}
-                      min={1}
-                      className="input-modern w-full text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-zinc-400 mb-1">Sure (saat)</label>
-                    <input
-                      type="number"
-                      value={promoForm.expiryHours}
-                      onChange={(e) => setPromoForm({ ...promoForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
-                      min={1}
-                      className="input-modern w-full text-sm"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-pink-400">İlk ödemeye kadar kod ve oran değiştirilebilir, sonrasında değiştirilemez.</p>
+                {isAffiliate && (
+                  <p className="text-xs text-zinc-500">Komisyonunuz: %{35 - promoForm.discountPercent} (indirim ne kadar düşükse komisyonunuz o kadar yüksek)</p>
+                )}
                 <button
                   onClick={handleCreatePromo}
                   disabled={promoCreating || promoForm.code.trim().length < 3}
@@ -267,32 +308,76 @@ export default function AdminPromosPage() {
                 <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Aktif Promolar</p>
                 {promos.slice(0, visiblePromos).map((promo) => (
                   <div key={promo.id} className="p-3 rounded-xl bg-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-yellow-500 font-mono">{promo.code}</span>
-                          <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">
-                            {promo.discount_percent === 100 ? 'BEDAVA' : `%${promo.discount_percent}`}
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-1">
-                          {promo.current_signups}/{promo.max_signups || '∞'} kayit
-                          {promo.expires_at && ` · ${new Date(promo.expires_at) > new Date() ? `${Math.ceil((new Date(promo.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldi` : 'suresi dolmus'}`}
-                          {!isAffiliate && promo.creator_email && ` · ${promo.creator_email}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                    {renamingId === promo.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                          placeholder="Yeni kod"
+                          maxLength={10}
+                          className="flex-1 bg-transparent border border-pink-500/50 rounded-lg px-3 py-2 text-sm text-white font-mono tracking-wider focus:outline-none"
+                          autoFocus
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleRename(promo.id); if (e.key === 'Escape') { setRenamingId(null); setRenameValue(""); } }}
+                        />
                         <button
-                          onClick={() => copyPromoLink(promo.code)}
-                          className="px-3 py-1.5 text-xs bg-white/10 text-zinc-300 hover:text-white rounded-lg transition"
+                          onClick={() => handleRename(promo.id)}
+                          disabled={renaming || renameValue.trim().length < 3}
+                          className="px-3 py-2 text-xs bg-pink-600 hover:bg-pink-500 text-white rounded-lg transition disabled:opacity-50 flex items-center gap-1"
                         >
-                          {copiedPromo === promo.code ? 'Kopyalandi!' : 'Linki Kopyala'}
+                          <Check className="h-3.5 w-3.5" />
+                          {renaming ? '...' : 'Kaydet'}
                         </button>
-                        <button onClick={() => handleDeletePromo(promo.id)} className="p-2 text-zinc-500 hover:text-red-400 transition" title="Sil">
+                        <button
+                          onClick={() => { setRenamingId(null); setRenameValue(""); }}
+                          className="p-2 text-zinc-500 hover:text-white transition"
+                        >
                           <X className="h-4 w-4" />
                         </button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-yellow-500 font-mono">{promo.code}</span>
+                            <span className="text-xs bg-pink-600/20 text-pink-400 px-2 py-0.5 rounded-full">
+                              {promo.discount_percent === 100 ? 'BEDAVA' : `%${promo.discount_percent} indirim`}
+                            </span>
+                            {isAffiliate && (
+                              <span className="text-xs bg-green-600/20 text-green-400 px-2 py-0.5 rounded-full">
+                                %{35 - promo.discount_percent} komisyon
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {promo.signups?.length || promo.current_signups || 0}/{promo.max_signups || '∞'} kayit
+                            {promo.expires_at && ` · ${new Date(promo.expires_at) > new Date() ? `${Math.ceil((new Date(promo.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldi` : 'suresi dolmus'}`}
+                            {!isAffiliate && promo.creator_email && ` · ${promo.creator_email}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => copyPromoLink(promo.code)}
+                            className="px-3 py-1.5 text-xs bg-white/10 text-zinc-300 hover:text-white rounded-lg transition"
+                          >
+                            {copiedPromo === promo.code ? 'Kopyalandi!' : 'Kopyala'}
+                          </button>
+                          {isAffiliate ? (
+                            <button
+                              onClick={() => { setRenamingId(promo.id); setRenameValue(promo.code); }}
+                              className="p-2 text-zinc-500 hover:text-pink-400 transition"
+                              title="Kodu Değiştir"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button onClick={() => handleDeletePromo(promo.id)} className="p-2 text-zinc-500 hover:text-red-400 transition" title="Sil">
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {visiblePromos < promos.length && (

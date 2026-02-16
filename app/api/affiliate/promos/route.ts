@@ -104,7 +104,10 @@ export async function GET() {
     let totalEarnings = 0;
 
     const promoList = data || [];
-    const commissionRate = promoList.length > 0 ? TOTAL_ALLOCATION - promoList[0].discount_percent : 0;
+    // Average commission rate across all promos
+    const commissionRate = promoList.length > 0
+      ? Math.round(promoList.reduce((sum: number, p: any) => sum + (TOTAL_ALLOCATION - p.discount_percent), 0) / promoList.length)
+      : 0;
 
     if (promoList.length > 0 && allSignupUserIds.length > 0) {
       for (const promo of promoList) {
@@ -291,6 +294,7 @@ export async function POST(request: NextRequest) {
 
     // Affiliates: min 5%, max 20% discount
     const MIN_AFFILIATE_DISCOUNT = 5;
+    const MAX_AFFILIATE_PROMOS = 5;
     const effectiveDiscount = Math.min(parsedDiscount, user.role === "admin" ? 100 : MAX_AFFILIATE_DISCOUNT);
     if (user.role === "affiliate" && effectiveDiscount < MIN_AFFILIATE_DISCOUNT) {
       return NextResponse.json({ error: "İndirim en az %5 olmalı" }, { status: 400 });
@@ -303,20 +307,19 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Affiliates can only create 1 promo code
+    // Affiliates can create up to 5 promo codes
     if (user.role === "affiliate") {
       const { data: existingOwn } = await admin
         .from("promo_links")
         .select("id")
-        .eq("created_by", user.id)
-        .limit(1);
+        .eq("created_by", user.id);
 
-      if (existingOwn && existingOwn.length > 0) {
-        return NextResponse.json({ error: "Sadece 1 promo kodu oluşturabilirsiniz" }, { status: 400 });
+      if (existingOwn && existingOwn.length >= MAX_AFFILIATE_PROMOS) {
+        return NextResponse.json({ error: `En fazla ${MAX_AFFILIATE_PROMOS} promo kodu oluşturabilirsiniz` }, { status: 400 });
       }
     }
 
-    // Check duplicate code
+    // Check duplicate code (also check history for old codes)
     const { data: existing } = await admin
       .from("promo_links")
       .select("id")
@@ -327,30 +330,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bu promo kodu zaten mevcut" }, { status: 400 });
     }
 
-    // Validate optional fields
-    if (maxSignups !== undefined && maxSignups !== null) {
-      const parsed = Number(maxSignups);
-      if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
-        return NextResponse.json({ error: "Geçersiz kayıt limiti" }, { status: 400 });
-      }
-    }
-    if (expiryHours !== undefined && expiryHours !== null) {
-      const parsed = Number(expiryHours);
-      if (!Number.isFinite(parsed) || parsed < 1) {
-        return NextResponse.json({ error: "Geçersiz süre" }, { status: 400 });
-      }
+    // Also check code history to prevent reusing renamed codes
+    const { data: historyMatch } = await admin
+      .from("promo_code_history")
+      .select("id")
+      .ilike("old_code", cleanCode)
+      .limit(1)
+      .maybeSingle();
+
+    if (historyMatch) {
+      return NextResponse.json({ error: "Bu kod daha önce kullanılmış (isim değişikliği geçmişi)" }, { status: 400 });
     }
 
-    const expiresAt = expiryHours
-      ? new Date(Date.now() + Number(expiryHours) * 60 * 60 * 1000).toISOString()
-      : null;
+    // For affiliates: always unlimited signups and no expiry
+    // For admins: respect provided values
+    let effectiveMaxSignups = null;
+    let expiresAt = null;
+
+    if (user.role === "admin") {
+      if (maxSignups !== undefined && maxSignups !== null) {
+        const parsed = Number(maxSignups);
+        if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
+          return NextResponse.json({ error: "Geçersiz kayıt limiti" }, { status: 400 });
+        }
+        effectiveMaxSignups = parsed;
+      }
+      if (expiryHours !== undefined && expiryHours !== null) {
+        const parsed = Number(expiryHours);
+        if (!Number.isFinite(parsed) || parsed < 1) {
+          return NextResponse.json({ error: "Geçersiz süre" }, { status: 400 });
+        }
+        expiresAt = new Date(Date.now() + parsed * 60 * 60 * 1000).toISOString();
+      }
+    }
 
     const { data, error } = await admin
       .from("promo_links")
       .insert({
         code: cleanCode,
         discount_percent: effectiveDiscount,
-        max_signups: maxSignups || null,
+        max_signups: effectiveMaxSignups,
         expires_at: expiresAt,
         is_active: true,
         created_by: user.id,
@@ -427,12 +446,103 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// PATCH: Rename promo code (keeps same ID, stores history)
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const user = await verifyAffiliate(supabase);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { promoId, newCode } = body;
+
+    if (!promoId || !newCode || typeof newCode !== "string") {
+      return NextResponse.json({ error: "Promo ID ve yeni kod gerekli" }, { status: 400 });
+    }
+
+    const cleanNewCode = newCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (cleanNewCode.length < 3 || cleanNewCode.length > 10) {
+      return NextResponse.json({ error: "Promo kodu 3-10 karakter olmalı" }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+
+    // Verify ownership
+    const { data: promo } = await admin
+      .from("promo_links")
+      .select("id, code, created_by")
+      .eq("id", promoId)
+      .single();
+
+    if (!promo || (promo.created_by !== user.id && user.role !== "admin")) {
+      return NextResponse.json({ error: "Bu promo size ait değil" }, { status: 403 });
+    }
+
+    if (promo.code === cleanNewCode) {
+      return NextResponse.json({ error: "Yeni kod mevcut kodla aynı" }, { status: 400 });
+    }
+
+    // Check duplicate
+    const { data: existing } = await admin
+      .from("promo_links")
+      .select("id")
+      .ilike("code", cleanNewCode)
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json({ error: "Bu promo kodu zaten mevcut" }, { status: 400 });
+    }
+
+    // Check code history
+    const { data: historyMatch } = await admin
+      .from("promo_code_history")
+      .select("id")
+      .ilike("old_code", cleanNewCode)
+      .limit(1)
+      .maybeSingle();
+
+    if (historyMatch) {
+      return NextResponse.json({ error: "Bu kod daha önce kullanılmış" }, { status: 400 });
+    }
+
+    // Save old code to history
+    await admin
+      .from("promo_code_history")
+      .insert({
+        promo_link_id: promo.id,
+        old_code: promo.code,
+        new_code: cleanNewCode,
+        changed_by: user.id,
+      });
+
+    // Update code
+    const { error } = await admin
+      .from("promo_links")
+      .update({ code: cleanNewCode })
+      .eq("id", promo.id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, oldCode: promo.code, newCode: cleanNewCode });
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") console.error("Affiliate promos PATCH error:", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient();
     const user = await verifyAffiliate(supabase);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Affiliates cannot delete promo codes
+    if (user.role === "affiliate") {
+      return NextResponse.json({ error: "Promo kodları silinemez. Kod ismini değiştirebilirsiniz." }, { status: 403 });
     }
 
     const { promoId } = await request.json();
@@ -448,8 +558,8 @@ export async function DELETE(request: NextRequest) {
       .eq("id", promoId)
       .single();
 
-    if (!promo || (promo.created_by !== user.id && user.role !== "admin")) {
-      return NextResponse.json({ error: "Bu promo size ait değil" }, { status: 403 });
+    if (!promo) {
+      return NextResponse.json({ error: "Promo bulunamadı" }, { status: 404 });
     }
 
     // Guard: cannot delete promo if it has signups with completed payments (audit trail)
@@ -469,13 +579,14 @@ export async function DELETE(request: NextRequest) {
 
         if (count && count > 0) {
           return NextResponse.json({
-            error: "Bu promo ile ilişkili ödemeler var, silinemez. Devre dışı bırakabilirsiniz.",
+            error: "Bu promo ile ilişkili ödemeler var, silinemez.",
           }, { status: 400 });
         }
       }
     }
 
-    // Safe to delete — no revenue associated
+    // Safe to delete — no revenue associated (admin only)
+    await admin.from("promo_code_history").delete().eq("promo_link_id", promoId);
     await admin.from("promo_signups").delete().eq("promo_link_id", promoId);
     await admin.from("coupons").delete().eq("promo_link_id", promoId);
     const { error } = await admin.from("promo_links").delete().eq("id", promoId);
