@@ -292,12 +292,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Geçersiz indirim yüzdesi" }, { status: 400 });
     }
 
-    // Affiliates: min 5%, max 20% discount
-    const MIN_AFFILIATE_DISCOUNT = 5;
-    const MAX_AFFILIATE_PROMOS = 5;
+    // Affiliates: only 5%, 10%, 15%, 20% allowed — one of each
+    const AFFILIATE_DISCOUNT_OPTIONS = [5, 10, 15, 20];
+    const MAX_AFFILIATE_PROMOS = 4;
     const effectiveDiscount = Math.min(parsedDiscount, user.role === "admin" ? 100 : MAX_AFFILIATE_DISCOUNT);
-    if (user.role === "affiliate" && effectiveDiscount < MIN_AFFILIATE_DISCOUNT) {
-      return NextResponse.json({ error: "İndirim en az %5 olmalı" }, { status: 400 });
+    if (user.role === "affiliate") {
+      if (!AFFILIATE_DISCOUNT_OPTIONS.includes(effectiveDiscount)) {
+        return NextResponse.json({ error: "İndirim oranı %5, %10, %15 veya %20 olmalı" }, { status: 400 });
+      }
     }
 
     const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -307,15 +309,20 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Affiliates can create up to 5 promo codes
+    // Affiliates can create up to 4 promo codes, one per discount rate
     if (user.role === "affiliate") {
       const { data: existingOwn } = await admin
         .from("promo_links")
-        .select("id")
+        .select("id, discount_percent")
         .eq("created_by", user.id);
 
       if (existingOwn && existingOwn.length >= MAX_AFFILIATE_PROMOS) {
         return NextResponse.json({ error: `En fazla ${MAX_AFFILIATE_PROMOS} promo kodu oluşturabilirsiniz` }, { status: 400 });
+      }
+
+      // Check duplicate discount rate
+      if (existingOwn && existingOwn.some((p: any) => p.discount_percent === effectiveDiscount)) {
+        return NextResponse.json({ error: `%${effectiveDiscount} indirim oranıyla zaten bir kodunuz var` }, { status: 400 });
       }
     }
 

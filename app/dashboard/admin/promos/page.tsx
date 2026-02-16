@@ -9,7 +9,8 @@ import toast from "react-hot-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
 const ITEMS_PER_PAGE = 10;
-const MAX_AFFILIATE_PROMOS = 5;
+const MAX_AFFILIATE_PROMOS = 4;
+const AFFILIATE_DISCOUNT_OPTIONS = [5, 10, 15, 20];
 
 export default function AdminPromosPage() {
   const [loading, setLoading] = useState(true);
@@ -212,7 +213,7 @@ export default function AdminPromosPage() {
             </div>
             <p className="text-xs text-zinc-500 mb-4">
               {isAffiliate
-                ? `En fazla ${MAX_AFFILIATE_PROMOS} indirim kodu oluşturabilirsiniz. Her kod farklı indirim oranına sahip olabilir. (${promos.length}/${MAX_AFFILIATE_PROMOS})`
+                ? `Her indirim oranından 1 adet olmak üzere en fazla ${MAX_AFFILIATE_PROMOS} promo kodu oluşturabilirsiniz. (${promos.length}/${MAX_AFFILIATE_PROMOS})`
                 : 'Kayıt linklerinden gelen kullanıcılar otomatik kupon alır.'}
             </p>
 
@@ -234,9 +235,20 @@ export default function AdminPromosPage() {
             )}
 
             {/* Create Promo Form */}
-            {canCreateMore && (
-              <div className="space-y-3 mb-5">
-                <div className="grid grid-cols-2 gap-3">
+            {canCreateMore && (() => {
+              const usedDiscounts = new Set(promos.map((p: any) => p.discount_percent));
+              const availableDiscounts = isAffiliate
+                ? AFFILIATE_DISCOUNT_OPTIONS.filter(d => !usedDiscounts.has(d))
+                : AFFILIATE_DISCOUNT_OPTIONS;
+              const hasAvailable = !isAffiliate || availableDiscounts.length > 0;
+
+              // Auto-select first available discount if current is taken
+              if (isAffiliate && !availableDiscounts.includes(promoForm.discountPercent) && availableDiscounts.length > 0) {
+                setTimeout(() => setPromoForm(prev => ({ ...prev, discountPercent: availableDiscounts[0] })), 0);
+              }
+
+              return hasAvailable ? (
+                <div className="space-y-3 mb-5">
                   <div>
                     <label className="block text-xs text-zinc-400 mb-1">Promo Kodu (3-8 karakter)</label>
                     <input
@@ -248,67 +260,92 @@ export default function AdminPromosPage() {
                       className="input-modern w-full text-sm font-mono tracking-wider"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-zinc-400 mb-1">İndirim % {isAffiliate ? '(min 5, max 20)' : ''}</label>
-                    <input
-                      type="number"
-                      value={promoForm.isFree ? 100 : promoForm.discountPercent}
-                      onChange={(e) => setPromoForm({ ...promoForm, discountPercent: Math.min(isAffiliate ? 20 : 100, Math.max(isAffiliate ? 5 : 1, parseInt(e.target.value) || 5)) })}
-                      min={isAffiliate ? 5 : 1}
-                      max={isAffiliate ? 20 : 100}
-                      disabled={promoForm.isFree}
-                      className="input-modern w-full text-sm disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-                {!isAffiliate && (
-                  <>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={promoForm.isFree}
-                        onChange={(e) => setPromoForm({ ...promoForm, isFree: e.target.checked })}
-                        className="cursor-pointer"
-                      />
-                      <span className="text-sm text-zinc-400">Bedava (ucretsiz satin alma)</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-zinc-400 mb-1">Max Kayit</label>
-                        <input
-                          type="number"
-                          value={promoForm.maxSignups}
-                          onChange={(e) => setPromoForm({ ...promoForm, maxSignups: Math.max(1, parseInt(e.target.value) || 1) })}
-                          min={1}
-                          className="input-modern w-full text-sm"
-                        />
+                  {isAffiliate ? (
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5">İndirim Oranı</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {AFFILIATE_DISCOUNT_OPTIONS.map((d) => {
+                          const taken = usedDiscounts.has(d);
+                          const selected = promoForm.discountPercent === d;
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              disabled={taken}
+                              onClick={() => setPromoForm({ ...promoForm, discountPercent: d })}
+                              className={`py-2.5 rounded-xl text-sm font-bold transition ${
+                                taken
+                                  ? 'bg-white/5 text-zinc-600 cursor-not-allowed line-through'
+                                  : selected
+                                    ? 'bg-pink-500 text-white'
+                                    : 'bg-white/10 text-zinc-300 hover:bg-white/15'
+                              }`}
+                            >
+                              %{d}
+                            </button>
+                          );
+                        })}
                       </div>
-                      <div>
-                        <label className="block text-xs text-zinc-400 mb-1">Sure (saat)</label>
-                        <input
-                          type="number"
-                          value={promoForm.expiryHours}
-                          onChange={(e) => setPromoForm({ ...promoForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
-                          min={1}
-                          className="input-modern w-full text-sm"
-                        />
-                      </div>
+                      <p className="text-xs text-zinc-500 mt-2">Komisyonunuz: %{35 - promoForm.discountPercent} · Her indirim oranından 1 adet oluşturulabilir.</p>
                     </div>
-                  </>
-                )}
-                {isAffiliate && (
-                  <p className="text-xs text-zinc-500">Komisyonunuz: %{35 - promoForm.discountPercent} (indirim ne kadar düşükse komisyonunuz o kadar yüksek)</p>
-                )}
-                <button
-                  onClick={handleCreatePromo}
-                  disabled={promoCreating || promoForm.code.trim().length < 3}
-                  className="btn-primary w-full py-2.5 text-sm flex items-center justify-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {promoCreating ? "Olusturuluyor..." : "Promo Linki Olustur"}
-                </button>
-              </div>
-            )}
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">İndirim %</label>
+                        <input
+                          type="number"
+                          value={promoForm.isFree ? 100 : promoForm.discountPercent}
+                          onChange={(e) => setPromoForm({ ...promoForm, discountPercent: parseInt(e.target.value) || 1 })}
+                          min={1}
+                          max={100}
+                          disabled={promoForm.isFree}
+                          className="input-modern w-full text-sm disabled:opacity-50"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={promoForm.isFree}
+                          onChange={(e) => setPromoForm({ ...promoForm, isFree: e.target.checked })}
+                          className="cursor-pointer"
+                        />
+                        <span className="text-sm text-zinc-400">Bedava (ucretsiz satin alma)</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-zinc-400 mb-1">Max Kayit</label>
+                          <input
+                            type="number"
+                            value={promoForm.maxSignups}
+                            onChange={(e) => setPromoForm({ ...promoForm, maxSignups: Math.max(1, parseInt(e.target.value) || 1) })}
+                            min={1}
+                            className="input-modern w-full text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-zinc-400 mb-1">Sure (saat)</label>
+                          <input
+                            type="number"
+                            value={promoForm.expiryHours}
+                            onChange={(e) => setPromoForm({ ...promoForm, expiryHours: Math.max(1, parseInt(e.target.value) || 1) })}
+                            min={1}
+                            className="input-modern w-full text-sm"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  <button
+                    onClick={handleCreatePromo}
+                    disabled={promoCreating || promoForm.code.trim().length < 3}
+                    className="btn-primary w-full py-2.5 text-sm flex items-center justify-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {promoCreating ? "Olusturuluyor..." : "Promo Kodu Olustur"}
+                  </button>
+                </div>
+              ) : null;
+            })()}
 
             {/* Promo Links List */}
             {promos.length > 0 && (
