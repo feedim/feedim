@@ -375,7 +375,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-black text-white max-w-none w-screen relative left-1/2 -translate-x-1/2">
         <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl">
           <nav className="w-full px-3 sm:px-6 lg:px-10 py-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -399,7 +399,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white max-w-none w-screen relative left-1/2 -translate-x-1/2">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl">
         <DashboardNav />
