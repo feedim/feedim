@@ -10,7 +10,7 @@ import Link from "next/link";
 
 import { formatRelativeDate, formatCount } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 import PostContentClient from "@/components/PostContentClient";
 import VideoPlayerClient from "@/components/VideoPlayerClient";
 import VideoSidebar from "@/components/VideoSidebar";
@@ -277,9 +277,9 @@ export default async function PostPage({ params }: PageProps) {
   const tags = (post.post_tags || []).map((pt: { tags: { id: number; name: string; slug: string } }) => pt.tags).filter(Boolean);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
 
-  const sanitizedContent = DOMPurify.sanitize(post.content || "", {
-    ALLOWED_TAGS: ['h2', 'h3', 'h4', 'p', 'br', 'strong', 'em', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'div', 'span', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'code', 'pre', 'sub', 'sup', 'mark', 'del', 's'],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class', 'colspan', 'rowspan'],
+  const sanitizedContent = sanitizeHtml(post.content || "", {
+    allowedTags: ['h2', 'h3', 'h4', 'p', 'br', 'strong', 'em', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'div', 'span', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'code', 'pre', 'sub', 'sup', 'mark', 'del', 's'],
+    allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], 'td': ['colspan', 'rowspan'], 'th': ['colspan', 'rowspan'], '*': ['class'] },
   });
 
   const jsonLd = post.content_type === "video" ? {

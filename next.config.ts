@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@tensorflow/tfjs', 'nsfwjs', 'jpeg-js', 'pngjs', '@anthropic-ai/sdk', 'isomorphic-dompurify', 'jsdom'],
+  serverExternalPackages: ['@tensorflow/tfjs', 'nsfwjs', 'jpeg-js', 'pngjs', '@anthropic-ai/sdk'],
   // Prepare for next/image optimization (Supabase Storage domain)
   images: {
     remotePatterns: [

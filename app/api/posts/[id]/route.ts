@@ -4,7 +4,7 @@ import { slugify, calculateReadingTime, generateExcerpt } from '@/lib/utils';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION } from '@/lib/constants';
 import { moderateContent } from '@/lib/moderation';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 export async function GET(
   request: NextRequest,
@@ -109,10 +109,10 @@ export async function PUT(
 
     if (content !== undefined) {
       const sanitizedContent = isVideo
-        ? DOMPurify.sanitize(content || '', { ALLOWED_TAGS: ['br', 'strong', 'p'], ALLOWED_ATTR: [] })
-        : DOMPurify.sanitize(content, {
-            ALLOWED_TAGS: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
-            ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
+        ? sanitizeHtml(content || '', { allowedTags: ['br', 'strong', 'p'], allowedAttributes: {} })
+        : sanitizeHtml(content, {
+            allowedTags: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
+            allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], '*': ['class'] },
           });
       updates.content = sanitizedContent;
       if (!isVideo) {

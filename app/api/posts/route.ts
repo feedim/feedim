@@ -8,7 +8,7 @@ import { VALIDATION } from '@/lib/constants';
 import { getUserPlan } from '@/lib/limits';
 import { moderateContent } from '@/lib/moderation';
 import { revalidateTag } from 'next/cache';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,10 +57,10 @@ export async function POST(request: NextRequest) {
 
     // Sanitize content — no iframe support
     const sanitizedContent = isVideo
-      ? DOMPurify.sanitize(content || '', { ALLOWED_TAGS: ['br', 'strong', 'p'], ALLOWED_ATTR: [] })
-      : DOMPurify.sanitize(content, {
-          ALLOWED_TAGS: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
-          ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
+      ? sanitizeHtml(content || '', { allowedTags: ['br', 'strong', 'p'], allowedAttributes: {} })
+      : sanitizeHtml(content, {
+          allowedTags: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
+          allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], '*': ['class'] },
         });
 
     const admin = createAdminClient();
