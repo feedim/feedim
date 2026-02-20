@@ -139,13 +139,13 @@ export default function OnboardingPage() {
       const data = await res.json();
       await waitMin();
       if (!res.ok) {
-        feedimAlert("error", data.error || "Bir hata oluştu");
+        feedimAlert("error", data.error || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
         return;
       }
       setStep(resolveStep(data.next));
     } catch {
       await waitMin();
-      feedimAlert("error", "Bağlantı hatası");
+      feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
     } finally {
       setProcessing(false);
     }
@@ -174,7 +174,7 @@ export default function OnboardingPage() {
       setStep(resolveStep(data.next));
     } catch {
       await waitMin();
-      feedimAlert("error", "Bağlantı hatası");
+      feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
     } finally {
       setProcessing(false);
     }
@@ -198,7 +198,7 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     } catch {
       await waitMin();
-      feedimAlert("error", "Bağlantı hatası");
+      feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
     } finally {
       setProcessing(false);
     }
@@ -280,7 +280,7 @@ export default function OnboardingPage() {
         if (step === 1) await saveStep();
       }
     } catch {
-      feedimAlert("error", "Yükleme başarısız");
+      feedimAlert("error", "Yükleme başarısız, lütfen daha sonra tekrar deneyin");
     }
   };
 
@@ -330,7 +330,7 @@ export default function OnboardingPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-bg-primary">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-solid-primary">
         <Spinner size={22} />
       </div>
     );
@@ -340,7 +340,7 @@ export default function OnboardingPage() {
   const canSkip = [1, 4, 5, 7].includes(step) && step < 8;
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
+    <div className="min-h-screen text-text-primary">
       <div className="max-w-[500px] w-full mx-auto px-4 pt-[27px] pb-[50px]">
         {/* Progress bar */}
         <div className="flex items-center gap-3 mb-5">
@@ -564,7 +564,7 @@ function StepEmailVerify() {
         <p className="text-sm text-text-muted">E-posta adresiniz Supabase tarafından otomatik doğrulanmıştır</p>
       </div>
       <div className="bg-bg-secondary rounded-2xl p-5 text-center">
-        <div className="w-12 h-12 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mx-auto mb-3">
+        <div className="w-12 h-12 rounded-full bg-success/20 text-success flex items-center justify-center mx-auto mb-3">
           <Check className="h-6 w-6" />
         </div>
         <p className="text-sm font-medium">E-posta adresiniz doğrulandı</p>

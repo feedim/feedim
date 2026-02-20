@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Heart, Trash2, Smile, X, MoreHorizontal, User, Copy, Flag, Link2 } from "lucide-react";
 import { encodeId } from "@/lib/hashId";
 import { createClient } from "@/lib/supabase/client";
@@ -229,7 +229,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   };
 
   // — Actions —
-  const handleDeleteComment = (commentId: number) => {
+  const handleDeleteComment = useCallback((commentId: number) => {
     feedimAlert("question", "Bu yorumu silmek istediğine emin misin?", {
       showYesNo: true,
       onYes: async () => {
@@ -240,16 +240,16 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             replies: c.replies?.filter(r => r.id !== commentId),
             reply_count: c.replies?.some(r => r.id === commentId) ? c.reply_count - 1 : c.reply_count,
           })));
-          setTotalCount(c => c - 1);
+          setTotalCount(c => Math.max(0, c - 1));
         }
       },
     });
-  };
+  }, [postId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const hasText = !!newComment.trim();
-    const isGif = !!pendingGif && !hasText;
+    const isGif = !!pendingGif;
+    const hasText = !isGif && !!newComment.trim();
     if (!isGif && !hasText) return;
     if (submitting) return;
 
@@ -318,14 +318,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         if (parentId) {
           setComments(prev => prev.map(c => {
             if (c.id === parentId) {
-              return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: c.reply_count - 1 };
+              return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: Math.max(0, c.reply_count - 1) };
             }
             return c;
           }));
         } else {
           setComments(prev => prev.filter(c => c.id !== tempId));
         }
-        setTotalCount(c => c - 1);
+        setTotalCount(c => Math.max(0, c - 1));
         feedimAlert("error", data.error || "Yorum gonderilemedi");
         return;
       }
@@ -348,14 +348,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       if (parentId) {
         setComments(prev => prev.map(c => {
           if (c.id === parentId) {
-            return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: c.reply_count - 1 };
+            return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: Math.max(0, c.reply_count - 1) };
           }
           return c;
         }));
       } else {
         setComments(prev => prev.filter(c => c.id !== tempId));
       }
-      setTotalCount(c => c - 1);
+      setTotalCount(c => Math.max(0, c - 1));
       feedimAlert("error", "Yorum gonderilemedi");
     }
   };
@@ -391,7 +391,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     setShowGifPicker(false);
   };
 
-  const handleLikeComment = async (commentId: number) => {
+  const handleLikeComment = useCallback(async (commentId: number) => {
     if (likingRef.current.has(commentId)) return;
 
     const user = await requireAuth();
@@ -408,8 +408,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
     const updateCount = (delta: number) => {
       setComments(prev => prev.map(c => {
-        if (c.id === commentId) return { ...c, like_count: c.like_count + delta };
-        const replies = c.replies?.map(r => r.id === commentId ? { ...r, like_count: r.like_count + delta } : r);
+        if (c.id === commentId) return { ...c, like_count: Math.max(0, c.like_count + delta) };
+        const replies = c.replies?.map(r => r.id === commentId ? { ...r, like_count: Math.max(0, r.like_count + delta) } : r);
         return { ...c, replies };
       }));
     };
@@ -417,15 +417,29 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
     try {
       const url = `/api/posts/${postId}/comments/${commentId}/like`;
-      if (isLiked) {
-        await fetch(url, { method: "DELETE" });
-      } else {
-        await fetch(url, { method: "POST" });
+      const res = isLiked
+        ? await fetch(url, { method: "DELETE" })
+        : await fetch(url, { method: "POST" });
+      if (!res.ok) {
+        // Rollback
+        updateCount(isLiked ? 1 : -1);
+        setLikedComments(prev => {
+          const next = new Set(prev);
+          if (isLiked) next.add(commentId); else next.delete(commentId);
+          return next;
+        });
       }
+    } catch {
+      updateCount(isLiked ? 1 : -1);
+      setLikedComments(prev => {
+        const next = new Set(prev);
+        if (isLiked) next.add(commentId); else next.delete(commentId);
+        return next;
+      });
     } finally {
       likingRef.current.delete(commentId);
     }
-  };
+  }, [likedComments, postId, requireAuth]);
 
   const toggleRepliesVisibility = (commentId: number) => {
     setShowReplies(prev => {
@@ -519,11 +533,11 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             }}
             readOnly={!!pendingGif}
             maxLength={maxCommentLength}
-            placeholder={pendingGif ? "GIF seçildi — göndermek için ↑ bas" : "Düşüncelerini paylaş..."}
+            placeholder={pendingGif ? "GIF seçili." : "Düşüncelerini paylaş..."}
             rows={1}
             className={cn(
               "flex-1 py-[13px] pl-[18px] pr-[4px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] max-h-[120px] align-middle placeholder:text-text-muted",
-              pendingGif && "opacity-50 cursor-default"
+              pendingGif && "opacity-20 cursor-default"
             )}
             onKeyDown={handleMentionKeyDown}
             style={{ fontFamily: 'inherit' }}
@@ -539,16 +553,18 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             >
               GIF
             </button>
-            <button
-              type="button"
-              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
-              className={cn(
-                "flex items-center justify-center h-[35px] w-[35px] rounded-full transition",
-                showEmojiPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"
-              )}
-            >
-              <Smile className="h-[20px] w-[20px]" />
-            </button>
+            {!pendingGif && (
+              <button
+                type="button"
+                onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                className={cn(
+                  "flex items-center justify-center h-[35px] w-[35px] rounded-full transition",
+                  showEmojiPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"
+                )}
+              >
+                <Smile className="h-[20px] w-[20px]" />
+              </button>
+            )}
             {(newComment.trim() || pendingGif) && (
               <button
                 type="submit"
@@ -741,7 +757,7 @@ interface CommentCardProps {
   renderMentionContent: (text: string) => string;
 }
 
-function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, postSlug, onToggleMenu, onLike, onReply, onDelete, onReport, renderMentionContent }: CommentCardProps) {
+const CommentCard = memo(function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, postSlug, onToggleMenu, onLike, onReply, onDelete, onReport, renderMentionContent }: CommentCardProps) {
   const displayName = comment.profiles?.username ? `@${comment.profiles.username}` : "Anonim";
   const profileUsername = comment.profiles?.username || "anonim";
   return (
@@ -784,7 +800,7 @@ function CommentCard({ comment, isReply = false, likedComments, currentUserId, o
             {openMenuId === comment.id && (
               <>
                 <div className="fixed inset-0 z-[99990] bg-black/40" onClick={() => onToggleMenu(null)} />
-                <div className="fixed inset-x-0 bottom-0 z-[99991] bg-bg-elevated rounded-t-2xl shadow-xl py-2 px-2 pb-[env(safe-area-inset-bottom,8px)] animate-[slideInBottom_0.22s_ease-out]">
+                <div className="fixed inset-x-0 bottom-0 z-[99991] bg-bg-elevated rounded-t-2xl shadow-xl py-2 px-2 pb-[max(env(safe-area-inset-bottom,0px),16px)] animate-[slideInBottom_0.22s_ease-out]">
                   <div className="w-10 h-1 rounded-full bg-text-muted/20 mx-auto mb-2" />
                   <a
                     href={`/u/${profileUsername}`}
@@ -862,7 +878,7 @@ function CommentCard({ comment, isReply = false, likedComments, currentUserId, o
               onClick={() => onLike(comment.id)}
               className={cn(
                 "flex items-center gap-1 text-xs transition",
-                likedComments.has(comment.id) ? "text-red-500" : "text-text-muted hover:text-red-500"
+                likedComments.has(comment.id) ? "text-error" : "text-text-muted hover:text-error"
               )}
             >
               <Heart className={cn("h-[14px] w-[14px]", likedComments.has(comment.id) && "fill-current")} />
@@ -881,4 +897,4 @@ function CommentCard({ comment, isReply = false, likedComments, currentUserId, o
       </div>
     </div>
   );
-}
+})

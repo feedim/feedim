@@ -29,16 +29,16 @@ export default function ErrorState({
       title: 'text-accent-main'
     },
     warning: {
-      bg: 'bg-yellow-500/10',
-      border: 'border-yellow-500/20',
-      icon: 'text-yellow-500',
-      title: 'text-yellow-500'
+      bg: 'bg-warning/10',
+      border: 'border-warning/20',
+      icon: 'text-warning',
+      title: 'text-warning'
     },
     info: {
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/20',
-      icon: 'text-blue-500',
-      title: 'text-blue-500'
+      bg: 'bg-info/10',
+      border: 'border-info/20',
+      icon: 'text-info',
+      title: 'text-info'
     }
   };
 
@@ -112,7 +112,7 @@ export function ErrorMessage({
 }) {
   return (
     <div
-      className={`bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-600 dark:text-red-400 ${className}`}
+      className={`bg-error/10 border border-error/20 rounded-lg p-3 text-sm text-error ${className}`}
       role="alert"
       aria-live="polite"
     >
@@ -180,7 +180,7 @@ export function EmptyState({
           {action.href ? (
             <Link
               href={action.href}
-              className="btn-primary inline-flex items-center"
+              className="t-btn accept inline-flex items-center"
               aria-label={action.label}
             >
               {action.label}
@@ -188,7 +188,7 @@ export function EmptyState({
           ) : (
             <button
               onClick={action.onClick}
-              className="btn-primary"
+              className="t-btn accept"
               aria-label={action.label}
             >
               {action.label}

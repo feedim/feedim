@@ -90,10 +90,10 @@ export default function SecurityPage() {
       ]);
       if (authError) { feedimAlert("error", "Şifre yanlış"); return; }
       const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", "Kod gönderilemedi"); return; }
+      if (error) { feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin"); return; }
       setEnableStep(2);
       setMfaCooldown(60);
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setEnableSending(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setEnableSending(false); }
   };
 
   const handleEnableOtpStep = async () => {
@@ -107,10 +107,10 @@ export default function SecurityPage() {
       if (error) { feedimAlert("error", "Kod geçersiz veya süresi dolmuş"); return; }
       const res = await fetch("/api/auth/mfa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "enable" }) });
       const data = await res.json();
-      if (!res.ok) { feedimAlert("error",data.error || "2FA etkinleştirilemedi"); return; }
+      if (!res.ok) { feedimAlert("error",data.error || "İki faktörlü doğrulama etkinleştirilemedi, lütfen daha sonra tekrar deneyin"); return; }
       feedimAlert("success", "İki faktörlü doğrulama etkinleştirildi!");
       setMfaEnabled(true); setEnableStep(0); setEnablePassword(""); setEnableCode("");
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setEnabling(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setEnabling(false); }
   };
 
   const handleDisablePasswordStep = async () => {
@@ -123,10 +123,10 @@ export default function SecurityPage() {
       ]);
       if (authError) { feedimAlert("error", "Şifre yanlış"); return; }
       const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", "Kod gönderilemedi"); return; }
+      if (error) { feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin"); return; }
       setDisableStep(2);
       setMfaCooldown(60);
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setDisableSending(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setDisableSending(false); }
   };
 
   const handleDisableOtpStep = async () => {
@@ -140,20 +140,20 @@ export default function SecurityPage() {
       if (error) { feedimAlert("error", "Kod geçersiz veya süresi dolmuş"); return; }
       const res = await fetch("/api/auth/mfa", { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) { feedimAlert("error",data.error || "2FA kapatılamadı"); return; }
+      if (!res.ok) { feedimAlert("error",data.error || "İki faktörlü doğrulama kapatılamadı, lütfen daha sonra tekrar deneyin"); return; }
       feedimAlert("success", "İki faktörlü doğrulama kapatıldı");
       setMfaEnabled(false); setDisableStep(0); setDisablePassword(""); setDisableCode("");
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setDisabling(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setDisabling(false); }
   };
 
   const handleResendMfaOtp = async () => {
     if (mfaCooldown > 0 || !userEmail) return;
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", "Kod gönderilemedi"); return; }
+      if (error) { feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin"); return; }
       feedimAlert("success", "Kod tekrar gönderildi");
       setMfaCooldown(60);
-    } catch { feedimAlert("error", "Bir hata oluştu"); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); }
   };
 
   const handleChangePassword = async () => {
@@ -174,7 +174,7 @@ export default function SecurityPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-    } catch { feedimAlert("error", "Şifre değiştirilemedi"); } finally { setChangingPassword(false); }
+    } catch { feedimAlert("error", "Şifre değiştirilemedi, lütfen daha sonra tekrar deneyin"); } finally { setChangingPassword(false); }
   };
 
   const [updatingEmail, setUpdatingEmail] = useState(false);
@@ -190,7 +190,7 @@ export default function SecurityPage() {
       if (error) throw error;
       feedimAlert("success", "E-posta güncelleme linki gönderildi!");
       setEditEmail(false); setNewEmail("");
-    } catch { feedimAlert("error", "E-posta güncellenemedi"); } finally { setUpdatingEmail(false); }
+    } catch { feedimAlert("error", "E-posta güncellenemedi, lütfen daha sonra tekrar deneyin"); } finally { setUpdatingEmail(false); }
   };
 
   const handleSendEmailCode = async () => {
@@ -198,10 +198,11 @@ export default function SecurityPage() {
     setSendingCode(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", "Kod gönderilemedi"); return; }
+      if (error) { feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin"); return; }
       setVerifyingEmail(true);
+      setEditEmail(false); setNewEmail("");
       setEmailCooldown(60);
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setSendingCode(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setSendingCode(false); }
   };
 
   const handleVerifyEmailCode = async () => {
@@ -216,7 +217,7 @@ export default function SecurityPage() {
       if (!res.ok) { feedimAlert("error",data.error || "Kod geçersiz veya süresi dolmuş"); return; }
       setEmailVerified(true); setVerifyingEmail(false); setEmailCode("");
       feedimAlert("success", "E-posta adresiniz doğrulandı!");
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setVerifyingCode(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setVerifyingCode(false); }
   };
 
   return (
@@ -246,7 +247,7 @@ export default function SecurityPage() {
                         <Check className="h-3 w-3" /> Onaylandı
                       </p>
                     ) : (
-                      <p className="text-xs text-orange-500 mt-0.5">Onaylanmadı</p>
+                      <p className="text-xs text-accent-main mt-0.5">Onaylanmadı</p>
                     )}
                   </div>
                 </div>
@@ -256,7 +257,7 @@ export default function SecurityPage() {
                       {sendingCode ? "..." : "Doğrula"}
                     </button>
                   )}
-                  <button onClick={() => setEditEmail(!editEmail)} className="text-xs text-text-muted hover:text-text-primary font-semibold transition">
+                  <button onClick={() => { setEditEmail(!editEmail); if (!editEmail) { setVerifyingEmail(false); setEmailCode(""); } }} className="text-xs text-text-muted hover:text-text-primary font-semibold transition">
                     Değiştir
                   </button>
                 </div>
@@ -344,11 +345,11 @@ export default function SecurityPage() {
 
             <div className="border-t border-border-primary" />
 
-            {/* 2FA */}
+            {/* İki Faktörlü Doğrulama */}
             <section>
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="h-4.5 w-4.5 text-accent-main" />
-                <h2 className="font-semibold text-[0.95rem]">İki Faktörlü Doğrulama (2FA)</h2>
+                <h2 className="font-semibold text-[0.95rem]">İki Faktörlü Doğrulama</h2>
               </div>
               <p className="text-xs text-text-muted mb-4">
                 Hesabınızı ekstra güvenlik katmanıyla koruyun. Her girişte e-postanıza doğrulama kodu gönderilir.
@@ -372,7 +373,7 @@ export default function SecurityPage() {
                     <div className="flex items-center gap-3">
                       <Check className="h-4.5 w-4.5 text-accent-main shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-accent-main">2FA Etkin</p>
+                        <p className="text-sm font-semibold text-accent-main">İki Faktörlü Doğrulama Etkin</p>
                         <p className="text-xs text-text-muted">Her girişte doğrulama kodu gönderilecek.</p>
                       </div>
                     </div>
@@ -420,7 +421,7 @@ export default function SecurityPage() {
                   {enableStep === 0 && canUseMfa && (
                     <button onClick={() => setEnableStep(1)} className="t-btn accept w-full py-3 flex items-center justify-center gap-2">
                       <Shield className="h-4 w-4" />
-                      2FA Etkinleştir
+                      İki Faktörlü Doğrulamayı Etkinleştir
                     </button>
                   )}
 
@@ -465,7 +466,7 @@ export default function SecurityPage() {
 
             {/* Info */}
             <section className="pb-4">
-              <h3 className="font-semibold text-[0.95rem] mb-3">2FA Nasıl Çalışır?</h3>
+              <h3 className="font-semibold text-[0.95rem] mb-3">İki Faktörlü Doğrulama Nasıl Çalışır?</h3>
               <ul className="space-y-2 text-sm text-text-muted">
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>Her girişte e-postanıza 8 haneli kod gönderilir.</li>
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>Kodu girerek giriş işleminizi tamamlarsınız.</li>

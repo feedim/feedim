@@ -27,7 +27,10 @@ function getSavedAccounts(): SavedAccount[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+    // Only keep the most recent account
+    return parsed
+      .sort((a: SavedAccount, b: SavedAccount) => b.last_login - a.last_login)
+      .slice(0, MAX_SAVED_ACCOUNTS);
   } catch {
     return [];
   }
@@ -109,7 +112,7 @@ function LoginPageContent() {
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) feedimAlert("error", "Giriş yapılamadı. Lütfen tekrar deneyin.");
+    if (error) feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -151,7 +154,7 @@ function LoginPageContent() {
         } else if (error.message.includes('Email not confirmed')) {
           feedimAlert("error", "E-posta adresinizi onaylamanız gerekiyor.");
         } else {
-          feedimAlert("error", "Giriş yapılamadı. Lütfen tekrar deneyin.");
+          feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
         }
         return;
       }
@@ -202,7 +205,7 @@ function LoginPageContent() {
                   router.replace(nextUrl || "/dashboard");
                 } else {
                   const data = await res.json();
-                  feedimAlert("error", data.error || "Hesap kurtarılamadı");
+                  feedimAlert("error", data.error || "Hesap kurtarılamadı, lütfen daha sonra tekrar deneyin");
                   document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
                   await supabase.auth.signOut();
                 }
@@ -260,7 +263,7 @@ function LoginPageContent() {
       router.replace(nextUrl || "/dashboard");
     } catch {
       await waitMin();
-      feedimAlert("error", "Bir hata oluştu. Lütfen tekrar deneyin.");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setLoading(false);
     }
@@ -326,7 +329,7 @@ function LoginPageContent() {
             <div
               key={account.email}
               onClick={() => handleSelectAccount(account)}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border-primary hover:bg-bg-secondary transition cursor-pointer text-left group"
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border-primary hover:bg-bg-tertiary transition cursor-pointer text-left group"
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectAccount(account); }}
@@ -357,7 +360,7 @@ function LoginPageContent() {
             <div className="w-full border-t border-border-primary"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-bg-primary text-text-muted">veya</span>
+            <span className="px-4 text-text-muted">veya</span>
           </div>
         </div>
 
@@ -502,7 +505,7 @@ function LoginPageContent() {
           <div className="w-full border-t border-border-primary"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-bg-primary text-text-muted">veya</span>
+          <span className="px-4 text-text-muted">veya</span>
         </div>
       </div>
 

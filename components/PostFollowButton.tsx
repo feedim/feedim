@@ -14,6 +14,7 @@ interface PostFollowButtonProps {
 
 export default function PostFollowButton({ authorUsername, authorUserId }: PostFollowButtonProps) {
   const [following, setFollowing] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [ready, setReady] = useState(false);
   const { user: ctxUser, isLoggedIn } = useUser();
   const { requireAuth } = useAuthModal();
@@ -24,40 +25,59 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
     if (!isLoggedIn || !ctxUser || isOwn) { setReady(true); return; }
 
     const supabase = createClient();
-    supabase
-      .from("follows")
-      .select("id")
-      .eq("follower_id", ctxUser.id)
-      .eq("following_id", authorUserId)
-      .single()
-      .then(({ data }) => {
-        setFollowing(!!data);
-        setReady(true);
-      });
+    Promise.all([
+      supabase.from("follows").select("id").eq("follower_id", ctxUser.id).eq("following_id", authorUserId).single(),
+      supabase.from("follow_requests").select("id").eq("requester_id", ctxUser.id).eq("target_id", authorUserId).eq("status", "pending").single(),
+    ]).then(([followRes, reqRes]) => {
+      setFollowing(!!followRes.data);
+      setRequested(!!reqRes.data);
+      setReady(true);
+    });
   }, [authorUserId, ctxUser, isLoggedIn, isOwn]);
 
-  const handleFollow = async () => {
-    const user = await requireAuth();
-    if (!user) return;
-
+  const doFollow = async () => {
     const wasFollowing = following;
-    setFollowing(!wasFollowing);
+    const wasRequested = requested;
+
+    if (wasFollowing || wasRequested) {
+      setFollowing(false);
+      setRequested(false);
+    } else {
+      setFollowing(true);
+    }
 
     try {
       const res = await fetch(`/api/users/${authorUsername}/follow`, { method: "POST" });
       if (!res.ok) {
         setFollowing(wasFollowing);
+        setRequested(wasRequested);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
           feedimAlert("error", data.error || "Günlük takip limitine ulaştın.");
         }
+        return;
       }
+      const data = await res.json();
+      setFollowing(data.following);
+      setRequested(data.requested);
     } catch {
       setFollowing(wasFollowing);
+      setRequested(wasRequested);
     }
+  };
+
+  const handleFollow = async () => {
+    const user = await requireAuth();
+    if (!user) return;
+
+    if (following || requested) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: doFollow });
+      return;
+    }
+    doFollow();
   };
 
   if (isOwn || !ready) return null;
 
-  return <FollowButton following={following} onClick={handleFollow} />;
+  return <FollowButton following={following || requested} isPrivate={requested} onClick={handleFollow} />;
 }

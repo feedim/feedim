@@ -62,7 +62,7 @@ export default function UserListItem({
       : undefined;
 
   return (
-    <div className="flex items-center gap-3 py-2.5 px-2 rounded-[14px] hover:bg-bg-secondary/60 transition">
+    <div className="flex items-center gap-3 py-2.5 px-2 rounded-[14px] hover:bg-bg-secondary transition">
       <Link href={`/u/${user.username}`} onClick={onNavigate} className="shrink-0">
         {user.avatar_url ? (
           <img

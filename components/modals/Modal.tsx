@@ -84,8 +84,6 @@ export default function Modal({
   const isDragging = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const footerWrapRef = useRef<HTMLDivElement>(null);
-  const footerSpacerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -95,86 +93,6 @@ export default function Modal({
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Mobilde klavye açıldığında SADECE footer'ı (yorum inputu) klavyenin üstüne taşı — modal hareket etmez
-  const modalInitialVvHeight = useRef(0);
-  const modalRafId = useRef(0);
-  useEffect(() => {
-    if (!open || !mounted) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    if (!modalInitialVvHeight.current) modalInitialVvHeight.current = vv.height;
-
-    const applyOffset = () => {
-      const fw = footerWrapRef.current;
-      const spacer = footerSpacerRef.current;
-      if (!fw) return;
-
-      const baseHeight = Math.max(window.innerHeight, modalInitialVvHeight.current);
-      const offset = baseHeight - vv.height;
-      if (offset > 50) {
-        const h = fw.offsetHeight;
-        fw.style.position = "fixed";
-        fw.style.bottom = `${offset}px`;
-        fw.style.left = "0";
-        fw.style.right = "0";
-        fw.style.zIndex = "100000";
-        if (spacer) spacer.style.height = `${h}px`;
-      } else {
-        fw.style.position = "";
-        fw.style.bottom = "";
-        fw.style.left = "";
-        fw.style.right = "";
-        fw.style.zIndex = "";
-        if (spacer) spacer.style.height = "0px";
-      }
-    };
-
-    // rAF polling — focus alındığında her frame kontrol et
-    let polling = false;
-    let pollStart = 0;
-    const poll = () => {
-      applyOffset();
-      if (polling && Date.now() - pollStart < 600) {
-        modalRafId.current = requestAnimationFrame(poll);
-      } else { polling = false; }
-    };
-    const startPolling = () => {
-      if (polling) return;
-      polling = true;
-      pollStart = Date.now();
-      modalRafId.current = requestAnimationFrame(poll);
-    };
-
-    const onFocusIn = () => startPolling();
-    const onFocusOut = () => startPolling();
-
-    const sheet = sheetRef.current;
-    if (sheet) {
-      sheet.addEventListener("focusin", onFocusIn);
-      sheet.addEventListener("focusout", onFocusOut);
-      // click — emoji/GIF butonları gibi etkileşimlerde polling başlat
-      sheet.addEventListener("click", onFocusIn);
-    }
-
-    vv.addEventListener("resize", applyOffset);
-    vv.addEventListener("scroll", applyOffset);
-
-    return () => {
-      polling = false;
-      cancelAnimationFrame(modalRafId.current);
-      if (sheet) {
-        sheet.removeEventListener("focusin", onFocusIn);
-        sheet.removeEventListener("focusout", onFocusOut);
-        sheet.removeEventListener("click", onFocusIn);
-      }
-      vv.removeEventListener("resize", applyOffset);
-      vv.removeEventListener("scroll", applyOffset);
-      const fw = footerWrapRef.current;
-      if (fw) { fw.style.position = ""; fw.style.bottom = ""; fw.style.left = ""; fw.style.right = ""; fw.style.zIndex = ""; }
-      if (footerSpacerRef.current) footerSpacerRef.current.style.height = "0px";
-    };
-  }, [open, mounted]);
 
   // Resolved animation type
   const resolvedType: 1 | 2 | 3 = animationType
@@ -376,6 +294,7 @@ export default function Modal({
 
       <div
         ref={sheetRef}
+        data-modal
         className={`${sheetLayoutClasses} ${
           closing
             ? `animate-[${anim.out}]`
@@ -395,7 +314,7 @@ export default function Modal({
         {/* Header */}
         {!hideHeader && (
           <div
-            className={`flex items-center justify-between px-4 py-3 border-b border-border-primary shrink-0 ${enableHeaderDrag ? "touch-none select-none" : ""}`}
+            className={`flex items-center justify-between px-4 py-3 shrink-0 ${enableHeaderDrag ? "touch-none select-none" : ""}`}
             {...headerDragProps}
           >
             <div className="w-16 flex items-center">
@@ -426,8 +345,7 @@ export default function Modal({
         {/* Footer — klavye açıkken fixed olur, modal hareket etmez */}
         {footer && (
           <>
-            <div ref={footerSpacerRef} className="shrink-0" style={{ height: 0 }} />
-            <div ref={footerWrapRef} className="shrink-0 bg-bg-secondary">{footer}</div>
+            <div className="shrink-0 bg-bg-secondary">{footer}</div>
           </>
         )}
       </div>

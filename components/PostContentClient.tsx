@@ -69,16 +69,16 @@ export default function PostContentClient({ html, className, featuredImage }: Po
 
   return (
     <>
-      {/* Featured Image (rendered by parent, we just handle click) */}
+      {/* Featured Image — visually hidden but kept in DOM for SEO crawlers */}
       {featuredImage && (
         <div
-          className="rounded-[21px] overflow-hidden mb-6 cursor-zoom-in"
-          onClick={handleFeaturedClick}
+          className="h-0 overflow-hidden"
+          aria-hidden="true"
         >
           <img
             src={featuredImage.src}
             alt={featuredImage.alt}
-            className="w-full h-auto max-h-[460px] object-cover"
+            className="w-full h-auto"
             loading="lazy"
           />
         </div>

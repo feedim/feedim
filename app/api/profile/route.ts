@@ -139,45 +139,64 @@ export async function PUT(req: NextRequest) {
   updates.updated_at = new Date().toISOString();
 
   // Auto-approve pending follow requests when disabling private account
+  // Process in batches of 50 to avoid overwhelming the database
   if (updates.account_private === false) {
     const admin = createAdminClient();
-    const { data: pendingRequests } = await admin
-      .from("follow_requests")
-      .select("id, requester_id")
-      .eq("target_id", user.id)
-      .eq("status", "pending");
 
-    if (pendingRequests && pendingRequests.length > 0) {
-      // Create follows for each pending request
-      const follows = pendingRequests.map(r => ({
-        follower_id: r.requester_id,
-        following_id: user.id,
-      }));
-      await admin.from("follows").upsert(follows, { onConflict: "follower_id,following_id" });
+    // Kick off batch approval in the background — don't block the response
+    (async () => {
+      const BATCH_SIZE = 50;
+      let hasMore = true;
 
-      // Mark all pending requests as accepted
-      await admin
-        .from("follow_requests")
-        .update({ status: "accepted" })
-        .eq("target_id", user.id)
-        .eq("status", "pending");
+      while (hasMore) {
+        const { data: batch } = await admin
+          .from("follow_requests")
+          .select("id, requester_id")
+          .eq("target_id", user.id)
+          .eq("status", "pending")
+          .limit(BATCH_SIZE);
 
-      // Recount follower count for this user
+        if (!batch || batch.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Create follows for this batch
+        const follows = batch.map(r => ({
+          follower_id: r.requester_id,
+          following_id: user.id,
+        }));
+        await admin.from("follows").upsert(follows, { onConflict: "follower_id,following_id" });
+
+        // Mark this batch as accepted
+        const batchIds = batch.map(r => r.id);
+        await admin
+          .from("follow_requests")
+          .update({ status: "accepted" })
+          .in("id", batchIds);
+
+        // Update following count for each requester in this batch
+        for (const r of batch) {
+          const { count: followingCount } = await admin
+            .from("follows")
+            .select("id", { count: "exact", head: true })
+            .eq("follower_id", r.requester_id);
+          await admin.from("profiles").update({ following_count: followingCount || 0 }).eq("user_id", r.requester_id);
+        }
+
+        // If we got fewer than BATCH_SIZE, we're done
+        if (batch.length < BATCH_SIZE) {
+          hasMore = false;
+        }
+      }
+
+      // Recount follower count once at the end
       const { count: followerCount } = await admin
         .from("follows")
         .select("id", { count: "exact", head: true })
         .eq("following_id", user.id);
       await admin.from("profiles").update({ follower_count: followerCount || 0 }).eq("user_id", user.id);
-
-      // Recount following count for each requester
-      for (const r of pendingRequests) {
-        const { count: followingCount } = await admin
-          .from("follows")
-          .select("id", { count: "exact", head: true })
-          .eq("follower_id", r.requester_id);
-        await admin.from("profiles").update({ following_count: followingCount || 0 }).eq("user_id", r.requester_id);
-      }
-    }
+    })().catch(() => {});
   }
 
   const { data, error } = await supabase

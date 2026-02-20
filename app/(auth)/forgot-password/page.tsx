@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
       if (elapsed < 3000) await new Promise((r) => setTimeout(r, 3000 - elapsed));
 
       if (error) {
-        feedimAlert("error", "Kod gönderilemedi. Lütfen tekrar deneyin.");
+        feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin");
         if (process.env.NODE_ENV === "development") console.log("OTP error:", error.message);
         return;
       }
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
     } catch {
       const elapsed = Date.now() - start;
       if (elapsed < 3000) await new Promise((r) => setTimeout(r, 3000 - elapsed));
-      feedimAlert("error", "Bir hata oluştu, lütfen tekrar deneyin.");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
       feedimAlert("success", "Doğrulama başarılı!");
       router.push("/reset-password");
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen tekrar deneyin.");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setLoading(false);
     }

@@ -94,9 +94,9 @@ export default function TransactionsPage() {
   };
 
   const headerRight = (
-    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-500/10 rounded-full">
-      <Coins className="h-4 w-4 text-yellow-500" />
-      <span className="text-sm font-bold text-yellow-500">{balance.toLocaleString()}</span>
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-accent-main/10 rounded-full">
+      <Coins className="h-4 w-4 text-accent-main" />
+      <span className="text-sm font-bold text-accent-main">{balance.toLocaleString()}</span>
     </div>
   );
 
@@ -107,7 +107,7 @@ export default function TransactionsPage() {
           <TransactionListSkeleton count={6} />
         ) : transactions.length === 0 ? (
           <div className="text-center py-16">
-            <Coins className="h-12 w-12 text-yellow-500/40 mx-auto mb-3" />
+            <Coins className="h-12 w-12 text-accent-main/40 mx-auto mb-3" />
             <h2 className="text-lg font-bold mb-2">Henüz işlem yok</h2>
             <p className="text-sm text-text-muted mb-5">Başlamak için Jeton satın alın.</p>
             <Link href="/dashboard/coins" className="t-btn accept inline-block">

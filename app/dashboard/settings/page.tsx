@@ -8,7 +8,7 @@ import {
   Shield, HelpCircle, FileText, MessageCircle, ScrollText,
   ChevronRight, Check, Lock, Briefcase, Ban, Bell,
   Smartphone, Link2, EyeOff,
-  Sun, Moon, CloudMoon, Monitor
+  Sun, Moon, CloudMoon, Monitor, Sparkles
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -35,12 +35,14 @@ export default function SettingsPage() {
   const [proModalOpen, setProModalOpen] = useState(false);
   const [darkModeOpen, setDarkModeOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("system");
+  const [ambientLight, setAmbientLight] = useState("on");
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     loadProfile();
     setCurrentTheme(localStorage.getItem("fdm-theme") || "system");
+    setAmbientLight(localStorage.getItem("fdm-ambient-light") || "on");
   }, []);
 
   const loadProfile = async () => {
@@ -103,7 +105,7 @@ export default function SettingsPage() {
           ]);
           if (!res.ok) {
             setIsPrivate(!newValue);
-            feedimAlert("error", "Ayar güncellenemedi");
+            feedimAlert("error", "Ayar güncellenemedi, lütfen daha sonra tekrar deneyin");
           }
         } catch {
           setIsPrivate(!newValue);
@@ -131,12 +133,12 @@ export default function SettingsPage() {
           setContactEmail("");
           setContactPhone("");
           if (makePrivate) setIsPrivate(true);
-          feedimAlert("success", "Kişisel hesaba geçildi");
+          // silent
         } else {
-          feedimAlert("error", "Hesap türü değiştirilemedi");
+          feedimAlert("error", "Hesap türü değiştirilemedi, lütfen daha sonra tekrar deneyin");
         }
       } catch {
-        feedimAlert("error", "Bir hata oluştu");
+        feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
       }
     };
 
@@ -178,7 +180,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Coin Balance */}
-            <Link href="/dashboard/coins" className="mx-4 mt-3 mb-1 flex items-center justify-between px-4 py-3.5 rounded-[13px] bg-bg-secondary/40 hover:bg-bg-secondary/60 transition-colors">
+            <Link href="/dashboard/coins" className="mx-4 mt-3 mb-1 flex items-center justify-between px-4 py-3.5 rounded-[13px] bg-bg-secondary hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Wallet className="h-5 w-5 text-text-muted" />
                 <div>
@@ -212,35 +214,35 @@ export default function SettingsPage() {
 
             {/* Hesap */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Hesap</h3>
-            <Link href="/dashboard/profile" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/profile" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <User className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Profil</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/transactions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/transactions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">İşlem Geçmişi</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/bookmarks" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/bookmarks" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Bookmark className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Kaydedilenler</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/withdrawal" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/withdrawal" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Wallet className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Ödeme Alma</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/settings/invite" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/settings/invite" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <ShareIcon className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Arkadaşlarını Davet Et</span>
@@ -252,7 +254,7 @@ export default function SettingsPage() {
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Görünüm</h3>
             <button
               onClick={() => setDarkModeOpen(true)}
-              className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors text-left"
+              className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
             >
               <div className="flex items-center gap-3">
                 {currentTheme === "dark" ? <Moon className="h-5 w-5 text-text-muted" /> : currentTheme === "dim" ? <CloudMoon className="h-5 w-5 text-text-muted" /> : currentTheme === "light" ? <Sun className="h-5 w-5 text-text-muted" /> : <Monitor className="h-5 w-5 text-text-muted" />}
@@ -263,6 +265,26 @@ export default function SettingsPage() {
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </button>
+
+            <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-text-muted" />
+                <div>
+                  <span className="text-sm font-medium">Sahne Işığı</span>
+                  <p className="text-xs text-text-muted mt-0.5">Gönderi sayfalarında arka plan ışık efekti</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const next = ambientLight === "on" ? "off" : "on";
+                  setAmbientLight(next);
+                  localStorage.setItem("fdm-ambient-light", next);
+                }}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${ambientLight === "on" ? "bg-accent-main" : "bg-bg-tertiary"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${ambientLight === "on" ? "translate-x-5" : "translate-x-0"}`} />
+              </button>
+            </div>
 
             {/* Gizlilik */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Gizlilik</h3>
@@ -281,14 +303,14 @@ export default function SettingsPage() {
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${isPrivate ? "translate-x-5" : "translate-x-0"}`} />
               </button>
             </div>
-            <Link href="/dashboard/settings/blocked-users" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/settings/blocked-users" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Ban className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Engellenenler</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/settings/blocked-words" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/settings/blocked-words" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <EyeOff className="h-5 w-5 text-text-muted" />
                 <div>
@@ -301,7 +323,7 @@ export default function SettingsPage() {
 
             {/* Bildirimler */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Bildirimler</h3>
-            <Link href="/dashboard/settings/notifications" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/settings/notifications" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Bell className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Bildirim Ayarları</span>
@@ -315,7 +337,7 @@ export default function SettingsPage() {
               <>
                 <button
                   onClick={() => setProModalOpen(true)}
-                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors text-left"
+                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
                     <Briefcase className="h-5 w-5 text-accent-main" />
@@ -330,7 +352,7 @@ export default function SettingsPage() {
                 </button>
                 <button
                   onClick={() => handleSwitchToPersonal()}
-                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors text-left"
+                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
                     <User className="h-5 w-5 text-text-muted" />
@@ -342,7 +364,7 @@ export default function SettingsPage() {
             ) : (
               <button
                 onClick={() => setProModalOpen(true)}
-                className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors text-left"
+                className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
                   <Briefcase className="h-5 w-5 text-text-muted" />
@@ -357,7 +379,7 @@ export default function SettingsPage() {
 
             {/* Güvenlik */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Güvenlik</h3>
-            <Link href="/dashboard/security" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/security" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-text-muted" />
                 <div>
@@ -371,21 +393,21 @@ export default function SettingsPage() {
                 <span className="text-xs text-accent-main font-semibold">Doğrula</span>
               )}
             </Link>
-            <Link href="/dashboard/security" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/security" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Shield className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Güvenlik Ayarları</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/settings/connected" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/settings/connected" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Link2 className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Bağlı Hesaplar</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/dashboard/settings/sessions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/dashboard/settings/sessions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Smartphone className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Aktif Oturumlar</span>
@@ -405,28 +427,28 @@ export default function SettingsPage() {
 
             {/* Destek & Yasal */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Destek & Yasal</h3>
-            <Link href="/help" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/help" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <HelpCircle className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Yardım Merkezi</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/contact" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/contact" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <MessageCircle className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Bize Ulaşın</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/terms" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/terms" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Kullanım Koşulları</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
-            <Link href="/privacy" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors">
+            <Link href="/privacy" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <ScrollText className="h-5 w-5 text-text-muted" />
                 <span className="text-sm font-medium">Gizlilik Politikası</span>
@@ -482,7 +504,7 @@ export default function SettingsPage() {
               setIsPrivate(false);
               return true;
             }
-            feedimAlert("error", "Ayar güncellenemedi");
+            feedimAlert("error", "Ayar güncellenemedi, lütfen daha sonra tekrar deneyin");
             return false;
           } catch {
             return false;

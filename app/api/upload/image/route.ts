@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkImageBuffer } from '@/lib/moderation';
+import { uploadToR2 } from '@/lib/r2';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -65,21 +66,10 @@ export async function POST(request: NextRequest) {
     const ext = file.type === 'image/jpeg' ? '.jpg' : file.type === 'image/png' ? '.png' : file.type === 'image/gif' ? '.gif' : '.webp';
     const path = `${user.id}/${Date.now()}_${safeName}${safeName.includes('.') ? '' : ext}`;
 
-    const { data, error } = await supabase.storage
-      .from('images')
-      .upload(path, imageBuffer, {
-        contentType: file.type,
-        cacheControl: '31536000',
-        upsert: false,
-      });
+    const key = `images/${path}`;
+    const url = await uploadToR2(key, imageBuffer, file.type);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    const { data: urlData } = supabase.storage.from('images').getPublicUrl(data.path);
-
-    return NextResponse.json({ success: true, url: urlData.publicUrl });
+    return NextResponse.json({ success: true, url });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Yükleme hatası' }, { status: 500 });
   }

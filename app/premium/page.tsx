@@ -150,8 +150,8 @@ const faqs = [
     a: "Pro ve Max aboneler goruntuleme sayısı, etkilesim oranı, ortalama okuma suresi, takipci buyumesi ve gonderi performansı gibi detaylı istatistikleri takip edebilir.",
   },
   {
-    q: "Iki faktorlu dogrulama (2FA) nedir?",
-    a: "2FA, hesabınıza giris yaparken sifrenize ek olarak e-posta ile gonderilen bir dogrulama kodu gerektirir. Pro ve Max abonelere ozel bu ozellik, hesabınızı yetkisiz erisimlere karsı korur.",
+    q: "İki faktörlü doğrulama nedir?",
+    a: "İki faktörlü doğrulama, hesabınıza giriş yaparken şifrenize ek olarak e-posta ile gönderilen bir doğrulama kodu gerektirir. Pro ve Max abonelere özel bu özellik, hesabınızı yetkisiz erişimlere karşı korur.",
   },
   {
     q: "Isletme hesabı nedir?",
@@ -201,7 +201,7 @@ export default function PremiumPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
+    <div className="min-h-screen text-text-primary">
       {/* Header */}
       <header>
         <nav className="container mx-auto px-6 py-6 flex items-center justify-between">
@@ -343,7 +343,7 @@ export default function PremiumPage() {
         </div>
 
         {/* Sticky CTA */}
-        <div className="sticky bottom-0 z-40 bg-bg-primary/95 backdrop-blur-md py-3 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-12 border-t border-border-primary/50">
+        <div className="sticky bottom-0 z-40 bg-bg-primary bg-solid py-3 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-12 border-t border-border-primary/50">
           {isLoggedIn && userCurrentPlan === selectedPlan ? (
             <button disabled className="premium-cta-btn w-full !opacity-60 !cursor-not-allowed">
               Mevcut Plan

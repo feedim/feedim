@@ -48,10 +48,10 @@ export default function FreezeAccountPage() {
         router.push("/");
       } else {
         const data = await res.json();
-        feedimAlert("error", data.error || "Hesap dondurulamadı");
+        feedimAlert("error", data.error || "Hesap dondurulamadı, lütfen daha sonra tekrar deneyin");
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setFreezing(false);
     }
@@ -100,7 +100,7 @@ export default function FreezeAccountPage() {
         </div>
 
         {/* Bilgilendirme Kutusu */}
-        <div className="bg-bg-secondary/60 rounded-2xl p-4 mb-6">
+        <div className="bg-bg-secondary rounded-2xl p-4 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Info className="h-4 w-4 text-accent-main shrink-0" />
             <p className="text-sm font-semibold">Hesabınız dondurulduğunda:</p>

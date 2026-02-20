@@ -3,7 +3,7 @@ import PublicFooter from "@/components/PublicFooter";
 
 export default function HelpLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
+    <div className="min-h-screen text-text-primary">
       <PublicHeader variant="back" />
       <main className="container mx-auto px-5 sm:px-8 py-10 sm:py-16 max-w-3xl">
         {children}

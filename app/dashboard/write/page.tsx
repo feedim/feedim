@@ -4,10 +4,17 @@ import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X, Plus, Upload, Smile, ChevronDown, Undo2, Redo2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import RichTextEditor, {
-  validatePostContent,
-} from "@/components/RichTextEditor";
+import dynamic from "next/dynamic";
 import type { RichTextEditorHandle } from "@/components/RichTextEditor";
+
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center py-16">
+      <span className="loader" style={{ width: 24, height: 24 }} />
+    </div>
+  ),
+});
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
 import { formatCount } from "@/lib/utils";
@@ -80,6 +87,8 @@ function WritePageContent() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropAspect, setCropAspect] = useState(16 / 9);
+  const cropResolveRef = useRef<((url: string) => void) | null>(null);
 
   // Track unsaved changes
   useEffect(() => {
@@ -130,7 +139,7 @@ function WritePageContent() {
         setTags(postTags);
       }
     } catch {
-      feedimAlert("error", "Taslak yüklenemedi");
+      feedimAlert("error", "Taslak yüklenemedi, lütfen daha sonra tekrar deneyin");
     } finally {
       setLoadingDraft(false);
     }
@@ -250,7 +259,7 @@ function WritePageContent() {
         feedimAlert("error", data.error || "Etiket oluşturulamadı");
       }
     } catch {
-      feedimAlert("error", "Etiket oluşturulamadı");
+      feedimAlert("error", "Etiket oluşturulamadı, lütfen daha sonra tekrar deneyin");
     } finally {
       setTagCreating(false);
     }
@@ -305,11 +314,21 @@ function WritePageContent() {
         reader.readAsDataURL(compressed);
       });
 
+      // Dismiss mobile keyboard before opening crop modal
+      (document.activeElement as HTMLElement)?.blur();
+
+      // Open crop modal and wait for result
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = resolve;
+        setCropAspect(16 / 9);
+        setCropSrc(dataUrl);
+      });
+
       // Store in localStorage
       const key = `fdm-img-${Date.now()}`;
-      try { localStorage.setItem(key, dataUrl); } catch {}
+      try { localStorage.setItem(key, croppedUrl); } catch {}
 
-      return dataUrl;
+      return croppedUrl;
     } finally {
       setImageUploading(false);
     }
@@ -319,12 +338,31 @@ function WritePageContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const url = await handleImageUpload(file);
-      setCropSrc(url);
+      if (!file.type.startsWith("image/")) throw new Error("Geçersiz dosya");
+      if (file.size > 5 * 1024 * 1024) throw new Error("Dosya çok büyük (maks 5MB)");
+
+      setImageUploading(true);
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Dosya okunamadı"));
+        reader.readAsDataURL(compressed);
+      });
+
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = (url) => { resolve(url); setFeaturedImage(url); };
+        setCropAspect(16 / 9);
+        setCropSrc(dataUrl);
+      });
+
+      setImageUploading(false);
     } catch {
-      feedimAlert("error", "Görsel yüklenemedi");
+      setImageUploading(false);
+      feedimAlert("error", "Görsel yüklenemedi, lütfen daha sonra tekrar deneyin");
     }
-    // Reset input so same file can be re-selected
     e.target.value = "";
   };
 
@@ -341,10 +379,29 @@ function WritePageContent() {
     const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("image/"));
     if (!file) return;
     try {
-      const url = await handleImageUpload(file);
-      setCropSrc(url);
+      if (file.size > 5 * 1024 * 1024) throw new Error("Dosya çok büyük");
+
+      setImageUploading(true);
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Dosya okunamadı"));
+        reader.readAsDataURL(compressed);
+      });
+
+      await new Promise<string>((resolve) => {
+        cropResolveRef.current = (url) => { resolve(url); setFeaturedImage(url); };
+        setCropAspect(16 / 9);
+        setCropSrc(dataUrl);
+      });
+
+      setImageUploading(false);
     } catch {
-      feedimAlert("error", "Görsel yüklenemedi");
+      setImageUploading(false);
+      feedimAlert("error", "Görsel yüklenemedi, lütfen daha sonra tekrar deneyin");
     }
   };
 
@@ -382,6 +439,7 @@ function WritePageContent() {
     // Content validation (WordPress birebir) — only for publish
     if (status === "published") {
       const cleanedContent = editorRef.current?.cleanContentForSave() || content;
+      const { validatePostContent } = await import("@/components/RichTextEditor");
       const validation = validatePostContent(cleanedContent, maxWords);
       if (!validation.ok) {
         feedimAlert("error", validation.error!);
@@ -420,10 +478,10 @@ function WritePageContent() {
           router.push("/dashboard");
         }
       } else {
-        feedimAlert("error", data.error || "Bir hata oluştu");
+        feedimAlert("error", data.error || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setSaving(false);
     }
@@ -560,8 +618,8 @@ function WritePageContent() {
               onChange={setContent}
               onImageUpload={handleImageUpload}
               onBackspaceAtStart={() => titleInputRef.current?.focus()}
-              onEmojiClick={() => { (document.activeElement as HTMLElement)?.blur(); setShowEmojiPicker(true); }}
-              onGifClick={() => { (document.activeElement as HTMLElement)?.blur(); setShowGifPicker(true); }}
+              onEmojiClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowEmojiPicker(true); }}
+              onGifClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowGifPicker(true); }}
               onSave={() => savePost("draft")}
               onPublish={() => savePost("published")}
               placeholder="Aklınızda ne var?"
@@ -724,7 +782,7 @@ function WritePageContent() {
               <div className="space-y-1">
                 <button
                   onClick={() => setAllowComments(!allowComments)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-secondary transition text-left"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
                     <p className="text-sm font-medium">Yorumlara izin ver</p>
@@ -736,7 +794,7 @@ function WritePageContent() {
                 </button>
                 <button
                   onClick={() => setIsForKids(!isForKids)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-secondary transition text-left"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
                     <p className="text-sm font-medium">Çocuklara özel</p>
@@ -815,14 +873,20 @@ function WritePageContent() {
         />
       )}
 
-      {/* Cover Crop Modal */}
+      {/* Crop Modal */}
       <CropModal
         open={!!cropSrc}
-        onClose={() => setCropSrc(null)}
+        onClose={() => {
+          setCropSrc(null);
+          cropResolveRef.current = null;
+        }}
         imageSrc={cropSrc || ""}
-        aspectRatio={16 / 9}
+        aspectRatio={cropAspect}
         onCrop={(croppedUrl) => {
-          setFeaturedImage(croppedUrl);
+          if (cropResolveRef.current) {
+            cropResolveRef.current(croppedUrl);
+            cropResolveRef.current = null;
+          }
           setCropSrc(null);
         }}
       />

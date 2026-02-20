@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, PenLine, Search, Smile } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -14,7 +14,7 @@ import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { useUser } from "@/components/UserContext";
 import { fetchWithCache } from "@/lib/fetchWithCache";
 import { FeedAdSlot } from "@/components/AdBanner";
-import PremiumWelcomeModal from "@/components/modals/PremiumWelcomeModal";
+const PremiumWelcomeModal = lazy(() => import("@/components/modals/PremiumWelcomeModal"));
 
 interface FeedPost {
   id: number;
@@ -175,12 +175,12 @@ export default function DashboardPage() {
     }
   }, [supabase, filterBlockedWords]);
 
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     setPosts([]);
     setPage(1);
     loadFeed(tab, 1);
-  };
+  }, [loadFeed]);
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -197,7 +197,7 @@ export default function DashboardPage() {
       <div className="px-2.5 sm:px-3 mt-4 mb-3">
       <button
         onClick={() => router.push(isLoggedIn ? "/dashboard/write" : "/login")}
-        className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary/60 rounded-[18px]"
+        className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary rounded-[18px]"
       >
         {ctxUser?.avatarUrl ? (
           <img src={ctxUser.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
@@ -257,14 +257,16 @@ export default function DashboardPage() {
         />
       )}
       {welcomeModal && (
-        <PremiumWelcomeModal
-          open
-          onClose={() => setWelcomeModal(null)}
-          planName={welcomeModal.planName}
-          planId={welcomeModal.planId}
-          avatarUrl={ctxUser?.avatarUrl}
-          fullName={ctxUser?.fullName}
-        />
+        <Suspense fallback={null}>
+          <PremiumWelcomeModal
+            open
+            onClose={() => setWelcomeModal(null)}
+            planName={welcomeModal.planName}
+            planId={welcomeModal.planId}
+            avatarUrl={ctxUser?.avatarUrl}
+            fullName={ctxUser?.fullName}
+          />
+        </Suspense>
       )}
     </AppLayout>
   );

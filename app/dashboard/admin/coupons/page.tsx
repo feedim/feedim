@@ -69,14 +69,14 @@ export default function AdminCouponsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        feedimAlert("error",data.error || 'Kupon oluşturulamadı');
+        feedimAlert("error",data.error || 'Kupon oluşturulamadı, lütfen daha sonra tekrar deneyin');
         return;
       }
       feedimAlert("success",`Kupon oluşturuldu: ${data.coupon.code}`);
       setCoupons([data.coupon, ...coupons]);
       setCouponForm({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720, isFree: false });
     } catch {
-      feedimAlert("error",'Bir hata oluştu');
+      feedimAlert("error",'Bir hata oluştu, lütfen daha sonra tekrar deneyin');
     } finally {
       setCouponCreating(false);
     }
@@ -90,21 +90,21 @@ export default function AdminCouponsPage() {
         body: JSON.stringify({ couponId }),
       });
       if (!res.ok) {
-        feedimAlert("error",'Kupon silinemedi');
+        feedimAlert("error",'Kupon silinemedi, lütfen daha sonra tekrar deneyin');
         return;
       }
       setCoupons(coupons.filter(c => c.id !== couponId));
       feedimAlert("success",'Kupon silindi');
     } catch {
-      feedimAlert("error",'Bir hata oluştu');
+      feedimAlert("error",'Bir hata oluştu, lütfen daha sonra tekrar deneyin');
     }
   };
 
   const generalCoupons = coupons.filter(c => c.coupon_type === 'general');
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
-      <header className="sticky top-0 z-50 bg-bg-primary min-h-[73px]">
+    <div className="min-h-screen text-text-primary">
+      <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient min-h-[73px]">
         <nav className="container mx-auto px-6 flex items-center justify-between min-h-[73px]">
           <button onClick={() => router.back()} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
@@ -121,7 +121,7 @@ export default function AdminCouponsPage() {
             <div className="skeleton rounded-2xl h-60" />
           </div>
         ) : (
-          <div className="bg-bg-primary rounded-2xl p-6">
+          <div className="rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-4">
               <Ticket className="h-5 w-5 text-accent-main" />
               <h3 className="font-semibold">Kupon Yönetimi</h3>
@@ -205,7 +205,7 @@ export default function AdminCouponsPage() {
                   <div key={coupon.id} className="flex items-center justify-between p-3 rounded-xl bg-bg-inverse/5">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-yellow-500 font-mono">{coupon.code}</span>
+                        <span className="text-sm font-bold text-warning font-mono">{coupon.code}</span>
                         <span className="text-xs bg-accent-main/20 text-accent-main px-2 py-0.5 rounded-full">
                           {coupon.discount_percent === 100 ? 'BEDAVA' : `%${coupon.discount_percent}`}
                         </span>
@@ -215,7 +215,7 @@ export default function AdminCouponsPage() {
                         {coupon.expires_at && ` · ${new Date(coupon.expires_at) > new Date() ? `${Math.ceil((new Date(coupon.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldı` : 'süresi dolmuş'}`}
                       </p>
                     </div>
-                    <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-text-muted hover:text-red-400 transition shrink-0" title="Sil">
+                    <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-text-muted hover:text-error transition shrink-0" title="Sil">
                       <X className="h-4 w-4" />
                     </button>
                   </div>

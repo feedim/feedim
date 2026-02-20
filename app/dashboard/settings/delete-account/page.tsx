@@ -80,7 +80,7 @@ export default function DeleteAccountPage() {
       await supabase.auth.signOut();
       router.push("/");
     } catch (error: any) {
-      feedimAlert("error", error.message || "Bir hata oluştu");
+      feedimAlert("error", error.message || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setDeleting(false);
     }

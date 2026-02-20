@@ -51,9 +51,9 @@ export default function SessionsPage() {
       });
       if (!res.ok) {
         setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, is_trusted: currentTrust } : s));
-        feedimAlert("error", "Güven durumu güncellenemedi");
+        feedimAlert("error", "Güven durumu güncellenemedi, lütfen daha sonra tekrar deneyin");
       } else {
-        feedimAlert("success", newTrust ? "Cihaz güvenilir olarak işaretlendi" : "Cihaz güvenilmeyen olarak işaretlendi");
+        // silent
       }
     } catch {
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, is_trusted: currentTrust } : s));
@@ -172,7 +172,7 @@ export default function SessionsPage() {
             {otherDevices.length > 0 && (
               <button
                 onClick={endAllSessions}
-                className="w-full py-3 text-sm text-error font-semibold hover:opacity-80 transition rounded-[13px] bg-error/5"
+                className="w-full t-btn cancel text-error"
               >
                 Diğer tüm oturumları sonlandır
               </button>
@@ -239,18 +239,14 @@ function SessionCard({
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-primary">
         <button
           onClick={onToggleTrust}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[10px] text-xs font-semibold transition ${
-            session.is_trusted
-              ? "text-text-muted bg-bg-tertiary hover:bg-bg-tertiary/80"
-              : "text-accent-main bg-accent-main/10 hover:bg-accent-main/15"
-          }`}
+          className="flex-1 t-btn cancel !h-[36px] !text-xs"
         >
           <Shield className="h-3.5 w-3.5" />
           {session.is_trusted ? "Güvenme" : "Güven"}
         </button>
         <button
           onClick={onEndSession}
-          className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-[10px] text-xs font-semibold text-error bg-error/10 hover:bg-error/15 transition"
+          className="t-btn cancel !h-[36px] !text-xs text-error"
         >
           <LogOut className="h-3.5 w-3.5" />
           Çıkış yap

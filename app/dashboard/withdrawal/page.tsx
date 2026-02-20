@@ -11,6 +11,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import { COIN_MIN_WITHDRAWAL, COIN_TO_TRY_RATE, COIN_COMMISSION_RATE } from "@/lib/constants";
 import AppLayout from "@/components/AppLayout";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import { useUser } from "@/components/UserContext";
 
 interface WithdrawalRequest {
   id: number;
@@ -51,6 +52,7 @@ export default function WithdrawalPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
+  const { user: currentUser } = useUser();
 
   const loadData = async () => {
     try {
@@ -69,7 +71,9 @@ export default function WithdrawalPage() {
   useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const balance = profile?.coin_balance || 0;
-  const isPremiumAllowed = profile ? (ALLOWED_PLANS.includes(profile.premium_plan || "") || profile.is_premium) : false;
+  const isPremiumAllowed = profile
+    ? (ALLOWED_PLANS.includes(profile.premium_plan || "") || profile.is_premium || ALLOWED_PLANS.includes(currentUser?.premiumPlan || ""))
+    : ALLOWED_PLANS.includes(currentUser?.premiumPlan || "");
   const isMfaEnabled = profile?.mfa_enabled || false;
   const hasIban = !!(profile?.withdrawal_iban && profile?.withdrawal_holder_name);
   const amountNum = Number(amount) || 0;
@@ -110,7 +114,7 @@ export default function WithdrawalPage() {
       ]);
       const data = await res.json();
       if (!res.ok) {
-        feedimAlert("error", data.error || "Kaydedilemedi");
+        feedimAlert("error", data.error || "Kaydedilemedi, lütfen daha sonra tekrar deneyin");
         return;
       }
       feedimAlert("success", "IBAN bilgileri kaydedildi");
@@ -118,7 +122,7 @@ export default function WithdrawalPage() {
       setTimeout(() => setIbanSaved(false), 3000);
       loadData();
     } catch {
-      feedimAlert("error", "Bir hata olustu");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally { setSavingIban(false); }
   };
 
@@ -148,10 +152,10 @@ export default function WithdrawalPage() {
         setAmount("");
         loadData();
       } else {
-        feedimAlert("error", data.error || "Hata olustu");
+        feedimAlert("error", data.error || "İşlem başarısız, lütfen daha sonra tekrar deneyin");
       }
     } catch {
-      feedimAlert("error", "Sunucu hatasi");
+      feedimAlert("error", "Sunucu hatası, lütfen daha sonra tekrar deneyin");
     } finally { setSubmitting(false); }
   };
 
@@ -169,7 +173,7 @@ export default function WithdrawalPage() {
         ) : (
           <>
             {/* Mevcut Bakiye */}
-            <div className="bg-bg-secondary/60 rounded-2xl p-5 text-center">
+            <div className="bg-bg-secondary rounded-2xl p-5 text-center">
               <p className="text-sm text-text-muted mb-2">Mevcut Bakiye</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-7 w-7 text-accent-main" />
@@ -182,7 +186,7 @@ export default function WithdrawalPage() {
 
             {/* 1. Premium Gate */}
             {!isPremiumAllowed && (
-              <div className="bg-bg-secondary/60 rounded-2xl p-5">
+              <div className="bg-bg-secondary rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <VerifiedBadge size="md" />
                   <h3 className="font-semibold">Premium Gerekli</h3>
@@ -199,35 +203,35 @@ export default function WithdrawalPage() {
               </div>
             )}
 
-            {/* 2. 2FA Gate */}
+            {/* 2. İki Faktörlü Doğrulama Gate */}
             {isPremiumAllowed && !isMfaEnabled && (
-              <div className="bg-bg-secondary/60 rounded-2xl p-5">
+              <div className="bg-bg-secondary rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="h-5 w-5 text-accent-main" />
-                  <h3 className="font-semibold">2FA Zorunlu</h3>
+                  <h3 className="font-semibold">İki Faktörlü Doğrulama Zorunlu</h3>
                 </div>
                 <p className="text-sm text-text-muted mb-4">
-                  IBAN bilgisi eklemek ve odeme talebi olusturmak icin iki faktorlu dogrulamayi etkinlestirmeniz gerekmektedir.
+                  IBAN bilgisi eklemek ve ödeme talebi oluşturmak için iki faktörlü doğrulamayı etkinleştirmeniz gerekmektedir.
                 </p>
                 <Link
                   href="/dashboard/security"
                   className="w-full py-3 flex items-center justify-center gap-2 bg-accent-main text-white font-bold rounded-2xl transition hover:opacity-90"
                 >
                   <Shield className="h-4 w-4" />
-                  2FA Etkinlestir
+                  İki Faktörlü Doğrulamayı Etkinleştir
                 </Link>
               </div>
             )}
 
             {/* 3. IBAN Formu */}
-            <div className={`bg-bg-secondary/60 rounded-2xl p-5 ${(!isPremiumAllowed || !isMfaEnabled) ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className={`bg-bg-secondary rounded-2xl p-5 ${(!isPremiumAllowed || !isMfaEnabled) ? "opacity-50 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-2 mb-1">
                 <Wallet className="h-5 w-5 text-accent-main" />
                 <h2 className="font-semibold text-lg">IBAN Bilgileri</h2>
               </div>
               <p className="text-xs text-text-muted mb-5">Kazançlarınız bu hesaba aktarılacaktır.</p>
               {hasPendingRequest && (
-                <div className="bg-amber-500/10 text-amber-600 text-xs font-medium px-3 py-2 rounded-xl mb-4">
+                <div className="bg-warning/10 text-warning text-xs font-medium px-3 py-2 rounded-xl mb-4">
                   Bekleyen çekim talebi varken IBAN bilgileri güncellenemez.
                 </div>
               )}
@@ -269,7 +273,7 @@ export default function WithdrawalPage() {
             </div>
 
             {/* 4. Cekim Formu */}
-            <div className={`bg-bg-secondary/60 rounded-2xl p-5 ${(!isPremiumAllowed || !isMfaEnabled || !hasIban) ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className={`bg-bg-secondary rounded-2xl p-5 ${(!isPremiumAllowed || !isMfaEnabled || !hasIban) ? "opacity-50 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-2 mb-1">
                 <Send className="h-5 w-5 text-accent-main" />
                 <h2 className="font-semibold text-lg">Cekim Talebi</h2>
@@ -338,7 +342,7 @@ export default function WithdrawalPage() {
             </div>
 
             {/* 6. Bilgilendirme */}
-            <div className="bg-bg-secondary/60 rounded-2xl p-5">
+            <div className="bg-bg-secondary rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="h-5 w-5 text-accent-main" />
                 <h3 className="font-semibold">Odeme Bilgilendirmesi</h3>
@@ -347,7 +351,7 @@ export default function WithdrawalPage() {
                 <li>• Ödeme almak için en az Pro plan gereklidir.</li>
                 <li>• Minimum çekim miktarı {COIN_MIN_WITHDRAWAL} jetondur ({(COIN_MIN_WITHDRAWAL * COIN_TO_TRY_RATE).toFixed(0)} TL).</li>
                 <li>• Çekim işlemlerinde %{COIN_COMMISSION_RATE * 100} Feedim komisyonu uygulanır.</li>
-                <li>• 2FA (iki faktörlü doğrulama) zorunludur.</li>
+                <li>• İki faktörlü doğrulama zorunludur.</li>
                 <li>• Ödemeler {COIN_MIN_WITHDRAWAL} jeton üzerinde, 1-5 iş günü içinde yapılır.</li>
                 <li>• IBAN bilginizin doğru olduğundan emin olun.</li>
                 <li>• Bekleyen çekim talebi varken IBAN bilgilerinizi güncelleyemezsiniz. Önce mevcut talebi iptal etmeniz gerekir.</li>

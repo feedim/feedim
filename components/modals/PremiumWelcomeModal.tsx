@@ -8,6 +8,7 @@ import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import UserListItem from "@/components/UserListItem";
 import FollowButton from "@/components/FollowButton";
 import { createClient } from "@/lib/supabase/client";
+import { feedimAlert } from "@/components/FeedimAlert";
 
 interface PremiumWelcomeModalProps {
   open: boolean;
@@ -75,6 +76,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
 
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [requested, setRequested] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) return;
@@ -111,32 +113,54 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
     }
   };
 
-  const handleFollow = async (username: string, userId: string) => {
-    const isFollowing = following.has(userId);
+  const doFollowToggle = async (username: string, userId: string) => {
+    const wasFollowing = following.has(userId);
+    const wasRequested = requested.has(userId);
     const newFollowing = new Set(following);
-    if (isFollowing) {
+    const newRequested = new Set(requested);
+    if (wasFollowing || wasRequested) {
       newFollowing.delete(userId);
+      newRequested.delete(userId);
     } else {
       newFollowing.add(userId);
     }
     setFollowing(newFollowing);
+    setRequested(newRequested);
 
     try {
       const res = await fetch(`/api/users/${username}/follow`, { method: "POST" });
       if (!res.ok) {
-        // Revert
         const reverted = new Set(following);
-        if (isFollowing) reverted.add(userId);
-        else reverted.delete(userId);
+        const revertedReq = new Set(requested);
+        if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
+        if (wasRequested) revertedReq.add(userId); else revertedReq.delete(userId);
         setFollowing(reverted);
+        setRequested(revertedReq);
+      } else {
+        const data = await res.json();
+        const updated = new Set(following);
+        const updatedReq = new Set(requested);
+        if (data.following) updated.add(userId); else updated.delete(userId);
+        if (data.requested) updatedReq.add(userId); else updatedReq.delete(userId);
+        setFollowing(updated);
+        setRequested(updatedReq);
       }
     } catch {
-      // Silent revert
       const reverted = new Set(following);
-      if (isFollowing) reverted.add(userId);
-      else reverted.delete(userId);
+      const revertedReq = new Set(requested);
+      if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
+      if (wasRequested) revertedReq.add(userId); else revertedReq.delete(userId);
       setFollowing(reverted);
+      setRequested(revertedReq);
     }
+  };
+
+  const handleFollow = (username: string, userId: string) => {
+    if (following.has(userId) || requested.has(userId)) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      return;
+    }
+    doFollowToggle(username, userId);
   };
 
   const dativeName = getDativeSuffix(planId);
@@ -196,7 +220,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
 
       {/* Suggestion Widget */}
       {users.length > 0 && (
-        <div className="mx-4 mb-5 bg-bg-primary rounded-[10px] p-2">
+        <div className="mx-4 mb-5 bg-bg-tertiary rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
             <span className="text-[0.95rem] font-bold">Kişileri Bul</span>
             <Link href="/dashboard/suggestions" onClick={onClose} className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
@@ -211,7 +235,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
                 autoSubtitle
                 onNavigate={onClose}
                 action={
-                  <FollowButton following={following.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
+                  <FollowButton following={following.has(u.user_id) || requested.has(u.user_id)} isPrivate={requested.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
                 }
               />
             ))}

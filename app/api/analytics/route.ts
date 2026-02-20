@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     // ─── User posts ───
     const { data: userPosts } = await admin
       .from("posts")
-      .select("id, title, slug, view_count, like_count, comment_count, save_count, published_at, featured_image, reading_time")
+      .select("id, title, slug, view_count, like_count, comment_count, save_count, published_at, featured_image, reading_time, content_type, video_duration")
       .eq("author_id", user.id)
       .eq("status", "published")
       .order("published_at", { ascending: false });
@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
         qualifiedReads: 0,
         premiumReads: 0,
       },
+      videoAnalytics: null,
     };
 
     if (postIds.length === 0) return NextResponse.json(empty);
@@ -224,6 +225,58 @@ export async function GET(req: NextRequest) {
 
     const periodEarned = (periodTransactions || []).reduce((s, t) => s + (t.amount || 0), 0);
 
+    // ─── Video Analytics ───
+    const videoPosts = (userPosts || []).filter(p => p.content_type === "video");
+    const videoPostIds = videoPosts.map(p => p.id);
+    let videoAnalytics = null;
+
+    if (videoPostIds.length > 0) {
+      const { data: videoEvents } = await admin
+        .from("analytics_events")
+        .select("data, post_id, created_at")
+        .eq("event_type", "video_watch")
+        .in("post_id", videoPostIds)
+        .gte("created_at", startDate);
+
+      const events = (videoEvents || []).map((e: any) => ({ ...e.data, post_id: e.post_id })).filter(Boolean);
+
+      if (events.length > 0) {
+        const totalWatchSeconds = events.reduce((s: number, e: any) => s + (e.watch_duration || 0), 0);
+        const totalWatchHours = Math.round((totalWatchSeconds / 3600) * 10) / 10;
+        const completedCount = events.filter((e: any) => e.completed).length;
+        const completionRate = events.length > 0 ? Math.round((completedCount / events.length) * 100) : 0;
+        const avgWatchDuration = Math.round(totalWatchSeconds / events.length);
+        const avgWatchPercentage = Math.round(events.reduce((s: number, e: any) => s + (e.watch_percentage || 0), 0) / events.length);
+
+        // Top videos by watch time in period
+        const videoWatchMap = new Map<number, number>();
+        for (const e of events) {
+          videoWatchMap.set(e.post_id, (videoWatchMap.get(e.post_id) || 0) + (e.watch_duration || 0));
+        }
+        const topVideos = videoPosts
+          .map(vp => ({
+            id: vp.id, title: vp.title, slug: vp.slug,
+            featured_image: vp.featured_image,
+            views: vp.view_count || 0,
+            watchHours: Math.round(((videoWatchMap.get(vp.id) || 0) / 3600) * 10) / 10,
+            video_duration: vp.video_duration,
+          }))
+          .filter(v => v.watchHours > 0)
+          .sort((a, b) => b.watchHours - a.watchHours)
+          .slice(0, 5);
+
+        videoAnalytics = {
+          videoCount: videoPosts.length,
+          totalWatchHours,
+          avgWatchDuration,
+          avgWatchPercentage,
+          completionRate,
+          totalWatchers: events.length,
+          topVideos,
+        };
+      }
+    }
+
     const response = NextResponse.json({
       overview: {
         totalViews, totalLikes, totalComments, totalSaves,
@@ -252,6 +305,7 @@ export async function GET(req: NextRequest) {
         qualifiedReads: qualifiedReads || 0,
         premiumReads: premiumReads || 0,
       },
+      videoAnalytics,
     });
     response.headers.set('Cache-Control', 'private, max-age=300');
     return response;

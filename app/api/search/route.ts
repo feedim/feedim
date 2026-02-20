@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
         .from("posts")
         .select(`
           id, title, slug, excerpt, featured_image, reading_time,
-          like_count, comment_count, view_count, published_at, author_id,
+          like_count, comment_count, view_count, published_at, author_id, content_type, video_duration, video_thumbnail,
           profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
         `)
         .eq("status", "published")
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
         .filter(p => {
           const author = (p as any).profiles;
           if (author?.status && author.status !== 'active') return false;
-          if (author?.account_private) return false;
+          if (author?.account_private && author?.user_id !== user?.id) return false;
           return true;
         })
         .slice(0, limit);
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
       .from("posts")
       .select(`
         id, title, slug, excerpt, featured_image, reading_time,
-        like_count, comment_count, published_at, author_id,
+        like_count, comment_count, published_at, author_id, content_type, video_duration, video_thumbnail,
         profiles:user_id (user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
       `)
       .eq("status", "published")

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
+import { cache } from "@/lib/cache";
 
 // POST — accept or reject a follow request
 export async function POST(
@@ -71,6 +72,9 @@ export async function POST(
 
     // Delete the request
     await admin.from("follow_requests").delete().eq("id", request.id);
+
+    // Invalidate requester's follows cache so explore/feed shows the new follow
+    cache.delete(`user:${requester.user_id}:follows`);
 
     return NextResponse.json({ accepted: true });
   } else {

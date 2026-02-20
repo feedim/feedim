@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowButton from "@/components/FollowButton";
 import UserListItem from "@/components/UserListItem";
+import { feedimAlert } from "@/components/FeedimAlert";
 
 interface User {
   user_id: string;
@@ -17,6 +18,8 @@ interface User {
   is_verified?: boolean;
   premium_plan?: string | null;
   is_following?: boolean;
+  is_requested?: boolean;
+  account_private?: boolean;
   is_own?: boolean;
 }
 
@@ -86,22 +89,43 @@ export default function UserListModal({
 
   const filteredUsers = useMemo(() => {
     if (filter === "verified") return users.filter(u => u.is_verified);
-    if (filter === "following") return users.filter(u => u.is_following);
+    if (filter === "following") return users.filter(u => u.is_following || u.is_requested);
     return users;
   }, [users, filter]);
 
-  const handleFollow = async (targetUsername: string, userId: string) => {
+  const doFollowToggle = async (targetUsername: string, userId: string) => {
     setToggling(prev => new Set(prev).add(userId));
     const user = users.find(u => u.user_id === userId);
     const wasFollowing = user?.is_following;
+    const wasRequested = user?.is_requested;
 
-    setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: !wasFollowing } : u));
+    setUsers(prev => prev.map(u => u.user_id === userId ? {
+      ...u,
+      is_following: (wasFollowing || wasRequested) ? false : true,
+      is_requested: false,
+    } : u));
 
-    const res = await fetch(`/api/users/${targetUsername}/follow`, { method: "POST" });
-    if (!res.ok) {
-      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: wasFollowing } : u));
+    try {
+      const res = await fetch(`/api/users/${targetUsername}/follow`, { method: "POST" });
+      if (!res.ok) {
+        setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: wasFollowing, is_requested: wasRequested } : u));
+      } else {
+        const data = await res.json();
+        setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: data.following, is_requested: data.requested } : u));
+      }
+    } catch {
+      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: wasFollowing, is_requested: wasRequested } : u));
     }
     setToggling(prev => { const s = new Set(prev); s.delete(userId); return s; });
+  };
+
+  const handleFollow = (targetUsername: string, userId: string) => {
+    const user = users.find(u => u.user_id === userId);
+    if (user?.is_following || user?.is_requested) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(targetUsername, userId) });
+      return;
+    }
+    doFollowToggle(targetUsername, userId);
   };
 
   const filterEmptyText = (key: string) => {
@@ -111,7 +135,7 @@ export default function UserListModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={title} size="md" infoText={infoText} centerOnDesktop>
+    <Modal open={open} onClose={onClose} title={title} size="md" infoText={infoText} centerOnDesktop fullHeight>
       {/* Filter tabs */}
       <div className="flex gap-0 px-4 border-b border-border-primary overflow-x-auto scrollbar-hide">
         {filterTabs.map(tab => (
@@ -147,7 +171,12 @@ export default function UserListModal({
                 user={u}
                 onNavigate={onClose}
                 action={!u.is_own ? (
-                  <FollowButton following={!!u.is_following} onClick={() => handleFollow(u.username, u.user_id)} disabled={toggling.has(u.user_id)} />
+                  <FollowButton
+                    following={!!u.is_following || !!u.is_requested}
+                    isPrivate={!!u.is_requested}
+                    onClick={() => handleFollow(u.username, u.user_id)}
+                    disabled={toggling.has(u.user_id)}
+                  />
                 ) : undefined}
               />
             ))}

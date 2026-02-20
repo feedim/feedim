@@ -207,6 +207,23 @@ export async function POST(
       coins_earned: coinsEarned,
     });
 
+    // Store video analytics event if present
+    const videoAnalytics = body.video_analytics;
+    if (videoAnalytics && typeof videoAnalytics === 'object') {
+      admin.from('analytics_events').insert({
+        event_type: 'video_watch',
+        user_id: user.id,
+        post_id: postId,
+        data: {
+          watch_duration: readDuration,
+          watch_percentage: readPercentage,
+          exit_time: Number(videoAnalytics.exit_time) || 0,
+          video_duration: Number(videoAnalytics.video_duration) || 0,
+          completed: videoAnalytics.completed === true,
+        },
+      }).then(() => {});  // Fire and forget
+    }
+
     // Milestone notification check
     const { data: postForMilestone } = await admin
       .from('posts')

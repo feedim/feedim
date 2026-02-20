@@ -6,9 +6,10 @@ import {
   Heart, MessageCircle, Bookmark, Users, TrendingUp,
   FileText, Eye, Briefcase, ArrowUpRight, ArrowDownRight, Minus, ChevronRight,
   BarChart3, Activity, Clock, CalendarDays, Zap, Award, ChevronDown, ChevronUp,
-  Coins,
+  Coins, Film, Play, CheckCircle,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import NoImage from "@/components/NoImage";
 import ShareIcon from "@/components/ShareIcon";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
 import { isProfessional } from "@/lib/professional";
@@ -29,6 +30,11 @@ interface HourData { hour: number; count: number }
 interface WeekdayData { day: number; views: number; likes: number }
 interface PostData { id: string; title: string; slug: string; views: number; likes: number; comments: number; saves: number; featured_image?: string; published_at: string }
 interface EarningsData { coinBalance: number; totalEarned: number; periodEarned: number; qualifiedReads: number; premiumReads: number }
+interface VideoAnalyticsData {
+  videoCount: number; totalWatchHours: number; avgWatchDuration: number;
+  avgWatchPercentage: number; completionRate: number; totalWatchers: number;
+  topVideos: { id: string; title: string; slug: string; featured_image?: string; views: number; watchHours: number; video_duration?: number }[];
+}
 type ChartMetric = "views" | "likes" | "comments" | "followers";
 
 const WEEKDAY_NAMES = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -76,6 +82,7 @@ export default function AnalyticsPage() {
   const [chartMetric, setChartMetric] = useState<ChartMetric>("views");
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [earnings, setEarnings] = useState<EarningsData>({ coinBalance: 0, totalEarned: 0, periodEarned: 0, qualifiedReads: 0, premiumReads: 0 });
+  const [videoAnalytics, setVideoAnalytics] = useState<VideoAnalyticsData | null>(null);
 
   const loadAnalytics = useCallback(async (p: string) => {
     setLoading(true);
@@ -88,6 +95,7 @@ export default function AnalyticsPage() {
       setPeakHours(data.peakHours || []); setWeekdayBreakdown(data.weekdayBreakdown || []);
       setTopPosts(data.topPosts || []); setAllPosts(data.allPosts || []);
       setEarnings(data.earnings || { coinBalance: 0, totalEarned: 0, periodEarned: 0, qualifiedReads: 0, premiumReads: 0 });
+      setVideoAnalytics(data.videoAnalytics || null);
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -113,7 +121,7 @@ export default function AnalyticsPage() {
     <AppLayout headerTitle="Analitik" hideRightSidebar>
       <div className="pb-10">
         {/* Period tabs */}
-        <div className="flex items-center gap-1 px-4 py-3 sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm">
+        <div className="flex items-center gap-1 px-4 py-3 sticky top-0 z-10 bg-bg-primary sticky-ambient">
           {(["7d", "30d", "90d"] as const).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-4 py-1.5 rounded-full text-[0.8rem] font-semibold transition ${period === p ? "bg-text-primary text-bg-primary" : "text-text-muted hover:text-text-primary"}`}
@@ -178,7 +186,10 @@ export default function AnalyticsPage() {
               periodLabel={periodLabel}
             />
 
-            {/* 9. Top Posts */}
+            {/* 9. Video Analytics */}
+            {videoAnalytics && <VideoAnalyticsCard data={videoAnalytics} periodLabel={periodLabel} />}
+
+            {/* 10. Top Posts */}
             {topPosts.length > 0 && (
               <Section icon={Award} title="En İyi Gönderiler">
                 {topPosts.map((post, i) => (
@@ -192,7 +203,7 @@ export default function AnalyticsPage() {
               <div className="mt-2">
                 <button
                   onClick={() => setShowAllPosts(!showAllPosts)}
-                  className="flex items-center gap-2 px-4 py-3 w-full text-left text-[0.82rem] font-semibold text-accent-main hover:bg-bg-secondary/30 transition"
+                  className="flex items-center gap-2 px-4 py-3 w-full text-left text-[0.82rem] font-semibold text-accent-main hover:bg-bg-secondary transition"
                 >
                   {showAllPosts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   {showAllPosts ? "Daha az göster" : `Tüm gönderileri gör (${allPosts.length})`}
@@ -233,11 +244,11 @@ function Section({ icon: Icon, title, children }: { icon: any; title: string; ch
 function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData; periodLabel: string; isPro: boolean }) {
   if (!isPro) {
     return (
-      <div className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent relative">
+      <div className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gradient-to-r from-accent-main/10 via-accent-main/5 to-transparent relative">
         <div className="p-4 opacity-30 pointer-events-none select-none">
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
-              <Coins className="h-5 w-5 text-amber-500" />
+            <div className="w-11 h-11 rounded-full bg-accent-main/15 flex items-center justify-center shrink-0">
+              <Coins className="h-5 w-5 text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[0.72rem] text-text-muted">Jeton Bakiyesi</p>
@@ -260,11 +271,11 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
   }
 
   return (
-    <div className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent">
+    <div className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gradient-to-r from-accent-main/10 via-accent-main/5 to-transparent">
       <div className="p-4">
         <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
-            <Coins className="h-5 w-5 text-amber-500" />
+          <div className="w-11 h-11 rounded-full bg-accent-main/15 flex items-center justify-center shrink-0">
+            <Coins className="h-5 w-5 text-accent-main" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[0.72rem] text-text-muted">Jeton Bakiyesi</p>
@@ -353,7 +364,7 @@ function ChangeBadge({ current, previous }: { current: number; previous: number 
 function MetricCard({ icon: Icon, label, value, prev }: { icon: any; label: string; value: number; prev: number }) {
   const change = smartChange(value, prev);
   return (
-    <div className="bg-bg-secondary/60 rounded-xl p-3.5">
+    <div className="bg-bg-secondary rounded-xl p-3.5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Icon className="h-3.5 w-3.5 text-text-muted" />
@@ -377,7 +388,7 @@ function MetricCard({ icon: Icon, label, value, prev }: { icon: any; label: stri
 ───────────────────────────────────── */
 function QuickStat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 bg-bg-secondary/60 rounded-full px-3.5 py-2 shrink-0">
+    <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
       <Icon className="h-3.5 w-3.5 text-text-muted" />
       <span className="text-[0.72rem] font-bold whitespace-nowrap">{value}</span>
       <span className="text-[0.65rem] text-text-muted whitespace-nowrap">{label}</span>
@@ -403,7 +414,7 @@ function ChartSection({ chartMetric, setChartMetric, viewsByDay, likesByDay, com
 
   return (
     <div className="mx-4 mt-5">
-      <div className="bg-bg-secondary/60 rounded-xl p-4">
+      <div className="bg-bg-secondary rounded-xl p-4">
         <div className="flex items-center gap-1 mb-1 overflow-x-auto no-scrollbar">
           {(Object.keys(labelMap) as ChartMetric[]).map(m => (
             <button key={m} onClick={() => setChartMetric(m)}
@@ -457,7 +468,7 @@ function PeakHoursCard({ peakHours }: { peakHours: HourData[] }) {
 
   return (
     <div className="mx-4 mt-5">
-      <div className="bg-bg-secondary/60 rounded-xl p-4">
+      <div className="bg-bg-secondary rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5">
             <Clock className="h-4 w-4 text-text-muted" /> Aktif Saatler
@@ -501,7 +512,7 @@ function WeekdayCard({ weekdayBreakdown }: { weekdayBreakdown: WeekdayData[] }) 
 
   return (
     <div className="mx-4 mt-4">
-      <div className="bg-bg-secondary/60 rounded-xl p-4">
+      <div className="bg-bg-secondary rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4 text-text-muted" /> Haftalık Dağılım
@@ -600,20 +611,121 @@ function InsightsCard({ overview, periodCounts, prev, peakHours, weekdayBreakdow
 }
 
 /* ─────────────────────────────────────
+   Video Analytics Card
+───────────────────────────────────── */
+function fmtDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}sn`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}dk`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return m > 0 ? `${h}sa ${m}dk` : `${h}sa`;
+}
+
+function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; periodLabel: string }) {
+  return (
+    <div className="mx-4 mt-5">
+      <div className="bg-gradient-to-br from-purple-500/8 via-purple-400/3 to-transparent rounded-xl overflow-hidden">
+        <div className="p-4">
+          <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5 mb-4">
+            <Film className="h-4 w-4 text-purple-500" /> Video İstatistikleri
+            <span className="text-[0.65rem] text-text-muted font-normal ml-1">Son {periodLabel}</span>
+          </h3>
+
+          {/* Summary grid */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-bg-secondary rounded-xl p-3">
+              <div className="flex items-center gap-1 mb-1.5">
+                <Clock className="h-3 w-3 text-text-muted" />
+                <span className="text-[0.65rem] text-text-muted">Toplam İzlenme</span>
+              </div>
+              <p className="text-xl font-bold">{data.totalWatchHours}<span className="text-[0.72rem] text-text-muted font-semibold ml-1">saat</span></p>
+            </div>
+            <div className="bg-bg-secondary rounded-xl p-3">
+              <div className="flex items-center gap-1 mb-1.5">
+                <Play className="h-3 w-3 text-text-muted" />
+                <span className="text-[0.65rem] text-text-muted">Ort. İzlenme Süresi</span>
+              </div>
+              <p className="text-xl font-bold">{fmtDuration(data.avgWatchDuration)}</p>
+            </div>
+            <div className="bg-bg-secondary rounded-xl p-3">
+              <div className="flex items-center gap-1 mb-1.5">
+                <Activity className="h-3 w-3 text-text-muted" />
+                <span className="text-[0.65rem] text-text-muted">Ort. İzlenme %</span>
+              </div>
+              <p className="text-xl font-bold">%{data.avgWatchPercentage}</p>
+            </div>
+            <div className="bg-bg-secondary rounded-xl p-3">
+              <div className="flex items-center gap-1 mb-1.5">
+                <CheckCircle className="h-3 w-3 text-text-muted" />
+                <span className="text-[0.65rem] text-text-muted">Tamamlama Oranı</span>
+              </div>
+              <p className="text-xl font-bold">%{data.completionRate}</p>
+            </div>
+          </div>
+
+          {/* Quick stats pills */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
+            <div className="flex items-center gap-1.5 bg-bg-secondary rounded-full px-3 py-1.5 shrink-0">
+              <Film className="h-3 w-3 text-text-muted" />
+              <span className="text-[0.68rem] font-bold">{data.videoCount}</span>
+              <span className="text-[0.62rem] text-text-muted">Video</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-bg-secondary rounded-full px-3 py-1.5 shrink-0">
+              <Eye className="h-3 w-3 text-text-muted" />
+              <span className="text-[0.68rem] font-bold">{formatCount(data.totalWatchers)}</span>
+              <span className="text-[0.62rem] text-text-muted">İzleyici</span>
+            </div>
+          </div>
+
+          {/* Top Videos */}
+          {data.topVideos.length > 0 && (
+            <div>
+              <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider mb-2">En Çok İzlenen</p>
+              <div className="space-y-1">
+                {data.topVideos.map((video, i) => (
+                  <Link
+                    key={video.id}
+                    href={`/post/${video.slug}`}
+                    className="flex items-center gap-2.5 py-2 px-1 -mx-1 rounded-lg hover:bg-bg-secondary transition group"
+                  >
+                    <span className="text-[0.72rem] font-bold text-text-muted w-4 text-center shrink-0">{i + 1}</span>
+                    {video.featured_image ? (
+                      <img src={video.featured_image} alt="" className="w-14 h-8 rounded-md object-cover shrink-0" />
+                    ) : (
+                      <NoImage className="w-14 h-8 rounded-md shrink-0" iconSize={14} />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[0.78rem] font-medium truncate group-hover:text-accent-main transition">{video.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[0.62rem] text-text-muted">{formatCount(video.views)} goruntuleme</span>
+                        <span className="text-[0.62rem] text-text-muted">·</span>
+                        <span className="text-[0.62rem] text-text-muted">{video.watchHours}sa izlenme</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────
    Top Post Row
 ───────────────────────────────────── */
 function TopPostRow({ post, rank, maxViews }: { post: PostData; rank: number; maxViews: number }) {
   const barWidth = maxViews > 0 ? Math.max((post.views / maxViews) * 100, 6) : 6;
 
   return (
-    <Link href={`/post/${post.slug}`} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary/30 transition group">
+    <Link href={`/post/${post.slug}`} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary transition group">
       <span className="text-sm font-bold text-text-muted w-5 text-center shrink-0">{rank}</span>
       {post.featured_image ? (
         <img src={post.featured_image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
       ) : (
-        <div className="w-12 h-12 rounded-lg bg-bg-secondary flex items-center justify-center shrink-0">
-          <FileText className="h-5 w-5 text-text-muted" />
-        </div>
+        <NoImage className="w-12 h-12 rounded-lg shrink-0" />
       )}
       <div className="flex-1 min-w-0">
         <p className="text-[0.84rem] font-medium truncate group-hover:text-accent-main transition">{post.title}</p>

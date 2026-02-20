@@ -340,7 +340,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                 <button
                   onClick={() => setCount(c => Math.max(1, c - 1))}
                   disabled={count <= 1}
-                  className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-lg font-bold disabled:opacity-30 active:scale-90 transition"
+                  className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center text-lg font-bold disabled:opacity-30 active:scale-90 transition"
                 >
                   -
                 </button>
@@ -351,7 +351,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                     if (balance !== null && nextCost <= balance) setCount(c => c + 1);
                   }}
                   disabled={balance !== null && selectedGift ? selectedGift.coins * (count + 1) > balance : true}
-                  className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center disabled:opacity-30 active:scale-90 transition"
+                  className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-30 active:scale-90 transition"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -364,7 +364,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
             <button
               onClick={handleSend}
               disabled={!selected || sending || !canAffordSelected}
-              className="w-full py-3.5 rounded-2xl font-bold text-[0.88rem] transition-all active:scale-[0.97] disabled:opacity-40 bg-text-primary text-bg-primary"
+              className="t-btn accept w-full !py-3.5 !text-[0.88rem] disabled:opacity-40"
             >
               {sending
                 ? <span className="loader" style={{ width: 18, height: 18 }} />
@@ -379,8 +379,8 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <h2 className="text-[1.05rem] font-bold">Hediye Gonder</h2>
-          <div className="flex items-center gap-1.5 bg-bg-primary/80 backdrop-blur-sm px-3 py-1.5 rounded-full">
-            <Coins className="h-3.5 w-3.5 text-amber-500" />
+          <div className="flex items-center gap-1.5 bg-bg-tertiary backdrop-blur-sm px-3 py-1.5 rounded-full">
+            <Coins className="h-3.5 w-3.5 text-accent-main" />
             <span className="text-[0.78rem] font-bold">
               {balance !== null ? formatCount(balance) : "..."}
             </span>
@@ -403,8 +403,8 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                     isSelected
                       ? "bg-accent-main/10 ring-2 ring-accent-main"
                       : canAfford
-                        ? "bg-bg-primary hover:bg-bg-primary/80 active:scale-[0.97]"
-                        : "bg-bg-primary/40 opacity-35"
+                        ? "bg-bg-tertiary hover:bg-bg-tertiary active:scale-[0.97]"
+                        : "bg-bg-tertiary opacity-35"
                   }`}
                 >
                   <div className={`shrink-0 transition-transform duration-200 ${isSelected ? "scale-110" : ""}`}>
@@ -413,7 +413,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   <div className="flex flex-col items-start min-w-0">
                     <span className="text-[0.78rem] font-semibold leading-tight">{gift.name}</span>
                     <span className="text-[0.66rem] text-text-muted flex items-center gap-0.5 mt-0.5">
-                      <Coins className="h-2.5 w-2.5 text-amber-500" />
+                      <Coins className="h-2.5 w-2.5 text-accent-main" />
                       {gift.coins}
                     </span>
                   </div>
@@ -428,7 +428,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
               <p className="text-[0.65rem] text-text-muted font-medium uppercase tracking-wider mb-2">Son hediyeler</p>
               <div className="flex flex-wrap gap-1.5">
                 {recentGifts.slice(0, 8).map((g, i) => (
-                  <div key={i} className="flex items-center gap-1 bg-bg-primary/50 rounded-full pl-0.5 pr-2 py-0.5">
+                  <div key={i} className="flex items-center gap-1 bg-bg-tertiary rounded-full pl-0.5 pr-2 py-0.5">
                     {g.sender?.avatar_url ? (
                       <img src={g.sender.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover" />
                     ) : (

@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     // MFA check
     if (!profile.mfa_enabled) {
       return NextResponse.json(
-        { error: 'Çekim için iki faktörlü doğrulama (2FA) zorunludur' },
+        { error: 'Çekim için iki faktörlü doğrulama zorunludur' },
         { status: 403 }
       );
     }

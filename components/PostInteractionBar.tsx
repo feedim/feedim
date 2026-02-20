@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Heart, MessageCircle, Bookmark, Gift } from "lucide-react";
 import ShareIcon from "@/components/ShareIcon";
@@ -32,6 +32,8 @@ interface PostInteractionBarProps {
   hideStats?: boolean;
   isOwnPost?: boolean;
   children?: React.ReactNode;
+  likedByBottom?: boolean;
+  isVideo?: boolean;
 }
 
 export default function PostInteractionBar({
@@ -50,6 +52,8 @@ export default function PostInteractionBar({
   hideStats,
   isOwnPost,
   children,
+  likedByBottom,
+  isVideo,
 }: PostInteractionBarProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
@@ -103,45 +107,60 @@ export default function PostInteractionBar({
     }
   }, [postId, initialLikeCount]);
 
+  const likingRef = useRef(false);
+  const savingRef = useRef(false);
+
   const handleLike = async () => {
+    if (likingRef.current) return;
     const user = await requireAuth();
     if (!user) return;
 
+    likingRef.current = true;
     const newLiked = !liked;
     setLiked(newLiked);
-    setLikeCount(c => c + (newLiked ? 1 : -1));
+    setLikeCount(c => Math.max(0, c + (newLiked ? 1 : -1)));
     if (newLiked) {
       setLikeAnimating(true);
       setTimeout(() => setLikeAnimating(false), 400);
     }
 
-    const res = await fetch(`/api/posts/${postId}/like`, { method: "POST" });
-    if (!res.ok) {
-      setLiked(!newLiked);
-      setLikeCount(c => c + (newLiked ? -1 : 1));
-      if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
-        feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın.");
+    try {
+      const res = await fetch(`/api/posts/${postId}/like`, { method: "POST" });
+      if (!res.ok) {
+        setLiked(!newLiked);
+        setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
+        if (res.status === 429) {
+          const data = await res.json().catch(() => ({}));
+          feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın.");
+        }
       }
+    } finally {
+      likingRef.current = false;
     }
   };
 
   const handleSave = async () => {
+    if (savingRef.current) return;
     const user = await requireAuth();
     if (!user) return;
 
+    savingRef.current = true;
     const newSaved = !saved;
     setSaved(newSaved);
-    setSaveCount(c => c + (newSaved ? 1 : -1));
+    setSaveCount(c => Math.max(0, c + (newSaved ? 1 : -1)));
 
-    const res = await fetch(`/api/posts/${postId}/save`, { method: "POST" });
-    if (!res.ok) {
-      setSaved(!newSaved);
-      setSaveCount(c => c + (newSaved ? -1 : 1));
-      if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
-        feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın.");
+    try {
+      const res = await fetch(`/api/posts/${postId}/save`, { method: "POST" });
+      if (!res.ok) {
+        setSaved(!newSaved);
+        setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
+        if (res.status === 429) {
+          const data = await res.json().catch(() => ({}));
+          feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın.");
+        }
       }
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -154,8 +173,8 @@ export default function PostInteractionBar({
       {/* Stats row — views + likes */}
       {!hideStats && <PostStats viewCount={viewCount} likeCount={likeCount} />}
 
-      {/* Liked by */}
-      {likeCount > 0 && likedByUsers.length > 0 && (
+      {/* Liked by — top position (default for regular posts) */}
+      {!likedByBottom && likeCount > 0 && likedByUsers.length > 0 && (
         <button
           onClick={() => setLikesOpen(true)}
           className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
@@ -180,8 +199,8 @@ export default function PostInteractionBar({
         </button>
       )}
 
-      {/* Slot — tags vs. render between liked-by and bar */}
-      {children}
+      {/* Slot — for regular posts: between liked-by and bar */}
+      {!likedByBottom && children}
 
       {/* Gift or Stats — full width above interaction bar */}
       {isOwnPost ? (
@@ -211,14 +230,14 @@ export default function PostInteractionBar({
       )}
 
       {/* Interaction bar — sticky on mobile */}
-      <div className="sticky bottom-0 z-40 bg-bg-primary mt-2 mb-4">
+      <div className={`sticky bottom-0 z-40 bg-bg-primary sticky-ambient ${likedByBottom ? "mt-2" : "mt-2 mb-4"}`}>
         <div className="flex items-center gap-2 py-3 px-2 md:px-0">
         {/* Like */}
         <button
           onClick={handleLike}
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition",
-            liked ? "bg-red-500/10 text-red-500" : "bg-bg-secondary text-text-primary hover:text-red-500"
+            liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error"
           )}
         >
           <Heart className={cn("h-[18px] w-[18px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
@@ -257,6 +276,35 @@ export default function PostInteractionBar({
         </div>
       </div>
 
+      {/* Slot — for video posts: between bar and liked-by */}
+      {likedByBottom && children}
+
+      {/* Liked by — bottom position (for video pages) */}
+      {likedByBottom && likeCount > 0 && likedByUsers.length > 0 && (
+        <button
+          onClick={() => setLikesOpen(true)}
+          className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
+        >
+          <div className="flex -space-x-2 shrink-0">
+            {likedByUsers.map((u) => (
+              u.avatar_url ? (
+                <img key={u.username} src={u.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover border-2 border-bg-primary" />
+              ) : (
+                <img key={u.username} className="default-avatar-auto h-7 w-7 rounded-full object-cover border-2 border-bg-primary" alt="" />
+              )
+            ))}
+          </div>
+          <span>
+            {likeCount === 1
+              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> beğendi</>
+              : likeCount === 2 && likedByUsers.length >= 2
+                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> beğendi</>
+                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1)} kişi</strong> beğendi</>
+            }
+          </span>
+        </button>
+      )}
+
       {commentsOpen && (
         <Suspense fallback={null}>
           <CommentsModal
@@ -288,6 +336,8 @@ export default function PostInteractionBar({
             url={postUrl}
             title={postTitle}
             postId={postId}
+            isVideo={isVideo}
+            postSlug={postSlug}
           />
         </Suspense>
       )}

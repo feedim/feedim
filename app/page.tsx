@@ -24,7 +24,9 @@ function getSavedAccounts(): SavedAccount[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+    return parsed
+      .sort((a: SavedAccount, b: SavedAccount) => b.last_login - a.last_login)
+      .slice(0, 1);
   } catch {
     return [];
   }
@@ -67,7 +69,7 @@ export default function Home() {
   const hasSavedAccounts = savedAccounts.length > 0;
 
   return (
-    <div className="min-h-[100dvh] bg-bg-primary text-text-primary flex flex-col">
+    <div className="min-h-[100dvh] text-text-primary flex flex-col">
       <div className="flex-1 lg:min-h-0 flex flex-col lg:flex-row">
         {/* Left — Logo */}
         <div className="hidden lg:flex flex-1 items-center justify-center p-16">
@@ -108,7 +110,7 @@ export default function Home() {
                     <Link
                       key={account.email}
                       href={`/login?account=${encodeURIComponent(account.email)}`}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-border-primary hover:bg-bg-secondary transition cursor-pointer text-left group"
+                      className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-border-primary hover:bg-bg-tertiary transition cursor-pointer text-left group"
                     >
                       {account.avatar_url ? (
                         <img src={account.avatar_url} alt={account.username} className="w-10 h-10 rounded-full object-cover shrink-0" />
@@ -145,7 +147,7 @@ export default function Home() {
                     <div className="w-full border-t border-border-primary" />
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="px-3 bg-bg-primary text-text-muted">veya</span>
+                    <span className="px-3 text-text-muted">veya</span>
                   </div>
                 </div>
 
@@ -204,7 +206,7 @@ export default function Home() {
                     <div className="w-full border-t border-border-primary" />
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="px-3 bg-bg-primary text-text-muted">veya</span>
+                    <span className="px-3 text-text-muted">veya</span>
                   </div>
                 </div>
 

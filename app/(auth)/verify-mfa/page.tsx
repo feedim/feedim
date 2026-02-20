@@ -47,14 +47,14 @@ export default function VerifyMfaPage() {
         options: { shouldCreateUser: false },
       });
       if (error) {
-        feedimAlert("error", "Kod gönderilemedi. Lütfen tekrar deneyin.");
+        feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin");
         if (process.env.NODE_ENV === "development") console.log("OTP error:", error.message);
       } else {
         feedimAlert("success", "Doğrulama kodu e-postanıza gönderildi");
         setCooldown(60);
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setSending(false);
     }
@@ -96,7 +96,7 @@ export default function VerifyMfaPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setLoading(false);
     }

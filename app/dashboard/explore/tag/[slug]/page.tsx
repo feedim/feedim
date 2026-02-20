@@ -6,9 +6,7 @@ import { Search, X, Hash } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
-import NoteListSection from "@/components/NoteListSection";
-import type { NoteData } from "@/components/NoteCard";
-import { PostGridSkeleton, UserListSkeleton, NoteListSkeleton } from "@/components/Skeletons";
+import { PostGridSkeleton, UserListSkeleton } from "@/components/Skeletons";
 import { cn } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
@@ -46,7 +44,7 @@ interface TagUser {
   bio?: string;
 }
 
-type TagTab = "popular" | "latest" | "posts" | "users" | "notes";
+type TagTab = "popular" | "latest" | "posts" | "users";
 
 export default function TagPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -61,10 +59,6 @@ export default function TagPage() {
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [tagNotes, setTagNotes] = useState<NoteData[]>([]);
-  const [notesLoading, setNotesLoading] = useState(false);
-  const [notesPage, setNotesPage] = useState(1);
-  const [notesHasMore, setNotesHasMore] = useState(false);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,7 +73,6 @@ export default function TagPage() {
     { key: "latest", label: "En Son" },
     { key: "posts", label: "Gönderiler" },
     { key: "users", label: "Kişiler" },
-    { key: "notes", label: "Notlar" },
   ];
 
   // Load tag info
@@ -144,25 +137,6 @@ export default function TagPage() {
     }
   }, [slug]);
 
-  const loadTagNotes = useCallback(async (pageNum: number) => {
-    setNotesLoading(true);
-    try {
-      const res = await fetch(`/api/notes?tag=${encodeURIComponent(slug)}&page=${pageNum}`);
-      const data = await res.json();
-      if (pageNum === 1) {
-        setTagNotes(data.notes || []);
-      } else {
-        setTagNotes(prev => [...prev, ...(data.notes || [])]);
-      }
-      setNotesHasMore(data.hasMore || false);
-      setNotesPage(pageNum);
-    } catch {
-      // Silent
-    } finally {
-      setNotesLoading(false);
-    }
-  }, [slug]);
-
   const handleTabChange = async (tab: TagTab) => {
     setActiveTab(tab);
     setSearchQuery("");
@@ -176,8 +150,6 @@ export default function TagPage() {
       await loadPosts(1, "latest");
     } else if (tab === "users") {
       await loadUsers(1);
-    } else if (tab === "notes") {
-      await loadTagNotes(1);
     }
     setLoading(false);
   };
@@ -263,7 +235,7 @@ export default function TagPage() {
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-[53px] z-20 bg-bg-primary border-b border-border-primary px-3 sm:px-4 overflow-x-auto scrollbar-hide">
+      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient px-3 sm:px-4 overflow-x-auto scrollbar-hide">
         <div className="flex gap-0 min-w-max">
           {tabs.map(tab => (
             <button
@@ -298,21 +270,6 @@ export default function TagPage() {
             <p className="text-sm text-text-muted">&quot;{searchQuery}&quot; için sonuç bulunamadı.</p>
           </div>
         ) : null
-      ) : activeTab === "notes" ? (
-        loading ? (
-          <div className="mt-4"><NoteListSkeleton count={4} /></div>
-        ) : (
-          <div className="mt-1">
-            <NoteListSection
-              notes={tagNotes}
-              loading={notesLoading}
-              hasMore={notesHasMore}
-              onLoadMore={() => loadTagNotes(notesPage + 1)}
-              emptyTitle="Bu etikette not yok"
-              emptyDescription="Bu etiketle ilgili notlar paylaşıldığında burada görünecek."
-            />
-          </div>
-        )
       ) : loading ? (
         activeTab === "users" ? (
           <div className="px-3 sm:px-4 pt-4"><UserListSkeleton count={6} /></div>

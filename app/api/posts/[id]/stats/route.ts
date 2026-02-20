@@ -17,13 +17,15 @@ export async function GET(
     // Verify post ownership
     const { data: post } = await admin
       .from("posts")
-      .select("id, title, slug, view_count, like_count, comment_count, save_count, published_at, featured_image, author_id")
+      .select("id, title, slug, view_count, like_count, comment_count, save_count, published_at, featured_image, author_id, content_type, video_duration")
       .eq("id", id)
       .single();
 
     if (!post || post.author_id !== user.id) {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
+
+    const isVideo = post.content_type === "video";
 
     // All-time counts + views data for chart (last 30 days) + peak hours
     const now = new Date();
@@ -44,6 +46,17 @@ export async function GET(
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
+
+    // Video analytics events (separate query)
+    let videoEvents: any[] = [];
+    if (isVideo) {
+      const { data } = await admin
+        .from("analytics_events")
+        .select("data")
+        .eq("event_type", "video_watch")
+        .eq("post_id", Number(id));
+      videoEvents = data || [];
+    }
 
     // Day-by-day views (last 30 days for mini chart)
     const viewsByDay: { date: string; count: number }[] = [];
@@ -69,7 +82,7 @@ export async function GET(
     }
     const peakHours = Array.from(hourMap.entries()).map(([hour, count]) => ({ hour, count }));
 
-    // Read stats from all views
+    // Read/Watch stats from all views
     const validReads = (allViewsData || []).filter(v => v.read_duration > 0);
     const avgReadDuration = validReads.length > 0
       ? Math.round(validReads.reduce((s, v) => s + v.read_duration, 0) / validReads.length)
@@ -85,6 +98,48 @@ export async function GET(
     const engagementRate = totalViews > 0
       ? Math.round((totalInteractions / totalViews) * 1000) / 10 : 0;
 
+    // Video-specific analytics
+    let videoStats = null;
+    if (isVideo && videoEvents.length > 0) {
+      const events = videoEvents.map((e: any) => e.data).filter(Boolean);
+      const totalWatchSeconds = events.reduce((s: number, e: any) => s + (e.watch_duration || 0), 0);
+      const totalWatchHours = Math.round((totalWatchSeconds / 3600) * 10) / 10;
+      const completedCount = events.filter((e: any) => e.completed).length;
+      const completionRate = events.length > 0 ? Math.round((completedCount / events.length) * 100) : 0;
+      const avgWatchDuration = events.length > 0
+        ? Math.round(events.reduce((s: number, e: any) => s + (e.watch_duration || 0), 0) / events.length)
+        : 0;
+      const avgWatchPercentage = events.length > 0
+        ? Math.round(events.reduce((s: number, e: any) => s + (e.watch_percentage || 0), 0) / events.length)
+        : 0;
+
+      // Retention: bucket exit_time into 10% segments of video duration
+      const vDuration = post.video_duration || 0;
+      let retentionBuckets: number[] = [];
+      if (vDuration > 0 && events.length > 0) {
+        retentionBuckets = Array(10).fill(0);
+        for (const e of events) {
+          const exitPct = vDuration > 0 ? ((e.exit_time || 0) / vDuration) : 0;
+          const bucket = Math.min(9, Math.floor(exitPct * 10));
+          for (let b = 0; b <= bucket; b++) {
+            retentionBuckets[b]++;
+          }
+        }
+        const maxViewers = retentionBuckets[0] || 1;
+        retentionBuckets = retentionBuckets.map(v => Math.round((v / maxViewers) * 100));
+      }
+
+      videoStats = {
+        totalWatchHours,
+        avgWatchDuration,
+        avgWatchPercentage,
+        completionRate,
+        completedCount,
+        totalWatchers: events.length,
+        retentionBuckets,
+      };
+    }
+
     const response = NextResponse.json({
       post: {
         id: post.id,
@@ -92,6 +147,8 @@ export async function GET(
         slug: post.slug,
         featured_image: post.featured_image,
         published_at: post.published_at,
+        content_type: post.content_type,
+        video_duration: post.video_duration,
       },
       totals: {
         views: totalViews,
@@ -102,13 +159,14 @@ export async function GET(
       },
       engagementRate: Math.min(engagementRate, 99),
       readStats: { avgReadDuration, avgReadPercentage, qualifiedReads },
+      videoStats,
       viewsByDay,
       peakHours,
-      recentComments: (recentComments || []).map(c => ({
+      recentComments: (recentComments || []).map((c: any) => ({
         id: c.id,
         content: c.content,
         created_at: c.created_at,
-        author: (c as any).profiles,
+        author: c.profiles,
       })),
     });
     response.headers.set('Cache-Control', 'private, max-age=120');

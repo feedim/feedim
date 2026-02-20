@@ -53,7 +53,7 @@
   --bg-elevated: #f1f3f4;
   --bg-inverse: #000000;
   --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-blur-overlay: rgba(241, 243, 244, 0.85);
+  --bg-blur-overlay: rgba(241, 243, 244, 0.97);
   --bg-modal-overlay: rgba(255, 255, 255, 0.78);
 
   --text-primary: #000000;
@@ -83,7 +83,7 @@
   --bg-elevated: rgba(36, 36, 36, 1);
   --bg-inverse: rgba(223, 223, 223, 1);
   --bg-overlay: rgba(0, 0, 0, 0.7);
-  --bg-blur-overlay: rgba(26, 26, 26, 0.85);
+  --bg-blur-overlay: rgba(26, 26, 26, 0.97);
   --bg-modal-overlay: rgba(20, 20, 20, 0.78);
 
   --text-primary: rgba(223, 223, 223, 1);
@@ -112,12 +112,12 @@
   --bg-elevated: rgba(32, 45, 62, 1);
   --bg-inverse: rgba(223, 223, 223, 1);
   --bg-overlay: rgba(0, 0, 0, 0.6);
-  --bg-blur-overlay: rgba(26, 37, 51, 0.85);
+  --bg-blur-overlay: rgba(26, 37, 51, 0.97);
   --bg-modal-overlay: rgba(14, 21, 32, 0.78);
 
   --text-primary: rgba(223, 223, 223, 1);
   --text-secondary: rgba(204, 204, 204, 1);
-  --text-muted: rgba(143, 157, 175, 1);
+  --text-muted: rgba(153, 153, 153, 1);
   --text-readable: rgba(223, 223, 223, 1);
   --text-inverse: #000000;
 
@@ -135,6 +135,9 @@
 
 /* ── Base Styles ── */
 @layer base {
+  html {
+    background: var(--bg-primary);
+  }
   * {
     border-color: var(--border-primary);
   }
@@ -154,6 +157,7 @@
 
 /* ── Buttons (WordPress birebir) ── */
 .t-btn {
+  position: relative;
   padding: 0 27px;
   border-radius: 50px;
   height: 47px;
@@ -169,8 +173,9 @@
   user-select: none;
 }
 
-.t-btn:hover {
-  opacity: 0.92;
+.t-btn:hover,
+.t-btn:active {
+  opacity: 0.88;
 }
 
 .t-btn:disabled {
@@ -192,7 +197,8 @@
   color: var(--text-primary);
 }
 
-.i-btn:hover {
+.i-btn:hover,
+.i-btn:active {
   background: var(--bg-tertiary);
 }
 
@@ -201,8 +207,9 @@
   color: var(--bg-primary);
 }
 
-.accept:hover {
-  opacity: 0.88;
+.accept:hover,
+.accept:active {
+  opacity: 0.85;
 }
 
 .cancel {
@@ -210,7 +217,8 @@
   background-color: var(--bg-tertiary);
 }
 
-.cancel:hover {
+.cancel:hover,
+.cancel:active {
   opacity: 0.85;
 }
 
@@ -235,8 +243,9 @@
   color: var(--bg-primary);
 }
 
-.follow-btn:hover {
-  opacity: 0.85;
+.follow-btn:hover,
+.follow-btn:active {
+  opacity: 0.82;
 }
 
 /* Profil aksiyon butonları arasında eşit yükseklik */
@@ -250,84 +259,12 @@
   color: #fff !important;
 }
 
-.follow-btn.following:hover {
-  opacity: 1;
+.follow-btn.following:hover,
+.follow-btn.following:active {
+  opacity: 0.9;
   background-color: var(--color-accent-main) !important;
 }
 
-/* Legacy button aliases (eski kodlarla uyum) */
-.btn-primary {
-  padding: 0 27px;
-  border-radius: 50px;
-  height: 47px;
-  font-size: 0.91rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--bg-inverse);
-  color: var(--bg-primary);
-}
-
-.btn-primary:hover {
-  opacity: 0.85;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  padding: 0 27px;
-  border-radius: 50px;
-  height: 47px;
-  font-size: 0.91rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--bg-blur-overlay);
-  color: var(--text-primary);
-}
-
-.btn-secondary:hover {
-  background-color: var(--bg-tertiary);
-}
-
-.btn-danger {
-  padding: 0 27px;
-  border-radius: 50px;
-  height: 47px;
-  font-size: 0.91rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--error-color);
-  color: #ffffff;
-}
-
-.btn-danger:hover {
-  opacity: 0.85;
-}
-
-.btn-danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* ── Form Inputs ── */
 .input-modern {
@@ -335,7 +272,7 @@
   padding: 0 18px;
   border-radius: 14px;
   border: 1.5px solid var(--border-primary);
-  background: var(--bg-secondary);
+  background: transparent;
   color: var(--text-primary);
   font-size: 0.93rem;
   font-weight: 500;
@@ -361,7 +298,7 @@
   padding: 0 14px;
   border-radius: 14px;
   border: 1.5px solid var(--border-primary);
-  background: var(--bg-secondary);
+  background: transparent;
   color: var(--text-primary);
   font-size: 0.88rem;
   font-weight: 500;
@@ -411,7 +348,8 @@ input[type="checkbox"]:checked::after {
   transform: rotate(45deg);
 }
 
-input[type="checkbox"]:hover {
+input[type="checkbox"]:hover,
+input[type="checkbox"]:active {
   border-color: var(--accent-color);
 }
 
@@ -440,7 +378,8 @@ input[type="radio"]:checked {
   border-width: 5px;
 }
 
-input[type="radio"]:hover {
+input[type="radio"]:hover,
+input[type="radio"]:active {
   border-color: var(--accent-color);
 }
 
@@ -533,6 +472,10 @@ input[type="radio"]:hover {
   animation: loaderSpin 0.8s linear infinite;
 }
 
+button:has(.loader),
+a:has(.loader) {
+  position: relative;
+}
 button .loader,
 a .loader {
   margin: auto;
@@ -549,6 +492,97 @@ a .loader {
   from { transform: scale(1); opacity: 1; }
   to { transform: scale(0.95); opacity: 0; }
 }
+
+/* ── Video Player ── */
+@keyframes vpActionFade {
+  0% { opacity: 0; transform: scale(0.8); }
+  15% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+@keyframes vpSeekAnim {
+  0% { opacity: 0; transform: scale(0.7); }
+  20% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* Cinema mode — hide sidebars via body data attribute */
+[data-cinema-mode] #post-shell > aside,
+[data-cinema-mode] #dashboard-shell > aside {
+  display: none !important;
+}
+[data-cinema-mode] .md\:ml-\[240px\] {
+  margin-left: 0 !important;
+}
+
+/* Cinema mode — also hide right sidebar content area maxWidth */
+[data-cinema-mode] #post-shell > main > div > div:first-child {
+  max-width: none !important;
+}
+
+/* Progress bar touch area — prevent scroll during seek */
+.vp-progress-touch {
+  touch-action: none;
+}
+
+/* Mini player floating style — position: fixed !important for stacking context safety */
+.vp-mini {
+  position: fixed !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (max-width: 640px) {
+  .vp-mini {
+    width: 55vw !important;
+    max-width: 55vw !important;
+    bottom: 70px !important;
+    right: 8px !important;
+  }
+}
+
+.vp-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  border: none;
+}
+.vp-volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.3);
+  border: none;
+}
+.vp-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: none;
+  margin-top: -4px;
+  cursor: pointer;
+}
+.vp-volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.3);
+  border: none;
+}
+.vp-volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: none;
+  cursor: pointer;
+}
+.vp-volume-slider:focus {
+  outline: none;
+}
+.vp-shortcuts-scroll::-webkit-scrollbar { width: 4px; }
+.vp-shortcuts-scroll::-webkit-scrollbar-track { background: transparent; }
+.vp-shortcuts-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
 /* ── Skeleton Loading ── */
 @keyframes skeleton-pulse {
@@ -729,8 +763,8 @@ img, svg {
   font-weight: 600;
   border-radius: 2.5rem;
   border: 1px solid var(--border-primary);
-  backdrop-filter: blur(65px) brightness(1.2);
-  -webkit-backdrop-filter: blur(65px) brightness(1.2);
+  backdrop-filter: blur(20px) brightness(1.2);
+  -webkit-backdrop-filter: blur(20px) brightness(1.2);
   background: var(--bg-secondary);
   overflow-x: auto;
   overflow-y: hidden;
@@ -1034,7 +1068,8 @@ img, svg {
 
 
 
-.premium-plan-card:hover {
+.premium-plan-card:hover,
+.premium-plan-card:active {
   border-color: var(--text-muted);
 }
 
@@ -1078,6 +1113,12 @@ img, svg {
     height: 50px;
     font-size: 0.93rem;
   }
+}
+
+.premium-cta-btn:disabled {
+  background: var(--accent-color);
+  color: #fff;
+  opacity: 0.65;
 }
 
 .premium-cta-btn:hover {
@@ -1160,6 +1201,7 @@ img, svg {
   border-radius: 20px;
   max-width: 90%;
   max-height: 85vh;
+  margin-bottom: 10px;
   transition: transform .15s;
 }
 
@@ -1348,6 +1390,110 @@ img, svg {
   0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
   100% { opacity: 0; transform: translate(120px, -200px) rotate(180deg); }
 }
+
+/* ── Ambient Light — transparent backgrounds when glow is active ── */
+html[data-ambient-light] body,
+html[data-ambient-light] #dashboard-shell,
+html[data-ambient-light] #post-shell {
+  background-color: transparent !important;
+}
+html[data-ambient-light] #dashboard-shell,
+html[data-ambient-light] #post-shell {
+  position: relative;
+  z-index: 1;
+}
+/* Ambient Light — glass morphism: white-alpha overlays adapt to any glow color */
+html[data-ambient-light][data-theme="dark"] {
+  --bg-secondary: rgba(255, 255, 255, 0.07);
+  --bg-tertiary: rgba(255, 255, 255, 0.13);
+  --bg-elevated: rgba(255, 255, 255, 0.09);
+  --bg-blur-overlay: rgba(0, 0, 0, 0.96);
+}
+html[data-ambient-light][data-theme="dim"] {
+  --bg-secondary: rgba(255, 255, 255, 0.06);
+  --bg-tertiary: rgba(255, 255, 255, 0.11);
+  --bg-elevated: rgba(255, 255, 255, 0.08);
+  --bg-blur-overlay: rgba(14, 21, 32, 0.96);
+}
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) {
+  --bg-secondary: rgba(255, 255, 255, 0.55);
+  --bg-tertiary: rgba(255, 255, 255, 0.7);
+  --bg-elevated: rgba(255, 255, 255, 0.6);
+  --bg-blur-overlay: rgba(255, 255, 255, 0.96);
+  --border-primary: rgba(0, 0, 0, 0.25);
+  --border-overlay: rgba(0, 0, 0, 0.95);
+  --text-muted: rgba(0, 0, 0, 0.95);
+}
+/* Ambient light: sidebar fully transparent so glow passes through */
+html[data-ambient-light] aside {
+  background-color: transparent !important;
+}
+/* Ambient light: sticky headers — disable sticky, remove bg so glow passes through */
+html[data-ambient-light] .sticky-ambient {
+  position: static !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Modals: restore solid backgrounds so they are not transparent with ambient light */
+html[data-ambient-light][data-theme="dark"] [data-modal] {
+  --bg-secondary: rgba(26, 26, 26, 1);
+  --bg-tertiary: rgba(43, 43, 43, 1);
+  --bg-elevated: rgba(36, 36, 36, 1);
+}
+html[data-ambient-light][data-theme="dim"] [data-modal] {
+  --bg-secondary: rgba(26, 37, 51, 1);
+  --bg-tertiary: rgba(38, 52, 70, 1);
+  --bg-elevated: rgba(32, 45, 62, 1);
+}
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal] {
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --bg-elevated: #f1f3f4;
+}
+
+/* Ambient light: frosted glass overlays (e.g. İstatistikler card) */
+html[data-ambient-light] .bg-bg-blur-overlay {
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+/* Ambient light: frosted glass buttons */
+html[data-ambient-light] .cancel {
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+html[data-ambient-light] .i-btn:hover,
+html[data-ambient-light] .i-btn:active {
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/* Full-screen loaders: always opaque regardless of ambient light */
+.bg-solid-primary {
+  background-color: var(--bg-primary);
+}
+html[data-ambient-light][data-theme="dark"] .bg-solid-primary {
+  background-color: #0a0a0a;
+}
+html[data-ambient-light][data-theme="dim"] .bg-solid-primary {
+  background-color: #15202b;
+}
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-solid-primary {
+  background-color: #ffffff;
+}
+
+/* ── Mobile tap feedback: mirror Tailwind hover utilities on :active ── */
+.hover\:bg-bg-tertiary:active { background-color: var(--bg-tertiary); }
+.hover\:bg-bg-secondary:active { background-color: var(--bg-secondary); }
+.hover\:opacity-90:active { opacity: 0.9; }
+.hover\:opacity-80:active { opacity: 0.8; }
+.hover\:text-text-primary:active { color: var(--text-primary); }
+.hover\:text-accent-main:active { color: var(--accent-color); }
+.hover\:text-error:active { color: var(--error-color); }
+.hover\:bg-error\/10:active { background-color: color-mix(in srgb, var(--error-color) 10%, transparent); }
+.hover\:bg-success\/20:active { background-color: color-mix(in srgb, var(--success-color) 20%, transparent); }
+.hover\:underline:active { text-decoration: underline; }
 
 /* ── Responsive: Desktop >= 1025px, Tablet 801-1024px, Mobile <= 800px ── */
 @media (max-width: 800px) {

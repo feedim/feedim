@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkImageBuffer } from "@/lib/moderation";
+import { uploadToR2 } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -38,31 +39,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const buffer = new Uint8Array(arrayBuffer);
-
-  const { error: uploadError } = await supabase.storage
-    .from("images")
-    .upload(fileName, buffer, {
-      contentType: file.type,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
-  }
-
-  const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName);
+  const key = `images/${fileName}`;
+  const url = await uploadToR2(key, imageBuffer, file.type);
 
   const { error: updateError } = await supabase
     .from("profiles")
-    .update({ avatar_url: urlData.publicUrl, updated_at: new Date().toISOString() })
+    .update({ avatar_url: url, updated_at: new Date().toISOString() })
     .eq("user_id", user.id);
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ url: urlData.publicUrl });
+  return NextResponse.json({ url });
 }
 
 export async function DELETE() {

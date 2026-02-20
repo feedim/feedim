@@ -186,6 +186,7 @@ export default function FeedimAlertProvider() {
             className="fixed inset-0 z-[2147483647] flex items-center justify-center pointer-events-none"
           >
             <div
+              data-modal
               className="pointer-events-auto max-w-[350px] w-[calc(100%-32px)] rounded-[27px] p-[9px_15px_15px] bg-bg-secondary border border-border-overlay select-none"
               style={{ animation: "scaleIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) both" }}
             >

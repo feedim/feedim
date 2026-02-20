@@ -20,8 +20,9 @@ export default function PostStats({ viewCount = 0, likeCount = 0, postId }: Post
       <div className="flex items-center gap-3 text-[0.72rem] text-text-muted shrink-0">
         {viewCount > 0 && (
           <span className="flex items-center gap-1">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M21 21H6.2C5.07989 21 4.51984 21 4.09202 20.782C3.71569 20.5903 3.40973 20.2843 3.21799 19.908C3 19.4802 3 18.9201 3 17.8V3M7 15L12 9L16 13L21 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
             {formatCount(viewCount)} görüntülenme
           </span>

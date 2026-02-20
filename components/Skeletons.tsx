@@ -242,34 +242,27 @@ export function AnalyticsSkeleton() {
   );
 }
 
-/* ─── Note Card ─── */
-export function NoteCardSkeleton() {
+/* ─── Video Card (Grid) ─── */
+export function VideoCardSkeleton() {
   return (
-    <div className="py-3.5 px-3 sm:px-4 mx-1 sm:mx-3 rounded-[14px]">
-      <div className="flex items-center gap-2.5 mb-2.5">
-        <Bone className="h-8 w-8 rounded-full shrink-0" />
-        <div className="space-y-1.5">
-          <Bone className="h-3 w-20 rounded-xl" />
-          <Bone className="h-2 w-12 rounded-xl" />
+    <div className="space-y-2">
+      <Bone className="w-full aspect-video rounded-xl" />
+      <div className="flex gap-3 px-1">
+        <Bone className="h-9 w-9 rounded-full shrink-0" />
+        <div className="flex-1 space-y-1.5">
+          <Bone className="h-4 w-4/5 rounded-xl" />
+          <Bone className="h-3 w-2/5 rounded-xl" />
+          <Bone className="h-3 w-1/3 rounded-xl" />
         </div>
-      </div>
-      <div className="space-y-2 mb-2.5">
-        <Bone className="h-3.5 w-full rounded-xl" />
-        <Bone className="h-3.5 w-3/4 rounded-xl" />
-      </div>
-      <div className="flex items-center gap-4">
-        <Bone className="h-3 w-8 rounded-xl" />
-        <Bone className="h-3 w-8 rounded-xl" />
-        <Bone className="h-3 w-8 rounded-xl" />
       </div>
     </div>
   );
 }
 
-export function NoteListSkeleton({ count = 6 }: { count?: number }) {
+export function VideoGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div>
-      <Repeat count={count}>{(i) => <NoteCardSkeleton key={i} />}</Repeat>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-7 p-4 sm:p-6">
+      <Repeat count={count}>{(i) => <VideoCardSkeleton key={i} />}</Repeat>
     </div>
   );
 }

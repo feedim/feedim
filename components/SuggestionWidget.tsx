@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Bookmark, Heart, MessageCircle } from "lucide-react";
+import NoImage from "@/components/NoImage";
 import { formatCount } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import FollowButton from "@/components/FollowButton";
@@ -50,6 +51,7 @@ export default function SuggestionWidget() {
   const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
   const [tags, setTags] = useState<TrendingTag[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [requested, setRequested] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
@@ -60,7 +62,7 @@ export default function SuggestionWidget() {
     loadTrendingTags();
   }, []);
 
-  const loadSuggestions = async () => {
+  const loadSuggestions = useCallback(async () => {
     try {
       const res = await fetch("/api/suggestions?limit=3");
       if (!res.ok) { setLoaded(true); return; }
@@ -71,9 +73,9 @@ export default function SuggestionWidget() {
     } finally {
       setLoaded(true);
     }
-  };
+  }, []);
 
-  const loadTrendingPosts = async () => {
+  const loadTrendingPosts = useCallback(async () => {
     try {
       const res = await fetch("/api/posts/explore?page=1");
       const data = await res.json();
@@ -95,9 +97,9 @@ export default function SuggestionWidget() {
     } catch {
       // Silent
     }
-  };
+  }, []);
 
-  const loadTrendingTags = async () => {
+  const loadTrendingTags = useCallback(async () => {
     try {
       const res = await fetch("/api/tags?q=");
       const data = await res.json();
@@ -105,38 +107,61 @@ export default function SuggestionWidget() {
     } catch {
       // Silent
     }
-  };
+  }, []);
 
-  const handleFollow = async (username: string, userId: string) => {
-    const isFollowing = following.has(userId);
+  const doFollowToggle = useCallback(async (username: string, userId: string) => {
+    const wasFollowing = following.has(userId);
+    const wasRequested = requested.has(userId);
     const newFollowing = new Set(following);
-    if (isFollowing) {
+    const newRequested = new Set(requested);
+    if (wasFollowing || wasRequested) {
       newFollowing.delete(userId);
+      newRequested.delete(userId);
     } else {
       newFollowing.add(userId);
     }
     setFollowing(newFollowing);
+    setRequested(newRequested);
 
     try {
       const res = await fetch(`/api/users/${username}/follow`, { method: "POST" });
       if (!res.ok) {
-        // Revert
         const reverted = new Set(following);
-        if (isFollowing) reverted.add(userId);
-        else reverted.delete(userId);
+        const revertedReq = new Set(requested);
+        if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
+        if (wasRequested) revertedReq.add(userId); else revertedReq.delete(userId);
         setFollowing(reverted);
+        setRequested(revertedReq);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
           feedimAlert("error", data.error || "Günlük takip limitine ulaştın.");
         }
+      } else {
+        const data = await res.json();
+        const updated = new Set(following);
+        const updatedReq = new Set(requested);
+        if (data.following) updated.add(userId); else updated.delete(userId);
+        if (data.requested) updatedReq.add(userId); else updatedReq.delete(userId);
+        setFollowing(updated);
+        setRequested(updatedReq);
       }
     } catch {
       const reverted = new Set(following);
-      if (isFollowing) reverted.add(userId);
-      else reverted.delete(userId);
+      const revertedReq = new Set(requested);
+      if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
+      if (wasRequested) revertedReq.add(userId); else revertedReq.delete(userId);
       setFollowing(reverted);
+      setRequested(revertedReq);
     }
-  };
+  }, [following, requested]);
+
+  const handleFollow = useCallback((username: string, userId: string) => {
+    if (following.has(userId) || requested.has(userId)) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      return;
+    }
+    doFollowToggle(username, userId);
+  }, [following, requested, doFollowToggle]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,7 +190,7 @@ export default function SuggestionWidget() {
 
       {/* User Suggestions — top position */}
       {users.length > 0 && (
-        <div className="bg-bg-primary rounded-[10px] p-2">
+        <div className="rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
             <span className="text-[0.95rem] font-bold">Kişileri Bul</span>
             <Link href="/dashboard/suggestions" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
@@ -179,7 +204,7 @@ export default function SuggestionWidget() {
                 user={u}
                 autoSubtitle
                 action={
-                  <FollowButton following={following.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
+                  <FollowButton following={following.has(u.user_id) || requested.has(u.user_id)} isPrivate={requested.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
                 }
               />
             ))}
@@ -189,7 +214,7 @@ export default function SuggestionWidget() {
 
       {/* Trending Posts — "Öne Çıkanlar" */}
       {trendingPosts.length > 0 && (
-        <div className="bg-bg-primary rounded-[10px] p-2">
+        <div className="rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
             <span className="text-[0.95rem] font-bold">Öne Çıkanlar</span>
             <Link href="/dashboard/explore" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
@@ -202,7 +227,7 @@ export default function SuggestionWidget() {
                 {i > 0 && <div className="mx-2 h-px bg-border-primary/40" />}
                 <Link
                   href={`/post/${post.slug}`}
-                  className="flex flex-col gap-2 px-3 py-3 my-[3px] rounded-lg hover:bg-bg-secondary/60 transition"
+                  className="flex flex-col gap-2 px-3 py-3 my-[3px] rounded-lg hover:bg-bg-secondary transition"
                 >
                   <div className="flex items-center gap-1.5">
                     {post.author.avatar_url ? (
@@ -239,13 +264,7 @@ export default function SuggestionWidget() {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-[88px] h-[48px] rounded-md bg-bg-secondary flex items-center justify-center shrink-0">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted/30">
-                          <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                          <circle cx="9" cy="9" r="2" />
-                          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                        </svg>
-                      </div>
+                      <NoImage className="w-[88px] h-[48px] rounded-md shrink-0" />
                     )}
                   </div>
                 </Link>
@@ -257,7 +276,7 @@ export default function SuggestionWidget() {
 
       {/* Trending Tags */}
       {tags.length > 0 && (
-        <div className="bg-bg-primary rounded-[10px] p-2">
+        <div className="rounded-[10px] p-2">
           <div className="px-2 py-2">
             <span className="text-[0.95rem] font-bold">Popüler Etiketler</span>
           </div>
@@ -266,7 +285,7 @@ export default function SuggestionWidget() {
               <Link
                 key={tag.id}
                 href={`/dashboard/explore/tag/${tag.slug}`}
-                className="block px-2 py-2 rounded-lg hover:bg-bg-secondary/60 transition"
+                className="block px-2 py-2 rounded-lg hover:bg-bg-secondary transition"
               >
                 <p className="text-[0.84rem] font-semibold">#{tag.name}</p>
                 <p className="text-[0.68rem] text-text-muted">{formatCount(tag.post_count || 0)} gönderi</p>

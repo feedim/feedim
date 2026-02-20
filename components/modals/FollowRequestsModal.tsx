@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, X } from "lucide-react";
 import Modal from "./Modal";
 import { UserListSkeleton } from "@/components/Skeletons";
-import { formatRelativeDate } from "@/lib/utils";
 import UserListItem from "@/components/UserListItem";
 
 interface FollowRequest {
@@ -89,23 +87,22 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
                 <UserListItem
                   key={r.id}
                   user={p}
-                  subtitle={formatRelativeDate(r.created_at)}
                   onNavigate={onClose}
                   action={
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleAction(r.id, p.username, "accept")}
                         disabled={isProcessing}
-                        className="w-8 h-8 rounded-full bg-accent-main text-white flex items-center justify-center hover:bg-accent-main/90 transition disabled:opacity-50"
+                        className="t-btn bg-accent-main text-white"
                       >
-                        {isProcessing ? <span className="loader" style={{ width: 14, height: 14 }} /> : <Check className="h-4 w-4" />}
+                        {isProcessing ? <span className="loader" style={{ width: 14, height: 14 }} /> : "Kabul et"}
                       </button>
                       <button
                         onClick={() => handleAction(r.id, p.username, "reject")}
                         disabled={isProcessing}
-                        className="w-8 h-8 rounded-full bg-bg-tertiary text-text-muted flex items-center justify-center hover:bg-error/10 hover:text-error transition disabled:opacity-50"
+                        className="t-btn bg-bg-tertiary text-text-muted hover:bg-error/10 hover:text-error"
                       >
-                        <X className="h-4 w-4" />
+                        Sil
                       </button>
                     </div>
                   }

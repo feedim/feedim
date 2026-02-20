@@ -1,6 +1,7 @@
 import { memo } from "react";
 import Link from "next/link";
 import { Heart, Eye } from "lucide-react";
+import NoImage from "@/components/NoImage";
 import { formatRelativeDate, formatCount } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
@@ -15,6 +16,9 @@ interface PostCardProps {
     like_count?: number;
     comment_count?: number;
     view_count?: number;
+    content_type?: string;
+    video_duration?: number;
+    video_thumbnail?: string;
     published_at?: string;
     profiles?: {
       user_id: string;
@@ -33,7 +37,7 @@ export default memo(function PostCard({ post }: PostCardProps) {
   const author = post.profiles;
 
   return (
-    <article className="my-[5px] mx-1 sm:mx-3 py-4 px-2.5 sm:px-4 rounded-[14px] hover:bg-bg-secondary/60 transition-colors">
+    <article className="my-[5px] mx-1 sm:mx-3 py-4 px-2.5 sm:px-4 rounded-[14px] hover:bg-bg-secondary transition-colors">
       {/* Post Head — author info */}
       <Link href={`/post/${post.slug}`} className="block">
         <div className="flex items-center gap-2 mb-2.5">
@@ -65,21 +69,29 @@ export default memo(function PostCard({ post }: PostCardProps) {
           </div>
 
           {/* Thumbnail */}
-          <div className="w-[120px] h-[80px] shrink-0 rounded-lg overflow-hidden bg-bg-secondary">
-            {post.featured_image ? (
+          <div className="w-[120px] h-[80px] shrink-0 rounded-lg overflow-hidden bg-bg-secondary relative">
+            {(post.video_thumbnail || post.featured_image) ? (
               <img
-                src={post.featured_image}
+                src={post.video_thumbnail || post.featured_image}
                 alt={post.title}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-text-muted/30">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                  <circle cx="9" cy="9" r="2" />
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                </svg>
+              <NoImage className="w-full h-full" iconSize={28} />
+            )}
+            {/* Play icon overlay for videos with thumbnails */}
+            {post.content_type === "video" && (post.video_thumbnail || post.featured_image) && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                  <svg className="h-4 w-4 text-white ml-0.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                </div>
+              </div>
+            )}
+            {/* Video badge */}
+            {post.content_type === "video" && (
+              <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
+                {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : "Video"}
               </div>
             )}
           </div>
@@ -94,6 +106,9 @@ export default memo(function PostCard({ post }: PostCardProps) {
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
             {formatCount(post.view_count || 0)}
+          </span>
+          <span className="text-text-muted/60">
+            {post.content_type === "video" ? "Video" : "Gonderi"}
           </span>
         </div>
       </Link>

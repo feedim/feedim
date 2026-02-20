@@ -47,7 +47,7 @@ export async function GET(
     .from("posts")
     .select(`
       id, title, slug, excerpt, featured_image, reading_time,
-      like_count, comment_count, save_count, published_at,
+      like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail,
       profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
     `)
     .eq("author_id", profile.user_id)

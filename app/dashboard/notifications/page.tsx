@@ -33,18 +33,18 @@ interface Notification {
 }
 
 const iconMap: Record<string, React.ReactNode> = {
-  like: <Heart className="h-4 w-4 text-red-500" />,
+  like: <Heart className="h-4 w-4 text-error" />,
   comment: <MessageCircle className="h-4 w-4 text-accent-main" />,
   reply: <MessageCircle className="h-4 w-4 text-accent-main" />,
   mention: <MessageCircle className="h-4 w-4 text-accent-main" />,
   follow: <UserPlus className="h-4 w-4 text-text-primary" />,
   follow_request: <UserPlus className="h-4 w-4 text-text-primary" />,
   follow_accepted: <UserPlus className="h-4 w-4 text-text-primary" />,
-  milestone: <Award className="h-4 w-4 text-yellow-500" />,
-  coin_earned: <Coins className="h-4 w-4 text-yellow-500" />,
+  milestone: <Award className="h-4 w-4 text-warning" />,
+  coin_earned: <Coins className="h-4 w-4 text-accent-main" />,
   gift_received: <Gift className="h-4 w-4 text-text-primary" />,
-  first_post: <Sparkles className="h-4 w-4 text-green-500" />,
-  comeback_post: <Undo2 className="h-4 w-4 text-blue-500" />,
+  first_post: <Sparkles className="h-4 w-4 text-success" />,
+  comeback_post: <Undo2 className="h-4 w-4 text-info" />,
   system: <AlertCircle className="h-4 w-4 text-text-muted" />,
 };
 
@@ -197,41 +197,45 @@ export default function NotificationsPage() {
       <div>
         {/* Follow Requests Banner */}
         {isPrivateAccount && followRequestCount > 0 && (
-          <button
-            onClick={() => setFollowRequestsOpen(true)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-border-primary hover:bg-bg-secondary transition text-left"
-          >
-            {/* Stacked avatars */}
-            <div className="relative shrink-0" style={{ width: followRequestAvatars.length > 1 ? 40 + (followRequestAvatars.length - 1) * 12 : 40, height: 40 }}>
-              {followRequestAvatars.length > 0 ? (
-                followRequestAvatars.map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt=""
-                    className="absolute top-0 h-10 w-10 rounded-full object-cover border-2 border-bg-primary"
-                    style={{ left: i * 12, zIndex: 3 - i }}
-                  />
-                ))
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-accent-main/10 flex items-center justify-center">
-                  <UserPlus className="h-5 w-5 text-accent-main" />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Takip istekleri</p>
-              <p className="text-xs text-text-muted">
-                {followRequestCount} bekleyen istek
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="bg-accent-main text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                {followRequestCount}
-              </span>
-              <ChevronRight className="h-4 w-4 text-text-muted" />
-            </div>
-          </button>
+          <>
+            <button
+              onClick={() => setFollowRequestsOpen(true)}
+              className="w-full flex items-center gap-3 mx-3 my-2 px-4 py-3.5 rounded-lg bg-bg-secondary hover:bg-bg-tertiary transition text-left"
+              style={{ width: "calc(100% - 1.5rem)" }}
+            >
+              {/* Stacked avatars */}
+              <div className="relative shrink-0" style={{ width: followRequestAvatars.length > 1 ? 40 + (followRequestAvatars.length - 1) * 12 : 40, height: 40 }}>
+                {followRequestAvatars.length > 0 ? (
+                  followRequestAvatars.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt=""
+                      className="absolute top-0 h-10 w-10 rounded-full object-cover border-2 border-bg-primary"
+                      style={{ left: i * 12, zIndex: 3 - i }}
+                    />
+                  ))
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-accent-main/10 flex items-center justify-center">
+                    <UserPlus className="h-5 w-5 text-accent-main" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Takip istekleri</p>
+                <p className="text-xs text-text-muted">
+                  {followRequestCount > 99 ? "99+" : followRequestCount} bekleyen istek
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="bg-accent-main text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                  {followRequestCount > 99 ? "99+" : followRequestCount}
+                </span>
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </div>
+            </button>
+            <div className="mx-3 mt-[5px] border-b border-border-primary/40" />
+          </>
         )}
 
         {loading && notifications.length === 0 ? (
@@ -289,7 +293,7 @@ export default function NotificationsPage() {
                       )}
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteNotification(n.id); }}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-tertiary transition text-text-muted hover:text-error"
+                        className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-secondary transition text-text-muted hover:text-error"
                         title="Sil"
                       >
                         <Trash2 className="h-[18px] w-[18px]" />

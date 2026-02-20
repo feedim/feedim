@@ -96,7 +96,7 @@ export default function CoinsBuyPage() {
         ) : (
           <div className="space-y-5">
             {/* Mevcut Bakiye */}
-            <div className="bg-bg-secondary/60 rounded-2xl p-5 text-center">
+            <div className="bg-bg-secondary rounded-2xl p-5 text-center">
               <p className="text-sm text-text-muted mb-2">Mevcut Bakiye</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-7 w-7 text-accent-main" />
@@ -158,7 +158,7 @@ export default function CoinsBuyPage() {
             <button
               onClick={purchaseCoins}
               disabled={!selectedPkg || purchasing}
-              className="w-full py-4 rounded-2xl font-bold text-lg transition-all disabled:opacity-50 bg-accent-main text-white hover:opacity-90 active:scale-[0.98]"
+              className="t-btn accept w-full"
             >
               {purchasing ? <span className="loader" /> : selectedPkg ? `${((selectedPkg.coins || 0) + (selectedPkg.bonus_coins || 0)).toLocaleString()} Jeton — ${selectedPkg.price_try}₺` : "Paket Seçin"}
             </button>

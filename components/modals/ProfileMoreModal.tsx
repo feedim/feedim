@@ -168,7 +168,7 @@ export default function ProfileMoreModal({
               </p>
 
               <button onClick={() => confirmAction("warn_user", "Uyar")} disabled={actionLoading} className={btnClass}>
-                <Shield className={`${iconClass} text-amber-500`} />
+                <Shield className={`${iconClass} text-warning`} />
                 <span className={labelClass}>Uyar (+20 spam puan)</span>
               </button>
 
@@ -183,12 +183,12 @@ export default function ProfileMoreModal({
               </button>
 
               <button onClick={() => doModAction("freeze_user", "Hesap donduruldu")} disabled={actionLoading} className={btnClass}>
-                <Snowflake className={`${iconClass} text-blue-400`} />
+                <Snowflake className={`${iconClass} text-info`} />
                 <span className={labelClass}>Hesabi dondur</span>
               </button>
 
               <button onClick={() => confirmAction("verify_user", "Dogrula")} disabled={actionLoading} className={btnClass}>
-                <BadgeCheck className={`${iconClass} text-blue-500`} />
+                <BadgeCheck className={`${iconClass} text-info`} />
                 <span className={labelClass}>Dogrula (mavi tik)</span>
               </button>
 

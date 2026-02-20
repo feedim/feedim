@@ -48,9 +48,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Filter out blocked users
     if (blockedIds.length > 0) {
-      for (const bid of blockedIds) {
-        query = query.neq('author_id', bid);
-      }
+      query = query.not('author_id', 'in', `(${blockedIds.join(',')})`);
     }
 
     if (sort === 'popular') {
@@ -81,44 +79,50 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       comments = scored.slice(offset, offset + limit).map(({ _smart, ...rest }: any) => rest);
     }
 
-    // Load replies for each comment, filtering out inactive authors
-    const result = [];
-    for (const c of comments || []) {
+    // Filter out inactive authors
+    const activeComments = (comments || []).filter((c: any) => {
       const authorProfile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
-      if (authorProfile?.status && authorProfile.status !== 'active') continue;
+      return !authorProfile?.status || authorProfile.status === 'active';
+    });
 
-      let replies: unknown[] = [];
-      if (c.reply_count > 0) {
-        let replyQuery = admin
-          .from('comments')
-          .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)`)
-          .eq('parent_id', c.id)
-          .eq('status', 'approved')
-          .order('created_at', { ascending: true })
-          .limit(5);
-        // Filter blocked users from replies
-        for (const bid of blockedIds) {
-          replyQuery = replyQuery.neq('author_id', bid);
-        }
-        const { data: replyData } = await replyQuery;
-        replies = (replyData || [])
-          .filter((r: any) => {
-            const rAuthor = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
-            return !rAuthor?.status || rAuthor.status === 'active';
-          })
-          .map((r: any) => ({
-            ...r,
-            profiles: Array.isArray(r.profiles) ? r.profiles[0] : r.profiles,
-          }));
+    // Batch-load all replies in a single query (fixes N+1)
+    const commentIdsWithReplies = activeComments.filter((c: any) => c.reply_count > 0).map((c: any) => c.id);
+    const replyMap = new Map<number, any[]>();
+
+    if (commentIdsWithReplies.length > 0) {
+      let replyQuery = admin
+        .from('comments')
+        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)`)
+        .in('parent_id', commentIdsWithReplies)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: true });
+
+      if (blockedIds.length > 0) {
+        replyQuery = replyQuery.not('author_id', 'in', `(${blockedIds.join(',')})`);
       }
-      result.push({
-        ...c,
-        profiles: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles,
-        replies,
-      });
+
+      const { data: allReplies } = await replyQuery;
+      for (const r of (allReplies || [])) {
+        const rAuthor = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+        if (rAuthor?.status && rAuthor.status !== 'active') continue;
+        const parentId = r.parent_id as number;
+        if (!replyMap.has(parentId)) replyMap.set(parentId, []);
+        const bucket = replyMap.get(parentId)!;
+        if (bucket.length < 5) {
+          bucket.push({ ...r, profiles: rAuthor });
+        }
+      }
     }
 
-    return NextResponse.json({ comments: result, hasMore: (comments || []).length > limit });
+    const result = activeComments.map((c: any) => ({
+      ...c,
+      profiles: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles,
+      replies: replyMap.get(c.id) || [],
+    }));
+
+    const response = NextResponse.json({ comments: result, hasMore: (comments || []).length > limit });
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    return response;
   } catch {
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }

@@ -14,9 +14,10 @@ interface PostHeaderActionsProps {
   isOwnPost?: boolean;
   postSlug?: string;
   portalToHeader?: boolean;
+  isVideo?: boolean;
 }
 
-export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, isOwnPost, postSlug, portalToHeader }: PostHeaderActionsProps) {
+export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, isOwnPost, postSlug, portalToHeader, isVideo }: PostHeaderActionsProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -32,7 +33,7 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
   const button = (
     <button
       onClick={() => setMoreOpen(true)}
-      className="flex items-center justify-center w-9 h-9 rounded-full text-text-primary transition"
+      className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
     >
       <MoreHorizontal className="h-[20px] w-[20px]" />
     </button>
@@ -56,6 +57,8 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
         url={postUrl}
         title={postTitle}
         postId={postId}
+        isVideo={isVideo}
+        postSlug={postSlug}
       />
     </>
   );

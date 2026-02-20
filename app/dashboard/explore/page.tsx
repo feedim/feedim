@@ -6,9 +6,7 @@ import { Search, X, Hash, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
-import NoteListSection from "@/components/NoteListSection";
-import type { NoteData } from "@/components/NoteCard";
-import { PostGridSkeleton, NoteListSkeleton } from "@/components/Skeletons";
+import { PostGridSkeleton } from "@/components/Skeletons";
 import { cn, formatCount } from "@/lib/utils";
 import UserListItem from "@/components/UserListItem";
 import { useAuthModal } from "@/components/AuthModal";
@@ -57,7 +55,7 @@ interface SearchTag {
   is_following?: boolean;
 }
 
-type ExploreTab = "for_you" | "users" | "tags" | "posts" | "notes";
+type ExploreTab = "for_you" | "users" | "tags" | "posts";
 
 function SearchPrompt() {
   return (
@@ -96,11 +94,6 @@ function ExploreContent() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [followedTagIds, setFollowedTagIds] = useState<Set<number>>(new Set());
-  const [exploreNotes, setExploreNotes] = useState<NoteData[]>([]);
-  const [notesLoading, setNotesLoading] = useState(false);
-  const [notesPage, setNotesPage] = useState(1);
-  const [notesHasMore, setNotesHasMore] = useState(false);
-  const [notesLoaded, setNotesLoaded] = useState(false);
 
   // Search state
   const [query, setQuery] = useState(searchParams.get("q") || "");
@@ -156,26 +149,6 @@ function ExploreContent() {
     }
   }, []);
 
-
-  const loadExploreNotes = useCallback(async (pageNum: number) => {
-    setNotesLoading(true);
-    try {
-      const res = await fetch(`/api/notes?tab=for-you&page=${pageNum}`);
-      const data = await res.json();
-      if (pageNum === 1) {
-        setExploreNotes(data.notes || []);
-      } else {
-        setExploreNotes(prev => [...prev, ...(data.notes || [])]);
-      }
-      setNotesHasMore(data.hasMore || false);
-      setNotesPage(pageNum);
-      setNotesLoaded(true);
-    } catch {
-      // Silent
-    } finally {
-      setNotesLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     const urlTag = searchParams.get("tag");
@@ -309,7 +282,6 @@ function ExploreContent() {
     { key: "users", label: "Kişiler" },
     { key: "tags", label: "Etiketler" },
     { key: "posts", label: "Gönderiler" },
-    { key: "notes", label: "Notlar" },
   ];
 
   const handleTagClick = (tag: SearchTag) => {
@@ -576,25 +548,6 @@ function ExploreContent() {
       );
     }
 
-    if (activeTab === "notes") {
-      if (!notesLoaded) {
-        loadExploreNotes(1);
-        return <div className="mt-4"><NoteListSkeleton count={4} /></div>;
-      }
-      return (
-        <div className="mt-1">
-          <NoteListSection
-            notes={exploreNotes}
-            loading={notesLoading}
-            hasMore={notesHasMore}
-            onLoadMore={() => loadExploreNotes(notesPage + 1)}
-            emptyTitle="Henüz not yok"
-            emptyDescription="Topluluk notları burada görünecek."
-          />
-        </div>
-      );
-    }
-
     return null;
   };
 
@@ -631,7 +584,7 @@ function ExploreContent() {
       </div>
 
       {/* Tabs — always visible */}
-      <div className="sticky top-0 z-20 bg-bg-primary border-b border-border-primary px-3 sm:px-4 mt-1 overflow-x-auto scrollbar-hide">
+      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient px-3 sm:px-4 mt-1 overflow-x-auto scrollbar-hide">
         <div className="flex gap-0 min-w-max">
           {tabs.map(tab => (
             <button

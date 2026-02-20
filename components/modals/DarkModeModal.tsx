@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Sun, Moon, Monitor, Lock } from "lucide-react";
+import { Sun, Moon, Monitor } from "lucide-react";
 import Modal from "./Modal";
-import { useUser } from "@/components/UserContext";
 
 interface DarkModeModalProps {
   open: boolean;
@@ -28,25 +26,13 @@ const themes = [
 ] as const;
 
 export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
-  const router = useRouter();
-  const { user } = useUser();
-  const canUseDim = user?.premiumPlan === "pro" || user?.premiumPlan === "max";
   const [current, setCurrent] = useState("system");
 
   useEffect(() => {
     if (open) {
-      const saved = localStorage.getItem("fdm-theme") || "system";
-      if (saved === "dim" && !canUseDim) {
-        setCurrent("dark");
-        localStorage.setItem("fdm-theme", "dark");
-        document.documentElement.setAttribute("data-theme", "dark");
-        const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", "#090909");
-      } else {
-        setCurrent(saved);
-      }
+      setCurrent(localStorage.getItem("fdm-theme") || "system");
     }
-  }, [open, canUseDim]);
+  }, [open]);
 
   const themeColors: Record<string, string> = { light: "#ffffff", dark: "#090909", dim: "#0e1520" };
 
@@ -69,42 +55,28 @@ export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
         {themes.map((t) => {
           const Icon = t.icon;
           const isActive = current === t.id;
-          const isDimLocked = t.id === "dim" && !canUseDim;
           return (
             <button
               key={t.id}
-              onClick={() => {
-                if (isDimLocked) {
-                  onClose();
-                  router.push("/premium");
-                  return;
-                }
-                applyTheme(t.id);
-              }}
+              onClick={() => applyTheme(t.id)}
               className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-[10px] transition-all ${
-                isDimLocked
-                  ? "opacity-60 hover:opacity-80"
-                  : isActive
-                    ? "bg-accent-main/10 text-accent-main"
-                    : "hover:bg-bg-tertiary text-text-primary"
+                isActive
+                  ? "bg-accent-main/10 text-accent-main"
+                  : "hover:bg-bg-tertiary text-text-primary"
               }`}
             >
               <Icon className="h-5 w-5 shrink-0" />
               <div className="flex-1 text-left">
                 <p className="text-sm font-semibold">{t.label}</p>
-                <p className="text-xs text-text-muted">
-                  {isDimLocked ? "Pro ve Max abonelere ozel" : t.desc}
-                </p>
+                <p className="text-xs text-text-muted">{t.desc}</p>
               </div>
-              {isDimLocked ? (
-                <Lock className="h-4 w-4 text-text-muted shrink-0" />
-              ) : isActive ? (
+              {isActive && (
                 <div className="w-5 h-5 rounded-full bg-accent-main flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
-              ) : null}
+              )}
             </button>
           );
         })}

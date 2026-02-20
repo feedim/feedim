@@ -100,15 +100,15 @@ export async function GET(request: NextRequest) {
     let feedQuery = admin
       .from('posts')
       .select(`
-        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at,
+        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
       `)
       .in('id', pageIds)
       .eq('status', 'published');
 
     // Filter out blocked authors
-    for (const bid of blockedIds) {
-      feedQuery = feedQuery.neq('author_id', bid);
+    if (blockedIds.size > 0) {
+      feedQuery = feedQuery.not('author_id', 'in', `(${[...blockedIds].join(',')})`);
     }
 
     const { data: posts } = await feedQuery.order('published_at', { ascending: false });
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       const author = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
       const authorStatus = author?.status;
       if (authorStatus && authorStatus !== 'active') return false;
-      if (author?.account_private && !followedUserIdSet.has(author?.user_id)) return false;
+      if (author?.account_private && author?.user_id !== user.id && !followedUserIdSet.has(author?.user_id)) return false;
       return true;
     });
 

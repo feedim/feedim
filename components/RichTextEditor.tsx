@@ -573,6 +573,9 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     if (wrapper) {
       wrapper.classList.add("selected");
       setSelectedMedia(true);
+      // Dismiss mobile keyboard when selecting media
+      window.getSelection()?.removeAllRanges();
+      (document.activeElement as HTMLElement)?.blur();
     } else {
       setSelectedMedia(false);
     }
@@ -624,6 +627,18 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     isInternalUpdate.current = true;
     onChange(editorRef.current.innerHTML);
     scheduleHistory();
+    // Focus first body cell after table insertion
+    setTimeout(() => {
+      const firstCell = editorRef.current?.querySelector("table tbody td:first-child");
+      if (firstCell) {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(firstCell);
+        range.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    }, 0);
   }, [addToHistory, onChange, scheduleHistory]);
 
   // Tablo: cursor'ın bulunduğu hücreyi bul
@@ -1029,10 +1044,25 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       }
     }
 
-    // Tab → 4 spaces
+    // Tab — table cell navigation or 4 spaces
     if (e.key === "Tab") {
       e.preventDefault();
-      document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
+      const ctx = getTableContext();
+      if (ctx) {
+        const allCells = Array.from(ctx.table.querySelectorAll("td, th"));
+        const idx = allCells.indexOf(ctx.cell as HTMLTableCellElement);
+        const next = e.shiftKey ? allCells[idx - 1] : allCells[idx + 1];
+        if (next) {
+          const range = document.createRange();
+          const sel = window.getSelection();
+          range.selectNodeContents(next);
+          range.collapse(true);
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+      } else {
+        document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
+      }
       return;
     }
 
@@ -1211,6 +1241,13 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       return;
     }
 
+    // Table cell Enter → insert line break instead of new paragraph
+    if (e.key === "Enter" && !isMod && isInTableCell) {
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+      return;
+    }
+
     // Caption içinde Enter → caption'dan çık, sonraki paragrafa geç
     if (e.key === "Enter" && !isMod) {
       const sel = window.getSelection();
@@ -1264,7 +1301,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         });
       }, 0);
     }
-  }, [undo, redo, selectedMedia, handleBlockDelete, deselectAllMedia, exec, onSave, onPublish, onBackspaceAtStart, handleLink, selectWordUnderCursor]);
+  }, [undo, redo, selectedMedia, handleBlockDelete, deselectAllMedia, exec, onSave, onPublish, onBackspaceAtStart, handleLink, selectWordUnderCursor, getTableContext]);
 
   // Sync value from parent (only when not internal)
   useEffect(() => {

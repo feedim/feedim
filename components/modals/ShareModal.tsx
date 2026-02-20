@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Link as LinkIcon, ChevronRight } from "lucide-react";
+import { Check, Link as LinkIcon, ChevronRight, Code2 } from "lucide-react";
 import Modal from "./Modal";
 import { feedimAlert } from "@/components/FeedimAlert";
 
@@ -11,6 +11,8 @@ interface ShareModalProps {
   url: string;
   title: string;
   postId?: number;
+  isVideo?: boolean;
+  postSlug?: string;
 }
 
 const platforms = [
@@ -18,13 +20,19 @@ const platforms = [
   { id: "tw", name: "X", icon: "tw" },
   { id: "fb", name: "Facebook", icon: "fb" },
   { id: "lk", name: "LinkedIn", icon: "lk" },
-  { id: "native", name: "Diğer", icon: "share" },
+  { id: "native", name: "Diger", icon: "share" },
 ];
 
-export default function ShareModal({ open, onClose, url, title, postId }: ShareModalProps) {
+export default function ShareModal({ open, onClose, url, title, postId, isVideo, postSlug }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(false);
 
   const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${url}` : url;
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://feedim.com";
+  const embedCode = postSlug
+    ? `<iframe width="560" height="315" src="${baseUrl}/embed/${postSlug}" frameborder="0" allowfullscreen></iframe>`
+    : "";
 
   const trackShare = async (platform: string) => {
     if (postId) {
@@ -36,7 +44,7 @@ export default function ShareModal({ open, onClose, url, title, postId }: ShareM
         });
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük paylaşım limitine ulaştın.");
+          feedimAlert("error", data.error || "Gunluk paylasim limitine ulastin.");
         }
       } catch {}
     }
@@ -47,6 +55,13 @@ export default function ShareModal({ open, onClose, url, title, postId }: ShareM
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     trackShare("copy_link");
+  };
+
+  const handleCopyEmbed = async () => {
+    await navigator.clipboard.writeText(embedCode);
+    setEmbedCopied(true);
+    setTimeout(() => setEmbedCopied(false), 2000);
+    trackShare("embed");
   };
 
   const handleShare = (platformId: string) => {
@@ -110,7 +125,7 @@ export default function ShareModal({ open, onClose, url, title, postId }: ShareM
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Paylaş" size="sm" infoText="Gönderiyi sosyal medya veya bağlantı ile paylaşabilirsin.">
+    <Modal open={open} onClose={onClose} title="Paylas" size="sm" infoText="Gonderiyi sosyal medya veya baglanti ile paylasabilirsin.">
       <div className="p-2 space-y-1">
         {/* Platform buttons */}
         {platforms.map((p) => (
@@ -129,21 +144,56 @@ export default function ShareModal({ open, onClose, url, title, postId }: ShareM
           </button>
         ))}
 
-        {/* URL Copy bar — bottom */}
+        {/* URL Copy bar */}
         <button
           onClick={handleCopy}
-          className="flex items-center gap-3 w-full px-4 py-3 bg-bg-tertiary rounded-[14px] hover:bg-bg-tertiary/80 transition text-left mt-2 mb-1"
+          className="flex items-center gap-3 w-full px-4 py-3 bg-bg-tertiary rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2 mb-1"
         >
-          <div className="w-9 h-9 rounded-full bg-bg-primary flex items-center justify-center shrink-0">
-            {copied ? <Check className="h-4 w-4 text-green-500" /> : <LinkIcon className="h-4 w-4 text-text-muted" />}
+          <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0">
+            {copied ? <Check className="h-4 w-4 text-success" /> : <LinkIcon className="h-4 w-4 text-text-muted" />}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[0.82rem] font-medium text-text-primary">
-              {copied ? "Kopyalandı!" : "Bağlantıyı Kopyala"}
+              {copied ? "Kopyalandi!" : "Baglantiyi Kopyala"}
             </p>
             <p className="text-[0.72rem] text-text-muted truncate">{fullUrl}</p>
           </div>
         </button>
+
+        {/* Embed code — only for video posts */}
+        {isVideo && postSlug && (
+          <>
+            {!showEmbed ? (
+              <button
+                onClick={() => setShowEmbed(true)}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0">
+                  <Code2 className="h-4 w-4 text-text-muted" />
+                </div>
+                <span className="flex-1 text-[0.84rem] font-medium text-text-primary">
+                  Yerlesik Kod
+                </span>
+                <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
+              </button>
+            ) : (
+              <div className="px-4 py-3 space-y-2">
+                <p className="text-[0.82rem] font-medium text-text-primary">Yerlesik Kod</p>
+                <div className="bg-bg-secondary rounded-xl p-3 text-[0.72rem] text-text-muted font-mono break-all leading-relaxed select-all">
+                  {embedCode}
+                </div>
+                <button
+                  onClick={handleCopyEmbed}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-[0.82rem] font-medium transition"
+                  style={embedCopied ? { backgroundColor: "var(--success-color)", color: "#fff" } : { backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+                >
+                  {embedCopied ? <Check className="h-4 w-4" /> : <Code2 className="h-4 w-4" />}
+                  {embedCopied ? "Kopyalandi!" : "Kodu Kopyala"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </Modal>
   );

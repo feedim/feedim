@@ -1,5 +1,6 @@
 import Sidebar from "@/components/Sidebar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import AmbientLight from "@/components/AmbientLight";
 import { UserProvider, type InitialUser } from "@/components/UserContext";
 import { getAuthUserId } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,7 +36,8 @@ export default async function ProfileLayout({ children }: { children: React.Reac
 
   return (
     <UserProvider initialUser={initialUser}>
-      <div className="min-h-screen bg-bg-primary text-text-primary">
+      <div className="min-h-screen text-text-primary">
+        <AmbientLight />
         <Sidebar />
         <main className="md:ml-[240px] min-h-screen pb-20 md:pb-0">
           <div className="flex-1 min-w-0 max-w-[600px] mx-auto min-h-screen">

@@ -231,7 +231,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                   className={`px-4 py-2 rounded-full text-sm font-medium transition ${
                     category === cat.value
                       ? "bg-accent-main text-white"
-                      : "bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary/80"
+                      : "bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary"
                   }`}
                 >
                   {cat.label}
@@ -311,7 +311,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
               <Check className="h-8 w-8 text-accent-main" />
             </div>
             <h3 className="text-lg font-bold">Profesyonel Hesap Aktif!</h3>
-            <p className="text-sm text-text-muted leading-relaxed">
+            <p className="text-xs text-text-muted leading-relaxed">
               Hesabınız başarıyla profesyonel hesaba dönüştürüldü. Artık istatistiklerinize erişebilir ve profilinizde kategorinizi gösterebilirsiniz.
             </p>
             <button onClick={() => { handleDone(); router.push("/dashboard/profile"); }} className="w-full t-btn accept">

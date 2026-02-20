@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -19,7 +20,8 @@ const pageTitles: Record<string, string> = {
   "/dashboard/subscription-payment": "Abonelik",
   "/dashboard/transactions": "İşlem Geçmişi",
   "/dashboard/withdrawal": "Ödeme Alma",
-  "/dashboard/community-notes": "Topluluk",
+  "/dashboard/video": "Video",
+  "/dashboard/write/video": "Video",
 };
 
 interface ColumnHeaderProps {
@@ -29,24 +31,32 @@ interface ColumnHeaderProps {
   scrollable?: boolean;
 }
 
-export default function ColumnHeader({ rightAction, onBack, customTitle, scrollable }: ColumnHeaderProps = {}) {
+export default memo(function ColumnHeader({ rightAction, onBack, customTitle, scrollable }: ColumnHeaderProps = {}) {
   const { user, isLoggedIn } = useUser();
   const pathname = usePathname();
   const router = useRouter();
 
   const isHome = pathname === "/dashboard";
-  const isPublicContent = pathname.startsWith("/post/") || pathname.startsWith("/u/") || pathname.startsWith("/note/");
-  const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/post/") ? "Gönderi" : null) || (pathname.startsWith("/note/") ? "Not" : null) || (pathname.startsWith("/u/") ? "Profil" : null);
+  const isPublicContent = pathname.startsWith("/post/") || pathname.startsWith("/u/");
+  const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/post/") ? "Gönderi" : null) || (pathname.startsWith("/u/") ? "Profil" : null);
 
-  const handleBack = onBack || (() => router.back());
+  const handleBack = onBack || (() => {
+    try {
+      const ref = document.referrer;
+      if (ref && new URL(ref).origin === window.location.origin) {
+        router.back();
+        return;
+      }
+    } catch {}
+    router.push("/dashboard");
+  });
 
   return (
-    <header className={`${scrollable ? "" : "sticky top-0 md:relative"} z-50 bg-bg-primary`}>
+    <header className={`${scrollable ? "" : "sticky top-0"} z-50 bg-bg-primary sticky-ambient`}>
       <nav className="relative flex items-center justify-between px-4 h-[53px]">
         {/* Left */}
         {isHome && !customTitle ? (
           <>
-            <div className="md:hidden" />
             <Link href="/dashboard" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2">
               <FeedimIcon className="h-14 w-14" />
             </Link>
@@ -72,7 +82,7 @@ export default function ColumnHeader({ rightAction, onBack, customTitle, scrolla
         )}
 
         {/* Right */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 ml-auto">
           <div id="header-right-slot" />
           {rightAction ? (
             <>{rightAction}</>
@@ -91,4 +101,4 @@ export default function ColumnHeader({ rightAction, onBack, customTitle, scrolla
       </nav>
     </header>
   );
-}
+})

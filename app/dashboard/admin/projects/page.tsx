@@ -74,10 +74,10 @@ export default function AdminProjectsPage() {
         feedimAlert("success", "Gönderi silindi");
         loadProjects(page);
       } else {
-        feedimAlert("error", "Silme başarısız");
+        feedimAlert("error", "Silme başarısız, lütfen daha sonra tekrar deneyin");
       }
     } catch {
-      feedimAlert("error", "Silme başarısız");
+      feedimAlert("error", "Silme başarısız, lütfen daha sonra tekrar deneyin");
     } finally {
       setDeletingId(null);
     }
@@ -92,8 +92,8 @@ export default function AdminProjectsPage() {
     : projects;
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
-      <header className="sticky top-0 z-50 bg-bg-primary min-h-[73px]">
+    <div className="min-h-screen text-text-primary">
+      <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient min-h-[73px]">
         <nav className="w-full px-3 sm:px-6 lg:px-10 flex items-center justify-between min-h-[73px]">
           <button onClick={() => router.push("/dashboard/profile")} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
@@ -136,12 +136,12 @@ export default function AdminProjectsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       {p.is_public ? (
-                        <Globe className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                        <Globe className="h-3.5 w-3.5 text-success shrink-0" />
                       ) : (
-                        <Lock className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                        <Lock className="h-3.5 w-3.5 text-warning shrink-0" />
                       )}
                       <span className="text-sm font-medium truncate">{p.title}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${p.is_public ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-500'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${p.is_public ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
                         {p.is_public ? 'Public' : 'Gizli'}
                       </span>
                     </div>
@@ -169,10 +169,10 @@ export default function AdminProjectsPage() {
                     <button
                       onClick={() => handleDelete(p.id, p.title)}
                       disabled={deletingId === p.id}
-                      className="p-2 rounded-lg hover:bg-red-500/10 transition disabled:opacity-30"
+                      className="p-2 rounded-lg hover:bg-error/10 transition disabled:opacity-30"
                       title="Sil"
                     >
-                      <Trash2 className={`h-4 w-4 ${deletingId === p.id ? 'text-text-muted' : 'text-red-400'}`} />
+                      <Trash2 className={`h-4 w-4 ${deletingId === p.id ? 'text-text-muted' : 'text-error'}`} />
                     </button>
                   </div>
                 </div>

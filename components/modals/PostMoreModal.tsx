@@ -192,7 +192,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
 
               <button onClick={() => confirmModAction("approve_post", "Onayla")} disabled={actionLoading} className={btnClass}>
                 <span className={labelClass}>Gonderiyi onayla</span>
-                <Shield className="h-5 w-5 text-green-500" />
+                <Shield className="h-5 w-5 text-success" />
               </button>
 
               <button onClick={() => confirmModAction("remove_post", "Kaldir")} disabled={actionLoading} className={btnClass}>

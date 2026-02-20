@@ -17,7 +17,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
+    <div className="min-h-screen text-text-primary flex flex-col">
       {/* Minimal header */}
       <header className="flex items-center justify-center py-8">
         <Link href="/">

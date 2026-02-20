@@ -6,7 +6,7 @@ import PublicFooter from "@/components/PublicFooter";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
+    <div className="min-h-screen text-text-primary flex flex-col">
       <header className="flex items-center justify-center py-8">
         <Link href="/">
           <FeedimIcon className="h-[4.5rem] w-[4.5rem]" />

@@ -36,25 +36,27 @@ export async function GET(
   const ids = follows.map(f => f.follower_id);
   const { data: users } = await supabase
     .from("profiles")
-    .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio")
+    .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio, account_private")
     .in("user_id", ids)
     .eq("status", "active");
 
   // Check which users the current user follows
   const { data: { user: currentUser } } = await supabase.auth.getUser();
   let followingSet = new Set<string>();
+  let requestedSet = new Set<string>();
   if (currentUser) {
-    const { data: myFollows } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", currentUser.id)
-      .in("following_id", ids);
-    followingSet = new Set((myFollows || []).map(f => f.following_id));
+    const [myFollowsRes, myRequestsRes] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", currentUser.id).in("following_id", ids),
+      supabase.from("follow_requests").select("target_id").eq("requester_id", currentUser.id).eq("status", "pending").in("target_id", ids),
+    ]);
+    followingSet = new Set((myFollowsRes.data || []).map(f => f.following_id));
+    requestedSet = new Set((myRequestsRes.data || []).map(f => f.target_id));
   }
 
   const enrichedUsers = (users || []).map(u => ({
     ...u,
     is_following: followingSet.has(u.user_id),
+    is_requested: requestedSet.has(u.user_id),
     is_own: currentUser?.id === u.user_id,
   }));
 

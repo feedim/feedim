@@ -70,7 +70,7 @@ export default function NotificationSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pause: newPaused }),
       });
-      feedimAlert("success", newPaused ? "Bildirimler 24 saat duraklatıldı" : "Bildirimler devam ediyor");
+      // silent
     } catch {
       setNotifPaused(!newPaused);
       setPausedUntil(newPaused ? null : newPausedUntil);

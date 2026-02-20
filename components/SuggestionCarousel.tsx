@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { X, UserPlus, Check, ChevronRight } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -31,7 +31,7 @@ export default function SuggestionCarousel() {
     loadUsers();
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/suggestions?limit=8");
       if (!res.ok) return;
@@ -42,9 +42,9 @@ export default function SuggestionCarousel() {
     } finally {
       setLoaded(true);
     }
-  };
+  }, []);
 
-  const handleFollow = async (username: string, userId: string) => {
+  const doFollowToggle = useCallback(async (username: string, userId: string) => {
     const wasFollowing = following.has(userId);
     const newFollowing = new Set(following);
     if (wasFollowing) {
@@ -57,7 +57,6 @@ export default function SuggestionCarousel() {
     try {
       const res = await fetch(`/api/users/${username}/follow`, { method: "POST" });
       if (!res.ok) {
-        // Revert
         const reverted = new Set(following);
         if (wasFollowing) reverted.add(userId);
         else reverted.delete(userId);
@@ -73,17 +72,25 @@ export default function SuggestionCarousel() {
       else reverted.delete(userId);
       setFollowing(reverted);
     }
-  };
+  }, [following]);
 
-  const handleDismiss = () => {
+  const handleFollow = useCallback((username: string, userId: string) => {
+    if (following.has(userId)) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      return;
+    }
+    doFollowToggle(username, userId);
+  }, [following, doFollowToggle]);
+
+  const handleDismiss = useCallback(() => {
     setDismissed(true);
     sessionStorage.setItem(DISMISS_KEY, "1");
-  };
+  }, []);
 
   if (dismissed || !loaded || users.length === 0) return null;
 
   return (
-    <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary/40 rounded-[16px]">
+    <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">Tanıyor olabileceğin kişiler</span>
@@ -97,8 +104,8 @@ export default function SuggestionCarousel() {
 
       {/* Horizontal scroll */}
       <div
-        className="flex gap-2.5 px-4 overflow-x-auto scrollbar-hide"
-        style={{ scrollSnapType: "x mandatory" }}
+        className="flex gap-2.5 overflow-x-auto scrollbar-hide"
+        style={{ scrollSnapType: "x mandatory", marginLeft: 10 }}
       >
         {users.map((u) => {
           const isFollowing = following.has(u.user_id);
@@ -106,7 +113,7 @@ export default function SuggestionCarousel() {
           return (
             <div
               key={u.user_id}
-              className="flex flex-col items-center shrink-0 w-[130px] py-3 px-2 bg-bg-primary rounded-[14px]"
+              className="flex flex-col items-center shrink-0 w-[130px] py-3 px-2 bg-bg-secondary rounded-[14px]"
               style={{ scrollSnapAlign: "start" }}
             >
               <Link href={`/u/${u.username}`}>
@@ -150,7 +157,7 @@ export default function SuggestionCarousel() {
         {/* "See all" card */}
         <Link
           href="/dashboard/suggestions"
-          className="flex flex-col items-center justify-center shrink-0 w-[100px] py-3 px-2 bg-bg-primary rounded-[14px] hover:bg-bg-secondary/60 transition"
+          className="flex flex-col items-center justify-center shrink-0 w-[100px] py-3 px-2 bg-bg-secondary rounded-[14px] hover:bg-bg-secondary transition"
           style={{ scrollSnapAlign: "start" }}
         >
           <div className="w-[72px] h-[72px] rounded-full bg-bg-secondary flex items-center justify-center mb-2">

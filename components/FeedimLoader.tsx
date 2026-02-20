@@ -2,7 +2,7 @@
 
 export default function FeedimLoader({ size = 22 }: { size?: number }) {
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-bg-primary">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-solid-primary">
       <span
         className="loader"
         style={{ width: size, height: size, position: "relative", margin: 0 }}

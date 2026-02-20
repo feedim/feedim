@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import UserListItem from "@/components/UserListItem";
 import { UserListSkeleton } from "@/components/Skeletons";
 import FollowButton from "@/components/FollowButton";
+import { feedimAlert } from "@/components/FeedimAlert";
 
 interface SuggestedUser {
   user_id: string;
@@ -29,6 +30,7 @@ export default function SuggestionsPage() {
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [requested, setRequested] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [disabledFollows, setDisabledFollows] = useState<Set<string>>(new Set());
   const router = useRouter();
@@ -71,21 +73,23 @@ export default function SuggestionsPage() {
     await loadSuggestions();
   };
 
-  const handleFollow = async (username: string, userId: string) => {
-    // Anti-spam: 3 second cooldown per user
+  const doFollowToggle = async (username: string, userId: string) => {
     if (disabledFollows.has(userId)) return;
 
-    const isFollowingUser = following.has(userId);
+    const wasFollowing = following.has(userId);
+    const wasRequested = requested.has(userId);
     const newFollowing = new Set(following);
+    const newRequested = new Set(requested);
 
-    if (isFollowingUser) {
+    if (wasFollowing || wasRequested) {
       newFollowing.delete(userId);
+      newRequested.delete(userId);
     } else {
       newFollowing.add(userId);
     }
     setFollowing(newFollowing);
+    setRequested(newRequested);
 
-    // Disable follow button for cooldown
     setDisabledFollows(prev => new Set(prev).add(userId));
     setTimeout(() => {
       setDisabledFollows(prev => {
@@ -98,22 +102,49 @@ export default function SuggestionsPage() {
     try {
       const res = await fetch(`/api/users/${username}/follow`, { method: "POST" });
       if (!res.ok) {
-        // Revert optimistic update on failure
         setFollowing(prev => {
           const reverted = new Set(prev);
-          if (isFollowingUser) reverted.add(userId);
-          else reverted.delete(userId);
+          if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
           return reverted;
+        });
+        setRequested(prev => {
+          const reverted = new Set(prev);
+          if (wasRequested) reverted.add(userId); else reverted.delete(userId);
+          return reverted;
+        });
+      } else {
+        const data = await res.json();
+        setFollowing(prev => {
+          const updated = new Set(prev);
+          if (data.following) updated.add(userId); else updated.delete(userId);
+          return updated;
+        });
+        setRequested(prev => {
+          const updated = new Set(prev);
+          if (data.requested) updated.add(userId); else updated.delete(userId);
+          return updated;
         });
       }
     } catch {
       setFollowing(prev => {
         const reverted = new Set(prev);
-        if (isFollowingUser) reverted.add(userId);
-        else reverted.delete(userId);
+        if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
+        return reverted;
+      });
+      setRequested(prev => {
+        const reverted = new Set(prev);
+        if (wasRequested) reverted.add(userId); else reverted.delete(userId);
         return reverted;
       });
     }
+  };
+
+  const handleFollow = (username: string, userId: string) => {
+    if (following.has(userId) || requested.has(userId)) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      return;
+    }
+    doFollowToggle(username, userId);
   };
 
   const refreshButton = (
@@ -161,7 +192,8 @@ export default function SuggestionsPage() {
                 autoSubtitle
                 action={
                   <FollowButton
-                    following={following.has(u.user_id)}
+                    following={following.has(u.user_id) || requested.has(u.user_id)}
+                    isPrivate={requested.has(u.user_id)}
                     onClick={() => handleFollow(u.username, u.user_id)}
                     disabled={disabledFollows.has(u.user_id)}
                   />

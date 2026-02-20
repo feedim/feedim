@@ -100,7 +100,7 @@ function RegisterForm() {
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) feedimAlert("error", "Giriş yapılamadı. Lütfen tekrar deneyin.");
+    if (error) feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -157,7 +157,7 @@ function RegisterForm() {
         } else if (error.message.includes('Email')) {
           feedimAlert("error", "Geçerli bir e-posta adresi girin.");
         } else {
-          feedimAlert("error", "Kayıt oluşturulamadı. Lütfen tekrar deneyin.");
+          feedimAlert("error", "Kayıt oluşturulamadı, lütfen daha sonra tekrar deneyin");
         }
         return;
       }
@@ -180,7 +180,7 @@ function RegisterForm() {
       }
     } catch {
       await waitMin();
-      feedimAlert("error", "Bir hata oluştu. Lütfen tekrar deneyin.");
+      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setLoading(false);
     }
@@ -257,7 +257,7 @@ function RegisterForm() {
           <div className="w-full border-t border-border-primary"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-bg-primary text-text-muted">veya</span>
+          <span className="px-4 text-text-muted">veya</span>
         </div>
       </div>
 

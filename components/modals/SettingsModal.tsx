@@ -111,7 +111,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             <Link
               href="/dashboard/coins"
               onClick={onClose}
-              className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary/50 transition-colors"
+              className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors"
             >
               <div>
                 <p className="text-xs text-text-muted">Bakiye</p>

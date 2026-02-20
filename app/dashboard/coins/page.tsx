@@ -60,7 +60,7 @@ export default function CoinsPage() {
         ) : (
           <>
             {/* Bakiye Kartı */}
-            <div className="bg-bg-secondary/60 rounded-2xl p-5 text-center">
+            <div className="bg-bg-secondary rounded-2xl p-5 text-center">
               <p className="text-sm text-text-muted mb-2">Mevcut Bakiye</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-8 w-8 text-accent-main" />
@@ -92,7 +92,7 @@ export default function CoinsPage() {
             {/* Son İşlemler */}
             {transactions.length > 0 && (
               <>
-                <div className="bg-bg-secondary/60 rounded-2xl px-[22px] py-[29px]">
+                <div className="bg-bg-secondary rounded-2xl px-[22px] py-[29px]">
                   <h3 className="text-sm font-semibold mb-4">Son İşlemler</h3>
                   <div className="space-y-3">
                     {transactions.map((txn) => (

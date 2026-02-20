@@ -535,12 +535,12 @@ export default function HelpContent() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Ara..."
-            className="w-full h-14 rounded-2xl border border-border-primary bg-bg-primary text-text-primary text-[0.95rem] outline-none transition-colors focus:border-text-muted"
+            className="w-full h-14 rounded-2xl border border-border-primary bg-bg-secondary text-text-primary text-[0.95rem] outline-none transition-colors focus:border-text-muted"
             style={{ paddingLeft: 52, paddingRight: 48 }}
             autoComplete="off"
           />
           {search && (
-            <button onClick={clearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-bg-secondary transition">
+            <button onClick={clearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-bg-tertiary transition">
               <X className="h-4 w-4 text-text-muted" />
             </button>
           )}
@@ -645,7 +645,7 @@ export default function HelpContent() {
                       const key = `${section.id}-${i}`;
                       const isOpen = openItem === key;
                       return (
-                        <div key={key} className="rounded-[13px] bg-bg-primary overflow-hidden">
+                        <div key={key} className="rounded-[13px] bg-bg-secondary overflow-hidden">
                           <button
                             onClick={() => toggleItem(key)}
                             className="w-full flex items-center justify-between px-5 py-4 hover:opacity-80 transition-opacity text-left"

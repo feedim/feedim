@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords } = body;
+    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail } = body;
+    const isVideo = content_type === 'video';
 
     // Validate title
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
@@ -39,9 +40,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Başlık bir URL olamaz' }, { status: 400 });
     }
 
-    // Validate content
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    // Validate content (video posts can have empty content/description)
+    if (!isVideo && (!content || typeof content !== 'string' || content.trim().length === 0)) {
       return NextResponse.json({ error: 'İçerik gerekli' }, { status: 400 });
+    }
+
+    // Validate video fields
+    if (isVideo && status === 'published' && !video_url) {
+      return NextResponse.json({ error: 'Video URL gerekli' }, { status: 400 });
     }
 
     // Generate slug
@@ -50,15 +56,17 @@ export async function POST(request: NextRequest) {
     const slug = `${slugBase}-${slugHash}`;
 
     // Sanitize content — no iframe support
-    const sanitizedContent = DOMPurify.sanitize(content, {
-      ALLOWED_TAGS: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
-    });
+    const sanitizedContent = isVideo
+      ? DOMPurify.sanitize(content || '', { ALLOWED_TAGS: ['br', 'strong', 'p'], ALLOWED_ATTR: [] })
+      : DOMPurify.sanitize(content, {
+          ALLOWED_TAGS: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
+          ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
+        });
 
     const admin = createAdminClient();
 
-    // Server-side content validation for published posts
-    if (status === 'published') {
+    // Server-side content validation for published posts (skip for video posts)
+    if (status === 'published' && !isVideo) {
       const textContent = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, '').trim();
       const hasImage = /<img\s/i.test(sanitizedContent);
 
@@ -154,10 +162,14 @@ export async function POST(request: NextRequest) {
         slug,
         content: sanitizedContent,
         excerpt,
-        featured_image: featured_image || null,
+        content_type: isVideo ? 'video' : 'post',
+        featured_image: featured_image || (isVideo ? video_thumbnail : null) || null,
+        video_url: isVideo ? (video_url || null) : null,
+        video_duration: isVideo ? (video_duration || null) : null,
+        video_thumbnail: isVideo ? (video_thumbnail || null) : null,
         status: postStatus,
-        reading_time: readingTime,
-        word_count: wordCount,
+        reading_time: isVideo ? null : readingTime,
+        word_count: isVideo ? 0 : wordCount,
         allow_comments: allow_comments !== false,
         is_for_kids: is_for_kids === true,
         spam_score: spamScore,

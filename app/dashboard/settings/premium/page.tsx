@@ -94,7 +94,7 @@ export default function PremiumSettingsPage() {
           await minWait;
 
           if (error) {
-            feedimAlert("error", "İptal işlemi başarısız oldu");
+            feedimAlert("error", "İptal işlemi başarısız oldu, lütfen daha sonra tekrar deneyin");
             return;
           }
 
@@ -102,7 +102,7 @@ export default function PremiumSettingsPage() {
           feedimAlert("success", "Aboneliğiniz iptal edildi. Dönem sonuna kadar premium özellikler aktif kalacak.");
         } catch {
           await minWait;
-          feedimAlert("error", "Bir hata oluştu");
+          feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
         }
       },
     });
@@ -154,11 +154,11 @@ export default function PremiumSettingsPage() {
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-bg-primary rounded-[14px] p-3">
+                <div className="bg-bg-secondary rounded-[14px] p-3">
                   <p className="text-[0.65rem] text-text-muted uppercase tracking-wider mb-1">Başlangıç</p>
                   <p className="text-[0.82rem] font-semibold">{formatDate(subscription.started_at)}</p>
                 </div>
-                <div className="bg-bg-primary rounded-[14px] p-3">
+                <div className="bg-bg-secondary rounded-[14px] p-3">
                   <p className="text-[0.65rem] text-text-muted uppercase tracking-wider mb-1">Bitiş</p>
                   <p className="text-[0.82rem] font-semibold">{formatDate(subscription.expires_at)}</p>
                 </div>
@@ -213,7 +213,7 @@ export default function PremiumSettingsPage() {
               {canUpgrade && (
                 <Link
                   href="/premium"
-                  className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors"
+                  className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <ArrowUpRight className="h-5 w-5 text-accent-main" />
@@ -228,7 +228,7 @@ export default function PremiumSettingsPage() {
 
               <Link
                 href="/premium"
-                className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors"
+                className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-text-muted" />
@@ -240,7 +240,7 @@ export default function PremiumSettingsPage() {
               {subscription.status === "active" && (
                 <button
                   onClick={handleCancel}
-                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-secondary/50 transition-colors text-left"
+                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
                     <XCircle className="h-5 w-5 text-error" />

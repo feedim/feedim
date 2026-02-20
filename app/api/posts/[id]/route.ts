@@ -50,7 +50,7 @@ export async function GET(
             .from('follows').select('id')
             .eq('follower_id', user?.id || '')
             .eq('following_id', post.author_id).single();
-          if (!follow) return NextResponse.json({ error: 'Post bulunamadı' }, { status: 404 });
+          if (!follow) return NextResponse.json({ error: 'private_account', redirect: `/u/${author?.username}` }, { status: 403 });
         }
       }
     }
@@ -76,7 +76,7 @@ export async function PUT(
     // Check ownership
     const { data: existing } = await supabase
       .from('posts')
-      .select('id, author_id, status, title, content, slug')
+      .select('id, author_id, status, title, content, slug, content_type')
       .eq('id', id)
       .single();
 
@@ -85,7 +85,8 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, content, status, tags, category_id, featured_image, excerpt: customExcerpt, meta_title, meta_description, meta_keywords, allow_comments, is_for_kids } = body;
+    const { title, content, status, tags, category_id, featured_image, excerpt: customExcerpt, meta_title, meta_description, meta_keywords, allow_comments, is_for_kids, video_url, video_duration, video_thumbnail, content_type } = body;
+    const isVideo = content_type === 'video' || existing.content_type === 'video';
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -107,17 +108,30 @@ export async function PUT(
     }
 
     if (content !== undefined) {
-      const sanitizedContent = DOMPurify.sanitize(content, {
-        ALLOWED_TAGS: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
-      });
+      const sanitizedContent = isVideo
+        ? DOMPurify.sanitize(content || '', { ALLOWED_TAGS: ['br', 'strong', 'p'], ALLOWED_ATTR: [] })
+        : DOMPurify.sanitize(content, {
+            ALLOWED_TAGS: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
+            ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
+          });
       updates.content = sanitizedContent;
-      const { wordCount, readingTime } = calculateReadingTime(sanitizedContent);
-      updates.word_count = wordCount;
-      updates.reading_time = readingTime;
+      if (!isVideo) {
+        const { wordCount, readingTime } = calculateReadingTime(sanitizedContent);
+        updates.word_count = wordCount;
+        updates.reading_time = readingTime;
+      }
       updates.excerpt = customExcerpt?.trim() || generateExcerpt(sanitizedContent);
     } else if (customExcerpt !== undefined) {
       updates.excerpt = customExcerpt.trim();
+    }
+
+    // Video fields
+    if (video_url !== undefined) updates.video_url = video_url || null;
+    if (video_duration !== undefined) updates.video_duration = video_duration || null;
+    if (video_thumbnail !== undefined) {
+      updates.video_thumbnail = video_thumbnail || null;
+      // Set featured_image from thumbnail if not manually set
+      if (video_thumbnail && !featured_image) updates.featured_image = video_thumbnail;
     }
 
     if (status !== undefined) {

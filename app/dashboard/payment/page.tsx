@@ -79,15 +79,14 @@ export default function PaymentPage() {
       const result = await res.json();
 
       if (!res.ok || !result.success) {
-        setError(result.error || "İşlem başarısız");
+        setError(result.error || "İşlem başarısız, lütfen daha sonra tekrar deneyin");
         return;
       }
 
       sessionStorage.removeItem("fdm_payment");
       setSuccess(result);
-      feedimAlert("success", `${result.coins_added} Jeton hesabınıza eklendi!`);
     } catch (err: any) {
-      setError("Bir hata oluştu: " + (err.message || "Tekrar deneyin"));
+      setError("Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
       setProcessing(false);
     }
@@ -95,7 +94,7 @@ export default function PaymentPage() {
 
   if (loading || (!data && !error)) {
     return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 text-accent-main animate-spin" />
       </div>
     );
@@ -104,8 +103,8 @@ export default function PaymentPage() {
   const totalCoins = data ? (data.coins || 0) + (data.bonus_coins || 0) : 0;
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
-      <header className="sticky top-0 z-50 bg-bg-primary/95 backdrop-blur-md border-b border-border-primary/50">
+    <div className="min-h-screen text-text-primary">
+      <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient border-b border-border-primary/50">
         <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
           <button
             onClick={() => { if (window.history.length > 1) router.back(); else router.push("/dashboard"); }}
@@ -121,7 +120,7 @@ export default function PaymentPage() {
       <main className="container mx-auto px-4 pt-6 pb-24 max-w-[520px]">
         {/* Mevcut Bakiye */}
         {!success && balance !== null && (
-          <div className="bg-bg-secondary/60 rounded-2xl p-5 text-center mb-6">
+          <div className="bg-bg-secondary rounded-2xl p-5 text-center mb-6">
             <p className="text-sm text-text-muted mb-2">Mevcut Bakiye</p>
             <div className="flex items-center justify-center gap-2">
               <Coins className="h-7 w-7 text-accent-main" />
@@ -162,7 +161,7 @@ export default function PaymentPage() {
           <>
             {/* Sipariş Özeti */}
             {data && (
-              <div className="rounded-2xl bg-bg-secondary/50 p-5 mb-6">
+              <div className="rounded-2xl bg-bg-secondary p-5 mb-6">
                 <p className="text-xs text-text-muted font-semibold uppercase tracking-wider mb-4">Sipariş Özeti</p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -206,14 +205,14 @@ export default function PaymentPage() {
 
             {/* Hata */}
             {error && (
-              <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 mb-6">
+              <div className="rounded-2xl border border-error/20 bg-error/5 p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
+                  <AlertCircle className="h-5 w-5 text-error mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-red-400 font-medium text-sm mb-1">{error}</p>
+                    <p className="text-error font-medium text-sm mb-1">{error}</p>
                     <button
                       onClick={() => setError("")}
-                      className="text-xs text-red-400 underline hover:text-red-300 transition"
+                      className="text-xs text-error underline hover:text-error/80 transition"
                     >
                       Kapat
                     </button>

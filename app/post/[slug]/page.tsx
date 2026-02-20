@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
@@ -8,14 +8,23 @@ import PostHeaderActions from "@/components/PostHeaderActions";
 import RelatedPosts from "@/components/RelatedPosts";
 import Link from "next/link";
 
-import { formatRelativeDate } from "@/lib/utils";
+import { formatRelativeDate, formatCount } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
 import DOMPurify from "isomorphic-dompurify";
 import PostContentClient from "@/components/PostContentClient";
+import VideoPlayerClient from "@/components/VideoPlayerClient";
+import VideoSidebar from "@/components/VideoSidebar";
+import VideoSidebarPortal from "@/components/VideoSidebarPortal";
+import VideoDescription from "@/components/VideoDescription";
+import VideoGridCard from "@/components/VideoGridCard";
+import type { VideoItem } from "@/components/VideoSidebar";
 import PostViewTracker from "@/components/PostViewTracker";
+import VideoViewTracker from "@/components/VideoViewTracker";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import PostFollowButton from "@/components/PostFollowButton";
 import AdBanner from "@/components/AdBanner";
+import HeaderTitle from "@/components/HeaderTitle";
+import AmbientLight from "@/components/AmbientLight";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -121,9 +130,53 @@ async function getAuthorPosts(authorId: string, currentPostId: number) {
   }));
 }
 
+async function getNextVideos(currentPostId: number, authorId: string): Promise<VideoItem[]> {
+  const admin = createAdminClient();
+
+  // Fetch videos: prioritize same author, then others
+  const { data: authorVideos } = await admin
+    .from("posts")
+    .select(`
+      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
+      profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan)
+    `)
+    .eq("content_type", "video")
+    .eq("status", "published")
+    .eq("author_id", authorId)
+    .neq("id", currentPostId)
+    .order("published_at", { ascending: false })
+    .limit(5);
+
+  const { data: otherVideos } = await admin
+    .from("posts")
+    .select(`
+      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
+      profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan)
+    `)
+    .eq("content_type", "video")
+    .eq("status", "published")
+    .neq("author_id", authorId)
+    .neq("id", currentPostId)
+    .order("published_at", { ascending: false })
+    .limit(15);
+
+  const authorList = (authorVideos || []).map((v: any) => ({
+    ...v,
+    profiles: Array.isArray(v.profiles) ? v.profiles[0] : v.profiles,
+  }));
+
+  const otherList = (otherVideos || []).map((v: any) => ({
+    ...v,
+    profiles: Array.isArray(v.profiles) ? v.profiles[0] : v.profiles,
+  }));
+
+  return [...authorList, ...otherList].slice(0, 20);
+}
+
 const getCachedPost = unstable_cache(getPost, ["post-by-slug"], { revalidate: 60, tags: ["posts"] });
 const getCachedRelatedPosts = unstable_cache(getRelatedPosts, ["related-posts"], { revalidate: 600, tags: ["posts"] });
 const getCachedAuthorPosts = unstable_cache(getAuthorPosts, ["author-posts"], { revalidate: 600, tags: ["posts"] });
+const getCachedNextVideos = unstable_cache(getNextVideos, ["next-videos"], { revalidate: 300, tags: ["posts"] });
 
 async function getUserInteractions(postId: number) {
   const userId = await getAuthUserId();
@@ -153,6 +206,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? post.meta_keywords.split(",").map((k: string) => k.trim()).filter(Boolean)
     : undefined;
 
+  const isVideo = post.content_type === "video";
+  const ogImage = post.video_thumbnail || post.featured_image;
+
   return {
     title: `${title} | Feedim`,
     description,
@@ -161,23 +217,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title,
       description,
-      type: "article",
+      type: isVideo ? "video.other" : "article",
       url,
       publishedTime: post.published_at,
       modifiedTime: post.updated_at,
       authors: [authorName],
-      images: post.featured_image ? [{ url: post.featured_image, width: 1200, height: 630 }] : undefined,
+      images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : undefined,
+      ...(isVideo && post.video_url ? { videos: [{ url: post.video_url, type: "video/mp4" }] } : {}),
       siteName: "Feedim",
       locale: "tr_TR",
     },
     twitter: {
-      card: "summary_large_image",
+      card: isVideo ? "player" : "summary_large_image",
       title,
       description,
-      images: post.featured_image ? [post.featured_image] : undefined,
+      images: ogImage ? [ogImage] : undefined,
     },
     alternates: {
       canonical: url,
+      ...(isVideo ? {
+        types: {
+          'application/json+oembed': `${baseUrl}/api/oembed?url=${encodeURIComponent(url)}&format=json`,
+        },
+      } : {}),
     },
   };
 }
@@ -196,15 +258,17 @@ export default async function PostPage({ params }: PageProps) {
       const { data: follow } = await adminClient
         .from('follows').select('id')
         .eq('follower_id', userId || '').eq('following_id', postAuthor.user_id).single();
-      if (!follow) notFound();
+      if (!follow) redirect(`/u/${postAuthor.username}`);
     }
   }
 
+  const isVideo = post.content_type === "video";
   const categoryIds = (post.post_categories || []).map((pc: { category_id: number }) => pc.category_id);
-  const [relatedPosts, authorPosts, interactions] = await Promise.all([
+  const [relatedPosts, authorPosts, interactions, nextVideos] = await Promise.all([
     getCachedRelatedPosts(post.id, categoryIds),
     getCachedAuthorPosts(post.author_id, post.id),
     getUserInteractions(post.id),
+    isVideo ? getCachedNextVideos(post.id, post.author_id) : Promise.resolve([]),
   ]);
 
   const author = post.profiles;
@@ -218,7 +282,18 @@ export default async function PostPage({ params }: PageProps) {
     ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class', 'colspan', 'rowspan'],
   });
 
-  const jsonLd = {
+  const jsonLd = post.content_type === "video" ? {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: post.title,
+    description: post.excerpt || "",
+    thumbnailUrl: post.video_thumbnail || post.featured_image || undefined,
+    contentUrl: post.video_url,
+    duration: post.video_duration ? `PT${Math.floor(post.video_duration / 60)}M${post.video_duration % 60}S` : undefined,
+    uploadDate: post.published_at,
+    author: { "@type": "Person", name: authorName, url: `${baseUrl}/u/${author?.username}` },
+    publisher: { "@type": "Organization", name: "Feedim", url: baseUrl },
+  } : {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
@@ -232,12 +307,145 @@ export default async function PostPage({ params }: PageProps) {
     mainEntityOfPage: { "@type": "WebPage", "@id": `${baseUrl}/post/${encodeURIComponent(post.slug)}` },
   };
 
+  // ─── Video post: YouTube-like layout ───
+  if (isVideo) {
+    const nextVideo = nextVideos[0] || null;
+    const plainDescription = sanitizedContent ? sanitizedContent.replace(/<[^>]+>/g, '') : '';
+
+    return (
+      <div>
+        {/* Preload video for faster playback start */}
+        {post.video_url && <link rel="preload" href={post.video_url} as="video" type="video/mp4" />}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
+        <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
+        <HeaderTitle title="Video" />
+        <VideoViewTracker postId={post.id} />
+        <PostHeaderActions
+          postId={post.id} postUrl={`/post/${post.slug}`} postTitle={post.title}
+          authorUsername={author?.username} isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
+          isVideo
+        />
+
+        {/* Portal: inject VideoSidebar into the existing right sidebar */}
+        <VideoSidebarPortal videos={nextVideos} />
+
+        <article className="px-3 sm:px-4 overflow-x-hidden">
+          {/* Video Player — edge-to-edge */}
+          {post.video_url && (
+            <div className="mb-3 -mx-3 sm:-mx-4 sm:mx-0">
+              <VideoPlayerClient
+                src={post.video_url}
+                poster={post.video_thumbnail || post.featured_image || undefined}
+                nextVideoSlug={nextVideo?.slug}
+                nextVideoTitle={nextVideo?.title}
+                nextVideoThumbnail={nextVideo?.video_thumbnail || nextVideo?.featured_image}
+              />
+            </div>
+          )}
+
+          {/* Title */}
+          <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.3] mb-2">{post.title}</h1>
+
+          {/* Stats row */}
+          <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
+            <span>{formatCount(post.view_count || 0)} goruntuleme</span>
+            {post.published_at && (
+              <>
+                <span>·</span>
+                <span>{formatRelativeDate(post.published_at)}</span>
+              </>
+            )}
+          </div>
+
+          {/* Channel row — YouTube style */}
+          <div className="flex items-center gap-3">
+            <Link href={`/u/${author?.username}`} className="shrink-0">
+              {author?.avatar_url ? (
+                <img src={author.avatar_url} alt={authorName} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+              ) : (
+                <img className="default-avatar-auto h-10 w-10 rounded-full object-cover" alt="" loading="lazy" />
+              )}
+            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.9rem] hover:underline truncate">
+                  @{author?.username}
+                </Link>
+                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} />}
+              </div>
+              {author?.follower_count !== undefined && (
+                <p className="text-[0.72rem] text-text-muted">{formatCount(author.follower_count)} takipci</p>
+              )}
+            </div>
+            <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
+          </div>
+
+          {/* Description — above interaction bar */}
+          {plainDescription && (
+            <VideoDescription text={plainDescription} />
+          )}
+
+          {/* Interaction bar — stats → buttons → tags → liked-by */}
+          <PostInteractionBar
+            postId={post.id}
+            initialLiked={interactions.liked}
+            initialSaved={interactions.saved}
+            likeCount={post.like_count || 0}
+            commentCount={post.comment_count || 0}
+            saveCount={post.save_count || 0}
+            shareCount={post.share_count || 0}
+            viewCount={post.view_count || 0}
+            hideStats
+            isOwnPost={isOwnPost}
+            postUrl={`/post/${post.slug}`}
+            postTitle={post.title}
+            postSlug={post.slug}
+            authorUsername={author?.username}
+            likedByBottom
+            isVideo
+          >
+            {/* Tags */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                {tags.map((tag: { id: number; name: string; slug: string }) => (
+                  <Link key={tag.id} href={`/dashboard/explore/tag/${tag.slug}`}
+                    className="bg-bg-secondary text-text-primary text-[0.82rem] font-bold px-3 py-1.5 rounded-full transition hover:bg-bg-tertiary">
+                    #{tag.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </PostInteractionBar>
+
+          <AdBanner slot="post-detail" size="rectangle" className="my-6" />
+
+          {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
+          {nextVideos.length > 0 && (
+            <div className="xl:hidden mb-6">
+              <h3 className="text-[0.9rem] font-bold mb-4">Sonraki videolar</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+                {nextVideos.map(video => (
+                  <VideoGridCard key={video.id} video={video} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom padding for mobile nav bar */}
+          <div className="h-8 md:h-0" />
+        </article>
+      </div>
+    );
+  }
+
+  // ─── Regular post layout (unchanged) ───
   return (
     <div className="overflow-x-hidden">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
       />
+      {post.featured_image && <AmbientLight imageSrc={post.featured_image} />}
       <PostViewTracker postId={post.id} />
         {/* Main content */}
         <article className="px-4 sm:px-5 py-3 md:py-5">
@@ -286,7 +494,7 @@ export default async function PostPage({ params }: PageProps) {
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
           </div>
 
-          {/* Featured Image + Content (client component for image viewer) */}
+          {/* Featured Image + Content (for regular posts) */}
           <PostContentClient
             html={sanitizedContent}
             featuredImage={post.featured_image ? { src: post.featured_image, alt: post.title } : undefined}
@@ -311,7 +519,7 @@ export default async function PostPage({ params }: PageProps) {
               // Table (responsive: overflow-x-auto on container, table min-width)
               "overflow-x-auto",
               "[&_table]:w-full [&_table]:my-5 [&_table]:border-collapse [&_table]:text-[0.88rem] [&_table]:border [&_table]:border-border-primary [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:min-w-[320px]",
-              "[&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2.5 [&_th]:border [&_th]:border-border-primary [&_th]:bg-bg-secondary/50",
+              "[&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2.5 [&_th]:border [&_th]:border-border-primary [&_th]:bg-bg-secondary",
               "[&_td]:px-3 [&_td]:py-2.5 [&_td]:border [&_td]:border-border-primary",
               // Code
               "[&_code]:text-[0.85em] [&_code]:bg-bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:font-mono",

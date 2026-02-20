@@ -142,10 +142,16 @@ export const ALLOWED_EMAIL_DOMAINS = [
   'live.com', 'msn.com', 'yandex.com', 'mail.com', 'protonmail.com',
 ];
 
+// Video
+export const VIDEO_MAX_DURATION = 600; // 10 dakika (saniye)
+export const VIDEO_MAX_SIZE_MB = 50; // MB (Supabase free tier limit)
+export const VIDEO_ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/3gpp', 'video/x-m4v', 'video/ogg', 'video/mpeg'] as const;
+export const VIDEO_PAGE_SIZE = 12;
+
 // İçerik tipleri
 export const CONTENT_TYPES = {
   post: { label: 'Gönderi', icon: '📝' },
-  // video: { label: 'Video', icon: '🎥' }, // İleride eklenecek
+  video: { label: 'Video', icon: '🎥' },
 } as const;
 
 // Bildirim tipleri
@@ -176,12 +182,6 @@ export const FEED_PAGE_SIZE = 12;
 export const COMMENTS_PAGE_SIZE = 10;
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 export const NOTIFICATION_CLEANUP_DAYS = 90;
-
-// Topluluk Notlari
-export const NOTE_MAX_LENGTH = 500;
-export const NOTE_MAX_TAGS = 3;
-export const NOTE_MAX_IMAGES = 4;
-export const NOTES_PAGE_SIZE = 20;
 
 // Profesyonel hesap kategorileri
 export const PROFESSIONAL_CATEGORIES = {

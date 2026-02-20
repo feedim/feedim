@@ -79,7 +79,7 @@ export default function BlockedUsersPage() {
         feedimAlert("success", `@${username} engeli kaldırıldı`);
       }
     } catch {
-      feedimAlert("error", "Engel kaldırılamadı");
+      feedimAlert("error", "Engel kaldırılamadı, lütfen daha sonra tekrar deneyin");
     } finally {
       setUnblockingId(null);
     }
@@ -117,7 +117,7 @@ export default function BlockedUsersPage() {
                   <button
                     onClick={() => handleUnblock(b.profile?.username, b.id)}
                     disabled={unblockingId === b.id}
-                    className="text-xs text-error font-semibold px-3 py-1.5 rounded-full bg-error/10 hover:bg-error/20 transition shrink-0 disabled:opacity-50 min-w-[90px] flex items-center justify-center"
+                    className="t-btn cancel !h-[32px] !text-xs !px-3 shrink-0 min-w-[90px]"
                   >
                     {unblockingId === b.id ? <span className="loader" style={{ width: 14, height: 14 }} /> : "Engeli Kaldır"}
                   </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Send, Heart, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthModal } from "@/components/AuthModal";
@@ -141,14 +141,14 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
         if (parentId) {
           setComments(prev => prev.map(c => {
             if (c.id === parentId) {
-              return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: c.reply_count - 1 };
+              return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: Math.max(0, c.reply_count - 1) };
             }
             return c;
           }));
         } else {
           setComments(prev => prev.filter(c => c.id !== tempId));
         }
-        setTotalCount(c => c - 1);
+        setTotalCount(c => Math.max(0, c - 1));
         feedimAlert("error", data.error || "Yorum gonderilemedi");
         return;
       }
@@ -168,19 +168,19 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       if (parentId) {
         setComments(prev => prev.map(c => {
           if (c.id === parentId) {
-            return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: c.reply_count - 1 };
+            return { ...c, replies: (c.replies || []).filter(r => r.id !== tempId), reply_count: Math.max(0, c.reply_count - 1) };
           }
           return c;
         }));
       } else {
         setComments(prev => prev.filter(c => c.id !== tempId));
       }
-      setTotalCount(c => c - 1);
+      setTotalCount(c => Math.max(0, c - 1));
       feedimAlert("error", "Yorum gonderilemedi");
     }
   };
 
-  const handleLikeComment = async (commentId: number) => {
+  const handleLikeComment = useCallback(async (commentId: number) => {
     const user = await requireAuth();
     if (!user) return;
 
@@ -196,72 +196,35 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 
     const updateCount = (delta: number) => {
       setComments(prev => prev.map(c => {
-        if (c.id === commentId) return { ...c, like_count: c.like_count + delta };
-        const replies = c.replies?.map(r => r.id === commentId ? { ...r, like_count: r.like_count + delta } : r);
+        if (c.id === commentId) return { ...c, like_count: Math.max(0, c.like_count + delta) };
+        const replies = c.replies?.map(r => r.id === commentId ? { ...r, like_count: Math.max(0, r.like_count + delta) } : r);
         return { ...c, replies };
       }));
     };
 
     updateCount(isLiked ? -1 : 1);
 
-    if (isLiked) {
-      await supabase.from("comment_likes").delete().eq("user_id", user.id).eq("comment_id", commentId);
-    } else {
-      await supabase.from("comment_likes").insert({ user_id: user.id, comment_id: commentId });
+    try {
+      if (isLiked) {
+        await supabase.from("comment_likes").delete().eq("user_id", user.id).eq("comment_id", commentId);
+      } else {
+        await supabase.from("comment_likes").insert({ user_id: user.id, comment_id: commentId });
+      }
+    } catch {
+      updateCount(isLiked ? 1 : -1);
+      setLikedComments(prev => {
+        const next = new Set(prev);
+        if (isLiked) next.add(commentId); else next.delete(commentId);
+        return next;
+      });
     }
-  };
+  }, [likedComments, requireAuth, supabase]);
 
   const getAuthorName = (comment: Comment) => {
     const p = comment.profiles;
     if (!p) return "Anonim";
     return p.username;
   };
-
-  const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => (
-    <div className={cn("flex gap-3", isReply && "ml-10 mt-3")}>
-      {comment.profiles?.avatar_url ? (
-        <img src={comment.profiles.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0 mt-0.5" />
-      ) : (
-        <img className="default-avatar-auto h-8 w-8 rounded-full object-cover shrink-0 mt-0.5" alt="" />
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold">{getAuthorName(comment)}</span>
-          <span className="text-xs text-text-muted">{formatRelativeDate(comment.created_at)}</span>
-        </div>
-        <p className="text-sm text-text-secondary mt-0.5 break-words">{comment.content}</p>
-        <div className="flex items-center gap-3 mt-1.5">
-          <button
-            onClick={() => handleLikeComment(comment.id)}
-            className={cn(
-              "flex items-center gap-1 text-xs transition",
-              likedComments.has(comment.id) ? "text-red-500" : "text-text-muted hover:text-red-500"
-            )}
-          >
-            <Heart className={cn("h-3.5 w-3.5", likedComments.has(comment.id) && "fill-current")} />
-            {comment.like_count > 0 && formatCount(comment.like_count)}
-          </button>
-          {!isReply && (
-            <button
-              onClick={() => setReplyTo({ id: comment.id, name: getAuthorName(comment) })}
-              className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition"
-            >
-              <MessageCircle className="h-3.5 w-3.5" /> Yanıtla
-            </button>
-          )}
-        </div>
-
-        {/* Replies */}
-        {!isReply && comment.replies && comment.replies.length > 0 && (
-          <div className="mt-2">
-            {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} isReply />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <section id="comments-section" className="mt-8">
@@ -303,10 +266,17 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
           {comments
             .filter(c => !isBlockedContent(c.content || "", c.author_id, ctxUser?.id))
             .map(comment => (
-            <CommentItem key={comment.id} comment={{
-              ...comment,
-              replies: comment.replies?.filter(r => !isBlockedContent(r.content || "", r.author_id, ctxUser?.id)),
-            }} />
+            <CommentItem
+              key={comment.id}
+              comment={{
+                ...comment,
+                replies: comment.replies?.filter(r => !isBlockedContent(r.content || "", r.author_id, ctxUser?.id)),
+              }}
+              likedComments={likedComments}
+              onLike={handleLikeComment}
+              onReply={(id, name) => setReplyTo({ id, name })}
+              getAuthorName={getAuthorName}
+            />
           ))}
         </div>
       )}
@@ -316,3 +286,61 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
     </section>
   );
 }
+
+/* ── Extracted + memoized CommentItem ── */
+interface CommentItemProps {
+  comment: Comment;
+  isReply?: boolean;
+  likedComments: Set<number>;
+  onLike: (id: number) => void;
+  onReply?: (id: number, name: string) => void;
+  getAuthorName: (comment: Comment) => string;
+}
+
+const CommentItem = memo(function CommentItem({ comment, isReply = false, likedComments, onLike, onReply, getAuthorName }: CommentItemProps) {
+  return (
+    <div className={cn("flex gap-3", isReply && "ml-10 mt-3")}>
+      {comment.profiles?.avatar_url ? (
+        <img src={comment.profiles.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0 mt-0.5" />
+      ) : (
+        <img className="default-avatar-auto h-8 w-8 rounded-full object-cover shrink-0 mt-0.5" alt="" />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold">{getAuthorName(comment)}</span>
+          <span className="text-xs text-text-muted">{formatRelativeDate(comment.created_at)}</span>
+        </div>
+        <p className="text-sm text-text-secondary mt-0.5 break-words">{comment.content}</p>
+        <div className="flex items-center gap-3 mt-1.5">
+          <button
+            onClick={() => onLike(comment.id)}
+            className={cn(
+              "flex items-center gap-1 text-xs transition",
+              likedComments.has(comment.id) ? "text-error" : "text-text-muted hover:text-error"
+            )}
+          >
+            <Heart className={cn("h-3.5 w-3.5", likedComments.has(comment.id) && "fill-current")} />
+            {comment.like_count > 0 && formatCount(comment.like_count)}
+          </button>
+          {!isReply && onReply && (
+            <button
+              onClick={() => onReply(comment.id, getAuthorName(comment))}
+              className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> Yanıtla
+            </button>
+          )}
+        </div>
+
+        {/* Replies */}
+        {!isReply && comment.replies && comment.replies.length > 0 && (
+          <div className="mt-2">
+            {comment.replies.map(reply => (
+              <CommentItem key={reply.id} comment={reply} isReply likedComments={likedComments} onLike={onLike} getAuthorName={getAuthorName} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+})

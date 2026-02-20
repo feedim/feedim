@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import PublicFooter from "@/components/PublicFooter";
+import AmbientLight from "@/components/AmbientLight";
 import { UserProvider, type InitialUser } from "@/components/UserContext";
 
 interface DashboardShellContextValue {
@@ -32,7 +33,8 @@ export default function DashboardShell({
   return (
     <UserProvider initialUser={initialUser}>
       <DashboardShellContext.Provider value={{ setMobileNavVisible: setNav }}>
-        <div className="min-h-screen bg-bg-primary text-text-primary">
+        <div id="dashboard-shell" className="min-h-screen text-text-primary">
+          <AmbientLight />
           <Sidebar />
           <main className="md:ml-[240px] min-h-screen md:h-screen md:overflow-y-auto pb-20 md:pb-0">
             <div className="max-w-[1400px] mx-auto w-full">

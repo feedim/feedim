@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, Bell, User } from "lucide-react";
 import { useUser } from "@/components/UserContext";
 import CreateMenuModal from "@/components/modals/CreateMenuModal";
 
-export default function MobileBottomNav() {
+export default memo(function MobileBottomNav() {
   const pathname = usePathname();
   const { user, isLoggedIn } = useUser();
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -37,7 +37,7 @@ export default function MobileBottomNav() {
   const publicPaths = ["/dashboard", "/dashboard/explore"];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary border-t border-border-primary md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid border-t border-border-overlay md:hidden">
       <div className="flex items-center justify-around h-14 px-0">
         {/* First two nav items */}
         {navItems.slice(0, 2).map((item) => {
@@ -106,4 +106,4 @@ export default function MobileBottomNav() {
       <CreateMenuModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
     </nav>
   );
-}
+})

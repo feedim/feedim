@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Eye, Heart, MessageCircle, Bookmark,
-  Activity, Clock, BarChart3, BookOpen, Percent,
+  Activity, Clock, BarChart3, BookOpen, Play, CheckCircle,
 } from "lucide-react";
 import ShareIcon from "@/components/ShareIcon";
 import Modal from "./Modal";
@@ -18,16 +18,35 @@ interface PostStatsModalProps {
 
 interface Totals { views: number; likes: number; comments: number; saves: number; shares: number }
 interface ReadStats { avgReadDuration: number; avgReadPercentage: number; qualifiedReads: number }
+interface VideoStatsData {
+  totalWatchHours: number;
+  avgWatchDuration: number;
+  avgWatchPercentage: number;
+  completionRate: number;
+  completedCount: number;
+  totalWatchers: number;
+  retentionBuckets: number[];
+}
 interface DayData { date: string; count: number }
 interface HourData { hour: number; count: number }
 interface CommentData { id: string; content: string; created_at: string; author: { username: string; full_name: string; avatar_url?: string } }
 
+function fmtDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}sn`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}dk`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return m > 0 ? `${h}sa ${m}dk` : `${h}sa`;
+}
+
 export default function PostStatsModal({ open, onClose, postId }: PostStatsModalProps) {
   const [loading, setLoading] = useState(true);
   const [postTitle, setPostTitle] = useState("");
+  const [isVideo, setIsVideo] = useState(false);
   const [totals, setTotals] = useState<Totals>({ views: 0, likes: 0, comments: 0, saves: 0, shares: 0 });
   const [engagementRate, setEngagementRate] = useState(0);
   const [readStats, setReadStats] = useState<ReadStats>({ avgReadDuration: 0, avgReadPercentage: 0, qualifiedReads: 0 });
+  const [videoStats, setVideoStats] = useState<VideoStatsData | null>(null);
   const [viewsByDay, setViewsByDay] = useState<DayData[]>([]);
   const [peakHours, setPeakHours] = useState<HourData[]>([]);
   const [recentComments, setRecentComments] = useState<CommentData[]>([]);
@@ -38,9 +57,11 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
       const res = await fetch(`/api/posts/${postId}/stats`);
       const data = await res.json();
       setPostTitle(data.post?.title || "");
+      setIsVideo(data.post?.content_type === "video");
       setTotals(data.totals || { views: 0, likes: 0, comments: 0, saves: 0, shares: 0 });
       setEngagementRate(data.engagementRate || 0);
       setReadStats(data.readStats || { avgReadDuration: 0, avgReadPercentage: 0, qualifiedReads: 0 });
+      setVideoStats(data.videoStats || null);
       setViewsByDay(data.viewsByDay || []);
       setPeakHours(data.peakHours || []);
       setRecentComments(data.recentComments || []);
@@ -78,30 +99,83 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
               <StatBox icon={ShareIcon} label="Paylaşım" value={totals.shares} />
             </div>
 
-            {/* Engagement + Read Stats row */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className="bg-bg-secondary rounded-xl p-3">
-                <div className="flex items-center gap-1 mb-1.5">
-                  <Activity className="h-3 w-3 text-text-muted" />
-                  <span className="text-[0.62rem] text-text-muted">Etkileşim</span>
+            {/* Video-specific stats */}
+            {isVideo && videoStats ? (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-bg-secondary rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <Clock className="h-3 w-3 text-text-muted" />
+                    <span className="text-[0.62rem] text-text-muted">Ort. İzlenme</span>
+                  </div>
+                  <p className="text-lg font-bold">{fmtDuration(videoStats.avgWatchDuration)}</p>
                 </div>
-                <p className="text-lg font-bold">%{Math.min(engagementRate, 99)}</p>
-              </div>
-              <div className="bg-bg-secondary rounded-xl p-3">
-                <div className="flex items-center gap-1 mb-1.5">
-                  <Clock className="h-3 w-3 text-text-muted" />
-                  <span className="text-[0.62rem] text-text-muted">Ort. Süre</span>
+                <div className="bg-bg-secondary rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <Play className="h-3 w-3 text-text-muted" />
+                    <span className="text-[0.62rem] text-text-muted">Ort. İzlenme %</span>
+                  </div>
+                  <p className="text-lg font-bold">%{videoStats.avgWatchPercentage}</p>
                 </div>
-                <p className="text-lg font-bold">{readStats.avgReadDuration > 60 ? `${Math.round(readStats.avgReadDuration / 60)}dk` : `${readStats.avgReadDuration}sn`}</p>
-              </div>
-              <div className="bg-bg-secondary rounded-xl p-3">
-                <div className="flex items-center gap-1 mb-1.5">
-                  <BookOpen className="h-3 w-3 text-text-muted" />
-                  <span className="text-[0.62rem] text-text-muted">Ort. Okuma</span>
+                <div className="bg-bg-secondary rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <CheckCircle className="h-3 w-3 text-text-muted" />
+                    <span className="text-[0.62rem] text-text-muted">Tamamlama</span>
+                  </div>
+                  <p className="text-lg font-bold">%{videoStats.completionRate}</p>
                 </div>
-                <p className="text-lg font-bold">%{readStats.avgReadPercentage}</p>
               </div>
-            </div>
+            ) : (
+              /* Regular post stats */
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-bg-secondary rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <Activity className="h-3 w-3 text-text-muted" />
+                    <span className="text-[0.62rem] text-text-muted">Etkileşim</span>
+                  </div>
+                  <p className="text-lg font-bold">%{Math.min(engagementRate, 99)}</p>
+                </div>
+                <div className="bg-bg-secondary rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <Clock className="h-3 w-3 text-text-muted" />
+                    <span className="text-[0.62rem] text-text-muted">Ort. Süre</span>
+                  </div>
+                  <p className="text-lg font-bold">{fmtDuration(readStats.avgReadDuration)}</p>
+                </div>
+                <div className="bg-bg-secondary rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <BookOpen className="h-3 w-3 text-text-muted" />
+                    <span className="text-[0.62rem] text-text-muted">Ort. Okuma</span>
+                  </div>
+                  <p className="text-lg font-bold">%{readStats.avgReadPercentage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Video extra stats row */}
+            {isVideo && videoStats && (
+              <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
+                  <Activity className="h-3.5 w-3.5 text-text-muted" />
+                  <span className="text-[0.72rem] font-bold whitespace-nowrap">%{Math.min(engagementRate, 99)}</span>
+                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">Etkileşim</span>
+                </div>
+                <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
+                  <Clock className="h-3.5 w-3.5 text-text-muted" />
+                  <span className="text-[0.72rem] font-bold whitespace-nowrap">{videoStats.totalWatchHours}sa</span>
+                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">Toplam İzlenme</span>
+                </div>
+                <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
+                  <CheckCircle className="h-3.5 w-3.5 text-text-muted" />
+                  <span className="text-[0.72rem] font-bold whitespace-nowrap">{formatCount(videoStats.completedCount)}</span>
+                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">Tamamlayan</span>
+                </div>
+              </div>
+            )}
+
+            {/* Video retention chart */}
+            {isVideo && videoStats && videoStats.retentionBuckets.length > 0 && (
+              <RetentionChart buckets={videoStats.retentionBuckets} />
+            )}
 
             {/* Mini chart */}
             {viewsByDay.length > 0 && viewsByDay.some(d => d.count > 0) && (
@@ -181,7 +255,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
   );
 }
 
-/* ── StatBox (matches analytics MetricCard) ── */
+/* ── StatBox ── */
 function StatBox({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
   return (
     <div className="bg-bg-secondary rounded-xl p-3.5">
@@ -190,6 +264,38 @@ function StatBox({ icon: Icon, label, value }: { icon: any; label: string; value
         <span className="text-[0.72rem] text-text-muted">{label}</span>
       </div>
       <p className="text-2xl font-bold">{formatCount(value)}</p>
+    </div>
+  );
+}
+
+/* ── Retention Chart (video only) ── */
+function RetentionChart({ buckets }: { buckets: number[] }) {
+  if (buckets.length === 0) return null;
+  const labels = ["0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%"];
+
+  return (
+    <div className="bg-bg-secondary rounded-xl p-4 mb-3">
+      <p className="text-[0.68rem] text-text-muted mb-3 font-medium uppercase tracking-wider flex items-center gap-1">
+        <BarChart3 className="h-3 w-3" /> İzleyici Tutma
+      </p>
+      <div className="flex items-end gap-[2px] h-20">
+        {buckets.map((pct, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-text-primary text-bg-primary text-[9px] font-semibold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none z-10">
+              %{pct}
+            </div>
+            <div
+              className="w-full rounded-t-[2px] bg-accent-main/60 group-hover:bg-accent-main/90 transition-all"
+              style={{ height: `${Math.max(pct, 2)}%` }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between mt-1.5">
+        {labels.filter((_, i) => i % 3 === 0).map(l => (
+          <span key={l} className="text-[8px] text-text-muted">{l}</span>
+        ))}
+      </div>
     </div>
   );
 }

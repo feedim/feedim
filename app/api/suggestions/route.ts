@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cached } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,20 +58,23 @@ export async function GET(req: NextRequest) {
 
     // ── Auth mode ──
 
-    const { data: follows } = await admin
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", user.id);
+    const followingIds = await cached(`user:${user.id}:follows`, 120, async () => {
+      const { data: follows } = await admin
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id);
+      return (follows || []).map(f => f.following_id);
+    });
 
-    const { data: blocks } = await admin
-      .from("blocks")
-      .select("blocked_id, blocker_id")
-      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-    const blockedIds = new Set(
-      (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
-    );
-
-    const followingIds = (follows || []).map(f => f.following_id);
+    const blockedIds = await cached(`user:${user.id}:blocks`, 120, async () => {
+      const { data: blocks } = await admin
+        .from("blocks")
+        .select("blocked_id, blocker_id")
+        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+      return new Set(
+        (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
+      );
+    });
     const excludeIds = [user.id, ...followingIds, ...blockedIds];
 
     const scoreMap = new Map<string, { score: number; mutual_count: number }>();
@@ -183,6 +187,7 @@ export async function GET(req: NextRequest) {
     const filtered: [string, { score: number; mutual_count: number }][] = [];
 
     for (const [id, info] of scoreMap.entries()) {
+      if (id === user.id) continue; // Never suggest self
       const profile = profileMap.get(id);
       if (!profile) continue;
       if (profile.status !== "active") continue;
@@ -236,7 +241,7 @@ export async function GET(req: NextRequest) {
       hasMore: total > offset + requestedLimit,
       total,
     }, {
-      headers: { "Cache-Control": "private, no-store" },
+      headers: { "Cache-Control": "private, max-age=60" },
     });
   } catch (err) {
     console.error("[suggestions] Error:", err);

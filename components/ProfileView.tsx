@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, Users } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 import PostListSection from "@/components/PostListSection";
-import NoteListSection from "@/components/NoteListSection";
-import type { NoteData } from "@/components/NoteCard";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
 import { useUser } from "@/components/UserContext";
@@ -15,6 +13,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import FollowButton from "@/components/FollowButton";
 import { getCategoryLabel, isProfessional } from "@/lib/professional";
 import SuggestionCarousel from "@/components/SuggestionCarousel";
+import ShareIcon from "@/components/ShareIcon";
 
 const EditProfileModal = lazy(() => import("@/components/modals/EditProfileModal"));
 const FollowersModal = lazy(() => import("@/components/modals/FollowersModal"));
@@ -66,7 +65,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [followerCount, setFollowerCount] = useState(initialProfile.follower_count || 0);
   const [isBlocked, setIsBlocked] = useState(initialProfile.is_blocked || false);
   const [isBlockedBy, setIsBlockedBy] = useState(initialProfile.is_blocked_by || false);
-  const [activeTab, setActiveTab] = useState<"posts" | "likes" | "comments" | "notes">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "likes" | "comments">("posts");
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -81,11 +80,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const [userNotes, setUserNotes] = useState<NoteData[]>([]);
-  const [notesLoading, setNotesLoading] = useState(false);
-  const [notesPage, setNotesPage] = useState(1);
-  const [notesHasMore, setNotesHasMore] = useState(false);
-  const [notesLoaded, setNotesLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Modals
@@ -101,6 +95,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [totalViews, setTotalViews] = useState<number | null>(null);
+  const [scores, setScores] = useState<{ profile: number; spam: number; trust: number } | null>(null);
 
   const { requireAuth } = useAuthModal();
   const { user: currentUser } = useUser();
@@ -125,10 +120,19 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         .then(r => r.json())
         .then(d => setTotalViews(d.overview?.totalViews || 0))
         .catch(() => {});
+      // Load profile scores
+      fetch("/api/profile")
+        .then(r => r.json())
+        .then(d => {
+          if (d.profile?.profile_score !== undefined) {
+            setScores({ profile: d.profile.profile_score || 0, spam: d.profile.spam_score || 0, trust: d.profile.trust_level || 1 });
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
-  const loadPosts = async (pageNum: number) => {
+  const loadPosts = useCallback(async (pageNum: number) => {
     setPostsLoading(true);
     try {
       const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}`);
@@ -144,9 +148,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } finally {
       setPostsLoading(false);
     }
-  };
+  }, [profile.username]);
 
-  const loadLikes = async (pageNum: number) => {
+  const loadLikes = useCallback(async (pageNum: number) => {
     setLikesLoading(true);
     try {
       const res = await fetch(`/api/users/${profile.username}/likes?page=${pageNum}`);
@@ -163,9 +167,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } finally {
       setLikesLoading(false);
     }
-  };
+  }, [profile.username]);
 
-  const loadComments = async (pageNum: number) => {
+  const loadComments = useCallback(async (pageNum: number) => {
     setCommentsLoading(true);
     try {
       const res = await fetch(`/api/users/${profile.username}/comments?page=${pageNum}`);
@@ -182,28 +186,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } finally {
       setCommentsLoading(false);
     }
-  };
+  }, [profile.username]);
 
-  const loadNotes = async (pageNum: number) => {
-    setNotesLoading(true);
-    try {
-      const res = await fetch(`/api/users/${profile.username}/notes?page=${pageNum}`);
-      const data = await res.json();
-      if (pageNum === 1) {
-        setUserNotes(data.notes || []);
-      } else {
-        setUserNotes(prev => [...prev, ...(data.notes || [])]);
-      }
-      setNotesHasMore(data.hasMore || false);
-      setNotesLoaded(true);
-    } catch {
-      // Silent
-    } finally {
-      setNotesLoading(false);
-    }
-  };
-
-  // Load likes/comments/notes when tab switches for the first time
+  // Load likes/comments when tab switches for the first time
   useEffect(() => {
     if (activeTab === "likes" && !likesLoaded) {
       loadLikes(1);
@@ -211,32 +196,30 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     if (activeTab === "comments" && !commentsLoaded) {
       loadComments(1);
     }
-    if (activeTab === "notes" && !notesLoaded) {
-      loadNotes(1);
-    }
   }, [activeTab]);
 
-  const handleFollow = async () => {
-    const user = await requireAuth();
-    if (!user) return;
-
+  const doUnfollow = async () => {
     if (requested) {
-      // Cancel follow request
       setRequested(false);
       const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
       if (!res.ok) setRequested(true);
       return;
     }
+    setFollowing(false);
+    setFollowerCount(c => Math.max(0, c - 1));
+    const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
+    if (!res.ok) {
+      setFollowing(true);
+      setFollowerCount(c => c + 1);
+    }
+  };
 
-    if (following) {
-      // Unfollow
-      setFollowing(false);
-      setFollowerCount(c => Math.max(0, c - 1));
-      const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
-      if (!res.ok) {
-        setFollowing(true);
-        setFollowerCount(c => c + 1);
-      }
+  const handleFollow = useCallback(async () => {
+    const user = await requireAuth();
+    if (!user) return;
+
+    if (following || requested) {
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: doUnfollow });
       return;
     }
 
@@ -250,14 +233,12 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
     if (res.ok) {
       const data = await res.json();
-      // Correct state if server result differs from optimistic assumption
       if (data.requested && !profile.account_private) {
         setFollowing(false);
         setFollowerCount(c => Math.max(0, c - 1));
         setRequested(true);
       }
     } else {
-      // Rollback on error
       if (profile.account_private) {
         setRequested(false);
       } else {
@@ -269,9 +250,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         feedimAlert("error", data.error || "Günlük takip limitine ulaştın.");
       }
     }
-  };
+  }, [profile.username, profile.account_private, following, requested, requireAuth]);
 
-  const handleBlock = async () => {
+  const handleBlock = useCallback(async () => {
     if (!isBlocked) {
       // Confirm before blocking
       feedimAlert("warning", `@${profile.username} adlı kullanıcıyı engellemek istediğinize emin misiniz? Engellediğinizde aranızdaki takip ilişkisi kaldırılır ve birbirinizin içeriklerini göremezsiniz.`, {
@@ -302,17 +283,17 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         },
       });
     }
-  };
+  }, [profile.username, isBlocked]);
 
-  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setCropFile(file);
     setCropOpen(true);
     e.target.value = "";
-  };
+  }, []);
 
-  const handleCroppedUpload = async (croppedFile: File) => {
+  const handleCroppedUpload = useCallback(async (croppedFile: File) => {
     const formData = new FormData();
     formData.append("file", croppedFile);
     try {
@@ -324,9 +305,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } catch {
       // Silent
     }
-  };
+  }, []);
 
-  const handleAvatarClick = () => {
+  const handleAvatarClick = useCallback(() => {
     if (profile.is_own) {
       // Own profile: open file picker to change avatar
       avatarInputRef.current?.click();
@@ -334,12 +315,12 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       // Other profile: view avatar (works with both custom and default avatars)
       setAvatarViewOpen(true);
     }
-  };
+  }, [profile.is_own]);
 
   return (
     <div>
       {/* Header */}
-      <header className="sticky top-0 md:relative z-30 bg-bg-primary">
+      <header className="sticky top-0 z-30 bg-bg-primary sticky-ambient">
         <nav className="px-4 flex items-center justify-between h-[53px]">
           <div className="flex items-center gap-2">
             <button
@@ -489,7 +470,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         {profile.is_own && profile.is_premium && (
           <Link
             href="/dashboard/analytics"
-            className="flex flex-col w-full mb-3 py-3 px-4 rounded-[15px] bg-bg-blur-overlay hover:opacity-90 transition"
+            className="flex flex-col w-full mb-3 py-3 px-4 rounded-[15px] bg-bg-tertiary hover:opacity-90 transition"
           >
             <span className="text-[0.88rem] font-bold">İstatistikler</span>
             {totalViews === null ? (
@@ -503,6 +484,21 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </Link>
         )}
 
+        {/* Profile Score — own profile only */}
+        {profile.is_own && scores && (
+          <div className="mb-3 px-4 py-2.5 rounded-[13px] bg-accent-main/10 border border-accent-main/20">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-accent-main" />
+              <span className="text-xs font-semibold text-text-primary">Profil Puanı</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <span><span className="text-text-muted">P:</span><span className="font-bold text-accent-main ml-0.5">{scores.profile}</span></span>
+              <span><span className="text-text-muted">S:</span><span className={`font-bold ml-0.5 ${scores.spam >= 40 ? "text-error" : scores.spam >= 20 ? "text-warning" : "text-success"}`}>{scores.spam}</span></span>
+              <span><span className="text-text-muted">T:</span><span className="font-bold text-accent-main ml-0.5">L{scores.trust}</span></span>
+            </div>
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="flex gap-2 mb-3">
           {profile.is_own ? (
@@ -511,19 +507,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 Profili Düzenle
               </button>
               <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
-                Profili Paylaş
+                <ShareIcon className="h-4 w-4" /> Profili Paylaş
               </button>
-              {(profile.follow_request_count || 0) > 0 && (
-                <button
-                  onClick={() => setFollowRequestsOpen(true)}
-                  className="t-btn cancel relative"
-                >
-                  İstekler
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-accent-main text-white text-[10px] font-bold flex items-center justify-center px-1">
-                    {profile.follow_request_count}
-                  </span>
-                </button>
-              )}
             </>
           ) : isBlockedBy ? (
             <div className="flex-1" />
@@ -536,7 +521,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 Engeli Kaldır
               </button>
               <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
-                Paylaş
+                <ShareIcon className="h-4 w-4" /> Paylaş
               </button>
             </>
           ) : requested ? (
@@ -545,17 +530,17 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 onClick={handleFollow}
                 className="flex-1 t-btn cancel"
               >
-                İstek Gönderildi
+                <Clock className="h-4 w-4" /> İstek
               </button>
               <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
-                Paylaş
+                <ShareIcon className="h-4 w-4" /> Paylaş
               </button>
             </>
           ) : (
             <>
               <FollowButton following={following} onClick={handleFollow} variant="profile" className="flex-1" />
               <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
-                Paylaş
+                <ShareIcon className="h-4 w-4" /> Paylaş
               </button>
             </>
           )}
@@ -623,15 +608,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 <Heart className="h-[22px] w-[22px]" strokeWidth={activeTab === "likes" ? 2.2 : 1.8} />
                 {activeTab === "likes" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
               </button>
-              <button
-                onClick={() => setActiveTab("notes")}
-                className={`flex-1 flex items-center justify-center py-3 transition relative ${
-                  activeTab === "notes" ? "text-text-primary" : "text-text-muted"
-                }`}
-              >
-                <Users className="h-[22px] w-[22px]" strokeWidth={activeTab === "notes" ? 2.2 : 1.8} />
-                {activeTab === "notes" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
-              </button>
             </div>
 
             {/* Posts Tab */}
@@ -676,20 +652,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </div>
             )}
 
-            {/* Notes Tab */}
-            {activeTab === "notes" && (
-              <div className="pt-2 -mx-4">
-                <NoteListSection
-                  notes={userNotes}
-                  loading={notesLoading}
-                  hasMore={notesHasMore}
-                  onLoadMore={() => { setNotesPage(p => p + 1); loadNotes(notesPage + 1); }}
-                  emptyTitle="Henüz not yok"
-                  emptyDescription={profile.is_own ? "Topluluk notlarınız burada görünecek." : "Bu kullanıcı henüz not paylaşmamış."}
-                  onDelete={(noteId) => setUserNotes(prev => prev.filter(n => n.id !== noteId))}
-                />
-              </div>
-            )}
           </>
         )}
 

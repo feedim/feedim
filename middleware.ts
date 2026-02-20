@@ -4,7 +4,7 @@ import { checkUrl, isExemptPath } from '@/lib/waf'
 
 // ─── IP Rate Limiter ───
 const apiRateMap = new Map<string, { count: number; resetAt: number }>()
-const API_RATE_LIMIT = 60
+const API_RATE_LIMIT = 300
 const API_RATE_WINDOW = 60_000
 
 function checkApiRateLimit(ip: string): boolean {
@@ -137,7 +137,9 @@ export async function middleware(request: NextRequest) {
 
       // Allow signout even for inactive accounts
       if (pathname !== '/auth/signout' && pathname !== '/login') {
-        return redirect('/login')
+        const statusRedirect = NextResponse.redirect(new URL('/login', request.url))
+        supabaseResponse.cookies.getAll().forEach(c => statusRedirect.cookies.set(c))
+        return statusRedirect
       }
     }
   }
@@ -235,7 +237,6 @@ export const config = {
     '/register',
     '/onboarding',
     '/post/:path*',
-    '/note/:path*',
     '/u/:path*',
   ],
 }

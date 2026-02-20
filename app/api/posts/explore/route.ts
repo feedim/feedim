@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const tagSlug = request.nextUrl.searchParams.get('tag') || '';
     const sortBy = request.nextUrl.searchParams.get('sort') || 'trending';
     const type = request.nextUrl.searchParams.get('type') || 'posts';
+    const contentType = request.nextUrl.searchParams.get('content_type') || '';
     const offset = (page - 1) * FEED_PAGE_SIZE;
 
     // Get user (optional — explore works for anonymous too)
@@ -36,7 +37,8 @@ export async function GET(request: NextRequest) {
       const { data } = await admin
         .from('categories')
         .select('id, name, slug, post_count')
-        .order('post_count', { ascending: false });
+        .order('post_count', { ascending: false })
+        .limit(50);
       return data || [];
     });
 
@@ -44,12 +46,17 @@ export async function GET(request: NextRequest) {
     let query = admin
       .from('posts')
       .select(`
-        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, trending_score, published_at,
+        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, trending_score, published_at, content_type, video_duration, video_thumbnail,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
       `)
       .eq('status', 'published')
       .order(sortBy === 'latest' ? 'published_at' : 'trending_score', { ascending: false })
       .range(offset, offset + FEED_PAGE_SIZE);
+
+    // Filter by content type (e.g. "video")
+    if (contentType) {
+      query = query.eq('content_type', contentType);
+    }
 
     // Filter by tag if provided
     if (tagSlug) {
@@ -115,8 +122,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter out blocked users
-    for (const bid of blockedIds) {
-      query = query.neq('author_id', bid);
+    if (blockedIds.size > 0) {
+      query = query.not('author_id', 'in', `(${[...blockedIds].join(',')})`);
     }
 
     const { data: posts, error } = await query;
@@ -125,12 +132,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Filter out posts from inactive or private authors
+    // Get followed user IDs for private account visibility
+    let followedIdSet = new Set<string>();
+    if (user) {
+      const followedIds = await cached(`user:${user.id}:follows`, 120, async () => {
+        const { data: followedUsers } = await admin
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id);
+        return (followedUsers || []).map(f => f.following_id);
+      });
+      followedIdSet = new Set(followedIds);
+    }
+
+    // Filter out posts from inactive or private authors (own posts + followed always visible)
     const activePosts = (posts || []).filter((p: any) => {
       const author = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
       if (!author) return false;
       if (author.status && author.status !== 'active') return false;
-      if (author.account_private) return false;
+      if (author.account_private && author.user_id !== user?.id && !followedIdSet.has(author.user_id)) return false;
       return true;
     });
     const hasMore = activePosts.length > FEED_PAGE_SIZE;
@@ -138,14 +158,7 @@ export async function GET(request: NextRequest) {
 
     // Personalized "For You" scoring when user is logged in
     if (user && !categorySlug && !tagSlug && pagePosts.length > 0) {
-      // Cached user data for personalization
-      const followedIds = await cached(`user:${user.id}:follows`, 120, async () => {
-        const { data: followedUsers } = await admin
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', user.id);
-        return new Set((followedUsers || []).map(f => f.following_id));
-      });
+      const followedIds = followedIdSet;
 
       const followedTagIds = await cached(`user:${user.id}:tag-follows`, 120, async () => {
         const { data: followedTags } = await admin

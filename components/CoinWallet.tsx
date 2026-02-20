@@ -35,7 +35,7 @@ export function CoinWallet() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 bg-bg-primary rounded-xl" aria-label="Bakiye yükleniyor">
+      <div className="flex items-center gap-2 px-4 py-2 bg-bg-secondary rounded-xl" aria-label="Bakiye yükleniyor">
         <Coins className="h-5 w-5 text-accent-main" aria-hidden="true" />
         <div className="skeleton h-4 w-12 rounded-lg" />
       </div>
@@ -44,7 +44,7 @@ export function CoinWallet() {
 
   return (
     <Link href="/dashboard/coins" aria-label={`Jeton bakiyesi: ${balance.toLocaleString()}`}>
-      <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary hover:bg-bg-secondary rounded-xl transition-all cursor-pointer group">
+      <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary hover:bg-bg-tertiary rounded-xl transition-all cursor-pointer group">
         <Coins className="h-5 w-5 text-accent-main" aria-hidden="true" />
         <div className="flex items-baseline gap-1">
           <span className="font-bold text-accent-main">{balance.toLocaleString()}</span>

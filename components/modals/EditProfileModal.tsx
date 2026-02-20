@@ -354,7 +354,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
                       <label className="block text-xs text-text-muted mb-1">Kategori</label>
                       <button
                         onClick={() => setProModalOpen(true)}
-                        className="w-full text-left text-sm text-text-secondary py-2 px-3 bg-bg-tertiary rounded-lg hover:bg-bg-tertiary/80 transition flex items-center justify-between"
+                        className="w-full text-left text-sm text-text-secondary py-2 px-3 bg-bg-tertiary rounded-lg hover:bg-bg-tertiary transition flex items-center justify-between"
                       >
                         <span>{getCategoryLabel(accountType, professionalCategory)}</span>
                         <ChevronRight className="h-3.5 w-3.5 text-text-muted shrink-0" />
@@ -413,7 +413,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
                               setProfessionalCategory("");
                               setContactEmail("");
                               setContactPhone("");
-                              feedimAlert("success", "Kişisel hesaba geçildi");
+                              // silent
                             } else {
                               feedimAlert("error", "Hesap türü değiştirilemedi");
                             }

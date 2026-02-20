@@ -164,10 +164,7 @@ export async function POST(request: NextRequest) {
         await admin.from('comments').update({ status: 'removed' }).eq('id', Number(target_id));
         break;
 
-      case 'warn_user':
-        await admin.from('profiles')
-          .update({ spam_score: admin.rpc ? undefined : 0 })
-          .eq('user_id', target_id);
+      case 'warn_user': {
         // spam_score increment done manually
         const { data: warnProfile } = await admin
           .from('profiles')
@@ -180,6 +177,7 @@ export async function POST(request: NextRequest) {
             .eq('user_id', target_id);
         }
         break;
+      }
 
       case 'ban_user':
         await admin.from('profiles')
