@@ -418,7 +418,7 @@ export default async function PostPage({ params }: PageProps) {
             )}
           </PostInteractionBar>
 
-          <AdBanner slot="post-detail" size="rectangle" className="my-6" />
+          <AdBanner slot="post-detail" className="my-6" />
 
           {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
           {nextVideos.length > 0 && (
@@ -498,6 +498,9 @@ export default async function PostPage({ params }: PageProps) {
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
           </div>
 
+          {/* Ad placement — before article content */}
+          <AdBanner slot="post-top" className="mb-5" />
+
           {/* Featured Image + Content (for regular posts) */}
           <PostContentClient
             html={sanitizedContent}
@@ -576,7 +579,7 @@ export default async function PostPage({ params }: PageProps) {
           </PostInteractionBar>
 
           {/* Ad placement — after content */}
-          <AdBanner slot="post-detail" size="rectangle" className="my-6" />
+          <AdBanner slot="post-detail" className="my-6" />
 
           {/* Author's other posts */}
           {authorPosts.length > 0 && (
@@ -596,7 +599,7 @@ export default async function PostPage({ params }: PageProps) {
         </article>
 
         {/* Ad placement — bottom of page */}
-        <AdBanner slot="post-bottom" size="leaderboard" className="my-4 px-4" />
+        <AdBanner slot="post-bottom" className="my-4 px-4" />
     </div>
   );
 }

@@ -1,43 +1,47 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useUser } from "@/components/UserContext";
 
-type AdSlot = "feed" | "post-detail" | "post-bottom" | "explore" | "sidebar";
-type AdSize = "leaderboard" | "rectangle" | "banner";
+type AdSlot = "feed" | "post-top" | "post-detail" | "post-bottom" | "explore" | "sidebar";
 
 interface AdBannerProps {
   slot: AdSlot;
-  size?: AdSize;
   className?: string;
 }
 
-const sizeMap: Record<AdSize, { width: number; height: number }> = {
-  leaderboard: { width: 728, height: 90 },
-  rectangle: { width: 336, height: 280 },
-  banner: { width: 468, height: 60 },
-};
+declare global {
+  interface Window {
+    adsbygoogle: Record<string, unknown>[];
+  }
+}
 
-export default function AdBanner({ slot, size = "banner", className = "" }: AdBannerProps) {
-  const { user, isLoggedIn } = useUser();
+export default function AdBanner({ slot, className = "" }: AdBannerProps) {
+  const { user } = useUser();
+  const adRef = useRef<HTMLModElement>(null);
+  const pushed = useRef(false);
 
-  // Premium subscribers (basic, pro, max) see no ads
+  useEffect(() => {
+    if (pushed.current) return;
+    pushed.current = true;
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch {}
+  }, []);
+
+  // Premium subscribers see no ads
   if (user?.isPremium) return null;
-
-  const dimensions = sizeMap[size];
 
   return (
     <div
-      className={`ad-container flex items-center justify-center mx-auto overflow-hidden ${className}`}
+      className={`ad-container overflow-hidden ${className}`}
       data-ad-slot={slot}
-      data-ad-size={size}
-      data-ad-user={isLoggedIn ? "free" : "guest"}
-      style={{ maxWidth: dimensions.width, minHeight: dimensions.height }}
     >
-      {/* AdSense script will be injected here */}
       <ins
+        ref={adRef}
         className="adsbygoogle"
-        style={{ display: "block", width: "100%", height: dimensions.height }}
-        data-ad-client=""
+        style={{ display: "block" }}
+        data-ad-client="ca-pub-1411343179923275"
         data-ad-slot=""
         data-ad-format="auto"
         data-full-width-responsive="true"
@@ -64,5 +68,5 @@ export function FeedAdSlot({ index }: FeedAdProps) {
   const interval = isLoggedIn ? 5 : 3;
   if ((index + 1) % interval !== 0) return null;
 
-  return <AdBanner slot="feed" size="banner" className="my-3 px-3" />;
+  return <AdBanner slot="feed" className="my-3 px-3" />;
 }
