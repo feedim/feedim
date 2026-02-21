@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+MASTER_PLAN.md
+__tests__/
+vitest.config.ts
 
 # debug
 npm-debug.log*
