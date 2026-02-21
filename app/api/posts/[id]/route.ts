@@ -278,7 +278,7 @@ export async function PUT(
 
           let shouldNSFW = false;
           if (imgRes.action !== 'allow') shouldNSFW = true; // any flagged image
-          if (txtRes.severity === 'block') shouldNSFW = true; // only severe text
+          if (txtRes.severity === 'block' || txtRes.severity === 'flag') shouldNSFW = true; // medium/heavy text
 
           const modUpdates: Record<string, unknown> = shouldNSFW
             ? { is_nsfw: true, moderation_due_at: new Date().toISOString() }

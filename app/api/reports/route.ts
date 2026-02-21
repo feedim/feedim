@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
               checkImageContent(postData.content || ""),
               checkTextContent(postData.title || "", postData.content || ""),
             ]);
-            const shouldNSFW = (imgRes.action !== 'allow') || (txtRes.severity === 'block');
+            const shouldNSFW = (imgRes.action !== 'allow') || (txtRes.severity === 'block' || txtRes.severity === 'flag');
             const modUpdates: Record<string, unknown> = shouldNSFW
               ? { is_nsfw: true, moderation_due_at: new Date().toISOString() }
               : { is_nsfw: false, moderation_due_at: null };

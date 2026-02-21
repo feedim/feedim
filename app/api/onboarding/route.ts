@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { checkTextContent } from "@/lib/moderation";
 
 /** POST — Save onboarding step data & advance progression */
 export async function POST(req: NextRequest) {
@@ -85,6 +87,25 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from("profiles").update(updates).eq("user_id", user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Background AI check on public profile fields during onboarding only (first signup)
+  after(async () => {
+    try {
+      const admin = createAdminClient();
+      const { data: p } = await admin
+        .from('profiles')
+        .select('user_id, name, surname, full_name, username, bio, onboarding_completed, status')
+        .eq('user_id', user.id)
+        .single();
+      if (!p || p.onboarding_completed) return;
+      const text = [p.full_name, p.name, p.surname, p.username, p.bio].filter(Boolean).join(' ').slice(0, 500);
+      if (text.length < 2) return;
+      const res = await checkTextContent('', text);
+      if (res.severity === 'block' || res.severity === 'flag') {
+        await admin.from('profiles').update({ status: 'moderation' }).eq('user_id', p.user_id);
+      }
+    } catch {}
+  });
 
   // Advance progression
   const nextStep = Math.min(8, step + 1);

@@ -302,9 +302,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       after(async () => {
         try {
           const modResult = await checkTextContent('', content);
-          if (modResult.severity === 'block') {
+          if (modResult.severity === 'block' || modResult.severity === 'flag') {
             await admin.from('comments').update({ is_nsfw: true }).eq('id', commentId);
-          } else if (modResult.severity === null) {
+          } else {
             await admin.from('comments').update({ is_nsfw: false }).eq('id', commentId);
           }
         } catch {}
