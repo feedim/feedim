@@ -1508,26 +1508,35 @@ html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-so
 .hover\:bg-success\/20:active { background-color: color-mix(in srgb, var(--success-color) 20%, transparent); }
 .hover\:underline:active { text-decoration: underline; }
 
-/* ── Google AdSense — ensure minimum ad space and proper iframe rendering ── */
+/* ── Google AdSense — proper ad container and iframe rendering ── */
 .ad-container {
   width: 100%;
   min-height: 100px;
   text-align: center;
+  overflow: hidden;
+  position: relative;
 }
 .ad-container ins.adsbygoogle {
-  display: block !important;
-  width: 100% !important;
+  display: block;
+  width: 100%;
   min-height: 100px;
+  position: relative;
+}
+.ad-container ins.adsbygoogle[data-ad-status="filled"] {
+  min-height: auto;
 }
 .ad-container ins.adsbygoogle[data-ad-status="unfilled"] {
   min-height: 0;
   height: 0;
   overflow: hidden;
 }
+/* AdSense iframes need freedom to position themselves */
 .ad-container iframe {
-  max-width: 100% !important;
-  width: 100% !important;
-  border: none !important;
+  border: 0 !important;
+  max-width: none;
+  max-height: none;
+  min-width: auto;
+  min-height: auto;
 }
 
 /* ── Responsive: Desktop >= 1025px, Tablet 801-1024px, Mobile <= 800px ── */
