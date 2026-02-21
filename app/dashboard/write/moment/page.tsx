@@ -764,37 +764,6 @@ function MomentWriteContent() {
             </div>
             </div>
 
-            {/* SEO / Gönderi bilgileri */}
-            <div>
-              <button type="button" onClick={() => setMetaExpanded(v => !v)}
-                className="flex items-center justify-between w-full text-left">
-                <label className="block text-sm font-semibold">Gönderi bilgileri</label>
-                <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${metaExpanded ? "rotate-180" : ""}`} />
-              </button>
-              {metaExpanded && (
-                <div className="mt-3 space-y-4">
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Ana konu başlığı</label>
-                    <input type="text" value={metaTitle} onChange={e => setMetaTitle(e.target.value)} placeholder="Moment ana konusu..." maxLength={60} className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaTitle.length}/60</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Açıklama</label>
-                    <textarea value={metaDescription} onChange={e => setMetaDescription(e.target.value)} placeholder="Moment açıklaması..." maxLength={155} rows={3} className="input-modern w-full resize-none" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaDescription.length}/155</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Anahtar kelime</label>
-                    <input type="text" value={metaKeywords} onChange={e => setMetaKeywords(e.target.value)} placeholder="Anahtar kelime..." maxLength={200} className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaKeywords.length}/200</span>
-                  </div>
-                  <p className="text-[0.7rem] text-text-muted/60 leading-relaxed">
-                    Bu alandaki metinler içeriğinizin görünürlüğünü ve sıralamasını belirleyen etkenlerdir. Arama motorları için de kullanılır. Manuel girilmezse Feedim AI tarafından otomatik oluşturulur.
-                  </p>
-                </div>
-              )}
-            </div>
-
             {/* Settings */}
             <div>
               <label className="block text-sm font-semibold mb-3">Ayarlar</label>
@@ -824,6 +793,37 @@ function MomentWriteContent() {
                   </div>
                 </button>
               </div>
+            </div>
+
+            {/* SEO / Gönderi bilgileri */}
+            <div>
+              <button type="button" onClick={() => setMetaExpanded(v => !v)}
+                className="flex items-center justify-between w-full text-left">
+                <label className="block text-sm font-semibold">Gönderi bilgileri</label>
+                <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${metaExpanded ? "rotate-180" : ""}`} />
+              </button>
+              {metaExpanded && (
+                <div className="mt-3 space-y-4">
+                  <div>
+                    <label className="block text-xs text-text-muted mb-1.5">Ana konu başlığı</label>
+                    <input type="text" value={metaTitle} onChange={e => setMetaTitle(e.target.value)} placeholder="Moment ana konusu..." maxLength={60} className="input-modern w-full" />
+                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaTitle.length}/60</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-muted mb-1.5">Açıklama</label>
+                    <textarea value={metaDescription} onChange={e => setMetaDescription(e.target.value)} placeholder="Moment açıklaması..." maxLength={155} rows={3} className="input-modern w-full resize-none" />
+                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaDescription.length}/155</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-muted mb-1.5">Anahtar kelime</label>
+                    <input type="text" value={metaKeywords} onChange={e => setMetaKeywords(e.target.value)} placeholder="Anahtar kelime..." maxLength={200} className="input-modern w-full" />
+                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaKeywords.length}/200</span>
+                  </div>
+                  <p className="text-[0.7rem] text-text-muted/60 leading-relaxed">
+                    Bu alandaki metinler içeriğinizin görünürlüğünü ve sıralamasını belirleyen etkenlerdir. Arama motorları için de kullanılır. Manuel girilmezse Feedim AI tarafından otomatik oluşturulur.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

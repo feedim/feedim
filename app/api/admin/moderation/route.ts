@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createNotification } from '@/lib/notifications';
+import { sendEmail, getEmailIfEnabled, moderationApprovedEmail, moderationRejectedEmail } from '@/lib/email';
 
 async function verifyAdmin(admin: ReturnType<typeof createAdminClient>, userId: string) {
   const { data: profile } = await admin
@@ -48,11 +50,13 @@ export async function GET(request: NextRequest) {
       const { data: posts, count } = await admin
         .from('posts')
         .select(`
-          id, title, slug, status, spam_score, quality_score, created_at,
-          author:profiles!posts_author_id_fkey(username, full_name, avatar_url)
+          id, title, slug, status, is_nsfw, moderation_due_at, spam_score, quality_score, created_at,
+          author:profiles!posts_author_id_fkey(user_id, username, full_name, avatar_url)
         `, { count: 'exact' })
-        .eq('status', 'moderation')
-        .order('created_at', { ascending: false })
+        .eq('is_nsfw', true)
+        .eq('status', 'published')
+        .lte('moderation_due_at', new Date().toISOString())
+        .order('moderation_due_at', { ascending: true })
         .range(offset, offset + limit - 1);
 
       return NextResponse.json({ posts: posts || [], total: count || 0, page });
@@ -115,7 +119,7 @@ export async function GET(request: NextRequest) {
         { data: recentActions },
       ] = await Promise.all([
         admin.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-        admin.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'moderation'),
+        admin.from('posts').select('id', { count: 'exact', head: true }).eq('is_nsfw', true).eq('status', 'published'),
         admin.from('profiles').select('user_id', { count: 'exact', head: true }).gte('spam_score', 30),
         admin.from('withdrawal_requests').select('id', { count: 'exact', head: true }).in('status', ['pending', 'processing']),
         admin.from('moderation_logs')
@@ -181,6 +185,76 @@ export async function POST(request: NextRequest) {
     });
 
     switch (action) {
+      case 'approve_content': {
+        // Create moderation decision record
+        const { data: approveDecision } = await admin.from('moderation_decisions')
+          .insert({ target_type, target_id: String(target_id), decision: 'approved', reason: reason || null, moderator_id: user.id })
+          .select('id').single();
+
+        if (target_type === 'post') {
+          const { data: approvedPost } = await admin.from('posts')
+            .update({ is_nsfw: false, moderation_due_at: null })
+            .eq('id', Number(target_id))
+            .select('author_id, title, slug').single();
+
+          if (approvedPost) {
+            // Notification
+            await createNotification({
+              admin, user_id: approvedPost.author_id, actor_id: approvedPost.author_id,
+              type: 'moderation_approved', object_type: 'post', object_id: Number(target_id),
+              content: 'Gönderiniz onaylandı ve herkese açıldı.',
+            });
+            // Email
+            const email = await getEmailIfEnabled(approvedPost.author_id, 'moderation_approved');
+            if (email) {
+              const tpl = moderationApprovedEmail(approvedPost.title, approvedPost.slug);
+              await sendEmail({ to: email, ...tpl, template: 'moderation_approved', userId: approvedPost.author_id });
+            }
+          }
+        } else if (target_type === 'comment') {
+          await admin.from('comments').update({ is_nsfw: false }).eq('id', Number(target_id));
+        }
+        break;
+      }
+
+      case 'reject_content': {
+        // Create moderation decision record
+        const { data: rejectDecision } = await admin.from('moderation_decisions')
+          .insert({ target_type, target_id: String(target_id), decision: 'removed', reason: reason || null, moderator_id: user.id })
+          .select('id').single();
+
+        if (target_type === 'post') {
+          const { data: rejectedPost } = await admin.from('posts')
+            .update({
+              status: 'removed',
+              is_nsfw: false,
+              removed_at: new Date().toISOString(),
+              removal_reason: reason || null,
+              removal_decision_id: rejectDecision?.id || null,
+            })
+            .eq('id', Number(target_id))
+            .select('author_id, title, slug').single();
+
+          if (rejectedPost) {
+            // Notification
+            await createNotification({
+              admin, user_id: rejectedPost.author_id, actor_id: rejectedPost.author_id,
+              type: 'moderation_rejected', object_type: 'post', object_id: Number(target_id),
+              content: `Gönderiniz kaldırıldı. Karar No: #${rejectDecision?.id || 0}. Sebep: ${reason || 'Belirtilmedi'}`,
+            });
+            // Email
+            const email = await getEmailIfEnabled(rejectedPost.author_id, 'moderation_rejected');
+            if (email) {
+              const tpl = moderationRejectedEmail(rejectedPost.title, reason || '', rejectDecision?.id || 0);
+              await sendEmail({ to: email, ...tpl, template: 'moderation_rejected', userId: rejectedPost.author_id });
+            }
+          }
+        } else if (target_type === 'comment') {
+          await admin.from('comments').update({ status: 'rejected' }).eq('id', Number(target_id));
+        }
+        break;
+      }
+
       case 'approve_post':
         await admin.from('posts').update({ status: 'published' }).eq('id', Number(target_id));
         break;

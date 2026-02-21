@@ -24,7 +24,7 @@ export async function createNotification({
   content,
 }: CreateNotificationParams) {
   // Don't notify yourself (except for milestone/system notifications)
-  const selfNotifyTypes = ['milestone', 'system', 'coin_earned', 'premium_expired'];
+  const selfNotifyTypes = ['milestone', 'system', 'coin_earned', 'premium_expired', 'moderation_approved', 'moderation_rejected', 'account_moderation'];
   if (user_id === actor_id && !selfNotifyTypes.includes(type)) return;
 
   // Check user's notification settings

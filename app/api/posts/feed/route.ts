@@ -56,13 +56,16 @@ export async function GET(request: NextRequest) {
     if (followedUserIds.length > 0) {
       const { data: userPosts } = await admin
         .from('posts')
-        .select('id')
+        .select('id, is_nsfw, author_id')
         .in('author_id', followedUserIds)
         .eq('status', 'published')
         .order('published_at', { ascending: false })
         .limit(100);
 
-      (userPosts || []).forEach(p => postIds.add(p.id));
+      // NSFW posts: only show to the author
+      (userPosts || []).forEach((p: any) => {
+        if (!p.is_nsfw || p.author_id === user.id) postIds.add(p.id);
+      });
     }
 
     if (followedTagIds.length > 0) {
@@ -75,11 +78,14 @@ export async function GET(request: NextRequest) {
         const tagPostIds = tagPosts.map(pt => pt.post_id);
         const { data: validPosts } = await admin
           .from('posts')
-          .select('id')
+          .select('id, is_nsfw, author_id')
           .in('id', tagPostIds)
           .eq('status', 'published');
 
-        (validPosts || []).forEach(p => postIds.add(p.id));
+        // NSFW posts: only show to the author
+        (validPosts || []).forEach((p: any) => {
+          if (!p.is_nsfw || p.author_id === user.id) postIds.add(p.id);
+        });
       }
     }
 

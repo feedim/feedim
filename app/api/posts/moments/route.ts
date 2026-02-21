@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MOMENT_PAGE_SIZE } from "@/lib/constants";
 
@@ -10,11 +11,15 @@ export async function GET(req: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Get user for NSFW filtering
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     let query = admin
       .from("posts")
       .select(`
         id, title, slug, excerpt, featured_image, video_url, video_duration, video_thumbnail, blurhash,
-        like_count, comment_count, view_count, save_count, share_count, published_at,
+        like_count, comment_count, view_count, save_count, share_count, published_at, author_id,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan),
         post_tags(tag_id, tags(id, name, slug))
       `)
@@ -22,6 +27,13 @@ export async function GET(req: NextRequest) {
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(limit + 1);
+
+    // NSFW filter: logged-in users see their own NSFW moments, others see none
+    if (user) {
+      query = query.or(`is_nsfw.eq.false,author_id.eq.${user.id}`);
+    } else {
+      query = query.eq("is_nsfw", false);
+    }
 
     if (cursor) {
       const { data: cursorPost } = await admin

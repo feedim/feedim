@@ -20,8 +20,11 @@ interface Comment {
   like_count: number;
   reply_count: number;
   created_at: string;
+  is_nsfw?: boolean;
   profiles?: {
     username: string;
+    full_name?: string;
+    name?: string;
     avatar_url?: string;
   } | null;
   replies?: Comment[];
@@ -97,7 +100,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
     const parentId = replyTo?.id || null;
     const tempId = -Date.now();
 
-    // Optimistic comment
+    // Optimistic comment — use full user data so name/avatar shows instantly
     const optimisticComment: Comment = {
       id: tempId,
       content,
@@ -108,6 +111,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       created_at: new Date().toISOString(),
       profiles: ctxUser ? {
         username: ctxUser.username || "",
+        full_name: ctxUser.fullName || undefined,
         avatar_url: ctxUser.avatarUrl || undefined,
       } : null,
     };
@@ -311,6 +315,9 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
           <span className="text-xs text-text-muted">{formatRelativeDate(comment.created_at)}</span>
         </div>
         <p className="text-sm text-text-secondary mt-0.5 break-words">{comment.content}</p>
+        {comment.is_nsfw && (
+          <span className="inline-block text-xs text-amber-600 dark:text-amber-400 mt-0.5">İncelemede</span>
+        )}
         <div className="flex items-center gap-3 mt-1.5">
           <button
             onClick={() => onLike(comment.id)}

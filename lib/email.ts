@@ -166,6 +166,56 @@ export function withdrawalStatusEmail(status: 'completed' | 'rejected', amount: 
   };
 }
 
+export function moderationApprovedEmail(postTitle: string, postSlug: string): { subject: string; html: string } {
+  return {
+    subject: 'Gönderiniz onaylandı',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Gönderiniz onaylandı!</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
+        "<em>${postTitle}</em>" başlıklı gönderiniz moderatörler tarafından incelendi ve onaylandı. Artık herkes görebilir.
+      </p>
+      <a href="${SITE_URL}/post/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        Gönderiyi Gör
+      </a>
+    `),
+  };
+}
+
+export function moderationRejectedEmail(postTitle: string, reason: string, decisionNumber: number): { subject: string; html: string } {
+  return {
+    subject: 'Gönderiniz kaldırıldı',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Gönderiniz kaldırıldı</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 12px">
+        "<em>${postTitle}</em>" başlıklı gönderiniz moderatörler tarafından incelendi ve kaldırıldı.
+      </p>
+      <div style="background:#f5f5f5;border-radius:8px;padding:12px 16px;margin:0 0 20px;color:#333;font-size:14px;line-height:1.5">
+        <strong>Karar No:</strong> #${decisionNumber}<br/>
+        <strong>Sebep:</strong> ${reason || 'Belirtilmedi'}
+      </div>
+      <a href="${SITE_URL}/help" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        İtiraz Et
+      </a>
+    `),
+  };
+}
+
+export function accountModerationEmail(username: string): { subject: string; html: string } {
+  return {
+    subject: 'Hesabınız inceleme altına alındı',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Hesabınız inceleme altında</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
+        Sayın @${username}, hesabınız topluluk kurallarımız çerçevesinde inceleme altına alınmıştır.
+        İnceleme süresince hesabınıza erişiminiz kısıtlanmıştır.
+      </p>
+      <a href="${SITE_URL}/help" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        Yardım Al
+      </a>
+    `),
+  };
+}
+
 export function milestoneEmail(postTitle: string, viewCount: string, postSlug: string): { subject: string; html: string } {
   return {
     subject: `Tebrikler! Gönderiniz ${viewCount} görüntülenmeye ulaştı`,
@@ -214,6 +264,9 @@ export async function getEmailIfEnabled(
     like: 'email_like',
     gift_received: 'email_gift',
     milestone: 'email_milestone',
+    moderation_approved: 'email_moderation',
+    moderation_rejected: 'email_moderation',
+    account_moderation: 'email_moderation',
   };
 
   const field = emailFieldMap[notificationType];

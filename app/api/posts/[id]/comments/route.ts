@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     let query = admin
       .from('comments')
       .select(`
-        id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at,
+        id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw,
         profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)
       `)
       .eq('post_id', postId)
@@ -85,10 +85,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       comments = scored.slice(offset, offset + limit).map(({ _smart, ...rest }: any) => rest);
     }
 
-    // Filter out inactive authors
+    // Filter out inactive authors and NSFW comments (only author sees their own NSFW comments)
     const activeComments = (comments || []).filter((c: any) => {
       const authorProfile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
-      return !authorProfile?.status || authorProfile.status === 'active';
+      if (authorProfile?.status && authorProfile.status !== 'active') return false;
+      // NSFW comments: only visible to the comment author
+      if (c.is_nsfw && c.author_id !== user?.id) return false;
+      return true;
     });
 
     // Batch-load all replies in a single query (fixes N+1)
@@ -98,7 +101,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (commentIdsWithReplies.length > 0) {
       let replyQuery = admin
         .from('comments')
-        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)`)
+        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)`)
         .in('parent_id', commentIdsWithReplies)
         .eq('status', 'approved')
         .order('created_at', { ascending: true });
@@ -111,6 +114,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       for (const r of (allReplies || [])) {
         const rAuthor = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
         if (rAuthor?.status && rAuthor.status !== 'active') continue;
+        // NSFW replies: only visible to the reply author
+        if ((r as any).is_nsfw && r.author_id !== user?.id) continue;
         const parentId = r.parent_id as number;
         if (!replyMap.has(parentId)) replyMap.set(parentId, []);
         const bucket = replyMap.get(parentId)!;
@@ -291,15 +296,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // AI moderation — arka planda çalışır, yanıtı geciktirmez
+    // NSFW yorumlar: status=approved, is_nsfw=true (sadece yazarı görür, moderasyona gider)
     if (!isGif && content) {
       const commentId = comment.id;
       after(async () => {
         try {
           const modResult = await checkTextContent('', content);
-          if (modResult.severity === 'block') {
-            await admin.from('comments').update({ status: 'rejected' }).eq('id', commentId);
-          } else if (modResult.severity === 'flag') {
-            await admin.from('comments').update({ status: 'pending' }).eq('id', commentId);
+          if (modResult.severity === 'block' || modResult.severity === 'flag') {
+            await admin.from('comments').update({ is_nsfw: true }).eq('id', commentId);
           }
         } catch {}
       });

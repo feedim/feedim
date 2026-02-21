@@ -30,13 +30,20 @@ export async function GET(
       return NextResponse.json({ error: 'Post bulunamadı' }, { status: 404 });
     }
 
-    // Draft check: only author can see
+    // Draft / removed check: only author can see
     if (post.status !== 'published') {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || user.id !== post.author_id) {
         return NextResponse.json({ error: 'Post bulunamadı' }, { status: 404 });
       }
     } else {
+      // NSFW check: only author can see NSFW posts
+      if (post.is_nsfw) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || user.id !== post.author_id) {
+          return NextResponse.json({ error: 'Post bulunamadı' }, { status: 404 });
+        }
+      }
       // Published post: check author status + private account
       const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
       if (author?.status && author.status !== 'active') {
@@ -201,8 +208,9 @@ export async function PUT(
         );
       }
       if (modResult.action === 'moderation') {
-        updates.status = 'moderation';
-        updates.spam_score = 50;
+        // NSFW: publish but flag for moderation review
+        updates.is_nsfw = true;
+        updates.moderation_due_at = new Date(Date.now() + 2 * 60 * 1000).toISOString();
         moderationApplied = true;
       }
     }
@@ -267,7 +275,7 @@ export async function PUT(
     const response: Record<string, unknown> = { post };
     if (moderationApplied) {
       response.moderation = true;
-      response.message = 'Gönderiniz incelemeye alındı. Moderatörler onayladıktan sonra yayınlanacak.';
+      response.message = 'Gönderiniz yayınlandı ancak incelemeye alındı. Moderatörler incelediğinde herkese açılacak.';
     }
     return NextResponse.json(response);
   } catch {

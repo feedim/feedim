@@ -135,11 +135,20 @@ export async function middleware(request: NextRequest) {
         )
       }
 
-      // Allow signout even for inactive accounts
-      if (pathname !== '/auth/signout' && pathname !== '/login') {
-        const statusRedirect = NextResponse.redirect(new URL('/login', request.url))
-        supabaseResponse.cookies.getAll().forEach(c => statusRedirect.cookies.set(c))
-        return statusRedirect
+      // Moderation status: redirect to account-moderation page
+      if (status === 'moderation') {
+        if (pathname !== '/account-moderation' && pathname !== '/auth/signout') {
+          const modRedirect = NextResponse.redirect(new URL('/account-moderation', request.url))
+          supabaseResponse.cookies.getAll().forEach(c => modRedirect.cookies.set(c))
+          return modRedirect
+        }
+      } else {
+        // Allow signout even for inactive accounts
+        if (pathname !== '/auth/signout' && pathname !== '/login') {
+          const statusRedirect = NextResponse.redirect(new URL('/login', request.url))
+          supabaseResponse.cookies.getAll().forEach(c => statusRedirect.cookies.set(c))
+          return statusRedirect
+        }
       }
     }
   }
@@ -238,5 +247,6 @@ export const config = {
     '/onboarding',
     '/post/:path*',
     '/u/:path*',
+    '/account-moderation',
   ],
 }

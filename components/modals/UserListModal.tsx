@@ -143,7 +143,7 @@ export default function UserListModal({
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             className={cn(
-              "px-4 py-2.5 text-[0.8rem] font-semibold whitespace-nowrap border-b-2 transition-colors",
+              "px-4 py-2.5 text-[1rem] font-semibold whitespace-nowrap border-b-2 transition-colors",
               filter === tab.key
                 ? "border-accent-main text-text-primary"
                 : "border-transparent text-text-muted hover:text-text-primary"

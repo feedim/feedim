@@ -20,6 +20,7 @@ import VideoGridCard from "@/components/VideoGridCard";
 import type { VideoItem } from "@/components/VideoSidebar";
 import PostViewTracker from "@/components/PostViewTracker";
 import VideoViewTracker from "@/components/VideoViewTracker";
+import RemovedPostTemplate from "@/components/RemovedPostTemplate";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import PostFollowButton from "@/components/PostFollowButton";
 import AdBanner from "@/components/AdBanner";
@@ -45,7 +46,7 @@ async function getPost(rawSlug: string) {
       post_categories(category_id, categories(id, name, slug))
     `)
     .eq("slug", slug)
-    .eq("status", "published")
+    .in("status", ["published", "removed"])
     .single();
 
   if (error || !post) return null;
@@ -249,15 +250,28 @@ export default async function PostPage({ params }: PageProps) {
   const post = await getCachedPost(slug);
   if (!post) notFound();
 
+  const currentUserId = await getAuthUserId();
+
+  // Removed post: show template to author (24h window), 404 to others
+  if (post.status === 'removed') {
+    if (post.author_id !== currentUserId) notFound();
+    const removedAt = post.removed_at ? new Date(post.removed_at) : null;
+    const hoursAgo = removedAt ? (Date.now() - removedAt.getTime()) / (1000 * 60 * 60) : 999;
+    if (hoursAgo > 24) notFound();
+    return <RemovedPostTemplate reason={post.removal_reason} decisionNumber={post.removal_decision_id} />;
+  }
+
+  // NSFW post: only author can view
+  if (post.is_nsfw && post.author_id !== currentUserId) notFound();
+
   // Private account check — only author + followers can view
   const postAuthor = post.profiles;
   if (postAuthor?.account_private) {
-    const userId = await getAuthUserId();
-    if (userId !== postAuthor.user_id) {
+    if (currentUserId !== postAuthor.user_id) {
       const adminClient = createAdminClient();
       const { data: follow } = await adminClient
         .from('follows').select('id')
-        .eq('follower_id', userId || '').eq('following_id', postAuthor.user_id).single();
+        .eq('follower_id', currentUserId || '').eq('following_id', postAuthor.user_id).single();
       if (!follow) redirect(`/u/${postAuthor.username}`);
     }
   }
@@ -273,7 +287,7 @@ export default async function PostPage({ params }: PageProps) {
 
   const author = post.profiles;
   const authorName = author?.full_name || [author?.name, author?.surname].filter(Boolean).join(" ") || author?.username || "Anonim";
-  const isOwnPost = interactions.userId === author?.user_id;
+  const isOwnPost = currentUserId === author?.user_id;
   const tags = (post.post_tags || []).map((pt: { tags: { id: number; name: string; slug: string } }) => pt.tags).filter(Boolean);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
 
@@ -321,6 +335,14 @@ export default async function PostPage({ params }: PageProps) {
         <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
         <HeaderTitle title={post.content_type === "moment" ? "Moment" : "Video"} />
         <VideoViewTracker postId={post.id} />
+
+        {/* NSFW moderation banner */}
+        {post.is_nsfw && isOwnPost && (
+          <div className="mx-3 sm:mx-4 mb-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Gönderiniz moderatörler tarafından inceleniyor.</p>
+            <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">İnceleme tamamlanana kadar sadece siz görebilirsiniz.</p>
+          </div>
+        )}
         <PostHeaderActions
           postId={post.id} postUrl={`/post/${post.slug}`} postTitle={post.title}
           authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
@@ -346,7 +368,7 @@ export default async function PostPage({ params }: PageProps) {
           )}
 
           {/* Title */}
-          <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.3] mb-2">{post.title}</h1>
+          <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-2">{post.title}</h1>
 
           {/* Stats row */}
           <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
@@ -450,6 +472,15 @@ export default async function PostPage({ params }: PageProps) {
       />
       {post.featured_image && <AmbientLight imageSrc={post.featured_image} />}
       <PostViewTracker postId={post.id} />
+
+        {/* NSFW moderation banner */}
+        {post.is_nsfw && isOwnPost && (
+          <div className="mx-4 sm:mx-5 mt-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Gönderiniz moderatörler tarafından inceleniyor.</p>
+            <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">İnceleme tamamlanana kadar sadece siz görebilirsiniz.</p>
+          </div>
+        )}
+
         {/* Main content */}
         <article className="px-4 sm:px-5 py-3 md:py-5">
           {/* PostHeaderActions — portals to header */}

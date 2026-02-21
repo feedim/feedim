@@ -5,10 +5,12 @@ import Link from "next/link";
 import {
   Shield, AlertTriangle, FileText, Users, Wallet,
   Check, X, Eye, EyeOff, ChevronRight, RefreshCw,
-  Ban, UserCheck, Award, Clock,
+  Ban, UserCheck, Award, Clock, MessageSquare,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import { feedimAlert } from "@/components/FeedimAlert";
+import { formatRelativeDate } from "@/lib/utils";
 
 interface Overview {
   pendingReports: number;
@@ -26,6 +28,7 @@ export default function AdminPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
 
   const loadData = useCallback(async (currentTab: string, p = 1) => {
     setLoading(true);
@@ -63,14 +66,24 @@ export default function AdminPage() {
       });
       if (res.ok) {
         loadData(tab, page);
+        setRejectReasons(prev => { const next = { ...prev }; delete next[targetId]; return next; });
       }
     } catch {} finally { setActionLoading(null); }
+  };
+
+  const handleReject = (targetType: string, targetId: string) => {
+    const reason = rejectReasons[targetId]?.trim();
+    if (!reason) {
+      feedimAlert("error", "Reddetme sebebi zorunludur");
+      return;
+    }
+    takeAction("reject_content", targetType, targetId, reason);
   };
 
   const tabs = [
     { id: "overview", label: "Genel", icon: Shield },
     { id: "reports", label: "Raporlar", icon: AlertTriangle },
-    { id: "flagged_posts", label: "Bayraklı", icon: FileText },
+    { id: "flagged_posts", label: "İncelemede", icon: FileText },
     { id: "spam_users", label: "Spam", icon: Users },
     { id: "withdrawals", label: "Çekim", icon: Wallet },
   ] as const;
@@ -177,31 +190,57 @@ export default function AdminPage() {
         ) : tab === "flagged_posts" ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Bayraklı gönderi yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">İnceleme bekleyen gönderi yok</div>
             ) : items.map((p: any) => (
-              <div key={p.id} className="bg-bg-secondary rounded-xl p-4">
+              <div key={p.id} className="bg-bg-secondary rounded-xl p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-1.5 py-0.5 text-[0.6rem] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded">NSFW</span>
+                      <span className="text-[0.68rem] text-text-muted">{p.content_type || "post"}</span>
+                    </div>
                     <p className="text-[0.82rem] font-medium truncate">{p.title}</p>
-                    <p className="text-[0.72rem] text-text-muted mt-0.5">
-                      {p.author?.username || "—"} · Spam: {(p.spam_score || 0).toFixed(1)}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {p.author?.avatar_url && (
+                        <img src={p.author.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                      )}
+                      <p className="text-[0.72rem] text-text-muted">
+                        @{p.author?.username || "—"}
+                      </p>
+                      {p.moderation_due_at && (
+                        <span className="text-[0.65rem] text-text-muted">
+                          · {formatRelativeDate(p.moderation_due_at)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0 ml-3">
                     <button
-                      onClick={() => takeAction("approve_post", "post", p.id)}
+                      onClick={() => takeAction("approve_content", "post", p.id)}
                       disabled={actionLoading === String(p.id)}
                       className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition"
+                      title="Onayla — herkese aç"
                     ><Check className="h-4 w-4" /></button>
-                    <button
-                      onClick={() => takeAction("remove_post", "post", p.id)}
-                      disabled={actionLoading === String(p.id)}
-                      className="p-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition"
-                    ><X className="h-4 w-4" /></button>
                     <Link href={`/post/${p.slug}`}
                       className="p-2 rounded-lg bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition"
+                      title="Gönderiyi görüntüle"
                     ><Eye className="h-4 w-4" /></Link>
                   </div>
+                </div>
+                {/* Reject with reason */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={rejectReasons[String(p.id)] || ""}
+                    onChange={e => setRejectReasons(prev => ({ ...prev, [String(p.id)]: e.target.value }))}
+                    placeholder="Reddetme sebebi..."
+                    className="input-modern flex-1 !py-1.5 !text-[0.78rem]"
+                  />
+                  <button
+                    onClick={() => handleReject("post", String(p.id))}
+                    disabled={actionLoading === String(p.id)}
+                    className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
+                  >Reddet</button>
                 </div>
               </div>
             ))}

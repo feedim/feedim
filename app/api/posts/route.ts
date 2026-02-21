@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // Content moderation (only for published posts)
     let moderationAction: 'allow' | 'moderation' | 'block' = 'allow';
-    let spamScore = 0;
+    let isNsfw = false;
     if (status === 'published') {
       const modResult = await moderateContent(trimmedTitle, sanitizedContent);
       if (modResult.action === 'block') {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       }
       moderationAction = modResult.action;
       if (moderationAction === 'moderation') {
-        spamScore = 50;
+        isNsfw = true;
       }
     }
 
@@ -137,8 +137,8 @@ export async function POST(request: NextRequest) {
     // Generate excerpt
     const excerpt = generateExcerpt(sanitizedContent);
 
-    // Determine status
-    const postStatus = moderationAction === 'moderation' ? 'moderation' : (status === 'published' ? 'published' : 'draft');
+    // Determine status — NSFW content is published but flagged, not held in moderation queue
+    const postStatus = status === 'published' ? 'published' : 'draft';
 
     // Server-side SEO
     const finalMetaTitle = (typeof meta_title === 'string' && meta_title.trim()) ? meta_title.trim() : generateMetaTitle(trimmedTitle, sanitizedContent);
@@ -189,7 +189,8 @@ export async function POST(request: NextRequest) {
         word_count: isVideo ? 0 : wordCount,
         allow_comments: allow_comments !== false,
         is_for_kids: is_for_kids === true,
-        spam_score: spamScore,
+        is_nsfw: isNsfw,
+        moderation_due_at: isNsfw ? new Date(Date.now() + 2 * 60 * 1000).toISOString() : null,
         published_at: postStatus === 'published' ? new Date().toISOString() : null,
         meta_title: finalMetaTitle,
         meta_description: finalMetaDescription,
@@ -293,9 +294,9 @@ export async function POST(request: NextRequest) {
     }
 
     const response: Record<string, unknown> = { post };
-    if (moderationAction === 'moderation') {
+    if (isNsfw) {
       response.moderation = true;
-      response.message = 'Gönderiniz incelemeye alındı. Moderatörler onayladıktan sonra yayınlanacak.';
+      response.message = 'Gönderiniz yayınlandı ancak incelemeye alındı. Moderatörler incelediğinde herkese açılacak.';
     }
     return NextResponse.json(response, { status: 201 });
   } catch {

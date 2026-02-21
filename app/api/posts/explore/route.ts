@@ -134,6 +134,13 @@ export async function GET(request: NextRequest) {
       query = query.not('author_id', 'in', `(${[...blockedIds].join(',')})`);
     }
 
+    // NSFW filter: logged-in users see their own NSFW posts, others see none
+    if (user) {
+      query = query.or(`is_nsfw.eq.false,author_id.eq.${user.id}`);
+    } else {
+      query = query.eq('is_nsfw', false);
+    }
+
     const { data: posts, error } = await query;
 
     if (error) {

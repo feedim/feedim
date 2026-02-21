@@ -1,6 +1,6 @@
 import { memo } from "react";
 import Link from "next/link";
-import { Heart, Eye } from "lucide-react";
+import { Heart, Eye, Clock } from "lucide-react";
 import NoImage from "@/components/NoImage";
 import BlurImage from "@/components/BlurImage";
 import { formatRelativeDate, formatCount } from "@/lib/utils";
@@ -22,6 +22,7 @@ interface PostCardProps {
     video_thumbnail?: string;
     blurhash?: string | null;
     published_at?: string;
+    is_nsfw?: boolean;
     profiles?: {
       user_id: string;
       name?: string;
@@ -113,6 +114,14 @@ export default memo(function PostCard({ post }: PostCardProps) {
             {post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : "Gönderi"}
           </span>
         </div>
+
+        {/* NSFW moderation badge */}
+        {post.is_nsfw && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-xs rounded-lg mt-2 w-fit">
+            <Clock size={12} />
+            <span>Gönderi incelemede...</span>
+          </div>
+        )}
       </Link>
     </article>
   );

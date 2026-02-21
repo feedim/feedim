@@ -57,7 +57,7 @@ export default function VideoPage() {
     <div className="min-h-screen">
       <ColumnHeader />
       {/* Moments (Shorts) carousel */}
-      <MomentsCarousel maxItems={8} />
+      <MomentsCarousel maxItems={8} noBg />
 
       <div className="pb-8">
         {loading ? (

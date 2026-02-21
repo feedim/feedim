@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { X, ChevronRight } from "lucide-react";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
+import { cn } from "@/lib/utils";
 
 interface MomentItem {
   id: number;
@@ -26,7 +27,7 @@ interface MomentItem {
 
 const DISMISS_KEY = "fdm-moments-carousel-dismissed";
 
-export default function MomentsCarousel({ maxItems = 4 }: { maxItems?: number }) {
+export default function MomentsCarousel({ maxItems = 4, noBg = false }: { maxItems?: number; noBg?: boolean }) {
   const [moments, setMoments] = useState<MomentItem[]>([]);
   const [dismissed, setDismissed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -63,10 +64,28 @@ export default function MomentsCarousel({ maxItems = 4 }: { maxItems?: number })
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
-  if (dismissed || !loaded || moments.length === 0) return null;
+  if (dismissed) return null;
+
+  // Loading skeleton
+  if (!loaded) {
+    return (
+      <div className={cn("sm:mx-3 my-3 py-3 rounded-[16px]", !noBg && "bg-bg-secondary")} style={{ marginLeft: 11, marginRight: 11 }}>
+        <div className="flex items-center justify-between px-4 mb-3">
+          <div className="h-4 w-20 bg-bg-tertiary rounded animate-pulse" />
+        </div>
+        <div className="flex gap-2.5 pl-[10px] overflow-hidden">
+          {Array.from({ length: Math.min(maxItems, 5) }).map((_, i) => (
+            <div key={i} className="shrink-0 w-[130px] h-[230px] rounded-[14px] bg-bg-tertiary animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (moments.length === 0) return null;
 
   return (
-    <div className="sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px]" style={{ marginLeft: 11, marginRight: 11 }}>
+    <div className={cn("sm:mx-3 my-3 py-3 rounded-[16px]", !noBg && "bg-bg-secondary")} style={{ marginLeft: 11, marginRight: 11 }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">Moments</span>
