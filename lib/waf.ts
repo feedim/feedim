@@ -158,6 +158,8 @@ export function checkUrl(pathname: string, searchParams: URLSearchParams): WafRe
 const WAF_EXEMPT_PATHS = [
   '/api/posts',       // Post content contains HTML
   '/api/upload',      // File uploads
+  '/api/payment/payttr/callback', // PayTR coin webhook
+  '/api/payment/payttr/premium/callback', // PayTR premium webhook
 ];
 
 /**

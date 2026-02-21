@@ -58,14 +58,14 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Profil Ziyaretcileri" size="sm" infoText="Profilini son ziyaret eden kişiler burada gösterilir." centerOnDesktop>
+    <Modal open={open} onClose={onClose} title="Profil Ziyaretçileri" size="sm" infoText="Profilini son ziyaret eden kişiler burada gösterilir." centerOnDesktop>
       <div className="px-4 py-3">
-        <p className="text-xs text-text-muted mb-3">Son 30 gun</p>
+        <p className="text-xs text-text-muted mb-3">Son 30 gün</p>
 
         {loading && visitors.length === 0 ? (
           <UserListSkeleton count={5} />
         ) : visitors.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">Henuz ziyaretci yok</p>
+          <p className="text-center text-text-muted text-sm py-8">Henüz ziyaretçi yok</p>
         ) : (
           <div className="space-y-3">
             {visitors.map(v => {

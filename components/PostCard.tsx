@@ -2,6 +2,7 @@ import { memo } from "react";
 import Link from "next/link";
 import { Heart, Eye } from "lucide-react";
 import NoImage from "@/components/NoImage";
+import BlurImage from "@/components/BlurImage";
 import { formatRelativeDate, formatCount } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
@@ -19,6 +20,7 @@ interface PostCardProps {
     content_type?: string;
     video_duration?: number;
     video_thumbnail?: string;
+    blurhash?: string | null;
     published_at?: string;
     profiles?: {
       user_id: string;
@@ -71,11 +73,11 @@ export default memo(function PostCard({ post }: PostCardProps) {
           {/* Thumbnail */}
           <div className="w-[120px] h-[80px] shrink-0 rounded-lg overflow-hidden bg-bg-secondary relative">
             {(post.video_thumbnail || post.featured_image) ? (
-              <img
-                src={post.video_thumbnail || post.featured_image}
+              <BlurImage
+                src={(post.video_thumbnail || post.featured_image)!}
                 alt={post.title}
-                className="w-full h-full object-cover"
-                loading="lazy"
+                className="w-full h-full"
+                blurhash={post.blurhash}
               />
             ) : (
               <NoImage className="w-full h-full" iconSize={28} />

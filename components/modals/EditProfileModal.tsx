@@ -114,7 +114,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      feedimAlert("error", "Dosya boyutu 10MB'dan kucuk olmali");
+      feedimAlert("error", "Dosya boyutu 10MB'dan küçük olmalı");
       return;
     }
     setCropFile(file);
@@ -132,10 +132,10 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
       if (res.ok) {
         setAvatarUrl(data.url);
       } else {
-        feedimAlert("error", data.error || "Yukleme hatasi");
+        feedimAlert("error", data.error || "Yükleme hatası");
       }
     } catch {
-      feedimAlert("error", "Bir hata olustu");
+      feedimAlert("error", "Bir hata oluştu");
     } finally {
       setAvatarUploading(false);
     }
@@ -172,10 +172,10 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
       if (res.ok) {
         onSave({ ...data.profile, avatar_url: avatarUrl });
       } else {
-        feedimAlert("error", data.error || "Guncelleme hatasi");
+        feedimAlert("error", data.error || "Güncelleme hatası");
       }
     } catch {
-      feedimAlert("error", "Bir hata olustu");
+      feedimAlert("error", "Bir hata oluştu");
     } finally {
       setSaving(false);
     }
@@ -188,7 +188,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
     <Modal
       open={open}
       onClose={onClose}
-      title="Profili Duzenle"
+      title="Profili Düzenle"
       size="md"
       infoText="Profil bilgilerini, fotoğrafını ve biyografini buradan düzenleyebilirsin."
       rightAction={
@@ -276,7 +276,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
               {usernameLockedUntil ? (
                 <p className="text-xs text-text-muted mt-1">{usernameLockedUntil} tarihinde değiştirebileceksiniz</p>
               ) : (
-                <p className="text-xs text-text-muted mt-1">{VALIDATION.username.min}-{VALIDATION.username.max} karakter, harf, rakam, nokta ve alt cizgi</p>
+                <p className="text-xs text-text-muted mt-1">{VALIDATION.username.min}-{VALIDATION.username.max} karakter, harf, rakam, nokta ve alt çizgi</p>
               )}
             </div>
 
@@ -289,7 +289,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
                 maxLength={VALIDATION.bio.max}
                 rows={3}
                 className="input-modern w-full resize-none !pt-3"
-                placeholder="Kendinizi kisaca anlatın..."
+                placeholder="Kendinizi kısaca anlatın..."
               />
               <p className="text-xs text-text-muted mt-1 text-right">{bio.length}/{VALIDATION.bio.max}</p>
             </div>
@@ -309,7 +309,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
 
             {/* Birth date */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Dogum Tarihi</label>
+              <label className="block text-xs text-text-muted mb-1">Doğum Tarihi</label>
               <BirthDateSelect value={birthDate} onChange={setBirthDate} />
             </div>
 
@@ -319,8 +319,8 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
               <select value={gender} onChange={e => setGender(e.target.value)} className="select-modern w-full">
                 <option value="">Belirtmek istemiyorum</option>
                 <option value="male">Erkek</option>
-                <option value="female">Kadin</option>
-                <option value="other">Diger</option>
+                <option value="female">Kadın</option>
+                <option value="other">Diğer</option>
               </select>
             </div>
 

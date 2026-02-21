@@ -74,7 +74,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         throw new Error(data.error || "Hesap silinemedi");
       }
       await supabase.auth.signOut();
-      feedimAlert("success", "Hesabiniz kalici olarak silindi.");
+      feedimAlert("success", "Hesabınız kalıcı olarak silindi.");
       onClose();
       router.push("/");
     } catch (error: any) {

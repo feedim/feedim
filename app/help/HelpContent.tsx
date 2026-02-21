@@ -35,7 +35,7 @@ const sections = [
   { id: "hesap", label: "Hesap ve Kayıt" },
   { id: "guvenlik", label: "Gizlilik ve Güvenlik" },
   { id: "profil", label: "Profil ve Ayarlar" },
-  { id: "icerik", label: "Gönderi ve İçerik" },
+  { id: "icerik", label: "Gönderi, Video ve İçerik" },
   { id: "etkilesim", label: "Etkileşim ve Sosyal" },
   { id: "bildirim", label: "Bildirimler" },
   { id: "jeton", label: "Jeton ve Kazanç" },
@@ -53,6 +53,10 @@ const pageLinks: PageLink[] = [
   { title: "İletişim", href: "/help/contact", description: "Bize ulaşın, destek alın" },
   { title: "Sorumluluk Reddi", href: "/help/disclaimer", description: "Yasal sorumluluk reddi beyanı" },
   { title: "Premium", href: "/premium", description: "Premium üyelik planları ve fiyatları" },
+  { title: "Mesafeli Satış Sözleşmesi", href: "/help/distance-sales-contract", description: "Jeton ve premium satın alma sözleşmesi" },
+  { title: "Ön Bilgilendirme Formu", href: "/help/pre-information-form", description: "Mesafeli satış öncesi tüketici bilgilendirmesi" },
+  { title: "Ödeme Güvenliği", href: "/help/payment-security", description: "SSL, 3D Secure ve PCI-DSS ödeme güvenliği" },
+  { title: "İade Politikası", href: "/help/refund-policy", description: "Jeton ve premium üyelik iade koşulları" },
 ];
 
 const articles: Article[] = [
@@ -398,8 +402,8 @@ const articles: Article[] = [
   {
     section: "premium",
     question: "Premium planları ve fiyatları nelerdir?",
-    searchText: "Basic (39,99 TL/ay), Pro (79,99 TL/ay) ve Max (129 TL/ay) planları mevcuttur. Her plan farklı özellikler sunar.",
-    answer: <>Feedim&apos;de üç Premium plan bulunur: <strong>Basic</strong> (39,99 TL/ay), <strong>Pro</strong> (79,99 TL/ay) ve <strong>Max</strong> (129 TL/ay). Her plan farklı ayrıcalıklar sunar. Pro ve Max planlarda Jeton kazanma, analitik ve önde gösterim gibi ek özellikler mevcuttur. Planları karşılaştırmak için <Link href="/premium" className={lnk}>Premium sayfasını</Link> ziyaret edin.</>,
+    searchText: "Basic (39,99 TL/ay), Pro (79,99 TL/ay), Max (129 TL/ay) ve Business (249 TL/ay) planları mevcuttur. Her plan farklı özellikler sunar.",
+    answer: <>Feedim&apos;de dört Premium plan bulunur: <strong>Basic</strong> (39,99 TL/ay), <strong>Pro</strong> (79,99 TL/ay), <strong>Max</strong> (129 TL/ay) ve <strong>Business</strong> (249 TL/ay). Her plan farklı ayrıcalıklar sunar. Pro ve üzeri planlarda Jeton kazanma, analitik ve önde gösterim gibi ek özellikler mevcuttur. Business planı işletmeler için tasarlanmıştır. Planları karşılaştırmak için <Link href="/premium" className={lnk}>Premium sayfasını</Link> ziyaret edin.</>,
   },
   {
     section: "premium",
@@ -474,8 +478,8 @@ const articles: Article[] = [
   {
     section: "sorun",
     question: "Feedim nedir?",
-    searchText: "Feedim, ilham veren içerikleri keşfedip paylaşabileceğiniz bir içerik platformudur. Kullanıcılar gönderi paylaşır, okuyucular keşfeder. Premium okuyucular Jeton kazandırır.",
-    answer: <>Feedim, ilham veren içerikleri keşfedip paylaşabileceğiniz bir içerik platformudur. Kullanıcılar gönderi paylaşır, okuyucular kaliteli içerikleri keşfeder. Premium okuyucular tarafından okunan gönderiler kullanıcılara Jeton kazandırır. Jetonlar TL&apos;ye çevrilebilir. Detaylar için <Link href="/help/about" className={lnk}>Hakkımızda</Link> sayfamızı inceleyin.</>,
+    searchText: "Feedim, ilham veren içerikleri keşfedip paylaşabileceğiniz bir içerik ve video platformudur. Kullanıcılar gönderi ve video paylaşır, okuyucular keşfeder. Premium okuyucular Jeton kazandırır.",
+    answer: <>Feedim, ilham veren içerikleri keşfedip paylaşabileceğiniz bir içerik ve video platformudur. Kullanıcılar gönderi ve video paylaşır, okuyucular kaliteli içerikleri keşfeder. Premium okuyucular tarafından okunan gönderiler kullanıcılara Jeton kazandırır. Jetonlar TL&apos;ye çevrilebilir. Detaylar için <Link href="/help/about" className={lnk}>Hakkımızda</Link> sayfamızı inceleyin.</>,
   },
   {
     section: "sorun",

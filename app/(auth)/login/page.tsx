@@ -139,7 +139,7 @@ function LoginPageContent() {
         const data = await res.json();
         if (!res.ok) {
           await waitMin();
-          feedimAlert("error", "Kullanıcı bulunamadı.");
+          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin.");
           return;
         }
         email = data.email;
@@ -150,7 +150,7 @@ function LoginPageContent() {
       if (error) {
         await waitMin();
         if (error.message === 'Invalid login credentials') {
-          feedimAlert("error", "E-posta/kullanıcı adı veya şifre yanlış.");
+          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin.");
         } else if (error.message.includes('Email not confirmed')) {
           feedimAlert("error", "E-posta adresinizi onaylamanız gerekiyor.");
         } else {
@@ -176,45 +176,23 @@ function LoginPageContent() {
             return;
           }
 
-          // Frozen account check
+          // Frozen account — auto-reactivate and redirect
           if (profile?.status === "frozen") {
-            feedimAlert("question", "Hesabınız dondurulmuş. Tekrar aktifleştirmek ister misiniz?", {
-              showYesNo: true,
-              onYes: async () => {
-                await fetch("/api/account/freeze", { method: "DELETE" });
-                feedimAlert("success", "Hesabınız tekrar aktifleştirildi!");
-                router.replace(nextUrl || "/dashboard");
-              },
-              onNo: async () => {
-                document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
-                await supabase.auth.signOut();
-              },
-            });
-            setLoading(false);
+            await fetch("/api/account/freeze", { method: "DELETE" });
+            router.replace(nextUrl || "/dashboard");
             return;
           }
 
-          // Deleted account check (soft-delete, 14-day grace period)
+          // Deleted account (soft-delete, 14-day grace period) — auto-recover and redirect
           if (profile?.status === "deleted") {
-            feedimAlert("question", "Hesabınız silinmek üzere. Hesabınızı kurtarmak ister misiniz?", {
-              showYesNo: true,
-              onYes: async () => {
-                const res = await fetch("/api/account/delete", { method: "PUT" });
-                if (res.ok) {
-                  feedimAlert("success", "Hesabınız kurtarıldı!");
-                  router.replace(nextUrl || "/dashboard");
-                } else {
-                  const data = await res.json();
-                  feedimAlert("error", data.error || "Hesap kurtarılamadı, lütfen daha sonra tekrar deneyin");
-                  document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
-                  await supabase.auth.signOut();
-                }
-              },
-              onNo: async () => {
-                document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
-                await supabase.auth.signOut();
-              },
-            });
+            const res = await fetch("/api/account/delete", { method: "PUT" });
+            if (res.ok) {
+              router.replace(nextUrl || "/dashboard");
+            } else {
+              document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
+              await supabase.auth.signOut();
+              feedimAlert("error", "Hesap kurtarılamadı, lütfen destek ile iletişime geçin.");
+            }
             setLoading(false);
             return;
           }

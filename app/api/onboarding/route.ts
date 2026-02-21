@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       const now = new Date();
       const age = now.getFullYear() - d.getFullYear();
       if (isNaN(d.getTime()) || age < 13 || age > 120) {
-        return NextResponse.json({ error: "Yas 13-120 arasinda olmali" }, { status: 400 });
+        return NextResponse.json({ error: "Yaş 13-120 arasında olmalı" }, { status: 400 });
       }
       updates.birth_date = birth;
       break;
@@ -113,7 +113,8 @@ export async function GET() {
     .select("following_id")
     .eq("follower_id", user.id);
 
-  const followingIds = (following || []).map((f) => f.following_id);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const followingIds = (following || []).map((f) => f.following_id).filter(id => uuidRegex.test(id));
   followingIds.push(user.id); // exclude self
 
   const { data: suggestions } = await supabase

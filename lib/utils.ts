@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Parse and clamp page number from URL params (prevents DoS via huge offsets) */
+export function safePage(raw: string | null, max = 500): number {
+  const n = parseInt(raw || "1", 10);
+  if (isNaN(n) || n < 1) return 1;
+  return Math.min(n, max);
+}
+
 /**
  * Türkçe sayı formatı: 1B, 10.5B, 100B, 1Mn vb.
  * B = Bin (thousand), Mn = Milyon (million)
@@ -79,14 +86,33 @@ export function filterNameInput(input: string): string {
   return input.replace(/[^\p{L}\s]/gu, '');
 }
 
-/** Tag adını temizler ve Title Case yapar: "makine öğrenmesi" → "Makine Öğrenmesi" */
+/**
+ * Tag adını sosyal medya formatına çevirir:
+ * "Türkçe Şölen!" → "turkcesolen"
+ * "İstanbul/Ankara" → "istanbulankara"
+ * Kurallar: Türkçe karakter → ASCII, sadece a-z 0-9, max 50 karakter
+ */
 export function formatTagName(name: string): string {
   return name
-    .trim()
-    .replace(/\s+/g, ' ')
-    .split(' ')
-    .map(w => w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1).toLocaleLowerCase('tr-TR'))
-    .join(' ');
+    .replace(/[şŞ]/g, 's')
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/[äÄ]/g, 'a')
+    .replace(/[ëË]/g, 'e')
+    .replace(/[ïÏ]/g, 'i')
+    .replace(/[âÂ]/g, 'a')
+    .replace(/[êÊ]/g, 'e')
+    .replace(/[îÎ]/g, 'i')
+    .replace(/[ôÔ]/g, 'o')
+    .replace(/[ûÛ]/g, 'u')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .substring(0, 50);
 }
 
 export function formatRelativeDate(dateStr: string): string {

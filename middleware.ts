@@ -130,7 +130,7 @@ export async function middleware(request: NextRequest) {
 
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
-          { error: 'Hesabiniz aktif degil', status },
+          { error: 'Hesabınız aktif değil', status },
           { status: 403 }
         )
       }
@@ -197,7 +197,7 @@ export async function middleware(request: NextRequest) {
 
       // Cache for 5 minutes to avoid re-checking on every request
       supabaseResponse.cookies.set('fdm-onboarding', '1', {
-        maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+        maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
       })
     }
   }
@@ -215,12 +215,12 @@ export async function middleware(request: NextRequest) {
       role = profile?.role || 'user'
     }
 
-    if (role !== 'admin' && role !== 'moderator') {
+    if (role !== 'admin') {
       return redirect('/dashboard')
     }
 
     supabaseResponse.cookies.set('fdm-role', role, {
-      maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+      maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
     })
   }
 

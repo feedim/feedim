@@ -16,12 +16,14 @@ interface PostMoreModalProps {
   postId: number;
   postUrl: string;
   authorUsername?: string;
+  authorUserId?: string;
+  authorName?: string;
   onShare?: () => void;
   isOwnPost?: boolean;
   postSlug?: string;
 }
 
-export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, onShare, isOwnPost, postSlug }: PostMoreModalProps) {
+export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug }: PostMoreModalProps) {
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -69,14 +71,14 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   };
 
   const handleDelete = async () => {
-    feedimAlert("question", "Bu gonderiyi silmek istediginize emin misiniz? Bu islem geri alinamaz.", {
+    feedimAlert("question", "Bu gönderiyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.", {
       showYesNo: true,
       onYes: async () => {
         setDeleting(true);
         try {
           const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
           if (res.ok) {
-            feedimAlert("success", "Gonderi silindi");
+            feedimAlert("success", "Gönderi silindi");
             onClose();
             router.push("/dashboard");
           } else {
@@ -84,7 +86,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             feedimAlert("error", data.error || "Silinemedi");
           }
         } catch {
-          feedimAlert("error", "Bir hata olustu");
+          feedimAlert("error", "Bir hata oluştu");
         } finally {
           setDeleting(false);
         }
@@ -102,21 +104,21 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        feedimAlert("success", data.message || "Islem basarili");
+        feedimAlert("success", data.message || "İşlem başarılı");
         onClose();
         router.refresh();
       } else {
-        feedimAlert("error", data.error || "Hata olustu");
+        feedimAlert("error", data.error || "Hata oluştu");
       }
     } catch {
-      feedimAlert("error", "Sunucu hatasi");
+      feedimAlert("error", "Sunucu hatası");
     } finally {
       setActionLoading(false);
     }
   };
 
   const confirmModAction = (action: string, label: string) => {
-    feedimAlert("question", `"${label}" islemini onayliyor musunuz?`, {
+    feedimAlert("question", `"${label}" işlemini onaylıyor musunuz?`, {
       showYesNo: true,
       onYes: () => doModAction(action, label),
     });
@@ -128,10 +130,10 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size="sm" title="Daha Fazla" infoText="Gonderi baglantisini kopyalayabilir, paylasabilir veya uygunsuz icerikleri sikayet edebilirsin.">
+      <Modal open={open} onClose={onClose} size="sm" title="Daha Fazla" infoText="Gönderi bağlantısını kopyalayabilir, paylaşabilir veya uygunsuz içerikleri şikayet edebilirsin.">
         <div className="py-2 px-2.5">
           <button onClick={handleCopyUrl} className={btnClass}>
-            <span className={labelClass}>{copied ? "Kopyalandi!" : "Baglantiyi kopyala"}</span>
+            <span className={labelClass}>{copied ? "Kopyalandı!" : "Bağlantıyı kopyala"}</span>
             {copied ? (
               <Check className="h-5 w-5 text-text-primary" />
             ) : (
@@ -140,7 +142,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
           </button>
 
           <button onClick={handleShare} className={btnClass}>
-            <span className={labelClass}>Paylas</span>
+            <span className={labelClass}>Paylaş</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M16 7L12 3M12 3L8 7M12 3V15M21 11V17.8C21 18.92 21 19.48 20.782 19.907C20.59 20.284 20.284 20.59 19.908 20.782C19.48 21 18.92 21 17.8 21H6.2C5.08 21 4.52 21 4.092 20.782C3.716 20.59 3.41 20.284 3.218 19.908C3 19.48 3 18.92 3 17.8V11"/></svg>
           </button>
 
@@ -158,11 +160,11 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
                 onClick={() => { onClose(); setTimeout(() => setStatsOpen(true), 250); }}
                 className={btnClass}
               >
-                <span className={labelClass}>Istatistikler</span>
+                <span className={labelClass}>İstatistikler</span>
                 <BarChart3 className={iconClass} />
               </button>
               <button onClick={handleEdit} className={btnClass}>
-                <span className={labelClass}>Duzenle</span>
+                <span className={labelClass}>Düzenle</span>
                 <PenLine className={iconClass} />
               </button>
               <button onClick={handleDelete} disabled={deleting} className={btnClass}>
@@ -176,7 +178,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             <>
               <div className="border-t border-border-primary mx-4 my-1" />
               <button onClick={handleReport} className={btnClass}>
-                <span className={`${labelClass} text-error`}>Sikayet et</span>
+                <span className={`${labelClass} text-error`}>Şikayet et</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-error"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
               </button>
             </>
@@ -191,17 +193,17 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
               </p>
 
               <button onClick={() => confirmModAction("approve_post", "Onayla")} disabled={actionLoading} className={btnClass}>
-                <span className={labelClass}>Gonderiyi onayla</span>
+                <span className={labelClass}>Gönderiyi onayla</span>
                 <Shield className="h-5 w-5 text-success" />
               </button>
 
-              <button onClick={() => confirmModAction("remove_post", "Kaldir")} disabled={actionLoading} className={btnClass}>
-                <span className={`${labelClass} text-error`}>Gonderiyi kaldir</span>
+              <button onClick={() => confirmModAction("remove_post", "Kaldır")} disabled={actionLoading} className={btnClass}>
+                <span className={`${labelClass} text-error`}>Gönderiyi kaldır</span>
                 <ShieldOff className="h-5 w-5 text-error" />
               </button>
 
-              <button onClick={() => confirmModAction("archive_post", "Arsivle")} disabled={actionLoading} className={btnClass}>
-                <span className={labelClass}>Arsivle</span>
+              <button onClick={() => confirmModAction("archive_post", "Arşivle")} disabled={actionLoading} className={btnClass}>
+                <span className={labelClass}>Arşivle</span>
                 <Archive className={iconClass} />
               </button>
 
@@ -209,7 +211,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
                 onClick={() => { onClose(); setTimeout(() => setStatsOpen(true), 250); }}
                 className={btnClass}
               >
-                <span className={labelClass}>Istatistikleri gor</span>
+                <span className={labelClass}>İstatistikleri gör</span>
                 <Eye className={iconClass} />
               </button>
             </>
@@ -222,6 +224,8 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
         onClose={() => setReportOpen(false)}
         targetType="post"
         targetId={postId}
+        authorUserId={authorUserId}
+        authorName={authorName || authorUsername}
       />
       <PostStatsModal
         open={statsOpen}

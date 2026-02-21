@@ -3,12 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cached } from "@/lib/cache";
 
-// Sanitize input for PostgREST filter strings to prevent filter injection
+// Sanitize input for PostgREST filter/ilike strings to prevent injection
 function sanitizeForFilter(input: string): string {
-  return input.replace(/[,.()"'\\]/g, "");
+  // Remove PostgREST operators and special characters
+  return input
+    .replace(/[,.()"'\\;:@<>{}[\]|`~!#$^&*+=?/]/g, "")
+    .replace(/%/g, "")
+    .slice(0, 100);
 }
 
 export async function GET(req: NextRequest) {
+  try {
   const { searchParams } = new URL(req.url);
   let q = sanitizeForFilter(searchParams.get("q")?.trim() || "");
   const type = searchParams.get("type") || "all"; // all, users, posts, tags
@@ -189,4 +194,8 @@ export async function GET(req: NextRequest) {
   const response = NextResponse.json(results);
   response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
   return response;
+  } catch (error: any) {
+    console.error('[Search] Error:', error?.message);
+    return NextResponse.json({ users: [], posts: [], tags: [] });
+  }
 }

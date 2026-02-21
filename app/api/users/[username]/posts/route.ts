@@ -21,10 +21,15 @@ export async function GET(
     return NextResponse.json({ error: "Kullanici bulunamadi" }, { status: 404 });
   }
 
-  // Private account check — only owner or followers can see posts
+  // Require auth for pagination (page > 1)
   const { data: { user } } = await supabase.auth.getUser();
+  if (page > 1 && !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const isOwn = user?.id === profile.user_id;
 
+  // Private account check — only owner or followers can see posts
   if (profile.account_private && !isOwn) {
     if (!user) {
       return NextResponse.json({ posts: [], hasMore: false });
@@ -47,7 +52,7 @@ export async function GET(
     .from("posts")
     .select(`
       id, title, slug, excerpt, featured_image, reading_time,
-      like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail,
+      like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail, blurhash,
       profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
     `)
     .eq("author_id", profile.user_id)

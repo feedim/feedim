@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
 
     const countOnly = request.nextUrl.searchParams.get("count") === "true";
 
+    // Only show notifications from the last 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
     if (countOnly) {
       // Check if notifications are paused
       const { data: profile } = await supabase
@@ -26,7 +29,8 @@ export async function GET(request: NextRequest) {
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .eq("is_read", false);
+        .eq("is_read", false)
+        .gte("created_at", thirtyDaysAgo);
       return NextResponse.json({ unread_count: count || 0 });
     }
 
@@ -45,6 +49,7 @@ export async function GET(request: NextRequest) {
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
+      .gte("created_at", thirtyDaysAgo)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit);
 

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkImageBuffer } from '@/lib/moderation';
 import { uploadToR2 } from '@/lib/r2';
+import { encode as encodeBlurhash } from 'blurhash';
+import * as jpeg from 'jpeg-js';
+import { PNG } from 'pngjs';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -69,7 +72,21 @@ export async function POST(request: NextRequest) {
     const key = `images/${path}`;
     const url = await uploadToR2(key, imageBuffer, file.type);
 
-    return NextResponse.json({ success: true, url });
+    // Generate blurhash for JPEG/PNG
+    let blurhash: string | null = null;
+    try {
+      if (file.type === 'image/jpeg') {
+        const decoded = jpeg.decode(imageBuffer, { useTArray: true, maxMemoryUsageInMB: 64 });
+        blurhash = encodeBlurhash(new Uint8ClampedArray(decoded.data), decoded.width, decoded.height, 4, 3);
+      } else if (file.type === 'image/png') {
+        const decoded = PNG.sync.read(imageBuffer);
+        blurhash = encodeBlurhash(new Uint8ClampedArray(decoded.data), decoded.width, decoded.height, 4, 3);
+      }
+    } catch {
+      // Blurhash generation failed — return without it
+    }
+
+    return NextResponse.json({ success: true, url, blurhash });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Yükleme hatası' }, { status: 500 });
   }

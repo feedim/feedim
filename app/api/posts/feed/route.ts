@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEED_PAGE_SIZE } from '@/lib/constants';
 import { cached } from '@/lib/cache';
+import { safePage } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const page = Number(request.nextUrl.searchParams.get('page')) || 1;
+    const page = safePage(request.nextUrl.searchParams.get('page'));
     const offset = (page - 1) * FEED_PAGE_SIZE;
 
     // Cached user data (2 min TTL)
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
     let feedQuery = admin
       .from('posts')
       .select(`
-        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail,
+        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail, blurhash,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
       `)
       .in('id', pageIds)

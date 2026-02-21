@@ -214,7 +214,7 @@ function VideoWriteContent() {
           resolve(dataUrl);
         } catch {
           cleanup();
-          reject(new Error("Thumbnail olusturulamadi"));
+          reject(new Error("Thumbnail oluşturulamadı"));
         }
       };
 
@@ -310,11 +310,11 @@ function VideoWriteContent() {
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve();
           } else {
-            reject(new Error(`Yukleme basarisiz (${xhr.status})`));
+            reject(new Error(`Yükleme başarısız (${xhr.status})`));
           }
         };
 
-        xhr.onerror = () => reject(new Error("Video yuklenemedi"));
+        xhr.onerror = () => reject(new Error("Video yüklenemedi"));
         xhr.onabort = () => reject(new DOMException("Upload iptal edildi", "AbortError"));
 
         abort.signal.addEventListener("abort", () => xhr.abort());
@@ -404,7 +404,7 @@ function VideoWriteContent() {
       const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
       const data = await res.json();
       if (res.ok && data.tag) addTag(data.tag);
-      else feedimAlert("error", data.error || "Etiket olusturulamadi");
+      else feedimAlert("error", data.error || "Etiket oluşturulamadı");
     } catch { feedimAlert("error", "Etiket oluşturulamadı, lütfen daha sonra tekrar deneyin"); } finally { setTagCreating(false); }
   };
 
@@ -416,7 +416,7 @@ function VideoWriteContent() {
       else if (e.key === "ArrowUp") { e.preventDefault(); setTagHighlight(prev => prev > 0 ? prev - 1 : tagSuggestions.length - 1); }
       else if (e.key === "Enter") { e.preventDefault(); if (tagHighlight >= 0) addTag(tagSuggestions[tagHighlight]); else if (tagSuggestions.length > 0) addTag(tagSuggestions[0]); }
       else if (e.key === "Escape") { setTagSuggestions([]); setTagHighlight(-1); }
-    } else if (e.key === "Enter") { e.preventDefault(); if (tagSearch.trim()) createAndAddTag(); }
+    } else if (e.key === "Enter" || e.key === ",") { e.preventDefault(); if (tagSearch.trim()) createAndAddTag(); }
     else if (e.key === "Backspace" && !tagSearch && tags.length > 0) { removeTag(tags[tags.length - 1].id); }
   };
 
@@ -441,15 +441,16 @@ function VideoWriteContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
-    if (!title.trim()) { feedimAlert("error", "Baslik gerekli"); return; }
-    if (title.trim().length < 3) { feedimAlert("error", "Baslik en az 3 karakter olmali"); return; }
-    if (status === "published" && !videoUrl) { feedimAlert("error", "Video yukleneden yayinlanamaz"); return; }
-    if (status === "published" && uploading) { feedimAlert("error", "Video hala yukleniyor, lutfen bekleyin"); return; }
+    if (!title.trim()) { feedimAlert("error", "Başlık gerekli"); return; }
+    if (title.trim().length < 3) { feedimAlert("error", "Başlık en az 3 karakter olmalı"); return; }
+    if (status === "published" && !videoUrl) { feedimAlert("error", "Video yüklenmeden yayınlanamaz"); return; }
+    if (status === "published" && uploading) { feedimAlert("error", "Video hala yükleniyor, lütfen bekleyin"); return; }
 
     setSaving(true);
     try {
       // Upload thumbnail image if it's a data URL
       let thumbUrl = thumbnail;
+      let thumbBlurhash: string | null = null;
       if (thumbnail && thumbnail.startsWith("data:")) {
         try {
           const res = await fetch(thumbnail);
@@ -462,6 +463,7 @@ function VideoWriteContent() {
           const uploadData = await uploadRes.json();
           if (uploadRes.ok && uploadData.url) {
             thumbUrl = uploadData.url;
+            thumbBlurhash = uploadData.blurhash || null;
           }
         } catch { /* use data url as fallback */ }
       }
@@ -481,6 +483,7 @@ function VideoWriteContent() {
           video_url: videoUrl || null,
           video_duration: videoDuration || null,
           video_thumbnail: thumbUrl || null,
+          blurhash: thumbBlurhash,
           allow_comments: allowComments,
           is_for_kids: isForKids,
         }),
@@ -570,10 +573,10 @@ function VideoWriteContent() {
                   <Film className="h-8 w-8 text-accent-main" />
                 </div>
                 <p className="text-base font-semibold text-text-primary mb-1">
-                  Video yuklemek icin tiklayin
+                  Video yüklemek için tıklayın
                 </p>
                 <p className="text-sm text-text-muted mb-3 hidden sm:block">
-                  veya buraya surukleyin
+                  veya buraya sürükleyin
                 </p>
                 <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 text-xs text-text-muted/70 mt-2 sm:mt-0">
                   <span>MP4, WebM, MOV, AVI, MKV...</span>
@@ -624,7 +627,7 @@ function VideoWriteContent() {
                     )}
                   </div>
                   <button onClick={removeVideo} className="text-xs text-error hover:underline">
-                    Kaldir
+                    Kaldır
                   </button>
                 </div>
               </div>
@@ -672,16 +675,16 @@ function VideoWriteContent() {
 
             {/* Thumbnail */}
             <div>
-              <label className="block text-sm font-semibold mb-2">Kucuk Resim</label>
+              <label className="block text-sm font-semibold mb-2">Küçük Resim</label>
               {thumbnail ? (
                 <div className="relative rounded-xl overflow-hidden">
-                  <img src={thumbnail} alt="Kucuk resim" className="w-full h-48 object-cover" />
+                  <img src={thumbnail} alt="Küçük resim" className="w-full h-48 object-cover" />
                   <div className="absolute top-2 right-2 flex gap-1.5">
-                    <label className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition cursor-pointer">
+                    <label className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition cursor-pointer" aria-label="Küçük resim değiştir">
                       <Upload className="h-4 w-4" />
                       <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
                     </label>
-                    <button onClick={() => setThumbnail("")} className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition">
+                    <button onClick={() => setThumbnail("")} className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label="Küçük resmi kaldır">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -689,7 +692,7 @@ function VideoWriteContent() {
               ) : (
                 <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
                   <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
-                  <p className="text-sm text-text-muted">Kucuk resim yukleyin</p>
+                  <p className="text-sm text-text-muted">Küçük resim yükleyin</p>
                   <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
                 </label>
               )}
@@ -715,7 +718,7 @@ function VideoWriteContent() {
                     value={tagSearch}
                     onChange={(e) => setTagSearch(e.target.value)}
                     onKeyDown={handleTagKeyDown}
-                    placeholder="Etiket ara veya yeni olustur..."
+                    placeholder="Etiket ara veya yeni oluştur..."
                     className="input-modern w-full"
                   />
                   {tagSuggestions.length > 0 && (
@@ -728,7 +731,7 @@ function VideoWriteContent() {
                         >
                           <span className="text-text-muted">#</span>
                           {s.name}
-                          {s.post_count !== undefined && <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} gonderi</span>}
+                          {s.post_count !== undefined && <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} gönderi</span>}
                         </button>
                       ))}
                     </div>
@@ -781,8 +784,8 @@ function VideoWriteContent() {
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
-                    <p className="text-sm font-medium">Cocuklara ozel</p>
-                    <p className="text-xs text-text-muted mt-0.5">Bu icerik cocuklara yonelik</p>
+                    <p className="text-sm font-medium">Çocuklara özel</p>
+                    <p className="text-xs text-text-muted mt-0.5">Bu içerik çocuklara yönelik</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />

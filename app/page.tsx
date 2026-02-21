@@ -45,6 +45,12 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Quick check: if Supabase has a stored session, redirect immediately without showing anything
+    const hasStoredSession = typeof window !== "undefined" && Object.keys(localStorage).some(k => k.startsWith("sb-") && k.endsWith("-auth-token"));
+    if (hasStoredSession) {
+      router.replace("/dashboard");
+      return;
+    }
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { router.replace("/dashboard"); return; }
       setSavedAccounts(getSavedAccounts());
@@ -88,7 +94,7 @@ export default function Home() {
               Keşfet ve Paylaş.
             </h1>
             <p className="text-[0.85rem] text-text-muted leading-relaxed mb-4">
-              İlham veren içerikler keşfet, düşüncelerini paylaş ve gündemi sen belirle.
+              İlham veren içerikler keşfet, videolar izle, düşüncelerini paylaş ve gündemi sen belirle.
             </p>
 
             {!mounted && (

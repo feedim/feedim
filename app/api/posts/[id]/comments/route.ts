@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
 import { getUserPlan, checkDailyLimit, logRateLimitHit, COMMENT_CHAR_LIMITS } from '@/lib/limits';
 import { checkTextContent } from '@/lib/moderation';
+import { safePage } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const postId = parseInt(id);
     if (isNaN(postId)) return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 });
 
-    const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
+    const page = safePage(request.nextUrl.searchParams.get('page'));
     const sort = request.nextUrl.searchParams.get('sort') || 'newest';
     const limit = 10;
     const offset = (page - 1) * limit;
@@ -25,6 +26,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get blocked user IDs for current user
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Require auth for pagination (page > 1)
+    if (page > 1 && !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     let blockedIds: string[] = [];
     if (user) {
       const { data: blocks } = await admin

@@ -178,6 +178,7 @@ export default function PostInteractionBar({
         <button
           onClick={() => setLikesOpen(true)}
           className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
+          aria-label="Beğenen kişileri gör"
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
@@ -284,6 +285,7 @@ export default function PostInteractionBar({
         <button
           onClick={() => setLikesOpen(true)}
           className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
+          aria-label="Beğenen kişileri gör"
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (

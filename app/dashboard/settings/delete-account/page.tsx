@@ -185,13 +185,13 @@ export default function DeleteAccountPage() {
           <button
             onClick={handleDelete}
             disabled={!selectedReason || !password || confirmText !== "DELETE" || deleting}
-            className="w-full py-3.5 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 bg-accent-main text-white hover:opacity-90 active:scale-[0.98]"
+            className="t-btn accept w-full disabled:opacity-50"
           >
             {deleting ? <span className="loader" /> : "Hesabı Sil"}
           </button>
           <Link
             href="/dashboard/settings"
-            className="block w-full py-3.5 rounded-2xl font-bold text-sm text-center bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
+            className="t-btn cancel w-full block text-center"
           >
             Vazgeç
           </Link>

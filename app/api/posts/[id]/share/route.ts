@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getUserPlan, checkDailyLimit, logRateLimitHit } from "@/lib/limits";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -32,17 +31,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (!post) return NextResponse.json({ error: "Gönderi bulunamadı" }, { status: 404 });
-
-    // Daily share limit check
-    const plan = await getUserPlan(admin, user.id);
-    const { allowed, limit } = await checkDailyLimit(admin, user.id, "share", plan);
-    if (!allowed) {
-      logRateLimitHit(admin, user.id, "share", request.headers.get("x-forwarded-for")?.split(",")[0]?.trim());
-      return NextResponse.json(
-        { error: `Günlük paylaşım limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
-        { status: 429 }
-      );
-    }
 
     // Insert into shares table — trigger updates share_count on posts
     await admin.from("shares").insert({

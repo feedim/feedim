@@ -123,7 +123,7 @@ export const VALIDATION = {
   postTitle: { min: 3, max: 200 },
   postContent: { minChars: 50, maxWords: 5000, maxWordsMax: 15000, maxListItems: 300 },
   postTags: { max: 5 },
-  tagName: { min: 2, max: 50, pattern: /^[a-zA-ZçÇğĞıİöÖşŞüÜ0-9\s\-_.&#+]+$/ },
+  tagName: { min: 2, max: 50, pattern: /^[a-zA-ZçÇğĞıİöÖşŞüÜâÂêÊîÎôÔûÛäÄëËïÏ0-9\s\-_.&#+]+$/ },
   imageCaption: { max: 200 },
   mentions: { max: 3 },
   comment: { max: 250, maxPremium: 500, maxLinks: 2 },

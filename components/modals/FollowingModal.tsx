@@ -14,12 +14,12 @@ export default function FollowingModal({ open, onClose, username }: FollowingMod
       open={open}
       onClose={onClose}
       title="Takip Edilenler"
-      infoText="Bu kullanicinin takip ettigi kisiler burada listelenir."
+      infoText="Bu kullanıcının takip ettiği kişiler burada listelenir."
       fetchUrl={`/api/users/${username}/following`}
-      emptyText="Henuz takip edilen yok"
+      emptyText="Henüz takip edilen yok"
       filterTabs={[
-        { key: "verified", label: "Dogrulanmis" },
-        { key: "all", label: "Tumu" },
+        { key: "verified", label: "Doğrulanmış" },
+        { key: "all", label: "Tümü" },
       ]}
     />
   );

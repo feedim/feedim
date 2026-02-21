@@ -9,6 +9,10 @@ interface ReportModalProps {
   onClose: () => void;
   targetType: "post" | "user" | "comment";
   targetId: string | number;
+  /** Author user_id — for blocking after report */
+  authorUserId?: string;
+  /** Author display name — for block prompt */
+  authorName?: string;
 }
 
 const reasons = [
@@ -22,7 +26,7 @@ const reasons = [
   { id: "other", label: "Diğer" },
 ];
 
-export default function ReportModal({ open, onClose, targetType, targetId }: ReportModalProps) {
+export default function ReportModal({ open, onClose, targetType, targetId, authorUserId, authorName }: ReportModalProps) {
   const [selectedReason, setSelectedReason] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +52,31 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
         return;
       }
       setSubmitted(true);
+
+      // After successful report, ask if user wants to block the author
+      if (authorUserId) {
+        setTimeout(() => {
+          handleClose();
+          setTimeout(() => {
+            const name = authorName || "Bu kişi";
+            feedimAlert("question", `${name} engellensin mi?`, {
+              showYesNo: true,
+              onYes: async () => {
+                try {
+                  await fetch("/api/blocks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ blocked_id: authorUserId }),
+                  });
+                  feedimAlert("success", `${name} engellendi`);
+                } catch {
+                  feedimAlert("error", "Engellenemedi");
+                }
+              },
+            });
+          }, 300);
+        }, 1500);
+      }
     } catch {
       feedimAlert("error", "Bir hata oluştu");
     } finally {

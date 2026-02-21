@@ -5,7 +5,7 @@ import { createNotification } from '@/lib/notifications';
 import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION } from '@/lib/constants';
-import { getUserPlan } from '@/lib/limits';
+import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
 import { moderateContent } from '@/lib/moderation';
 import { revalidateTag } from 'next/cache';
 import sanitizeHtml from 'sanitize-html';
@@ -18,8 +18,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const admin = createAdminClient();
+
+    // Hourly post rate limit
+    const plan = await getUserPlan(admin, user.id);
+    const { allowed: postAllowed, limit: postLimit } = await checkHourlyPostLimit(admin, user.id, plan);
+    if (!postAllowed) {
+      logRateLimitHit(admin, user.id, 'post', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
+      return NextResponse.json(
+        { error: `Saatlik gönderi limitine ulaştın (${postLimit}). Lütfen biraz bekle.` },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
-    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail } = body;
+    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash } = body;
     const isVideo = content_type === 'video';
 
     // Validate title
@@ -63,8 +76,6 @@ export async function POST(request: NextRequest) {
           allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], '*': ['class'] },
         });
 
-    const admin = createAdminClient();
-
     // Server-side content validation for published posts (skip for video posts)
     if (status === 'published' && !isVideo) {
       const textContent = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, '').trim();
@@ -77,7 +88,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Gönderi en az ${VALIDATION.postContent.minChars} karakter olmalı` }, { status: 400 });
       }
       // Plan-based word limit: Max users get 15000, others get 5000
-      const plan = await getUserPlan(admin, user.id);
       const maxWords = plan === 'max' ? VALIDATION.postContent.maxWordsMax : VALIDATION.postContent.maxWords;
       const wordText = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const wCount = wordText ? wordText.split(' ').length : 0;
@@ -167,6 +177,7 @@ export async function POST(request: NextRequest) {
         video_url: isVideo ? (video_url || null) : null,
         video_duration: isVideo ? (video_duration || null) : null,
         video_thumbnail: isVideo ? (video_thumbnail || null) : null,
+        blurhash: typeof blurhash === 'string' && blurhash.length > 0 ? blurhash : null,
         status: postStatus,
         reading_time: isVideo ? null : readingTime,
         word_count: isVideo ? 0 : wordCount,
@@ -192,12 +203,12 @@ export async function POST(request: NextRequest) {
         if (typeof tagItem === 'number') {
           tagIds.push(tagItem);
         } else if (typeof tagItem === 'string' && tagItem.trim()) {
-          const tagSlug = slugify(tagItem.trim());
-          if (!tagSlug) continue;
+          const sanitizedTag = formatTagName(tagItem.trim());
+          if (!sanitizedTag || sanitizedTag.length < 2) continue;
           const { data: existing } = await admin
             .from('tags')
             .select('id')
-            .eq('slug', tagSlug)
+            .eq('slug', sanitizedTag)
             .single();
 
           if (existing) {
@@ -205,7 +216,7 @@ export async function POST(request: NextRequest) {
           } else {
             const { data: newTag } = await admin
               .from('tags')
-              .insert({ name: formatTagName(tagItem.trim()), slug: tagSlug })
+              .insert({ name: sanitizedTag, slug: sanitizedTag })
               .select('id')
               .single();
             if (newTag) tagIds.push(newTag.id);

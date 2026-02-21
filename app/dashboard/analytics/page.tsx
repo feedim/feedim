@@ -697,7 +697,7 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
                     <div className="flex-1 min-w-0">
                       <p className="text-[0.78rem] font-medium truncate group-hover:text-accent-main transition">{video.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[0.62rem] text-text-muted">{formatCount(video.views)} goruntuleme</span>
+                        <span className="text-[0.62rem] text-text-muted">{formatCount(video.views)} görüntülenme</span>
                         <span className="text-[0.62rem] text-text-muted">·</span>
                         <span className="text-[0.62rem] text-text-muted">{video.watchHours}sa izlenme</span>
                       </div>

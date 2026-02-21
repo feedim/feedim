@@ -33,6 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${displayName} (@${profile.username}) | Feedim`,
     description: profile.bio || `${displayName} Feedim profilini inceleyin.`,
+    keywords: [displayName, profile.username, "feedim", "profil", "içerik", "yazar"],
     openGraph: {
       title: `${displayName} (@${profile.username})`,
       description: profile.bio || `${displayName} Feedim profilini inceleyin.`,
@@ -153,11 +154,14 @@ export default async function ProfilePage({ params }: PageProps) {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Person",
-    name: profile.full_name || profile.username,
-    url: `${baseUrl}/u/${profile.username}`,
-    image: profile.avatar_url || undefined,
-    description: profile.bio || undefined,
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": "Person",
+      name: profile.full_name || profile.username,
+      url: `${baseUrl}/u/${profile.username}`,
+      image: profile.avatar_url || undefined,
+      description: profile.bio || undefined,
+    },
   };
 
   return (

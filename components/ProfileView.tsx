@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock, Users, FileText, Flag, AlertTriangle, EyeOff } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 import PostListSection from "@/components/PostListSection";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -96,6 +96,17 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [cropOpen, setCropOpen] = useState(false);
   const [totalViews, setTotalViews] = useState<number | null>(null);
   const [scores, setScores] = useState<{ profile: number; spam: number; trust: number } | null>(null);
+
+  // Admin panel
+  const [adminTab, setAdminTab] = useState<"recent_users" | "recent_posts" | "reports">("recent_users");
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [adminPosts, setAdminPosts] = useState<any[]>([]);
+  const [adminReports, setAdminReports] = useState<any[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminLoaded, setAdminLoaded] = useState<Record<string, boolean>>({});
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const { requireAuth } = useAuthModal();
   const { user: currentUser } = useUser();
@@ -197,6 +208,29 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       loadComments(1);
     }
   }, [activeTab]);
+
+  const isAdminOrMod = currentUser?.role === "admin" || currentUser?.role === "moderator";
+
+  const loadAdminTab = useCallback(async (tab: string) => {
+    if (adminLoaded[tab]) return;
+    setAdminLoading(true);
+    try {
+      const res = await fetch(`/api/admin/moderation?tab=${tab}&page=1`);
+      const data = await res.json();
+      if (tab === "recent_users") setAdminUsers(data.users || []);
+      else if (tab === "recent_posts") setAdminPosts(data.posts || []);
+      else if (tab === "reports") setAdminReports(data.reports || []);
+      setAdminLoaded(prev => ({ ...prev, [tab]: true }));
+    } catch {}
+    setAdminLoading(false);
+  }, [adminLoaded]);
+
+  // Load admin data when admin tab switches
+  useEffect(() => {
+    if (profile.is_own && isAdminOrMod) {
+      loadAdminTab(adminTab);
+    }
+  }, [adminTab, profile.is_own, isAdminOrMod]);
 
   const doUnfollow = async () => {
     if (requested) {
@@ -326,6 +360,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             <button
               onClick={() => router.back()}
               className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
+              aria-label="Geri"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -333,13 +368,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </div>
           <div className="flex items-center gap-1">
             {profile.is_own && (
-              <Link href="/dashboard/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center">
+              <Link href="/dashboard/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center" aria-label="Ayarlar">
                 <Settings className="h-5 w-5" />
               </Link>
             )}
             <button
               onClick={() => setMoreOpen(true)}
               className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
+              aria-label="Daha fazla seçenek"
             >
               <MoreHorizontal className="h-5 w-5" />
             </button>
@@ -352,7 +388,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         <div className="flex items-start gap-4 mb-4">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <button onClick={isAnyBlocked ? undefined : handleAvatarClick} className="block">
+            <button onClick={isAnyBlocked ? undefined : handleAvatarClick} className="block" aria-label="Profil fotoğrafını görüntüle">
               {isAnyBlocked ? (
                 <img className="default-avatar-auto w-20 h-20 rounded-full object-cover" alt="" loading="lazy" />
               ) : profile.avatar_url ? (
@@ -485,7 +521,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         )}
 
         {/* Profile Score — own profile only */}
-        {profile.is_own && scores && (
+        {currentUser?.role === "admin" && scores && (
           <div className="mb-3 px-4 py-2.5 rounded-[13px] bg-accent-main/10 border border-accent-main/20">
             <div className="flex items-center gap-1.5 mb-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-accent-main" />
@@ -577,6 +613,156 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </Link>
         )}
 
+        {/* Admin / Moderator Panel */}
+        {profile.is_own && isAdminOrMod && (
+          <div className="mb-4 rounded-[15px] bg-bg-secondary overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border-primary">
+              <ShieldCheck className="h-4 w-4 text-accent-main" />
+              <span className="text-[0.88rem] font-bold">Yönetim Paneli</span>
+            </div>
+            <div className="flex border-b border-border-primary">
+              <button
+                onClick={() => setAdminTab("recent_users")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[0.78rem] font-medium transition ${adminTab === "recent_users" ? "text-accent-main border-b-2 border-accent-main" : "text-text-muted"}`}
+              >
+                <Users className="h-3.5 w-3.5" /> Kullanıcılar
+              </button>
+              <button
+                onClick={() => setAdminTab("recent_posts")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[0.78rem] font-medium transition ${adminTab === "recent_posts" ? "text-accent-main border-b-2 border-accent-main" : "text-text-muted"}`}
+              >
+                <FileText className="h-3.5 w-3.5" /> İçerikler
+              </button>
+              <button
+                onClick={() => setAdminTab("reports")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[0.78rem] font-medium transition ${adminTab === "reports" ? "text-accent-main border-b-2 border-accent-main" : "text-text-muted"}`}
+              >
+                <Flag className="h-3.5 w-3.5" /> Raporlar
+              </button>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto">
+              {adminLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="skeleton h-5 w-5 rounded-full" />
+                </div>
+              ) : adminTab === "recent_users" ? (
+                adminUsers.length === 0 ? (
+                  <p className="text-center text-text-muted text-sm py-6">Kullanıcı bulunamadı</p>
+                ) : (
+                  <div className="divide-y divide-border-primary">
+                    {adminUsers.map((u: any) => (
+                      <Link
+                        key={u.user_id}
+                        href={`/u/${u.username}`}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition"
+                      >
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />
+                        ) : (
+                          <img className="default-avatar-auto w-8 h-8 rounded-full object-cover" alt="" loading="lazy" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[0.82rem] font-semibold truncate">{u.full_name || u.username}</span>
+                            {u.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(u.premium_plan)} />}
+                            {u.shadow_banned && <EyeOff className="h-3 w-3 text-error" />}
+                          </div>
+                          <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
+                            <span>@{u.username}</span>
+                            <span className={`px-1 py-0.5 rounded text-[0.6rem] font-medium ${
+                              u.status === "active" ? "bg-success/15 text-success" :
+                              u.status === "blocked" ? "bg-error/15 text-error" :
+                              u.status === "frozen" ? "bg-info/15 text-info" :
+                              "bg-warning/15 text-warning"
+                            }`}>{u.status}</span>
+                            {u.spam_score > 0 && <span className="text-error">S:{u.spam_score}</span>}
+                          </div>
+                        </div>
+                        <span className="text-[0.65rem] text-text-muted shrink-0">
+                          {new Date(u.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )
+              ) : adminTab === "recent_posts" ? (
+                adminPosts.length === 0 ? (
+                  <p className="text-center text-text-muted text-sm py-6">İçerik bulunamadı</p>
+                ) : (
+                  <div className="divide-y divide-border-primary">
+                    {adminPosts.map((p: any) => {
+                      const author = Array.isArray(p.author) ? p.author[0] : p.author;
+                      return (
+                        <Link
+                          key={p.id}
+                          href={`/post/${p.slug}`}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[0.82rem] font-semibold truncate">{p.title}</p>
+                            <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
+                              <span>@{author?.username || "?"}</span>
+                              <span className={`px-1 py-0.5 rounded text-[0.6rem] font-medium ${
+                                p.status === "published" ? "bg-success/15 text-success" :
+                                p.status === "moderation" ? "bg-warning/15 text-warning" :
+                                p.status === "removed" ? "bg-error/15 text-error" :
+                                "bg-bg-tertiary text-text-muted"
+                              }`}>{p.status}</span>
+                              {p.content_type === "video" && <span className="text-accent-main">Video</span>}
+                              <span>{p.view_count || 0}g · {p.like_count || 0}b</span>
+                            </div>
+                          </div>
+                          <span className="text-[0.65rem] text-text-muted shrink-0">
+                            {new Date(p.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                adminReports.length === 0 ? (
+                  <p className="text-center text-text-muted text-sm py-6">Bekleyen rapor yok</p>
+                ) : (
+                  <div className="divide-y divide-border-primary">
+                    {adminReports.map((r: any) => {
+                      const reporter = Array.isArray(r.reporter) ? r.reporter[0] : r.reporter;
+                      const contentAuthor = Array.isArray(r.content_author) ? r.content_author[0] : r.content_author;
+                      return (
+                        <div key={r.id} className="px-4 py-2.5">
+                          <div className="flex items-center gap-2 mb-1">
+                            <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
+                            <span className="text-[0.78rem] font-semibold truncate">{r.reason || "Rapor"}</span>
+                            <span className={`ml-auto px-1.5 py-0.5 rounded text-[0.6rem] font-medium ${
+                              r.content_type === "post" ? "bg-accent-main/15 text-accent-main" :
+                              r.content_type === "comment" ? "bg-info/15 text-info" :
+                              "bg-warning/15 text-warning"
+                            }`}>{r.content_type}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
+                            <span>Raporlayan: @{reporter?.username || "?"}</span>
+                            <span>·</span>
+                            <span>Hedef: @{contentAuthor?.username || "?"}</span>
+                            <span className="ml-auto">{new Date(r.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
+                          </div>
+                          {r.description && <p className="text-[0.72rem] text-text-muted mt-1 line-clamp-2">{r.description}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              )}
+            </div>
+            <Link
+              href="/dashboard/admin"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 border-t border-border-primary text-[0.78rem] font-medium text-accent-main hover:bg-bg-tertiary transition"
+            >
+              Yönetim Paneline Git
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            </Link>
+          </div>
+        )}
+
         {/* Tabs */}
         {!isAnyBlocked && (!profile.account_private || profile.is_own || following) && (
           <>
@@ -613,42 +799,48 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             {/* Posts Tab */}
             {activeTab === "posts" && (
               <div className="pt-2 -mx-4">
-                <PostListSection
-                  posts={posts}
-                  loading={postsLoading}
-                  hasMore={hasMore}
-                  onLoadMore={() => { setPage(p => p + 1); loadPosts(page + 1); }}
-                  emptyTitle="Henüz gönderi yok"
-                  emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
-                />
+                {mounted ? (
+                  <PostListSection
+                    posts={posts}
+                    loading={postsLoading}
+                    hasMore={hasMore}
+                    onLoadMore={() => { setPage(p => p + 1); loadPosts(page + 1); }}
+                    emptyTitle="Henüz gönderi yok"
+                    emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
+                  />
+                ) : null}
               </div>
             )}
 
             {/* Comments Tab */}
             {activeTab === "comments" && (
               <div className="pt-2 -mx-4">
-                <PostListSection
-                  posts={commentedPosts}
-                  loading={commentsLoading}
-                  hasMore={commentsHasMore}
-                  onLoadMore={() => { setCommentsPage(p => p + 1); loadComments(commentsPage + 1); }}
-                  emptyTitle="Henüz yorum yok"
-                  emptyDescription={profile.is_own ? "Yorum yaptığınız gönderiler burada görünecek." : "Bu kullanıcı henüz bir gönderiye yorum yapmamış."}
-                />
+                {mounted ? (
+                  <PostListSection
+                    posts={commentedPosts}
+                    loading={commentsLoading}
+                    hasMore={commentsHasMore}
+                    onLoadMore={() => { setCommentsPage(p => p + 1); loadComments(commentsPage + 1); }}
+                    emptyTitle="Henüz yorum yok"
+                    emptyDescription={profile.is_own ? "Yorum yaptığınız gönderiler burada görünecek." : "Bu kullanıcı henüz bir gönderiye yorum yapmamış."}
+                  />
+                ) : null}
               </div>
             )}
 
             {/* Likes Tab */}
             {activeTab === "likes" && (
               <div className="pt-2 -mx-4">
-                <PostListSection
-                  posts={likedPosts}
-                  loading={likesLoading}
-                  hasMore={likesHasMore}
-                  onLoadMore={() => { setLikesPage(p => p + 1); loadLikes(likesPage + 1); }}
-                  emptyTitle="Henüz beğeni yok"
-                  emptyDescription={profile.is_own ? "Beğendikleriniz burada görünecek." : "Bu kullanıcı henüz bir gönderi beğenmemiş."}
-                />
+                {mounted ? (
+                  <PostListSection
+                    posts={likedPosts}
+                    loading={likesLoading}
+                    hasMore={likesHasMore}
+                    onLoadMore={() => { setLikesPage(p => p + 1); loadLikes(likesPage + 1); }}
+                    emptyTitle="Henüz beğeni yok"
+                    emptyDescription={profile.is_own ? "Beğendikleriniz burada görünecek." : "Bu kullanıcı henüz bir gönderi beğenmemiş."}
+                  />
+                ) : null}
               </div>
             )}
 

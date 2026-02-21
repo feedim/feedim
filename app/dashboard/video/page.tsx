@@ -62,7 +62,7 @@ export default function VideoPage() {
           </div>
         ) : videos.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-7 p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-7 p-4 sm:p-6">
               {videos.map(video => (
                 <VideoGridCard key={video.id} video={video} />
               ))}
@@ -72,9 +72,9 @@ export default function VideoPage() {
         ) : (
           <EmptyState
             icon={<Film className="h-12 w-12" />}
-            title="Henuz video yok"
-            description="Ilk videoyu yukleyerek baslayabilirsiniz."
-            action={{ label: "Video Yukle", href: "/dashboard/write/video" }}
+            title="Henüz video yok"
+            description="İlk videoyu yükleyerek başlayabilirsiniz."
+            action={{ label: "Video Yükle", href: "/dashboard/write/video" }}
           />
         )}
       </div>

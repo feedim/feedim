@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     }
     lastRequestMap.set(user.id, now);
 
-    // 3. Son pending/completed ödemeyi bul
-    const { data: payment, error: paymentError } = await adminClient
+    // 3. Son coin ödemesini kontrol et
+    const { data: coinPayment } = await adminClient
       .from('coin_payments')
       .select('*')
       .eq('user_id', user.id)
@@ -41,27 +41,60 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    if (paymentError || !payment) {
-      return NextResponse.json({ status: 'no_payment' });
+    // 4. Son premium ödemesini kontrol et
+    const { data: premiumPayment } = await adminClient
+      .from('premium_payments')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'completed'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // En son ödemeyi bul (coin vs premium)
+    const coinTime = coinPayment ? new Date(coinPayment.created_at).getTime() : 0;
+    const premiumTime = premiumPayment ? new Date(premiumPayment.created_at).getTime() : 0;
+
+    // Premium ödeme daha yeniyse onu kullan
+    if (premiumTime > coinTime && premiumPayment) {
+      if (premiumPayment.status === 'completed') {
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('premium_plan, premium_until')
+          .eq('user_id', user.id)
+          .single();
+
+        return NextResponse.json({
+          status: 'completed',
+          type: 'premium',
+          plan_name: premiumPayment.metadata?.plan_name || premiumPayment.plan_id,
+          premium_plan: profile?.premium_plan,
+          premium_until: profile?.premium_until,
+        });
+      }
+      return NextResponse.json({ status: 'pending' });
     }
 
-    // 4. Zaten completed → bakiyeyi döndür
-    if (payment.status === 'completed') {
-      const { data: profile } = await adminClient
-        .from('profiles')
-        .select('coin_balance')
-        .eq('user_id', user.id)
-        .single();
+    // Coin ödeme
+    if (coinPayment) {
+      if (coinPayment.status === 'completed') {
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('coin_balance')
+          .eq('user_id', user.id)
+          .single();
 
-      return NextResponse.json({
-        status: 'completed',
-        coin_balance: profile?.coin_balance ?? 0,
-        coins_added: payment.coins_purchased,
-      });
+        return NextResponse.json({
+          status: 'completed',
+          type: 'coin',
+          coin_balance: profile?.coin_balance ?? 0,
+          coins_added: coinPayment.coins_purchased,
+        });
+      }
+      return NextResponse.json({ status: 'pending' });
     }
 
-    // 5. Pending → callback henüz gelmedi, coin ekleme yapma
-    return NextResponse.json({ status: 'pending' });
+    return NextResponse.json({ status: 'no_payment' });
 
   } catch {
     return NextResponse.json({ status: 'error' }, { status: 500 });

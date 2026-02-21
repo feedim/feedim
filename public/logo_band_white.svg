@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 32" fill="none">
+  <!-- Visa -->
+  <g transform="translate(0,2)">
+    <rect x="0" y="0" width="52" height="28" rx="4" fill="#000" opacity="0.08"/>
+    <text x="26" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" font-style="italic" fill="#1a1a1a" opacity="0.7">VISA</text>
+  </g>
+  <!-- Mastercard -->
+  <g transform="translate(62,2)">
+    <rect x="0" y="0" width="52" height="28" rx="4" fill="#000" opacity="0.08"/>
+    <circle cx="21" cy="14" r="8" fill="#EB001B" opacity="0.85"/>
+    <circle cx="31" cy="14" r="8" fill="#F79E1B" opacity="0.85"/>
+    <rect x="22" y="7.5" width="8" height="13" fill="#FF5F00" opacity="0.75" rx="1"/>
+  </g>
+  <!-- Troy -->
+  <g transform="translate(124,2)">
+    <rect x="0" y="0" width="52" height="28" rx="4" fill="#000" opacity="0.08"/>
+    <text x="26" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#1a1a1a" opacity="0.7">TROY</text>
+  </g>
+  <!-- Amex -->
+  <g transform="translate(186,2)">
+    <rect x="0" y="0" width="52" height="28" rx="4" fill="#000" opacity="0.08"/>
+    <text x="26" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#1a1a1a" opacity="0.7">AMEX</text>
+  </g>
+  <!-- 3D Secure -->
+  <g transform="translate(248,2)">
+    <rect x="0" y="0" width="60" height="28" rx="4" fill="#000" opacity="0.08"/>
+    <text x="30" y="13" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#1a1a1a" opacity="0.7">3D</text>
+    <text x="30" y="23" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#1a1a1a" opacity="0.6">SECURE</text>
+  </g>
+  <!-- SSL -->
+  <g transform="translate(318,2)">
+    <rect x="0" y="0" width="52" height="28" rx="4" fill="#000" opacity="0.08"/>
+    <text x="26" y="12" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="#1a1a1a" opacity="0.5">256-BIT</text>
+    <text x="26" y="22" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#1a1a1a" opacity="0.7">SSL</text>
+  </g>
+</svg>

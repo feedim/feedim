@@ -29,7 +29,7 @@ const getCachedVideoPost = unstable_cache(getVideoPost, ["embed-video"], { reval
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getCachedVideoPost(slug);
-  if (!post) return { title: "Video bulunamadi" };
+  if (!post) return { title: "Video bulunamadı" };
 
   return {
     title: post.title,
@@ -46,14 +46,16 @@ export default async function EmbedPage({ params }: PageProps) {
   const postUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://feedim.com"}/post/${post.slug}`;
 
   return (
-    <div className="w-screen h-screen bg-black flex flex-col overflow-hidden">
-      <div className="flex-1 flex items-center min-h-0">
-        <div className="w-full">
-          <VideoPlayer
-            src={post.video_url}
-            poster={post.video_thumbnail || post.featured_image || undefined}
-            autoStart
-          />
+    <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full">
+            <VideoPlayer
+              src={post.video_url}
+              poster={post.video_thumbnail || post.featured_image || undefined}
+              autoStart
+            />
+          </div>
         </div>
       </div>
       {/* Feedim branding bar */}

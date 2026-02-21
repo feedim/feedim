@@ -16,8 +16,8 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-bold text-text-primary mb-3">1. Genel Bilgiler</h2>
           <p>
-            Feedim, kullanıcıların gönderi yazıp yayınlayabildiği, okuyucuların içerikleri keşfedip
-            okuyabildiği bir içerik platformudur. Bu koşullar, Feedim platformunu kullanırken
+            Feedim, kullanıcıların gönderi yazıp video paylaşabildiği, okuyucuların içerikleri keşfedip
+            okuyabildiği bir içerik ve video platformudur. Bu koşullar, Feedim platformunu kullanırken
             uymanız gereken kuralları belirler.
           </p>
           <p className="mt-3">

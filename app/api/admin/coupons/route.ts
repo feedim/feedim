@@ -62,13 +62,13 @@ export async function POST(request: NextRequest) {
     // Only allow alphanumeric, max 9
     const cleanCode = code.trim().toLocaleUpperCase('tr-TR').replace(/[^A-ZİŞĞÜÖÇ0-9]/g, '');
     if (cleanCode.length < 3 || cleanCode.length > 9) {
-      return NextResponse.json({ error: "Kupon kodu 3-9 karakter olmali (harf/rakam)" }, { status: 400 });
+      return NextResponse.json({ error: "Kupon kodu 3-9 karakter olmalı (harf/rakam)" }, { status: 400 });
     }
     if (!discountPercent || discountPercent < 1 || discountPercent > 100) {
-      return NextResponse.json({ error: "Indirim %1-%100 arasi olmali" }, { status: 400 });
+      return NextResponse.json({ error: "İndirim %1-%100 arası olmalı" }, { status: 400 });
     }
     if (maxUses !== null && maxUses !== undefined && maxUses < 1) {
-      return NextResponse.json({ error: "Max kullanim en az 1 olmali" }, { status: 400 });
+      return NextResponse.json({ error: "Max kullanım en az 1 olmalı" }, { status: 400 });
     }
 
     // Check duplicate

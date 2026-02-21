@@ -29,8 +29,8 @@ export interface FilterTab {
 }
 
 const DEFAULT_FILTER_TABS: FilterTab[] = [
-  { key: "verified", label: "Dogrulanmis" },
-  { key: "all", label: "Tumu" },
+  { key: "verified", label: "Doğrulanmış" },
+  { key: "all", label: "Tümü" },
   { key: "following", label: "Takip Edilenler" },
 ];
 
@@ -129,9 +129,9 @@ export default function UserListModal({
   };
 
   const filterEmptyText = (key: string) => {
-    if (key === "verified") return "Dogrulanmis hesap yok";
-    if (key === "following") return "Takip ettiginiz kimse yok";
-    return "Sonuc yok";
+    if (key === "verified") return "Doğrulanmış hesap yok";
+    if (key === "following") return "Takip ettiğiniz kimse yok";
+    return "Sonuç yok";
   };
 
   return (

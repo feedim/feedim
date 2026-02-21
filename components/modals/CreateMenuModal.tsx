@@ -107,7 +107,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">Video</p>
-            <p className="text-xs text-text-muted mt-0.5">Video icerigi yukleyin (maks 10 dk)</p>
+            <p className="text-xs text-text-muted mt-0.5">Video içeriği yükleyin (maks 10 dk)</p>
           </div>
         </button>
 
@@ -144,6 +144,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                   onClick={(e) => { e.stopPropagation(); deleteDraft(draft.id); }}
                   className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-tertiary transition text-text-muted hover:text-error shrink-0"
                   title="Sil"
+                  aria-label="Taslağı sil"
                 >
                   <Trash2 className="h-[16px] w-[16px]" />
                 </button>

@@ -16,7 +16,7 @@ export default function DisclaimerPage() {
         <section>
           <h2 className="text-lg font-bold text-text-primary mb-3">Genel</h2>
           <p>
-            Feedim, kullanıcıların gönderi yazıp yayınlayabildiği bir içerik platformudur.
+            Feedim, kullanıcıların gönderi yazıp video paylaşabildiği bir içerik ve video platformudur.
             Platform üzerinde yayınlanan tüm gönderiler ve içerikler, ilgili kullanıcıların
             sorumluluğundadır.
           </p>

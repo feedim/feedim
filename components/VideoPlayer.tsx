@@ -243,6 +243,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     if (!v) return;
     v.muted = !v.muted;
     setMuted(v.muted);
+    try { localStorage.setItem('fdm-video-muted', String(v.muted)); } catch {}
   }, []);
 
   const changeVolume = useCallback((val: number) => {
@@ -255,10 +256,17 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
 
   const toggleFullscreen = useCallback(async () => {
     const c = containerRef.current;
+    const v = videoRef.current;
     if (!c) return;
     try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await c.requestFullscreen();
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+      } else if (c.requestFullscreen) {
+        await c.requestFullscreen();
+      } else if ((v as any)?.webkitEnterFullscreen) {
+        (v as any).webkitEnterFullscreen();
+      }
     } catch {}
   }, []);
 
@@ -359,7 +367,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     const onCanPlay = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onLoadedData = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onError = () => setError(true);
-    const onFsChange = () => setFullscreen(!!document.fullscreenElement);
+    const onFsChange = () => setFullscreen(!!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
     const onVideoEnded = () => { stopRAF(); onEndedRef.current?.(); };
 
     v.addEventListener("play", onPlay);
@@ -373,6 +381,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     v.addEventListener("error", onError);
     v.addEventListener("ended", onVideoEnded);
     document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
 
     // Start playback immediately
     v.play().catch(() => {});
@@ -390,9 +399,23 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
       v.removeEventListener("error", onError);
       v.removeEventListener("ended", onVideoEnded);
       document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer]);
+
+  // Restore user's mute preference from localStorage
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      const saved = localStorage.getItem('fdm-video-muted');
+      if (saved === 'false') {
+        v.muted = false;
+        setMuted(false);
+      }
+    } catch {}
+  }, []);
 
   // Auto-start from countdown — unmute since user already interacted
   useEffect(() => {
@@ -401,6 +424,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     if (!v) return;
     v.muted = false;
     setMuted(false);
+    try { localStorage.setItem('fdm-video-muted', 'false'); } catch {}
   }, [autoStart]);
 
   // Position memory — resume from where the user left off
@@ -635,12 +659,12 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
             onClick={(e) => {
               e.stopPropagation();
               const v = videoRef.current;
-              if (v) { v.muted = false; setMuted(false); }
+              if (v) { v.muted = false; setMuted(false); try { localStorage.setItem('fdm-video-muted', 'false'); } catch {} }
             }}
             className="absolute bottom-20 left-3 z-30 flex items-center gap-2 bg-black/70 hover:bg-black/80 text-white rounded-full px-3.5 py-2 text-[0.78rem] font-medium transition-all cursor-pointer"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
-            Sesi Ac
+            Sesi Aç
           </button>
         )}
 
@@ -739,7 +763,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                 <button
                   onClick={(e) => { e.stopPropagation(); setMiniPlayer(false); wrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
                   className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                  title="Genislet"
+                  title="Genişlet"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" /></svg>
                 </button>
@@ -749,21 +773,21 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                 {/* Play/Pause */}
                 <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={playing ? "Duraklat (k)" : "Oynat (k)"} title={playing ? "Duraklat (k)" : "Oynat (k)"}>
                   {playing ? (
-                    <svg className="h-5 w-5" fill="white" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+                    <svg className="h-6 w-6" fill="white" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
                   ) : (
-                    <svg className="h-5 w-5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    <svg className="h-6 w-6" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                   )}
                 </button>
 
                 {/* Volume */}
                 <div className="flex items-center gap-0.5 group/vol">
-                  <button onClick={toggleMute} aria-label={muted ? "Sesi ac (m)" : "Sesi kapat (m)"} title={muted ? "Sesi ac (m)" : "Sesi kapat (m)"} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <button onClick={toggleMute} aria-label={muted ? "Sesi aç (m)" : "Sesi kapat (m)"} title={muted ? "Sesi aç (m)" : "Sesi kapat (m)"} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                     {muted || volume === 0 ? (
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
+                      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
                     ) : volume < 0.5 ? (
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="white"><path d="M18.5 12A4.5 4.5 0 0016 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z" /></svg>
+                      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M18.5 12A4.5 4.5 0 0016 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z" /></svg>
                     ) : (
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+                      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
                     )}
                   </button>
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="vp-volume-slider w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100" aria-label="Ses seviyesi" />
@@ -782,7 +806,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                     )}
                   </button>
                   {settingsMenu && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-neutral-900/95 backdrop-blur-md rounded-xl min-w-[200px] shadow-xl border border-white/10 overflow-hidden">
+                    <div className="absolute bottom-full right-0 sm:right-0 mb-2 bg-neutral-900/95 backdrop-blur-md rounded-xl min-w-[200px] max-w-[min(280px,calc(100vw-32px))] shadow-xl border border-white/10 overflow-hidden z-50">
                       {settingsTab === "main" ? (
                         <>
                           {/* Cinema mode toggle — hidden on mobile */}
@@ -798,7 +822,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                           </div>
                           {/* Speed — navigate to sub-tab */}
                           <button onClick={() => setSettingsTab("speed")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors border-b border-white/10">
-                            <span className="text-[0.82rem] text-white font-medium">Hiz</span>
+                            <span className="text-[0.82rem] text-white font-medium">Hız</span>
                             <span className="text-[0.78rem] text-white/50 flex items-center gap-1">
                               {speed === 1 ? "Normal" : `${speed}x`}
                               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
@@ -806,7 +830,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                           </button>
                           {/* Shortcuts — navigate to sub-tab */}
                           <button onClick={() => setSettingsTab("shortcuts")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors">
-                            <span className="text-[0.82rem] text-white font-medium">Kisayollar</span>
+                            <span className="text-[0.82rem] text-white font-medium">Kısayollar</span>
                             <svg className="h-3.5 w-3.5 text-white/50" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
                           </button>
                         </>
@@ -815,7 +839,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                           {/* Speed sub-tab — back + options */}
                           <button onClick={() => setSettingsTab("main")} className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors border-b border-white/10">
                             <svg className="h-3.5 w-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
-                            <span className="text-[0.82rem] text-white font-medium">Hiz</span>
+                            <span className="text-[0.82rem] text-white font-medium">Hız</span>
                           </button>
                           <div className="py-1">
                             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
@@ -830,28 +854,28 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                           {/* Shortcuts sub-tab */}
                           <button onClick={() => setSettingsTab("main")} className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors border-b border-white/10">
                             <svg className="h-3.5 w-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
-                            <span className="text-[0.82rem] text-white font-medium">Kisayollar</span>
+                            <span className="text-[0.82rem] text-white font-medium">Kısayollar</span>
                           </button>
-                          <div className="py-1.5 max-h-[260px] overflow-y-auto vp-shortcuts-scroll">
+                          <div className="py-1.5 max-h-[200px] sm:max-h-[260px] overflow-y-auto vp-shortcuts-scroll">
                             {[
-                              ["Bosluk / K", "Oynat / Duraklat"],
+                              ["Boşluk / K", "Oynat / Duraklat"],
                               ["J", "10 sn geri"],
                               ["L", "10 sn ileri"],
                               ["\u2190", "5 sn geri"],
                               ["\u2192", "5 sn ileri"],
                               ["\u2191 / \u2193", "Ses seviyesi"],
-                              ["M", "Sesi kapat/ac"],
+                              ["M", "Sesi kapat/aç"],
                               ["F", "Tam ekran"],
                               ["T", "Sinema modu"],
                               ["P", "Pencerede oynat"],
                               ["0\u20139", "Videoda atla (%)"],
-                              ["< / >", "Hizi azalt/artir"],
-                              ["Home", "Basa don"],
+                              ["< / >", "Hızı azalt/artır"],
+                              ["Home", "Başa dön"],
                               ["End", "Sona git"],
                             ].map(([key, desc]) => (
-                              <div key={key} className="flex items-center justify-between px-3.5 py-[5px]">
-                                <span className="text-[0.75rem] text-white/50">{desc}</span>
-                                <kbd className="text-[0.7rem] text-white/80 bg-white/10 rounded px-1.5 py-0.5 font-mono min-w-[28px] text-center">{key}</kbd>
+                              <div key={key} className="flex items-center justify-between gap-2 px-3.5 py-[5px]">
+                                <span className="text-[0.75rem] text-white/50 shrink-0">{desc}</span>
+                                <kbd className="text-[0.7rem] text-white/80 bg-white/10 rounded px-1.5 py-0.5 font-mono min-w-[28px] text-center shrink-0">{key}</kbd>
                               </div>
                             ))}
                           </div>
@@ -870,7 +894,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                 </button>
 
                 {/* Fullscreen — h-5 w-5 */}
-                <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={fullscreen ? "Tam ekrandan cik (f)" : "Tam ekran (f)"} title={fullscreen ? "Tam ekrandan cik (f)" : "Tam ekran (f)"}>
+                <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={fullscreen ? "Tam ekrandan çık (f)" : "Tam ekran (f)"} title={fullscreen ? "Tam ekrandan çık (f)" : "Tam ekran (f)"}>
                   {fullscreen ? (
                     <svg className="h-5 w-5" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" /></svg>
                   ) : (

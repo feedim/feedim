@@ -149,7 +149,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
           setComments(prev => prev.filter(c => c.id !== tempId));
         }
         setTotalCount(c => Math.max(0, c - 1));
-        feedimAlert("error", data.error || "Yorum gonderilemedi");
+        feedimAlert("error", data.error || "Yorum gönderilemedi");
         return;
       }
 
@@ -176,7 +176,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
         setComments(prev => prev.filter(c => c.id !== tempId));
       }
       setTotalCount(c => Math.max(0, c - 1));
-      feedimAlert("error", "Yorum gonderilemedi");
+      feedimAlert("error", "Yorum gönderilemedi");
     }
   };
 

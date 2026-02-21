@@ -20,7 +20,7 @@ const platforms = [
   { id: "tw", name: "X", icon: "tw" },
   { id: "fb", name: "Facebook", icon: "fb" },
   { id: "lk", name: "LinkedIn", icon: "lk" },
-  { id: "native", name: "Diger", icon: "share" },
+  { id: "native", name: "Diğer", icon: "share" },
 ];
 
 export default function ShareModal({ open, onClose, url, title, postId, isVideo, postSlug }: ShareModalProps) {
@@ -44,7 +44,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
         });
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Gunluk paylasim limitine ulastin.");
+          feedimAlert("error", data.error || "Günlük paylaşım limitine ulaştın.");
         }
       } catch {}
     }
@@ -125,7 +125,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Paylas" size="sm" infoText="Gonderiyi sosyal medya veya baglanti ile paylasabilirsin.">
+    <Modal open={open} onClose={onClose} title="Paylaş" size="sm" infoText="Gönderiyi sosyal medya veya bağlantı ile paylaşabilirsin.">
       <div className="p-2 space-y-1">
         {/* Platform buttons */}
         {platforms.map((p) => (
@@ -144,56 +144,56 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
           </button>
         ))}
 
-        {/* URL Copy bar */}
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-3 w-full px-4 py-3 bg-bg-tertiary rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2 mb-1"
-        >
-          <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0">
-            {copied ? <Check className="h-4 w-4 text-success" /> : <LinkIcon className="h-4 w-4 text-text-muted" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[0.82rem] font-medium text-text-primary">
-              {copied ? "Kopyalandi!" : "Baglantiyi Kopyala"}
-            </p>
-            <p className="text-[0.72rem] text-text-muted truncate">{fullUrl}</p>
-          </div>
-        </button>
-
-        {/* Embed code — only for video posts */}
+        {/* Embed code — above copy link, only for video posts */}
         {isVideo && postSlug && (
           <>
             {!showEmbed ? (
               <button
                 onClick={() => setShowEmbed(true)}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left"
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2"
               >
                 <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0">
                   <Code2 className="h-4 w-4 text-text-muted" />
                 </div>
                 <span className="flex-1 text-[0.84rem] font-medium text-text-primary">
-                  Yerlesik Kod
+                  Yerleşik Kod
                 </span>
                 <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
               </button>
             ) : (
-              <div className="px-4 py-3 space-y-2">
-                <p className="text-[0.82rem] font-medium text-text-primary">Yerlesik Kod</p>
+              <div className="px-4 py-3 space-y-2 mt-2">
+                <p className="text-[0.82rem] font-medium text-text-primary">Yerleşik Kod</p>
                 <div className="bg-bg-secondary rounded-xl p-3 text-[0.72rem] text-text-muted font-mono break-all leading-relaxed select-all">
                   {embedCode}
                 </div>
                 <button
                   onClick={handleCopyEmbed}
                   className="flex items-center gap-2 px-4 py-2 rounded-full text-[0.82rem] font-medium transition"
-                  style={embedCopied ? { backgroundColor: "var(--success-color)", color: "#fff" } : { backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+                  style={embedCopied ? { backgroundColor: "var(--accent-color)", color: "#fff" } : { backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)" }}
                 >
                   {embedCopied ? <Check className="h-4 w-4" /> : <Code2 className="h-4 w-4" />}
-                  {embedCopied ? "Kopyalandi!" : "Kodu Kopyala"}
+                  {embedCopied ? "Kopyalandı!" : "Kodu Kopyala"}
                 </button>
               </div>
             )}
           </>
         )}
+
+        {/* URL Copy bar */}
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-3 w-full px-4 py-3 bg-bg-tertiary rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2 mb-1"
+        >
+          <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0">
+            {copied ? <Check className="h-4 w-4 text-accent-main" /> : <LinkIcon className="h-4 w-4 text-text-muted" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[0.82rem] font-medium text-text-primary">
+              {copied ? "Kopyalandı!" : "Bağlantıyı Kopyala"}
+            </p>
+            <p className="text-[0.72rem] text-text-muted truncate">{fullUrl}</p>
+          </div>
+        </button>
       </div>
     </Modal>
   );

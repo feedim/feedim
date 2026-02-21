@@ -8,6 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: now, changeFrequency: 'daily', priority: 1 },
+    { url: `${baseUrl}/premium`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/help`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
@@ -17,10 +18,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/disclaimer`, lastModified: now, changeFrequency: 'monthly', priority: 0.2 },
   ]
 
+  const supabase = await createClient()
+
   // Dynamic post pages
   let postPages: MetadataRoute.Sitemap = []
   try {
-    const supabase = await createClient()
     const { data: posts } = await supabase
       .from('posts')
       .select('slug, updated_at, published_at')
@@ -39,5 +41,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fail silently — static pages will still be included
   }
 
-  return [...staticPages, ...postPages]
+  // Dynamic user profile pages
+  let profilePages: MetadataRoute.Sitemap = []
+  try {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('username, updated_at')
+      .eq('status', 'active')
+      .eq('account_private', false)
+      .order('updated_at', { ascending: false })
+
+    if (profiles) {
+      profilePages = profiles.map(p => ({
+        url: `${baseUrl}/u/${encodeURIComponent(p.username)}`,
+        lastModified: p.updated_at || now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.6,
+      }))
+    }
+  } catch {}
+
+  return [...staticPages, ...postPages, ...profilePages]
 }

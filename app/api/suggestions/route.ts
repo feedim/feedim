@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
     );
     const offset = (page - 1) * requestedLimit;
 
+    // Require auth for pagination (page > 1)
+    if (page > 1 && !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     // ── Guest mode ──
     if (!user) {
       const { data: profiles } = await admin

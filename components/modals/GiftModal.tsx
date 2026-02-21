@@ -290,7 +290,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
         });
         const data = await res.json();
         if (!res.ok) {
-          feedimAlert("error", data.error || "Bir hata olustu");
+          feedimAlert("error", data.error || "Bir hata oluştu");
           if (i > 0) loadData();
           return;
         }
@@ -313,7 +313,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
       // Show done button after sequential animations complete
       setTimeout(() => setShowDone(true), 1800);
     } catch {
-      feedimAlert("error", "Bir hata olustu");
+      feedimAlert("error", "Bir hata oluştu");
     } finally {
       setSending(false);
     }

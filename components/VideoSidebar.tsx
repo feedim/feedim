@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import NoImage from "@/components/NoImage";
+import BlurImage from "@/components/BlurImage";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
@@ -11,6 +12,7 @@ export interface VideoItem {
   slug: string;
   video_thumbnail?: string;
   featured_image?: string;
+  blurhash?: string | null;
   video_duration?: number;
   view_count?: number;
   published_at?: string;
@@ -54,11 +56,10 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
             {/* Thumbnail */}
             <div className={`relative rounded-md overflow-hidden bg-bg-tertiary shrink-0 ${compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]"}`}>
               {(video.video_thumbnail || video.featured_image) ? (
-                <img
-                  src={video.video_thumbnail || video.featured_image}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  loading="lazy"
+                <BlurImage
+                  src={(video.video_thumbnail || video.featured_image)!}
+                  className="w-full h-full"
+                  blurhash={video.blurhash}
                 />
               ) : (
                 <NoImage className="w-full h-full" iconSize={24} />
@@ -81,7 +82,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                   {video.profiles?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(video.profiles.premium_plan)} />}
                 </p>
                 <p className="text-[0.68rem] text-text-muted">
-                  {video.view_count ? `${formatCount(video.view_count)} goruntulenme` : ""}
+                  {video.view_count ? `${formatCount(video.view_count)} görüntülenme` : ""}
                   {video.view_count && video.published_at ? " · " : ""}
                   {video.published_at ? formatRelativeDate(video.published_at) : ""}
                 </p>

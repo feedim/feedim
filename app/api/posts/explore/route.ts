@@ -3,12 +3,13 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEED_PAGE_SIZE } from '@/lib/constants';
 import { cached } from '@/lib/cache';
+import { safePage } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
-    const page = Number(request.nextUrl.searchParams.get('page')) || 1;
+    const page = safePage(request.nextUrl.searchParams.get('page'));
     const categorySlug = request.nextUrl.searchParams.get('category') || '';
     const tagSlug = request.nextUrl.searchParams.get('tag') || '';
     const sortBy = request.nextUrl.searchParams.get('sort') || 'trending';
@@ -18,6 +19,11 @@ export async function GET(request: NextRequest) {
 
     // Get user (optional — explore works for anonymous too)
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Require auth for pagination (page > 1)
+    if (page > 1 && !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     let blockedIds = new Set<string>();
     if (user) {
@@ -46,7 +52,7 @@ export async function GET(request: NextRequest) {
     let query = admin
       .from('posts')
       .select(`
-        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, trending_score, published_at, content_type, video_duration, video_thumbnail,
+        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, trending_score, published_at, content_type, video_duration, video_thumbnail, blurhash,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
       `)
       .eq('status', 'published')

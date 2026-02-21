@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!data) {
-    return NextResponse.json({ error: "Kullanici bulunamadi" }, { status: 404 });
+    return NextResponse.json({ error: "Geçersiz kimlik bilgileri" }, { status: 404 });
   }
 
   return NextResponse.json({ email: data.email });

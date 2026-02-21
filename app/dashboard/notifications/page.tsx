@@ -107,10 +107,14 @@ export default function NotificationsPage() {
       const from = (pageNum - 1) * NOTIFICATIONS_PAGE_SIZE;
       const to = from + NOTIFICATIONS_PAGE_SIZE - 1;
 
+      // Only show notifications from the last 30 days
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
         .eq("user_id", user.id)
+        .gte("created_at", thirtyDaysAgo)
         .order("created_at", { ascending: false })
         .range(from, to);
 

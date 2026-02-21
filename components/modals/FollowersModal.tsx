@@ -13,13 +13,13 @@ export default function FollowersModal({ open, onClose, username }: FollowersMod
     <UserListModal
       open={open}
       onClose={onClose}
-      title="Takipciler"
-      infoText="Bu kullaniciyi takip eden kisiler burada listelenir."
+      title="Takipçiler"
+      infoText="Bu kullanıcıyı takip eden kişiler burada listelenir."
       fetchUrl={`/api/users/${username}/followers`}
-      emptyText="Henuz takipci yok"
+      emptyText="Henüz takipçi yok"
       filterTabs={[
-        { key: "verified", label: "Dogrulanmis" },
-        { key: "all", label: "Tumu" },
+        { key: "verified", label: "Doğrulanmış" },
+        { key: "all", label: "Tümü" },
         { key: "following", label: "Takip Edilenler" },
       ]}
     />

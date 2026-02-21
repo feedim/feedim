@@ -451,6 +451,11 @@ input[type="radio"]:active {
 }
 
 /* ── Feedim Loader (WordPress birebir) ── */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @keyframes loaderSpin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -520,9 +525,17 @@ a .loader {
   max-width: none !important;
 }
 
-/* Progress bar touch area — prevent scroll during seek */
+/* Progress bar touch area — prevent scroll during seek + expanded touch target */
 .vp-progress-touch {
   touch-action: none;
+}
+.vp-progress-touch::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  bottom: -14px;
+  left: 0;
+  right: 0;
 }
 
 /* Mini player floating style — position: fixed !important for stacking context safety */

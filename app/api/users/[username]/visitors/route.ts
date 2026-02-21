@@ -27,7 +27,7 @@ export async function GET(
   const admin = createAdminClient();
   const plan = await getUserPlan(admin, user.id);
   if (plan !== "max") {
-    return NextResponse.json({ error: "Bu ozellik sadece Max abonelere ozeldir" }, { status: 403 });
+    return NextResponse.json({ error: "Bu özellik sadece Max abonelere özeldir" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);

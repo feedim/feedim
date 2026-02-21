@@ -26,6 +26,14 @@ export default function ContactPage() {
             <p className="text-sm text-text-secondary mb-2">Teknik destek ve yardım için:</p>
             <a href="mailto:support@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">support@feedim.com</a>
           </div>
+          <div>
+            <p className="text-sm text-text-secondary mb-2">Yardım merkezi ve sıkça sorulan sorular:</p>
+            <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>
+          </div>
+          <div>
+            <p className="text-sm text-text-secondary mb-2">İş birlikleri ve reklam için:</p>
+            <a href="mailto:marketing@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">marketing@feedim.com</a>
+          </div>
         </div>
         <div className="rounded-radius-md p-8">
           <h2 className="text-lg font-bold text-text-primary mb-4">Yanıt Süresi</h2>

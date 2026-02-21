@@ -13,13 +13,13 @@ export default function LikesModal({ open, onClose, postId }: LikesModalProps) {
     <UserListModal
       open={open}
       onClose={onClose}
-      title="Begeniler"
-      infoText="Gonderiyi begenen kisiler burada listelenir."
+      title="Beğeniler"
+      infoText="Gönderiyi beğenen kişiler burada listelenir."
       fetchUrl={`/api/posts/${postId}/likes`}
-      emptyText="Henuz begeni yok"
+      emptyText="Henüz beğeni yok"
       filterTabs={[
-        { key: "verified", label: "Dogrulanmis" },
-        { key: "all", label: "Tumu" },
+        { key: "verified", label: "Doğrulanmış" },
+        { key: "all", label: "Tümü" },
         { key: "following", label: "Takip Edilenler" },
       ]}
     />

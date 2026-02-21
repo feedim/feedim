@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { getUserPlan, checkDailyLimit, logRateLimitHit } from '@/lib/limits';
 
 export async function POST(
   request: NextRequest,
@@ -29,18 +27,6 @@ export async function POST(
       // Unsave
       await supabase.from('bookmarks').delete().eq('id', existing.id);
       return NextResponse.json({ saved: false });
-    }
-
-    // Daily save limit check
-    const admin = createAdminClient();
-    const plan = await getUserPlan(admin, user.id);
-    const { allowed, limit } = await checkDailyLimit(admin, user.id, 'save', plan);
-    if (!allowed) {
-      logRateLimitHit(admin, user.id, 'save', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
-      return NextResponse.json(
-        { error: `Günlük kaydetme limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
-        { status: 429 }
-      );
     }
 
     // Save

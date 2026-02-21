@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { slugify, transliterateTurkish, formatTagName } from '@/lib/utils';
+import { transliterateTurkish, formatTagName } from '@/lib/utils';
 import { VALIDATION } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
@@ -30,8 +30,11 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (q.trim()) {
-      const transliterated = transliterateTurkish(q.trim());
-      query = query.or(`slug.ilike.%${transliterated}%,name.ilike.%${q.trim()}%`);
+      // Sanitize query for tag search (same rules as tag creation)
+      const sanitized = formatTagName(q.trim());
+      if (sanitized) {
+        query = query.or(`name.ilike.%${sanitized}%,slug.ilike.%${sanitized}%`);
+      }
     }
 
     const { data, error } = await query;
@@ -87,13 +90,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Etiket sadece sayılardan oluşamaz' }, { status: 400 });
     }
 
-    // Display name: Title Case with Turkish chars preserved
-    const displayName = formatTagName(trimmedName);
-    const slug = slugify(trimmedName);
+    // Sanitize: Turkish chars → ASCII, only a-z0-9, max 50 chars
+    const sanitizedName = formatTagName(trimmedName);
 
-    if (!slug || !displayName) {
+    if (!sanitizedName || sanitizedName.length < VALIDATION.tagName.min) {
       return NextResponse.json({ error: 'Geçersiz etiket adı' }, { status: 400 });
     }
+
+    // Name and slug are now identical (social media style)
+    const slug = sanitizedName;
 
     // Use admin client to bypass RLS for tag creation
     const admin = createAdminClient();
@@ -111,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     const { data: newTag, error } = await admin
       .from('tags')
-      .insert({ name: displayName, slug })
+      .insert({ name: sanitizedName, slug })
       .select('id, name, slug')
       .single();
 

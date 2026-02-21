@@ -199,8 +199,8 @@ function ExploreContent() {
     return { cleanQuery: trimmed, forceType: null };
   };
 
-  // Search
-  const doSearch = (value: string, tab: ExploreTab) => {
+  // Search — requires authentication
+  const doSearch = async (value: string, tab: ExploreTab) => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     const { cleanQuery, forceType } = parseSearchPrefix(value);
     if (!cleanQuery || cleanQuery.length < 1) {
@@ -208,6 +208,9 @@ function ExploreContent() {
       setSearching(false);
       return;
     }
+
+    const user = await requireAuth();
+    if (!user) { setQuery(""); return; }
 
     setSearching(true);
     const typeParam = forceType || (tab === "for_you" ? "all" : tab === "posts" ? "posts" : tab);
@@ -562,7 +565,7 @@ function ExploreContent() {
             type="text"
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
-            onFocus={() => setFocused(true)}
+            onFocus={async () => { const user = await requireAuth(); if (!user) { inputRef.current?.blur(); return; } setFocused(true); }}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearchSubmit(); } }}
             placeholder="#etiket veya @kullanıcı ara..."
             className="input-modern w-full !pl-10 pr-9 py-2.5 text-[0.9rem]"

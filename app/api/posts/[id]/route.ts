@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { slugify, calculateReadingTime, generateExcerpt } from '@/lib/utils';
+import { slugify, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION } from '@/lib/constants';
 import { moderateContent } from '@/lib/moderation';
@@ -227,12 +227,12 @@ export async function PUT(
         if (typeof tagItem === 'number') {
           tagIds.push(tagItem);
         } else if (typeof tagItem === 'string' && tagItem.trim()) {
-          const tagSlug = slugify(tagItem.trim());
-          if (!tagSlug) continue;
+          const sanitizedTag = formatTagName(tagItem.trim());
+          if (!sanitizedTag || sanitizedTag.length < 2) continue;
           const { data: existingTag } = await supabase
             .from('tags')
             .select('id')
-            .eq('slug', tagSlug)
+            .eq('slug', sanitizedTag)
             .single();
 
           if (existingTag) {
@@ -240,7 +240,7 @@ export async function PUT(
           } else {
             const { data: newTag } = await supabase
               .from('tags')
-              .insert({ name: tagItem.trim(), slug: tagSlug })
+              .insert({ name: sanitizedTag, slug: sanitizedTag })
               .select('id')
               .single();
             if (newTag) tagIds.push(newTag.id);
@@ -295,6 +295,11 @@ export async function DELETE(
     if (!existing || existing.author_id !== user.id) {
       return NextResponse.json({ error: 'Yetkisiz işlem' }, { status: 403 });
     }
+
+    // Nullify foreign key references before deleting
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    await admin.from('coin_transactions').update({ related_post_id: null }).eq('related_post_id', id);
 
     const { error } = await supabase.from('posts').delete().eq('id', id);
 

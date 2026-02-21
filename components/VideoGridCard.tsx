@@ -1,5 +1,6 @@
 import Link from "next/link";
 import NoImage from "@/components/NoImage";
+import BlurImage from "@/components/BlurImage";
 import { formatRelativeDate, formatCount } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
@@ -9,6 +10,7 @@ export interface VideoGridItem {
   slug: string;
   video_thumbnail?: string;
   featured_image?: string;
+  blurhash?: string | null;
   video_duration?: number;
   view_count?: number;
   published_at?: string;
@@ -34,11 +36,11 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
     <Link href={`/post/${video.slug}`} className="group block">
       <div className="relative aspect-video rounded-xl overflow-hidden bg-bg-tertiary mb-3">
         {(video.video_thumbnail || video.featured_image) ? (
-          <img
-            src={video.video_thumbnail || video.featured_image}
+          <BlurImage
+            src={(video.video_thumbnail || video.featured_image)!}
             alt={video.title}
-            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-            loading="lazy"
+            className="w-full h-full"
+            blurhash={video.blurhash}
           />
         ) : (
           <NoImage className="w-full h-full" iconSize={28} />

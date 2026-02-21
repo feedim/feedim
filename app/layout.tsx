@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { AuthModalProvider } from "@/components/AuthModal";
 import FeedimAlertProvider from "@/components/FeedimAlert";
@@ -20,9 +21,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Feedim - Keşfet ve Paylaş",
-  description: "Feedim ile ilham veren gönderiler yaz, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
-  keywords: ["gönderi yazma", "içerik platformu", "blog", "keşfet", "paylaş", "kullanıcı", "okuyucu", "feedim"],
+  title: "Feedim — Keşfet ve Paylaş",
+  description: "Feedim ile ilham veren içerikler yaz, videolar paylaş, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
+  keywords: ["gönderi yazma", "içerik platformu", "video platformu", "blog", "keşfet", "paylaş", "kullanıcı", "okuyucu", "feedim"],
   authors: [{ name: "Feedim" }],
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   icons: {
@@ -30,16 +31,16 @@ export const metadata: Metadata = {
     apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "Feedim - Keşfet ve Paylaş",
-    description: "İlham veren gönderiler yaz, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
+    title: "Feedim — Keşfet ve Paylaş",
+    description: "İlham veren içerikler yaz, videolar paylaş, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
     type: "website",
     locale: "tr_TR",
     siteName: "Feedim",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Feedim - Keşfet ve Paylaş",
-    description: "İlham veren gönderiler yaz, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
+    title: "Feedim — Keşfet ve Paylaş",
+    description: "İlham veren içerikler yaz, videolar paylaş, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
   },
 };
 
@@ -66,10 +67,28 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+              url: process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com",
               name: "Feedim",
-              description: "Keşfet ve Paylaş - İçerik platformu",
+              description: "Keşfet ve Paylaş - İçerik ve video platformu",
               inLanguage: "tr-TR",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/dashboard/explore?q={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Feedim",
+              url: process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com",
+              logo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/favicon.png`,
+              sameAs: [],
             }),
           }}
         />
@@ -80,6 +99,11 @@ export default function RootLayout({
           {children}
         </AuthModalProvider>
         <FeedimAlertProvider />
+        {/* Google Analytics */}
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-H0J8RKSJ59" strategy="afterInteractive" />
+        <Script id="gtag-init" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-H0J8RKSJ59');` }} />
+        {/* Google AdSense */}
+        <Script src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1411343179923275" crossOrigin="anonymous" strategy="afterInteractive" />
       </body>
     </html>
   );

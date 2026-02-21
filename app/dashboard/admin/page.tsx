@@ -177,7 +177,7 @@ export default function AdminPage() {
         ) : tab === "flagged_posts" ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Bayrakli gonderi yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">Bayraklı gönderi yok</div>
             ) : items.map((p: any) => (
               <div key={p.id} className="bg-bg-secondary rounded-xl p-4">
                 <div className="flex items-start justify-between">
@@ -209,7 +209,7 @@ export default function AdminPage() {
         ) : tab === "spam_users" ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Spam kullanici yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">Spam kullanıcı yok</div>
             ) : items.map((u: any) => (
               <div key={u.user_id} className="bg-bg-secondary rounded-xl p-4">
                 <div className="flex items-start justify-between">
@@ -245,7 +245,7 @@ export default function AdminPage() {
                         onClick={() => takeAction("unshadow_ban", "user", u.user_id)}
                         disabled={actionLoading === u.user_id}
                         className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition"
-                        title="Shadow Ban Kaldir"
+                        title="Shadow Ban Kaldır"
                       ><Eye className="h-4 w-4" /></button>
                     )}
                     {/* Ban toggle */}
@@ -275,7 +275,7 @@ export default function AdminPage() {
         ) : tab === "withdrawals" ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Bekleyen cekim talebi yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">Bekleyen çekim talebi yok</div>
             ) : items.map((w: any) => (
               <div key={w.id} className="bg-bg-secondary rounded-xl p-4">
                 <div className="flex items-start justify-between">

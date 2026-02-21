@@ -1,6 +1,9 @@
 # Feedim Robots.txt
 User-agent: *
 Allow: /
+Allow: /post/
+Allow: /u/
+Allow: /premium
 Allow: /about
 Allow: /contact
 Allow: /help
@@ -8,6 +11,10 @@ Allow: /terms
 Allow: /privacy
 Allow: /kvkk
 Allow: /disclaimer
+Allow: /help/distance-sales-contract
+Allow: /help/pre-information-form
+Allow: /help/payment-security
+Allow: /help/refund-policy
 
 # Auth
 Disallow: /login
@@ -17,10 +24,11 @@ Disallow: /reset-password
 Disallow: /verify-mfa
 Disallow: /auth/
 
-# Dashboard & API
+# Dashboard & API & Search
 Disallow: /dashboard/
 Disallow: /api/
+Disallow: /search
 
 Crawl-delay: 1
 
-Sitemap: https://www.feedim.com/sitemap.xml
+Sitemap: https://feedim.com/sitemap.xml

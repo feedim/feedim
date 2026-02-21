@@ -92,26 +92,26 @@ export default function VideoPlayerClient({
           onClick={(e) => { e.stopPropagation(); toggleAutoplay(); }}
           className={`relative w-9 h-5 rounded-full transition-colors ${autoplay ? "" : "bg-white/20"}`}
           style={autoplay ? { backgroundColor: "var(--accent-color)" } : undefined}
+          aria-label="Otomatik oynatmayı aç/kapat"
         >
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoplay ? "left-[18px]" : "left-0.5"}`} />
         </button>
       </div>
 
-      {/* End screen — autoplay ON with countdown (banner style) */}
+      {/* End screen — autoplay ON with countdown (compact & responsive) */}
       {ended && countdown !== null && countdown > 0 && (
-        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
-          <div className="text-center max-w-sm mx-auto px-4">
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-20 overflow-hidden">
+          <div className="text-center w-full max-w-[220px] sm:max-w-[260px] px-3">
             {/* Circular countdown with thumbnail */}
-            <div className="relative w-52 mx-auto mb-4">
+            <div className="relative w-36 sm:w-44 mx-auto mb-3">
               {nextVideoThumbnail && (
-                <div className="rounded-xl overflow-hidden shadow-lg">
+                <div className="rounded-lg overflow-hidden shadow-lg">
                   <img src={nextVideoThumbnail} alt="" className="w-full aspect-video object-cover" />
                 </div>
               )}
-              {/* SVG circular countdown overlay */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-14 h-14">
-                  <svg className="w-14 h-14 -rotate-90" viewBox="0 0 48 48">
+                <div className="relative w-11 h-11 sm:w-12 sm:h-12">
+                  <svg className="w-11 h-11 sm:w-12 sm:h-12 -rotate-90" viewBox="0 0 48 48">
                     <circle cx="24" cy="24" r={circleR} fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
                     <circle
                       cx="24" cy="24" r={circleR}
@@ -124,29 +124,29 @@ export default function VideoPlayerClient({
                       style={{ transition: "stroke-dashoffset 1s linear" }}
                     />
                   </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-white text-lg font-bold tabular-nums">
+                  <span className="absolute inset-0 flex items-center justify-center text-white text-base font-bold tabular-nums">
                     {countdown}
                   </span>
                 </div>
               </div>
             </div>
-            <p className="text-white/50 text-[0.78rem] mb-1">Sonraki video</p>
+            <p className="text-white/50 text-[0.72rem] mb-0.5">Sonraki video</p>
             {nextVideoTitle && (
-              <p className="text-white font-semibold text-[0.95rem] mb-4 line-clamp-2">{nextVideoTitle}</p>
+              <p className="text-white font-semibold text-[0.85rem] sm:text-[0.9rem] mb-3 line-clamp-2">{nextVideoTitle}</p>
             )}
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-2.5">
               <button
                 onClick={cancelAutoplay}
-                className="px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-[0.82rem] font-medium transition"
+                className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-[0.78rem] font-medium transition"
               >
-                Iptal
+                İptal
               </button>
               <button
                 onClick={playNow}
-                className="px-5 py-2 rounded-full text-white text-[0.82rem] font-medium transition hover:opacity-90"
+                className="px-4 py-1.5 rounded-full text-white text-[0.78rem] font-medium transition hover:opacity-90"
                 style={{ backgroundColor: "var(--accent-color)" }}
               >
-                Simdi Oynat
+                Şimdi Oynat
               </button>
             </div>
           </div>
@@ -160,6 +160,7 @@ export default function VideoPlayerClient({
           <button
             onClick={replay}
             className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center mb-4 transition"
+            aria-label="Tekrar oynat"
           >
             <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 1 9 9M3 12V3m0 9h9" />

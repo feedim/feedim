@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Lock, AlertCircle, Check, Tag, Shield, Sparkles, BarChart3, Eye } from "lucide-react";
@@ -71,10 +71,11 @@ const planNames: Record<string, string> = {
 export default function SubscriptionPaymentPage() {
   const [data, setData] = useState<PremiumPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [iframeToken, setIframeToken] = useState("");
   const [proration, setProration] = useState<ProrationInfo | null>(null);
   const [prorationLoading, setProrationLoading] = useState(false);
+  const initiatedRef = useRef(false);
   const router = useRouter();
   const supabase = createClient();
   const { user: currentUser } = useUser();
@@ -109,44 +110,51 @@ export default function SubscriptionPaymentPage() {
     }
   };
 
-  const handlePurchase = async () => {
-    if (!data || processing) return;
-    setProcessing(true);
-    setError("");
+  // PayTR token al
+  useEffect(() => {
+    if (!data || initiatedRef.current || prorationLoading) return;
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        feedimAlert("error", "Giriş yapılmadı");
-        router.push("/login");
-        return;
+    const isCurrentPlan = userCurrentPlan === data.plan_id || (proration?.has_active && proration?.current_plan === data.plan_id);
+    if (isCurrentPlan) return;
+
+    initiatedRef.current = true;
+
+    const initiatePayment = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          feedimAlert("error", "Giriş yapılmadı");
+          router.push("/login");
+          return;
+        }
+
+        const response = await fetch("/api/payment/payttr/premium/initiate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan_id: data.plan_id, billing: data.billing }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          setError(result.error || "Ödeme başlatılamadı");
+          return;
+        }
+
+        if (result.token) {
+          sessionStorage.removeItem("fdm_premium");
+          sessionStorage.setItem("fdm_payment_pending", "true");
+          setIframeToken(result.token);
+        } else {
+          setError("Ödeme işlenemedi");
+        }
+      } catch (err: any) {
+        setError("Ödeme hatası: " + (err.message || "Lütfen tekrar deneyin"));
       }
+    };
 
-      const res = await fetch("/api/payment/dev", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "premium", plan_id: data.plan_id }),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        setError(result.error || "İşlem başarısız, lütfen daha sonra tekrar deneyin");
-        return;
-      }
-
-      sessionStorage.removeItem("fdm_premium");
-      sessionStorage.setItem("fdm_welcome_premium", JSON.stringify({
-        plan_name: result.plan_name,
-        plan_id: data.plan_id,
-      }));
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError("Bir hata oluştu, lütfen daha sonra tekrar deneyin");
-    } finally {
-      setProcessing(false);
-    }
-  };
+    initiatePayment();
+  }, [data, router, supabase, prorationLoading, proration, userCurrentPlan]);
 
   if (loading || !data) {
     return (
@@ -270,46 +278,61 @@ export default function SubscriptionPaymentPage() {
           )}
         </div>
 
-        {/* Error */}
+        {/* Error State */}
         {error && (
           <div className="rounded-2xl border border-error/20 bg-error/5 p-4 mb-5">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-error mt-0.5 shrink-0" />
               <div>
-                <p className="text-error font-medium text-sm mb-1">{error}</p>
+                <p className="text-error font-medium text-sm mb-2">{error}</p>
                 <button
-                  onClick={() => setError("")}
+                  onClick={() => {
+                    setError("");
+                    initiatedRef.current = false;
+                    if (data) setData({ ...data });
+                  }}
                   className="text-xs text-error underline hover:text-error/80 transition"
                 >
-                  Kapat
+                  Tekrar Dene
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* CTA Button */}
+        {/* Current Plan Warning */}
         {isCurrentPlan ? (
           <button disabled className="premium-cta-btn w-full !opacity-60 !cursor-not-allowed">
             Mevcut Plan
           </button>
         ) : (
-          <button
-            onClick={handlePurchase}
-            disabled={processing || prorationLoading}
-            className="premium-cta-btn w-full disabled:opacity-50"
-          >
-            {processing ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                İşleniyor...
-              </span>
-            ) : isUpgrade ? (
-              `${data.plan_name} Planına Yükselt — ${displayPrice!.toLocaleString("tr-TR")}₺`
-            ) : (
-              `${data.plan_name} ile Başla — ${displayPrice!.toLocaleString("tr-TR")}₺/${data.period}`
-            )}
-          </button>
+          <>
+            {/* PayTR iFrame */}
+            {iframeToken ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl overflow-hidden border border-border-primary bg-white">
+                  <iframe
+                    src={`https://www.paytr.com/odeme/guvenli/${iframeToken}`}
+                    id="paytriframe"
+                    frameBorder="0"
+                    scrolling="yes"
+                    className="w-full border-0"
+                    style={{ minHeight: 560 }}
+                    allow="payment"
+                  />
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
+                  <Lock className="h-3.5 w-3.5" />
+                  <p>Ödeme süresince sayfayı kapatmayın. Tamamlandığında otomatik yönlendirileceksiniz.</p>
+                </div>
+              </div>
+            ) : !error ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Loader2 className="h-10 w-10 text-accent-main animate-spin" />
+                <p className="text-text-muted text-sm">Ödeme formu yükleniyor...</p>
+              </div>
+            ) : null}
+          </>
         )}
 
         <p className="text-center text-[0.72rem] text-text-muted mt-2.5">
@@ -318,13 +341,13 @@ export default function SubscriptionPaymentPage() {
 
         {/* Footer */}
         <div className="mt-10 space-y-2 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-xs text-text-muted">
-            <Lock className="h-3.5 w-3.5" />
-            <p>Tüm işlemler güvenli şekilde yapılır.</p>
+          <div className="mt-6 bg-bg-secondary rounded-xl px-4 py-3 space-y-1.5 text-xs text-text-muted font-medium">
+            <p>Tüm işlemler 256-bit SSL şifreleme ve 3D Secure ile korunur.</p>
+            <p>Ödeme altyapısı PayTR tarafından sağlanmaktadır.</p>
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[0.72rem] text-text-muted font-medium pt-2">
-            <Link href="/terms" className="hover:text-text-primary transition">Koşullar</Link>
-            <Link href="/privacy" className="hover:text-text-primary transition">Gizlilik</Link>
+            <Link href="/help/terms" className="hover:text-text-primary transition">Koşullar</Link>
+            <Link href="/help/privacy" className="hover:text-text-primary transition">Gizlilik</Link>
             <Link href="/help" className="hover:text-text-primary transition">Yardım Merkezi</Link>
           </div>
         </div>

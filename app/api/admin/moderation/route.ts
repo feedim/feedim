@@ -24,8 +24,9 @@ export async function GET(request: NextRequest) {
     }
 
     const tab = request.nextUrl.searchParams.get('tab') || 'reports';
-    const page = Number(request.nextUrl.searchParams.get('page') || '1');
-    const limit = 20;
+    const rawPage = Number(request.nextUrl.searchParams.get('page') || '1');
+    const page = Math.max(1, Math.min(isNaN(rawPage) ? 1 : rawPage, 500));
+    const limit = tab === 'recent_users' || tab === 'recent_posts' ? 40 : 20;
     const offset = (page - 1) * limit;
 
     if (tab === 'reports') {
@@ -82,6 +83,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ withdrawals: withdrawals || [], total: count || 0, page });
     }
 
+    if (tab === 'recent_users') {
+      const { data: users, count } = await admin
+        .from('profiles')
+        .select('user_id, username, full_name, avatar_url, status, role, is_verified, is_premium, premium_plan, spam_score, shadow_banned, post_count, created_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      return NextResponse.json({ users: users || [], total: count || 0, page });
+    }
+
+    if (tab === 'recent_posts') {
+      const { data: posts, count } = await admin
+        .from('posts')
+        .select(`
+          id, title, slug, status, content_type, spam_score, view_count, like_count, comment_count, created_at,
+          author:profiles!posts_author_id_fkey(username, full_name, avatar_url)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      return NextResponse.json({ posts: posts || [], total: count || 0, page });
+    }
+
     if (tab === 'overview') {
       const [
         { count: pendingReports },
@@ -132,6 +156,19 @@ export async function POST(request: NextRequest) {
 
     if (!action || !target_type || !target_id) {
       return NextResponse.json({ error: 'Eksik parametre' }, { status: 400 });
+    }
+
+    // Admin-only actions — moderators cannot perform these
+    const adminOnlyActions = ['grant_premium', 'revoke_premium', 'delete_user', 'unverify_user'];
+    if (adminOnlyActions.includes(action)) {
+      const { data: modProfile } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      if (modProfile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Bu işlem yalnızca yöneticilere özeldir' }, { status: 403 });
+      }
     }
 
     // Log the action
@@ -345,7 +382,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Geçersiz aksiyon' }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, action, message: `${action} basarili` });
+    return NextResponse.json({ success: true, action, message: `${action} başarılı` });
   } catch {
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }

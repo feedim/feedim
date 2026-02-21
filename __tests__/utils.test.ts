@@ -104,9 +104,13 @@ describe('normalizeUsername', () => {
 });
 
 describe('formatTagName', () => {
-  it('applies Title Case', () => {
-    expect(formatTagName('teknoloji')).toBe('Teknoloji');
-    expect(formatTagName('SPOR')).toBe('Spor'); // Title Case: first upper, rest lower
-    expect(formatTagName('makine öğrenmesi')).toBe('Makine Öğrenmesi');
+  it('converts Turkish chars and removes non-alphanumeric', () => {
+    expect(formatTagName('teknoloji')).toBe('teknoloji');
+    expect(formatTagName('Türkçe Şölen!')).toBe('turkcesolen');
+    expect(formatTagName('İstanbul/Ankara')).toBe('istanbulankara');
+    expect(formatTagName('rock&roll-2024')).toBe('rockroll2024');
+    expect(formatTagName('çğüşiö')).toBe('cgusio');
+    expect(formatTagName('SPOR')).toBe('spor');
+    expect(formatTagName('makine öğrenmesi')).toBe('makineögrenmesi'.replace(/ö/g, 'o'));
   });
 });

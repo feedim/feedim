@@ -37,7 +37,7 @@ export default memo(function MobileBottomNav() {
   const publicPaths = ["/dashboard", "/dashboard/explore"];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid border-t border-border-overlay md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid border-t border-border-primary/30 md:hidden">
       <div className="flex items-center justify-around h-14 px-0">
         {/* First two nav items */}
         {navItems.slice(0, 2).map((item) => {

@@ -326,7 +326,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           setComments(prev => prev.filter(c => c.id !== tempId));
         }
         setTotalCount(c => Math.max(0, c - 1));
-        feedimAlert("error", data.error || "Yorum gonderilemedi");
+        feedimAlert("error", data.error || "Yorum gönderilemedi");
         return;
       }
 
@@ -356,7 +356,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         setComments(prev => prev.filter(c => c.id !== tempId));
       }
       setTotalCount(c => Math.max(0, c - 1));
-      feedimAlert("error", "Yorum gonderilemedi");
+      feedimAlert("error", "Yorum gönderilemedi");
     }
   };
 
@@ -733,6 +733,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       onClose={() => setReportTarget(null)}
       targetType="comment"
       targetId={reportTarget || 0}
+      authorUserId={(() => { const c = [...comments, ...comments.flatMap(x => x.replies || [])].find(x => x.id === reportTarget); return c?.author_id || undefined; })()}
+      authorName={(() => { const c = [...comments, ...comments.flatMap(x => x.replies || [])].find(x => x.id === reportTarget); return c?.profiles?.full_name || c?.profiles?.name || c?.profiles?.username; })()}
     />
     </>
   );

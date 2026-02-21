@@ -52,6 +52,8 @@ function RegisterForm() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameChecking, setUsernameChecking] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [emailChecking, setEmailChecking] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const router = useRouter();
@@ -94,6 +96,32 @@ function RegisterForm() {
     }, 500);
     return () => clearTimeout(timer);
   }, [username]);
+
+  // Check email availability
+  useEffect(() => {
+    if (!email || email.length < 5) {
+      setEmailAvailable(null);
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailAvailable(null);
+      return;
+    }
+    setEmailChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        setEmailAvailable(data.available);
+      } catch {
+        setEmailAvailable(null);
+      } finally {
+        setEmailChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [email]);
 
   const handleOAuthLogin = async (provider: 'google') => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -218,6 +246,9 @@ function RegisterForm() {
               </span>
             )}
           </div>
+          {usernameAvailable === false && username.length >= 3 && !usernameChecking && (
+            <p className="text-xs text-error mt-1">Bu kullanıcı adı zaten kullanılıyor, lütfen farklı bir tane deneyin.</p>
+          )}
           {/* Suggestions */}
           {suggestions.length > 0 && !username && (
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -235,7 +266,23 @@ function RegisterForm() {
           )}
         </div>
 
-        <input type="email" placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} required maxLength={VALIDATION.email.max} autoComplete="email" className="input-modern w-full" />
+        <div className="relative">
+          <input type="email" placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} required maxLength={VALIDATION.email.max} autoComplete="email" className="input-modern w-full" />
+          {email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {emailChecking ? (
+                <span className="text-xs text-text-muted">...</span>
+              ) : emailAvailable === true ? (
+                <svg className="h-5 w-5 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              ) : emailAvailable === false ? (
+                <svg className="h-5 w-5 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              ) : null}
+            </span>
+          )}
+          {emailAvailable === false && (
+            <p className="text-xs text-error mt-1">Bu e-posta zaten kullanılıyor, lütfen farklı bir e-posta deneyin.</p>
+          )}
+        </div>
         <PasswordInput placeholder={`Şifre (en az ${VALIDATION.password.min} karakter)`} value={password} onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
         <PasswordInput placeholder="Şifre tekrar" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
 

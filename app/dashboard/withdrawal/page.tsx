@@ -162,7 +162,7 @@ export default function WithdrawalPage() {
   const hasPendingRequest = requests.some(r => r.status === "pending" || r.status === "processing");
 
   return (
-    <AppLayout headerTitle="Odeme Alma" hideRightSidebar>
+    <AppLayout headerTitle="Ödeme Alma" hideRightSidebar>
       <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
         {loading ? (
           <div className="space-y-4">
@@ -345,7 +345,7 @@ export default function WithdrawalPage() {
             <div className="bg-bg-secondary rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="h-5 w-5 text-accent-main" />
-                <h3 className="font-semibold">Odeme Bilgilendirmesi</h3>
+                <h3 className="font-semibold">Ödeme Bilgilendirmesi</h3>
               </div>
               <ul className="space-y-2 text-sm text-text-muted">
                 <li>• Ödeme almak için en az Pro plan gereklidir.</li>

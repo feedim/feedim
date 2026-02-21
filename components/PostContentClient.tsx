@@ -15,12 +15,23 @@ export default function PostContentClient({ html, className, featuredImage }: Po
   const [viewerImages, setViewerImages] = useState<{ src: string; alt: string; caption?: string }[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
 
-  // Set lazy loading on all content images after render
+  // Set lazy loading on images + nofollow on external links
   useEffect(() => {
     if (!contentRef.current) return;
     contentRef.current.querySelectorAll('img').forEach(img => {
       img.loading = 'lazy';
       img.decoding = 'async';
+    });
+    // Add nofollow to all external links
+    contentRef.current.querySelectorAll('a[href]').forEach(link => {
+      const a = link as HTMLAnchorElement;
+      try {
+        const url = new URL(a.href, window.location.origin);
+        if (url.hostname && url.hostname !== window.location.hostname) {
+          a.rel = 'nofollow noopener noreferrer';
+          a.target = '_blank';
+        }
+      } catch {}
     });
   }, [html]);
 
@@ -57,10 +68,25 @@ export default function PostContentClient({ html, className, featuredImage }: Po
 
   const handleContentClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.tagName !== "IMG") return;
-    const img = target as HTMLImageElement;
-    if (!img.src) return;
-    collectAndOpen(img.src);
+
+    // Handle image clicks
+    if (target.tagName === "IMG") {
+      const img = target as HTMLImageElement;
+      if (img.src) collectAndOpen(img.src);
+      return;
+    }
+
+    // Handle external link clicks → redirect to /leaving page
+    const link = target.closest("a") as HTMLAnchorElement | null;
+    if (link?.href) {
+      try {
+        const url = new URL(link.href, window.location.origin);
+        if (url.hostname && url.hostname !== window.location.hostname) {
+          e.preventDefault();
+          window.location.href = `/leaving?url=${encodeURIComponent(link.href)}`;
+        }
+      } catch {}
+    }
   }, [collectAndOpen]);
 
   const handleFeaturedClick = useCallback(() => {

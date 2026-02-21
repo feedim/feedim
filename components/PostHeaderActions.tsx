@@ -11,13 +11,15 @@ interface PostHeaderActionsProps {
   postUrl: string;
   postTitle: string;
   authorUsername?: string;
+  authorUserId?: string;
+  authorName?: string;
   isOwnPost?: boolean;
   postSlug?: string;
   portalToHeader?: boolean;
   isVideo?: boolean;
 }
 
-export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, isOwnPost, postSlug, portalToHeader, isVideo }: PostHeaderActionsProps) {
+export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, authorUserId, authorName, isOwnPost, postSlug, portalToHeader, isVideo }: PostHeaderActionsProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -34,6 +36,7 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
     <button
       onClick={() => setMoreOpen(true)}
       className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
+      aria-label="Gönderi seçenekleri"
     >
       <MoreHorizontal className="h-[20px] w-[20px]" />
     </button>
@@ -47,6 +50,8 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
         postId={postId}
         postUrl={postUrl}
         authorUsername={authorUsername}
+        authorUserId={authorUserId}
+        authorName={authorName}
         onShare={() => setShareOpen(true)}
         isOwnPost={isOwnPost}
         postSlug={postSlug}

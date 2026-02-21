@@ -282,13 +282,11 @@ export default function Modal({
 
   return createPortal(
     <div
-      className={`${containerAlignClasses} transition-opacity duration-250 ${
-        closing ? "opacity-0" : "opacity-100"
-      }`}
+      className={containerAlignClasses}
     >
       <div
         ref={backdropRef}
-        className="absolute inset-0 bg-black/50"
+        className={`absolute inset-0 bg-black/50 transition-opacity ${closing ? "duration-[280ms] opacity-0" : "duration-300 opacity-100"}`}
         onClick={handleClose}
       />
 

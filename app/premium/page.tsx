@@ -23,9 +23,9 @@ const VerifiedHero = ({ className }: { className?: string }) => (
 
 const planHero: Record<string, { title: string; subtitle: string }> = {
   basic: { title: "Feedim Basic", subtitle: "Reklamsız deneyim ve artırılmış limitlerle farkını göster." },
-  pro: { title: "Feedim Pro", subtitle: "Keşfette one cık, analitik paneli ve daha fazlası." },
-  max: { title: "Feedim Max", subtitle: "Tum ozellikler, tam kontrol, sınırsız deneyim." },
-  business: { title: "Feedim Business", subtitle: "Markalar ve isletmeler icin tam donanımlı profesyonel paket." },
+  pro: { title: "Feedim Pro", subtitle: "Keşfette öne çık, analitik paneli ve daha fazlası." },
+  max: { title: "Feedim Max", subtitle: "Tüm özellikler, tam kontrol, sınırsız deneyim." },
+  business: { title: "Feedim Business", subtitle: "Markalar ve işletmeler için tam donanımlı profesyonel paket." },
 };
 
 interface Feature {
@@ -38,27 +38,25 @@ interface Feature {
 }
 
 const allFeatures: Feature[] = [
-  { t: "Onaylı Rozet", d: "Profilinde mavi tik rozeti ile guvenilirligini goster", basic: false, pro: true, max: true, business: true },
-  { t: "Reklamsız Deneyim", d: "Icerik akısında reklam gormeden kesintisiz deneyim", basic: true, pro: true, max: true, business: true },
-  { t: "Daha Fazla Takip", d: "Gunluk 20 yerine 40 kisi takip et (Pro: 100, Max: 200)", basic: true, pro: true, max: true, business: true },
-  { t: "Daha Fazla Begeni", d: "Gunluk 50 yerine 100 begeni hakkı (Pro: 300, Max: 1000)", basic: true, pro: true, max: true, business: true },
-  { t: "Daha Fazla Yorum", d: "Gunluk 30 yerine 60 yorum hakkı (Pro: 200, Max: 500)", basic: true, pro: true, max: true, business: true },
-  { t: "Daha Fazla Kaydetme", d: "Gunluk 30 yerine 60 kaydetme hakkı (Pro: 200, Max: 500)", basic: true, pro: true, max: true, business: true },
-  { t: "Daha Fazla Paylasım", d: "Gunluk 20 yerine 40 paylasım hakkı (Pro: 100, Max: 300)", basic: true, pro: true, max: true, business: true },
-  { t: "Para Kazanma", d: "Premium okuyucular gonderini okudugunda Jeton kazan, nakde cevir", basic: false, pro: true, max: true, business: true },
-  { t: "Kesfette One Cıkma", d: "Gonderilerin kesfet akısında ve ana sayfada daha ust sırada gosterilir", basic: false, pro: true, max: true, business: true },
-  { t: "Aramalarda One Cıkma", d: "Onaylı hesabın arama sonuclarında diger kullanıcılardan once listelenir", basic: false, pro: true, max: true, business: true },
-  { t: "Yorumlarda One Cıkma", d: "Yorumların onaylı rozet ile vurgulanır ve ust sıralarda gosterilir", basic: false, pro: true, max: true, business: true },
-  { t: "Onerilerde One Cıkma", d: "Kullanıcı onerilerinde ve takip et listelerinde daha fazla gosterilirsin", basic: false, pro: true, max: true, business: true },
-  { t: "Analitik Paneli", d: "Goruntuleme, etkilesim, okuma suresi ve takipci buyumeni detaylı takip et", basic: false, pro: true, max: true, business: true },
-  { t: "Dim Mod", d: "Mavi tonlu ozel koyu tema ile goz yormayan okuma deneyimi", basic: false, pro: true, max: true, business: true },
-  { t: "Iki Faktorlu Dogrulama", d: "Hesabını ek guvenlik katmanıyla koru, her giriste e-posta dogrulaması", basic: false, pro: true, max: true, business: true },
-  { t: "Isletme Hesabı", d: "Profesyonel hesap turleri arasından isletme hesabına gecis yapabilme", basic: false, pro: false, max: false, business: true },
-  { t: "Profil Ziyaretcileri", d: "Profilini kimlerin ziyaret ettigini gor, kitleni yakından tanı", basic: false, pro: false, max: true, business: true },
+  { t: "Onaylı Rozet", d: "Profilinde mavi tik rozeti ile güvenilirliğini göster", basic: false, pro: true, max: true, business: true },
+  { t: "Reklamsız Deneyim", d: "İçerik akışında reklam görmeden kesintisiz deneyim", basic: true, pro: true, max: true, business: true },
+  { t: "Daha Fazla Takip", d: "Günlük 20 yerine 40 kişi takip et (Pro: 100, Max: 200)", basic: true, pro: true, max: true, business: true },
+  { t: "Daha Fazla Beğeni", d: "Günlük 50 yerine 100 beğeni hakkı (Pro: 300, Max: 1000)", basic: true, pro: true, max: true, business: true },
+  { t: "Daha Fazla Yorum", d: "Günlük 30 yerine 60 yorum hakkı (Pro: 200, Max: 500)", basic: true, pro: true, max: true, business: true },
+  { t: "Para Kazanma", d: "Premium okuyucular gönderini okuduğunda Jeton kazan, nakde çevir", basic: false, pro: true, max: true, business: true },
+  { t: "Keşfette Öne Çıkma", d: "Gönderilerin keşfet akışında ve ana sayfada daha üst sırada gösterilir", basic: false, pro: true, max: true, business: true },
+  { t: "Aramalarda Öne Çıkma", d: "Onaylı hesabın arama sonuçlarında diğer kullanıcılardan önce listelenir", basic: false, pro: true, max: true, business: true },
+  { t: "Yorumlarda Öne Çıkma", d: "Yorumların onaylı rozet ile vurgulanır ve üst sıralarda gösterilir", basic: false, pro: true, max: true, business: true },
+  { t: "Önerilerde Öne Çıkma", d: "Kullanıcı önerilerinde ve takip et listelerinde daha fazla gösterilirsin", basic: false, pro: true, max: true, business: true },
+  { t: "Analitik Paneli", d: "Görüntüleme, etkileşim, okuma süresi ve takipçi büyümeni detaylı takip et", basic: false, pro: true, max: true, business: true },
+  { t: "Dim Mod", d: "Mavi tonlu özel koyu tema ile göz yormayan okuma deneyimi", basic: false, pro: true, max: true, business: true },
+  { t: "İki Faktörlü Doğrulama", d: "Hesabını ek güvenlik katmanıyla koru, her girişte e-posta doğrulaması", basic: false, pro: true, max: true, business: true },
+  { t: "İşletme Hesabı", d: "Profesyonel hesap türleri arasından işletme hesabına geçiş yapabilme", basic: false, pro: false, max: false, business: true },
+  { t: "Profil Ziyaretçileri", d: "Profilini kimlerin ziyaret ettiğini gör, kitleni yakından tanı", basic: false, pro: false, max: true, business: true },
   { t: "Uzun Yorum", d: "250 karakter yerine 500 karaktere kadar uzun yorumlar yazabilirsin", basic: false, pro: false, max: true, business: true },
-  { t: "Uzun Gonderi", d: "5.000 kelime yerine 15.000 kelimeye kadar uzun icerikler paylasabilirsin", basic: false, pro: false, max: true, business: true },
-  { t: "Oncelikli Destek", d: "Sorunlarında oncelikli destek ekibiyle daha hızlı cozum al", basic: false, pro: false, max: true, business: true },
-  { t: "Hızlı Inceleme", d: "Gonderilerin moderasyon surecinde oncelikli incelenir ve hızla yayına alınır", basic: false, pro: false, max: true, business: true },
+  { t: "Uzun Gönderi", d: "5.000 kelime yerine 15.000 kelimeye kadar uzun içerikler paylaşabilirsin", basic: false, pro: false, max: true, business: true },
+  { t: "Öncelikli Destek", d: "Sorunlarında öncelikli destek ekibiyle daha hızlı çözüm al", basic: false, pro: false, max: true, business: true },
+  { t: "Hızlı İnceleme", d: "Gönderilerin moderasyon sürecinde öncelikli incelenir ve hızla yayına alınır", basic: false, pro: false, max: true, business: true },
 ];
 
 const plans = [
@@ -98,64 +96,64 @@ const plans = [
 
 const faqs = [
   {
-    q: "Premium uyeligi iptal edebilir miyim?",
-    a: "Evet, istediginiz zaman iptal edebilirsiniz. Mevcut donem sonuna kadar premium ozelliklerden yararlanmaya devam edersiniz. Kısmi iade yapılmaz.",
+    q: "Premium üyeliği iptal edebilir miyim?",
+    a: "Evet, istediğiniz zaman iptal edebilirsiniz. Mevcut dönem sonuna kadar premium özelliklerden yararlanmaya devam edersiniz. Kısmi iade yapılmaz.",
   },
   {
-    q: "Planlar arası gecis yapabilir miyim?",
-    a: "Evet, istediginiz zaman daha ust veya alt bir plana gecis yapabilirsiniz. Fark otomatik hesaplanır ve bir sonraki fatura doneminize yansır.",
+    q: "Planlar arası geçiş yapabilir miyim?",
+    a: "Evet, istediğiniz zaman daha üst veya alt bir plana geçiş yapabilirsiniz. Fark otomatik hesaplanır ve bir sonraki fatura döneminize yansır.",
   },
   {
-    q: "Jeton kazanma nasıl calısır?",
-    a: "Pro veya Max uye olduktan sonra icerik uretmeye baslayın. Premium okuyucular gonderinizi okudugunda otomatik olarak Jeton kazanırsınız. Okuyucunun en az 30 saniye harcaması ve icerigin en az %40'ını okuması gerekir.",
+    q: "Jeton kazanma nasıl çalışır?",
+    a: "Pro veya Max üye olduktan sonra içerik üretmeye başlayın. Premium okuyucular gönderinizi okuduğunda otomatik olarak Jeton kazanırsınız. Okuyucunun en az 30 saniye harcaması ve içeriğin en az %40'ını okuması gerekir.",
   },
   {
-    q: "Kazancımı nasıl cekerim?",
-    a: "Minimum 100 Jeton biriktirdiginizde banka hesabınıza cekim talebi olusturabilirsiniz. 1 Jeton = 0,10 TL degerindedir.",
+    q: "Kazancımı nasıl çekerim?",
+    a: "Minimum 100 Jeton biriktirdiğinizde banka hesabınıza çekim talebi oluşturabilirsiniz. 1 Jeton = 0,10 TL değerindedir.",
   },
   {
     q: "Onaylı rozet (mavi tik) nedir?",
-    a: "Onaylı rozet, Premium uyeliginiz aktif oldugu surece profilinizde gorunen mavi tik rozetidir. Diger kullanıcılara guvenilir bir hesap oldugunuzu gosterir. Premium sona erdiginde rozet kaldırılır.",
+    a: "Onaylı rozet, Premium üyeliğiniz aktif olduğu sürece profilinizde görünen mavi tik rozetidir. Diğer kullanıcılara güvenilir bir hesap olduğunuzu gösterir. Premium sona erdiğinde rozet kaldırılır.",
   },
   {
-    q: "Gunluk limitler nasıl calısır?",
-    a: "Her kullanıcının takip, begeni, yorum, kaydetme ve paylasım icin gunluk limitleri vardır. Premium planınız yukseldikce bu limitler artar. Limitler her gun gece yarısı sıfırlanır.",
+    q: "Günlük limitler nasıl çalışır?",
+    a: "Her kullanıcının takip, beğeni ve yorum için günlük limitleri vardır. Premium planınız yükseldikçe bu limitler artar. Limitler her gün gece yarısı sıfırlanır.",
   },
   {
-    q: "Uzun gonderi ozelligi nedir?",
-    a: "Standart hesaplarda gonderi en fazla 5.000 kelime olabilir. Max aboneligiyle bu limit 15.000 kelimeye cıkar, daha kapsamlı ve detaylı icerikler paylasabilirsiniz.",
+    q: "Uzun gönderi özelliği nedir?",
+    a: "Standart hesaplarda gönderi en fazla 5.000 kelime olabilir. Max aboneliğiyle bu limit 15.000 kelimeye çıkar, daha kapsamlı ve detaylı içerikler paylaşabilirsiniz.",
   },
   {
-    q: "Profil ziyaretcileri ozelligi nedir?",
-    a: "Max aboneler profillerini kimlerin ziyaret ettigini gorebilir. Son 30 gunluk ziyaretciler listelenir. Bu ozellik sadece Max planına ozeldir.",
+    q: "Profil ziyaretçileri özelliği nedir?",
+    a: "Max aboneler profillerini kimlerin ziyaret ettiğini görebilir. Son 30 günlük ziyaretçiler listelenir. Bu özellik sadece Max planına özeldir.",
   },
   {
     q: "Dim mod nedir?",
-    a: "Dim mod, mavi tonlu ozel bir koyu temadır. Goz yormayan, rahat bir okuma deneyimi sunar. Pro ve Max abonelere ozeldir.",
+    a: "Dim mod, mavi tonlu özel bir koyu temadır. Göz yormayan, rahat bir okuma deneyimi sunar. Pro ve Max abonelere özeldir.",
   },
   {
-    q: "Premium suresi dolunca ne olur?",
-    a: "Premium sureniz dolugunda bildirim alırsınız. Uyelik yenilenmezse rozet, reklamsız deneyim ve diger Premium ayrıcalıklar sona erer. Hesabınız, gonderileriniz ve Jeton bakiyeniz korunur.",
+    q: "Premium süresi dolunca ne olur?",
+    a: "Premium süreniz dolduğunda bildirim alırsınız. Üyelik yenilenmezse rozet, reklamsız deneyim ve diğer Premium ayrıcalıklar sona erer. Hesabınız, gönderileriniz ve Jeton bakiyeniz korunur.",
   },
   {
     q: "Yıllık plan avantajı nedir?",
-    a: "Yıllık planlarda aylık plana gore 2 aya kadar tasarruf edersiniz. Odeme tek seferde alınır ve 12 ay boyunca tum premium ozelliklerden yararlanırsınız.",
+    a: "Yıllık planlarda aylık plana göre 2 aya kadar tasarruf edersiniz. Ödeme tek seferde alınır ve 12 ay boyunca tüm premium özelliklerden yararlanırsınız.",
   },
   {
-    q: "Odeme yontemleri nelerdir?",
-    a: "Kredi kartı ve banka kartı ile odeme yapabilirsiniz. Odemeler guvenli altyapı uzerinden islenır. Otomatik yenileme aktiftir, istediginiz zaman iptal edebilirsiniz.",
+    q: "Ödeme yöntemleri nelerdir?",
+    a: "Kredi kartı ve banka kartı ile ödeme yapabilirsiniz. Ödemeler güvenli altyapı üzerinden işlenir. Otomatik yenileme aktiftir, istediğiniz zaman iptal edebilirsiniz.",
   },
   {
-    q: "Analitik panelinde neler gorebilirim?",
-    a: "Pro ve Max aboneler goruntuleme sayısı, etkilesim oranı, ortalama okuma suresi, takipci buyumesi ve gonderi performansı gibi detaylı istatistikleri takip edebilir.",
+    q: "Analitik panelinde neler görebilirim?",
+    a: "Pro ve Max aboneler görüntüleme sayısı, etkileşim oranı, ortalama okuma süresi, takipçi büyümesi ve gönderi performansı gibi detaylı istatistikleri takip edebilir.",
   },
   {
     q: "İki faktörlü doğrulama nedir?",
     a: "İki faktörlü doğrulama, hesabınıza giriş yaparken şifrenize ek olarak e-posta ile gönderilen bir doğrulama kodu gerektirir. Pro ve Max abonelere özel bu özellik, hesabınızı yetkisiz erişimlere karşı korur.",
   },
   {
-    q: "Isletme hesabı nedir?",
-    a: "Isletme hesabı, markalar ve ticari kuruluslar icin tasarlanmıs profesyonel hesap turudur. Iletisim bilgileri, kategori ve isletme istatistikleri gibi ek ozellikler sunar. Business abonelere ozeldir. Icerik uretici hesabı tum kullanıcılara acıktır.",
+    q: "İşletme hesabı nedir?",
+    a: "İşletme hesabı, markalar ve ticari kuruluşlar için tasarlanmış profesyonel hesap türüdür. İletişim bilgileri, kategori ve işletme istatistikleri gibi ek özellikler sunar. Business abonelere özeldir. İçerik üretici hesabı tüm kullanıcılara açıktır.",
   },
 ];
 
@@ -279,7 +277,7 @@ export default function PremiumPage() {
                 {isLoggedIn && userCurrentPlan === plan.id ? (
                   <span className="premium-plan-badge">Mevcut Plan</span>
                 ) : plan.popular ? (
-                  <span className="premium-plan-badge">Populer</span>
+                  <span className="premium-plan-badge">Popüler</span>
                 ) : null}
 
                 <p className="text-[0.92rem] md:text-[0.88rem] font-medium text-text-muted mb-1.5">{plan.name}</p>
@@ -360,11 +358,11 @@ export default function PremiumPage() {
 
         {/* Comparison Table */}
         <div className="mb-12">
-          <h3 className="text-[1.1rem] sm:text-[1.1rem] font-bold mb-5">Planları Karsılastır</h3>
+          <h3 className="text-[1.1rem] sm:text-[1.1rem] font-bold mb-5">Planları Karşılaştır</h3>
           <div className="rounded-2xl overflow-hidden border border-border-primary">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_repeat(4,36px)] sm:grid-cols-[1fr_50px_50px_50px_60px] items-center px-3 sm:px-4 py-3 bg-bg-secondary text-[0.62rem] sm:text-[0.72rem] font-semibold text-text-muted">
-              <span className="text-[0.75rem] sm:text-[0.78rem]">Ozellik</span>
+              <span className="text-[0.75rem] sm:text-[0.78rem]">Özellik</span>
               <span className="text-center">Basic</span>
               <span className="text-center">Pro</span>
               <span className="text-center">Max</span>
@@ -419,7 +417,7 @@ export default function PremiumPage() {
           <h3 className="text-[1.1rem] sm:text-lg font-bold mb-2">Yardıma mı ihtiyacınız var?</h3>
           <p className="text-[0.88rem] sm:text-sm text-text-muted mb-6 max-w-sm mx-auto leading-relaxed">Premium hakkında sorularınız için ekibimize yazabilir veya yardım merkezimizi ziyaret edebilirsiniz.</p>
           <Link href="/help/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-main text-white font-semibold text-[0.88rem] sm:text-sm hover:opacity-90 transition">
-            <Mail className="h-4 w-4" /> Bize Ulasın
+            <Mail className="h-4 w-4" /> Bize Ulaşın
           </Link>
         </div>
       </main>

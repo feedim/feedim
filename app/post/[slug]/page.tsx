@@ -292,7 +292,7 @@ export default async function PostPage({ params }: PageProps) {
     duration: post.video_duration ? `PT${Math.floor(post.video_duration / 60)}M${post.video_duration % 60}S` : undefined,
     uploadDate: post.published_at,
     author: { "@type": "Person", name: authorName, url: `${baseUrl}/u/${author?.username}` },
-    publisher: { "@type": "Organization", name: "Feedim", url: baseUrl },
+    publisher: { "@type": "Organization", name: "Feedim", url: baseUrl, logo: { "@type": "ImageObject", url: `${baseUrl}/favicon.png` } },
   } : {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -303,7 +303,7 @@ export default async function PostPage({ params }: PageProps) {
     dateModified: post.updated_at,
     wordCount: post.word_count,
     author: { "@type": "Person", name: authorName, url: `${baseUrl}/u/${author?.username}` },
-    publisher: { "@type": "Organization", name: "Feedim", url: baseUrl },
+    publisher: { "@type": "Organization", name: "Feedim", url: baseUrl, logo: { "@type": "ImageObject", url: `${baseUrl}/favicon.png` } },
     mainEntityOfPage: { "@type": "WebPage", "@id": `${baseUrl}/post/${encodeURIComponent(post.slug)}` },
   };
 
@@ -313,16 +313,17 @@ export default async function PostPage({ params }: PageProps) {
     const plainDescription = sanitizedContent ? sanitizedContent.replace(/<[^>]+>/g, '') : '';
 
     return (
-      <div>
+      <div suppressHydrationWarning>
         {/* Preload video for faster playback start */}
-        {post.video_url && <link rel="preload" href={post.video_url} as="video" type="video/mp4" />}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
+        {post.video_url && <link rel="preload" href={post.video_url} as="fetch" crossOrigin="anonymous" />}
+        <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
         <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
         <HeaderTitle title="Video" />
         <VideoViewTracker postId={post.id} />
         <PostHeaderActions
           postId={post.id} postUrl={`/post/${post.slug}`} postTitle={post.title}
-          authorUsername={author?.username} isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
+          authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
+          isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
           isVideo
         />
 
@@ -348,7 +349,7 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Stats row */}
           <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
-            <span>{formatCount(post.view_count || 0)} goruntuleme</span>
+            <span>{formatCount(post.view_count || 0)} görüntülenme</span>
             {post.published_at && (
               <>
                 <span>·</span>
@@ -374,7 +375,7 @@ export default async function PostPage({ params }: PageProps) {
                 {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} />}
               </div>
               {author?.follower_count !== undefined && (
-                <p className="text-[0.72rem] text-text-muted">{formatCount(author.follower_count)} takipci</p>
+                <p className="text-[0.72rem] text-text-muted">{formatCount(author.follower_count)} takipçi</p>
               )}
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
@@ -440,9 +441,10 @@ export default async function PostPage({ params }: PageProps) {
 
   // ─── Regular post layout (unchanged) ───
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden" suppressHydrationWarning>
       <script
         type="application/ld+json"
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
       />
       {post.featured_image && <AmbientLight imageSrc={post.featured_image} />}
@@ -455,6 +457,8 @@ export default async function PostPage({ params }: PageProps) {
             postUrl={`/post/${post.slug}`}
             postTitle={post.title}
             authorUsername={author?.username}
+            authorUserId={author?.user_id}
+            authorName={authorName}
             isOwnPost={isOwnPost}
             postSlug={post.slug}
             portalToHeader

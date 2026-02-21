@@ -289,7 +289,7 @@ function WritePageContent() {
         setTagSuggestions([]);
         setTagHighlight(-1);
       }
-    } else if (e.key === "Enter") {
+    } else if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       if (tagSearch.trim()) createAndAddTag();
     } else if (e.key === "Backspace" && !tagSearch && tags.length > 0) {

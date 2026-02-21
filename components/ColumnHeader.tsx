@@ -38,7 +38,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
 
   const isHome = pathname === "/dashboard";
   const isPublicContent = pathname.startsWith("/post/") || pathname.startsWith("/u/");
-  const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/post/") ? "Gönderi" : null) || (pathname.startsWith("/u/") ? "Profil" : null);
+  const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/u/") ? "Profil" : null);
 
   const handleBack = onBack || (() => {
     try {
@@ -60,24 +60,14 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
             <Link href="/dashboard" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2">
               <FeedimIcon className="h-14 w-14" />
             </Link>
-            <h1 className="hidden md:block text-[1.35rem] sm:text-[1.25rem] font-bold">Ana Sayfa</h1>
+            <span className="hidden md:block text-[1.35rem] sm:text-[1.25rem] font-bold">Ana Sayfa</span>
           </>
         ) : (
           <div className="flex items-center gap-2.5">
-            <button onClick={handleBack} className="i-btn !w-8 !h-8 text-text-primary">
+            <button onClick={handleBack} className="i-btn !w-8 !h-8 text-text-primary" aria-label="Geri">
               <ArrowLeft className="h-5 w-5" />
             </button>
-            {isPublicContent && (
-              <Link href="/dashboard" aria-label="Feedim" className="shrink-0 md:hidden">
-                <FeedimIcon className="h-10 w-10" />
-              </Link>
-            )}
-            {pageTitle && (
-              <>
-                {isPublicContent && <div className="w-px h-5 bg-border-primary md:hidden" />}
-                <h1 className="text-[1.35rem] sm:text-[1.25rem] font-bold">{pageTitle}</h1>
-              </>
-            )}
+            <span className={`text-[1.35rem] sm:text-[1.25rem] font-bold ${!pageTitle ? "hidden" : ""}`}>{pageTitle || ""}</span>
           </div>
         )}
 

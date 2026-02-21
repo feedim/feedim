@@ -75,8 +75,8 @@ function baseLayout(content: string): string {
       ${content}
     </div>
     <div style="text-align:center;margin-top:24px;color:#999;font-size:12px">
-      <p>Bu e-posta Feedim tarafindan gonderilmistir.</p>
-      <p><a href="${SITE_URL}/dashboard/settings/notifications" style="color:#999">Bildirim ayarlari</a></p>
+      <p>Bu e-posta Feedim tarafından gönderilmiştir.</p>
+      <p><a href="${SITE_URL}/dashboard/settings/notifications" style="color:#999">Bildirim ayarları</a></p>
     </div>
   </div>
 </body>
@@ -85,14 +85,14 @@ function baseLayout(content: string): string {
 
 export function welcomeEmail(name: string): { subject: string; html: string } {
   return {
-    subject: 'Feedim\'e hos geldiniz!',
+    subject: 'Feedim\'e hoş geldiniz!',
     html: baseLayout(`
-      <h1 style="font-size:22px;font-weight:700;margin:0 0 16px;color:#111">Hos geldiniz, ${name}!</h1>
+      <h1 style="font-size:22px;font-weight:700;margin:0 0 16px;color:#111">Hoş geldiniz, ${name}!</h1>
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px">
-        Feedim ailesine katildiginiz icin mutluyuz. Makalelerinizi yazin, premium okuyucular sayesinde jeton kazanin.
+        Feedim ailesine katıldığınız için mutluyuz. İçeriklerinizi yazın, premium okuyucular sayesinde jeton kazanın.
       </p>
       <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#111;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
-        Kesfetmeye Basla
+        Keşfetmeye Başla
       </a>
     `),
   };
@@ -100,14 +100,14 @@ export function welcomeEmail(name: string): { subject: string; html: string } {
 
 export function newFollowerEmail(followerName: string, followerUsername: string): { subject: string; html: string } {
   return {
-    subject: `${followerName} sizi takip etmeye basladi`,
+    subject: `${followerName} sizi takip etmeye başladı`,
     html: baseLayout(`
-      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Yeni takipci!</h2>
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Yeni takipçi!</h2>
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
-        <strong>${followerName}</strong> (@${followerUsername}) sizi takip etmeye basladi.
+        <strong>${followerName}</strong> (@${followerUsername}) sizi takip etmeye başladı.
       </p>
       <a href="${SITE_URL}/u/${followerUsername}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
-        Profili Gor
+        Profili Gör
       </a>
     `),
   };
@@ -115,17 +115,17 @@ export function newFollowerEmail(followerName: string, followerUsername: string)
 
 export function commentEmail(commenterName: string, postTitle: string, postSlug: string, commentText: string): { subject: string; html: string } {
   return {
-    subject: `${commenterName} gonderinize yorum yapti`,
+    subject: `${commenterName} gönderinize yorum yaptı`,
     html: baseLayout(`
       <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Yeni yorum</h2>
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 8px">
-        <strong>${commenterName}</strong> "<em>${postTitle}</em>" baslikli gonderinize yorum yapti:
+        <strong>${commenterName}</strong> "<em>${postTitle}</em>" başlıklı gönderinize yorum yaptı:
       </p>
       <div style="background:#f5f5f5;border-radius:8px;padding:12px 16px;margin:0 0 20px;color:#333;font-size:14px;line-height:1.5">
         ${commentText.slice(0, 200)}
       </div>
       <a href="${SITE_URL}/post/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
-        Gonderiyi Gor
+        Gönderiyi Gör
       </a>
     `),
   };
@@ -133,14 +133,14 @@ export function commentEmail(commenterName: string, postTitle: string, postSlug:
 
 export function giftReceivedEmail(senderName: string, giftType: string, coinAmount: number): { subject: string; html: string } {
   return {
-    subject: `${senderName} size hediye gonderdi!`,
+    subject: `${senderName} size hediye gönderdi!`,
     html: baseLayout(`
-      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Hediye aldiniz!</h2>
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Hediye aldınız!</h2>
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
-        <strong>${senderName}</strong> size bir <strong>${giftType}</strong> hediye gonderdi (+${coinAmount} jeton).
+        <strong>${senderName}</strong> size bir <strong>${giftType}</strong> hediye gönderdi (+${coinAmount} jeton).
       </p>
       <a href="${SITE_URL}/dashboard/coins" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
-        Cuzdana Git
+        Cüzdana Git
       </a>
     `),
   };
@@ -149,18 +149,18 @@ export function giftReceivedEmail(senderName: string, giftType: string, coinAmou
 export function withdrawalStatusEmail(status: 'completed' | 'rejected', amount: number, amountTry: number, reason?: string): { subject: string; html: string } {
   const isCompleted = status === 'completed';
   return {
-    subject: isCompleted ? 'Cekim talebiniz onaylandi' : 'Cekim talebiniz reddedildi',
+    subject: isCompleted ? 'Çekim talebiniz onaylandı' : 'Çekim talebiniz reddedildi',
     html: baseLayout(`
       <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">
-        Cekim Talebi ${isCompleted ? 'Onaylandi' : 'Reddedildi'}
+        Çekim Talebi ${isCompleted ? 'Onaylandı' : 'Reddedildi'}
       </h2>
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 12px">
-        ${amount} jeton (${amountTry.toFixed(2)} TL) tutarindaki cekim talebiniz
-        ${isCompleted ? 'onaylandi ve hesabiniza aktarildi.' : 'reddedildi.'}
+        ${amount} jeton (${amountTry.toFixed(2)} TL) tutarındaki çekim talebiniz
+        ${isCompleted ? 'onaylandı ve hesabınıza aktarıldı.' : 'reddedildi.'}
       </p>
       ${reason ? `<p style="color:#999;font-size:13px;margin:0 0 20px">Sebep: ${reason}</p>` : ''}
       <a href="${SITE_URL}/dashboard/coins" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
-        Cuzdana Git
+        Cüzdana Git
       </a>
     `),
   };
@@ -168,14 +168,14 @@ export function withdrawalStatusEmail(status: 'completed' | 'rejected', amount: 
 
 export function milestoneEmail(postTitle: string, viewCount: string, postSlug: string): { subject: string; html: string } {
   return {
-    subject: `Tebrikler! Gonderiniz ${viewCount} goruntulenmeye ulasti`,
+    subject: `Tebrikler! Gönderiniz ${viewCount} görüntülenmeye ulaştı`,
     html: baseLayout(`
-      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Kilometre Tasi!</h2>
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Kilometre Taşı!</h2>
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
-        "<em>${postTitle}</em>" baslikli gonderiniz <strong>${viewCount}</strong> goruntulenmeye ulasti!
+        "<em>${postTitle}</em>" başlıklı gönderiniz <strong>${viewCount}</strong> görüntülenmeye ulaştı!
       </p>
       <a href="${SITE_URL}/post/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
-        Gonderiyi Gor
+        Gönderiyi Gör
       </a>
     `),
   };

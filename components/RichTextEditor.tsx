@@ -1473,6 +1473,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
               type="button"
               onMouseDown={(e) => { e.preventDefault(); btn.onClick(); }}
               title={btn.title}
+              aria-label={btn.title}
               className={`i-btn !min-w-[45px] shrink-0 ${
                 btn.key && activeFormats.has(btn.key)
                   ? "!bg-bg-tertiary text-text-primary"

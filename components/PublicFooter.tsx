@@ -12,6 +12,9 @@ const links = [
   { href: "/help/privacy", label: "KVKK", short: "KVKK" },
   { href: "/help/contact", label: "İletişim", short: "İletişim" },
   { href: "/help/disclaimer", label: "Sorumluluk Reddi", short: "Sorumluluk Reddi" },
+  { href: "/help/distance-sales-contract", label: "Mesafeli Satış Sözleşmesi", short: "Satış Sözleşmesi" },
+  { href: "/help/refund-policy", label: "İade Politikası", short: "İade Politikası" },
+  { href: "/help/payment-security", label: "Ödeme Güvenliği", short: "Ödeme Güvenliği" },
 ];
 
 export default function PublicFooter({ variant = "default" }: PublicFooterProps) {
@@ -26,6 +29,10 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
     );
   }
 
+  const paymentLogo = (
+    <img alt="Ödeme yöntemleri" height="25" src="/logo_band_white.svg" style={{ height: 25, width: "auto", opacity: 0.7 }} />
+  );
+
   // Compact — sidebar footer
   if (variant === "compact") {
     return (
@@ -36,6 +43,7 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
           ))}
           <Link href="/premium" className="hover:underline">Premium ol</Link>
         </div>
+        <div className="mt-2">{paymentLogo}</div>
         <p className="text-[0.6rem] text-text-muted/60 mt-1">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
       </nav>
     );
@@ -52,6 +60,7 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
           <Link href="/premium" className="hover:underline">Premium ol</Link>
           <span>&copy; {year} Feedim. Tüm hakları saklıdır.</span>
         </nav>
+        <div className="flex justify-center mt-2">{paymentLogo}</div>
       </footer>
     );
   }
@@ -67,7 +76,10 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
             ))}
             <Link href="/premium" className="text-text-muted hover:text-text-primary transition">Premium ol</Link>
           </div>
-          <p className="text-xs text-text-muted shrink-0">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
+          <div className="flex flex-col items-center sm:items-end gap-2 shrink-0">
+            {paymentLogo}
+            <p className="text-xs text-text-muted">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
+          </div>
         </div>
       </div>
     </footer>

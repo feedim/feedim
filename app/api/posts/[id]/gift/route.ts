@@ -68,27 +68,38 @@ export async function POST(
     if (senderNewBalance < 0) {
       return NextResponse.json({ error: "Yetersiz jeton bakiyesi" }, { status: 400 });
     }
-    const receiverNewBalance = (receiverProfile.coin_balance || 0) + coinCost;
 
-    // Execute gift: deduct from sender (with balance guard), add to receiver, insert records
-    const [senderUpdate, , giftResult] = await Promise.all([
-      // Update sender balance — only if balance still sufficient (race condition guard)
-      admin.from("profiles").update({ coin_balance: senderNewBalance }).eq("user_id", user.id).gte("coin_balance", coinCost),
-      // Update receiver balance + total earned
-      admin.from("profiles").update({
-        coin_balance: receiverNewBalance,
-        total_earned: (receiverProfile.total_earned || 0) + coinCost,
-      }).eq("user_id", post.author_id),
-      // Insert gift record
-      admin.from("gifts").insert({
-        sender_id: user.id,
-        receiver_id: post.author_id,
-        post_id: postId,
-        gift_type: giftType,
-        coin_amount: coinCost,
-        message: message || null,
-      }).select("id").single(),
-    ]);
+    // Atomic deduct from sender — only succeeds if balance is still sufficient
+    const { data: deductResult, error: deductError } = await admin
+      .from("profiles")
+      .update({ coin_balance: senderNewBalance })
+      .eq("user_id", user.id)
+      .gte("coin_balance", coinCost)
+      .select("coin_balance")
+      .single();
+
+    if (deductError || !deductResult) {
+      return NextResponse.json({ error: "Yetersiz jeton bakiyesi" }, { status: 400 });
+    }
+
+    // Atomic increment receiver balance via RPC (race-safe)
+    const { data: receiverNewBalance } = await admin.rpc("increment_coin_balance", {
+      p_user_id: post.author_id,
+      p_amount: coinCost,
+    });
+
+    // Insert gift record
+    const { data: giftResult } = await admin.from("gifts").insert({
+      sender_id: user.id,
+      receiver_id: post.author_id,
+      post_id: postId,
+      gift_type: giftType,
+      coin_amount: coinCost,
+      message: message || null,
+    }).select("id").single();
+
+    const actualSenderBalance = deductResult.coin_balance;
+    const actualReceiverBalance = typeof receiverNewBalance === "number" ? receiverNewBalance : 0;
 
     // Log transactions for both parties
     await Promise.all([
@@ -96,7 +107,7 @@ export async function POST(
         user_id: user.id,
         type: "gift_sent",
         amount: -coinCost,
-        balance_after: senderNewBalance,
+        balance_after: actualSenderBalance,
         related_post_id: postId,
         related_user_id: post.author_id,
         description: `${giftInfo.emoji} ${giftInfo.name} hediye gönderildi`,
@@ -105,7 +116,7 @@ export async function POST(
         user_id: post.author_id,
         type: "gift_received",
         amount: coinCost,
-        balance_after: receiverNewBalance,
+        balance_after: actualReceiverBalance,
         related_post_id: postId,
         related_user_id: user.id,
         description: `${giftInfo.emoji} ${giftInfo.name} hediye alındı`,
@@ -124,8 +135,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      gift_id: giftResult.data?.id,
-      sender_balance: senderNewBalance,
+      gift_id: giftResult?.id,
+      sender_balance: actualSenderBalance,
       gift_emoji: giftInfo.emoji,
       gift_name: giftInfo.name,
     });
