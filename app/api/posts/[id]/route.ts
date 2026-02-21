@@ -296,10 +296,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Yetkisiz işlem' }, { status: 403 });
     }
 
-    // Nullify foreign key references before deleting
+    // Nullify/delete foreign key references before deleting
     const { createAdminClient } = await import('@/lib/supabase/admin');
     const admin = createAdminClient();
-    await admin.from('coin_transactions').update({ related_post_id: null }).eq('related_post_id', id);
+    const postId = Number(id);
+    await Promise.all([
+      admin.from('gifts').delete().eq('post_id', postId),
+      admin.from('coin_transactions').update({ related_post_id: null }).eq('related_post_id', postId),
+      admin.from('notifications').delete().eq('post_id', postId),
+    ]);
 
     const { error } = await supabase.from('posts').delete().eq('id', id);
 
