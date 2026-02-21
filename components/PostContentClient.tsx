@@ -15,13 +15,21 @@ export default function PostContentClient({ html, className, featuredImage }: Po
   const [viewerImages, setViewerImages] = useState<{ src: string; alt: string; caption?: string }[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
 
-  // Set lazy loading on images + nofollow on external links
+  // Set lazy loading on images, hide duplicate featured image, nofollow external links
   useEffect(() => {
     if (!contentRef.current) return;
-    contentRef.current.querySelectorAll('img').forEach(img => {
+    const imgs = contentRef.current.querySelectorAll('img');
+    imgs.forEach(img => {
       img.loading = 'lazy';
       img.decoding = 'async';
     });
+    // Hide the first content image if it matches the featured image (thumbnail)
+    if (featuredImage && imgs.length > 0) {
+      const first = imgs[0];
+      if (first.src === featuredImage.src || first.src.includes(featuredImage.src.split('/').pop() || '___')) {
+        first.style.display = 'none';
+      }
+    }
     // Add nofollow to all external links
     contentRef.current.querySelectorAll('a[href]').forEach(link => {
       const a = link as HTMLAnchorElement;

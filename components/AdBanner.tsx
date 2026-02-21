@@ -5,6 +5,18 @@ import { useUser } from "@/components/UserContext";
 
 type AdSlot = "feed" | "post-top" | "post-detail" | "post-bottom" | "explore" | "sidebar";
 
+// Ad slot IDs from AdSense panel — fill these after creating ad units
+const SLOT_IDS: Partial<Record<AdSlot, string>> = {
+  // "feed": "1234567890",
+  // "post-top": "1234567891",
+  // "post-detail": "1234567892",
+  // "post-bottom": "1234567893",
+  // "explore": "1234567894",
+  // "sidebar": "1234567895",
+};
+
+const AD_CLIENT = "ca-pub-1411343179923275";
+
 interface AdBannerProps {
   slot: AdSlot;
   className?: string;
@@ -18,19 +30,27 @@ declare global {
 
 export default function AdBanner({ slot, className = "" }: AdBannerProps) {
   const { user } = useUser();
-  const adRef = useRef<HTMLModElement>(null);
+  const insRef = useRef<HTMLModElement>(null);
   const pushed = useRef(false);
 
+  const slotId = SLOT_IDS[slot];
+
   useEffect(() => {
-    if (pushed.current) return;
+    // Only push if we have a real slot ID and haven't pushed yet
+    if (!slotId || pushed.current) return;
+    const ins = insRef.current;
+    if (!ins || ins.getAttribute("data-adsbygoogle-status")) return;
     pushed.current = true;
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {}
-  }, []);
+  }, [slotId]);
 
   // Premium subscribers see no ads
   if (user?.isPremium) return null;
+
+  // No slot ID configured → Auto Ads handles placement, skip manual ins
+  if (!slotId) return null;
 
   return (
     <div
@@ -38,11 +58,11 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
       data-ad-slot={slot}
     >
       <ins
-        ref={adRef}
+        ref={insRef}
         className="adsbygoogle"
         style={{ display: "block" }}
-        data-ad-client="ca-pub-1411343179923275"
-        data-ad-slot=""
+        data-ad-client={AD_CLIENT}
+        data-ad-slot={slotId}
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
@@ -54,12 +74,6 @@ interface FeedAdProps {
   index: number;
 }
 
-/**
- * Use between feed posts. Shows ads at different intervals:
- * - Guests: every 3rd post
- * - Free users: every 5th post
- * - Premium: never
- */
 export function FeedAdSlot({ index }: FeedAdProps) {
   const { user, isLoggedIn } = useUser();
 

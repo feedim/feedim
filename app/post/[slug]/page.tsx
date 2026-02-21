@@ -279,7 +279,8 @@ export default async function PostPage({ params }: PageProps) {
 
   const sanitizedContent = sanitizeHtml(post.content || "", {
     allowedTags: ['h2', 'h3', 'h4', 'p', 'br', 'strong', 'em', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'div', 'span', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'code', 'pre', 'sub', 'sup', 'mark', 'del', 's'],
-    allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], 'td': ['colspan', 'rowspan'], 'th': ['colspan', 'rowspan'], '*': ['class'] },
+    allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt', 'width', 'height', 'loading'], 'td': ['colspan', 'rowspan'], 'th': ['colspan', 'rowspan'], '*': ['class'] },
+    allowedSchemesByTag: { img: ['http', 'https', 'data'] },
   });
 
   const jsonLd = post.content_type === "video" ? {
