@@ -60,14 +60,14 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
             <Link href="/dashboard" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2">
               <FeedimIcon className="h-14 w-14" />
             </Link>
-            <span className="hidden md:block text-[1.35rem] sm:text-[1.25rem] font-bold">Ana Sayfa</span>
+            <span className="hidden md:block text-[1.22rem] font-bold">Ana Sayfa</span>
           </>
         ) : (
           <div className="flex items-center gap-2.5">
             <button onClick={handleBack} className="i-btn !w-8 !h-8 text-text-primary" aria-label="Geri">
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <span className={`text-[1.35rem] sm:text-[1.25rem] font-bold ${!pageTitle ? "hidden" : ""}`}>{pageTitle || ""}</span>
+            <span className={`text-[1.22rem] font-bold ${!pageTitle ? "hidden" : ""}`}>{pageTitle || ""}</span>
           </div>
         )}
 

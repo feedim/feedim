@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
     // Filter by content type (e.g. "video")
     if (contentType) {
       query = query.eq('content_type', contentType);
+    } else {
+      query = query.neq('content_type', 'moment');
     }
 
     // Filter by tag if provided

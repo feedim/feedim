@@ -237,6 +237,9 @@ export default function DashboardPage() {
       </button>
       </div>
 
+      {/* Moments carousel — right after compose box */}
+      <MomentsCarousel />
+
       {/* Content */}
       {loading ? (
         <PostGridSkeleton count={4} />
@@ -246,7 +249,6 @@ export default function DashboardPage() {
             {visiblePosts.map((post, index) => (
               <div key={post.id}>
                 <PostCard post={post} />
-                {index === 2 && <MomentsCarousel />}
                 {index === 4 && isLoggedIn && <SuggestionCarousel />}
                 <FeedAdSlot index={index} />
               </div>

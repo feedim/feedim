@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Film } from "lucide-react";
 import ColumnHeader from "@/components/ColumnHeader";
+import MomentsCarousel from "@/components/MomentsCarousel";
 import { VideoGridSkeleton } from "@/components/Skeletons";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
@@ -55,6 +56,9 @@ export default function VideoPage() {
   return (
     <div className="min-h-screen">
       <ColumnHeader />
+      {/* Moments (Shorts) carousel */}
+      <MomentsCarousel maxItems={8} />
+
       <div className="pb-8">
         {loading ? (
           <div className="pt-4">

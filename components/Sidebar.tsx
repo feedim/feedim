@@ -47,6 +47,13 @@ export default memo(function Sidebar() {
     setTheme(saved);
   }, []);
 
+  useEffect(() => {
+    if (sessionStorage.getItem("fdm-open-create-modal")) {
+      sessionStorage.removeItem("fdm-open-create-modal");
+      setCreateModalOpen(true);
+    }
+  }, []);
+
   const themeIcon = () => {
     if (theme === "dark") return <Moon className="h-5 w-5" />;
     if (theme === "dim") return <CloudMoon className="h-5 w-5" />;

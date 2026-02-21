@@ -43,11 +43,6 @@ export default function DashboardShell({
             <div className="max-w-[1400px] mx-auto w-full">
               {children}
             </div>
-            {isSettingsPage && (
-              <div className="md:hidden pb-4">
-                <PublicFooter variant="compact" />
-              </div>
-            )}
           </main>
           {mobileNavVisible && <MobileBottomNav />}
         </div>

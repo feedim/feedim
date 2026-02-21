@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const excludeParamGuest = req.nextUrl.searchParams.get("exclude");
+
     // ── Guest mode ──
     if (!user) {
       const { data: profiles } = await admin
@@ -33,6 +35,7 @@ export async function GET(req: NextRequest) {
 
       const scored = (profiles || [])
         .filter(p => {
+          if (excludeParamGuest && p.user_id === excludeParamGuest) return false;
           // Soft exclude: 0/0 accounts with very low profile_score
           const fc = p.follower_count || 0;
           const fgc = p.following_count || 0;
@@ -80,7 +83,9 @@ export async function GET(req: NextRequest) {
         (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
       );
     });
+    const excludeParam = req.nextUrl.searchParams.get("exclude");
     const excludeIds = [user.id, ...followingIds, ...blockedIds];
+    if (excludeParam) excludeIds.push(excludeParam);
 
     const scoreMap = new Map<string, { score: number; mutual_count: number }>();
 

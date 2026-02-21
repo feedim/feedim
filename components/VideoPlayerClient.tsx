@@ -19,6 +19,7 @@ export default function VideoPlayerClient({
   const searchParams = useSearchParams();
   const [autoplay, setAutoplay] = useState(true);
   const [ended, setEnded] = useState(false);
+  const [replayKey, setReplayKey] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -72,6 +73,7 @@ export default function VideoPlayerClient({
   const replay = () => {
     setEnded(false);
     setCountdown(null);
+    setReplayKey(prev => prev + 1);
   };
 
   // SVG countdown circle params
@@ -81,7 +83,7 @@ export default function VideoPlayerClient({
 
   return (
     <div className="relative">
-      <VideoPlayer src={src} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
+      <VideoPlayer key={replayKey} src={src} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
 
       {/* Autoplay toggle — top right of the player */}
       <div className="absolute top-3 right-3 z-30 flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"

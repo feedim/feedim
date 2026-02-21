@@ -9,7 +9,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "latin-ext"],
-  display: "swap",
+  display: "optional",
 });
 
 export const viewport: Viewport = {
@@ -53,8 +53,6 @@ export default function RootLayout({
     <html lang="tr" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Dark mode flash prevention + theme-color sync */}
         <script
           dangerouslySetInnerHTML={{

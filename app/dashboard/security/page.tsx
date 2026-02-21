@@ -108,7 +108,7 @@ export default function SecurityPage() {
       const res = await fetch("/api/auth/mfa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "enable" }) });
       const data = await res.json();
       if (!res.ok) { feedimAlert("error",data.error || "İki faktörlü doğrulama etkinleştirilemedi, lütfen daha sonra tekrar deneyin"); return; }
-      feedimAlert("success", "İki faktörlü doğrulama etkinleştirildi!");
+      feedimAlert("success", "İki faktörlü doğrulama etkinleştirildi");
       setMfaEnabled(true); setEnableStep(0); setEnablePassword(""); setEnableCode("");
     } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setEnabling(false); }
   };
@@ -169,7 +169,7 @@ export default function SecurityPage() {
       if (authError) { feedimAlert("error", "Mevcut şifre yanlış"); return; }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      feedimAlert("success", "Şifreniz başarıyla değiştirildi!");
+      feedimAlert("success", "Şifreniz başarıyla değiştirildi");
       setShowChangePassword(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -188,7 +188,7 @@ export default function SecurityPage() {
         minDelay(2000),
       ]);
       if (error) throw error;
-      feedimAlert("success", "E-posta güncelleme linki gönderildi!");
+      feedimAlert("success", "E-posta güncelleme linki gönderildi");
       setEditEmail(false); setNewEmail("");
     } catch { feedimAlert("error", "E-posta güncellenemedi, lütfen daha sonra tekrar deneyin"); } finally { setUpdatingEmail(false); }
   };
@@ -216,7 +216,7 @@ export default function SecurityPage() {
       const data = await res.json();
       if (!res.ok) { feedimAlert("error",data.error || "Kod geçersiz veya süresi dolmuş"); return; }
       setEmailVerified(true); setVerifyingEmail(false); setEmailCode("");
-      feedimAlert("success", "E-posta adresiniz doğrulandı!");
+      feedimAlert("success", "E-posta adresiniz doğrulandı");
     } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setVerifyingCode(false); }
   };
 

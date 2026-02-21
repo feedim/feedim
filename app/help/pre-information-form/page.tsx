@@ -38,7 +38,7 @@ export default function PreInformationFormPage() {
             </li>
             <li>
               <strong>Premium Üyelik:</strong> Aylık veya yıllık abonelik planları. Reklamsız deneyim,
-              onaylı rozet, gelişmiş analitik ve daha fazla özellik sunar. Basic, Pro, Max ve Business
+              onaylı rozet, gelişmiş analitik ve daha fazla özellik sunar. Super, Pro, Max ve Business
               planları mevcuttur.
             </li>
           </ul>

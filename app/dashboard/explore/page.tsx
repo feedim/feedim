@@ -2,11 +2,13 @@
 
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, X, Hash, TrendingUp } from "lucide-react";
+import { Search, X, Hash, TrendingUp, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
-import { PostGridSkeleton } from "@/components/Skeletons";
+import MomentGridCard from "@/components/MomentGridCard";
+import MomentsCarousel from "@/components/MomentsCarousel";
+import { PostGridSkeleton, MomentGridSkeleton } from "@/components/Skeletons";
 import { cn, formatCount } from "@/lib/utils";
 import UserListItem from "@/components/UserListItem";
 import { useAuthModal } from "@/components/AuthModal";
@@ -55,12 +57,12 @@ interface SearchTag {
   is_following?: boolean;
 }
 
-type ExploreTab = "for_you" | "users" | "tags" | "posts";
+type ExploreTab = "for_you" | "users" | "tags" | "posts" | "moments";
 
 function SearchPrompt() {
   return (
     <div className="py-16 text-center">
-      <Search className="h-10 w-10 text-text-muted/30 mx-auto mb-3" />
+      <Search className="h-10 w-10 text-text-muted mx-auto mb-3" />
       <p className="text-sm text-text-muted">Arama yapmak için yazmaya başlayın.</p>
     </div>
   );
@@ -94,6 +96,12 @@ function ExploreContent() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [followedTagIds, setFollowedTagIds] = useState<Set<number>>(new Set());
+
+  // Moments tab
+  const [momentTabPosts, setMomentTabPosts] = useState<any[]>([]);
+  const [momentTabLoading, setMomentTabLoading] = useState(false);
+  const [momentTabLoaded, setMomentTabLoaded] = useState(false);
+  const [momentTabHasMore, setMomentTabHasMore] = useState(false);
 
   // Search state
   const [query, setQuery] = useState(searchParams.get("q") || "");
@@ -149,6 +157,25 @@ function ExploreContent() {
     }
   }, []);
 
+  const loadMomentsTab = useCallback(async (cursor?: string) => {
+    setMomentTabLoading(true);
+    try {
+      let url = `/api/posts/moments?limit=12`;
+      if (cursor) url += `&cursor=${cursor}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (cursor) {
+        setMomentTabPosts(prev => [...prev, ...(data.moments || [])]);
+      } else {
+        setMomentTabPosts(data.moments || []);
+      }
+      setMomentTabHasMore(data.hasMore || false);
+    } catch {} finally {
+      setMomentTabLoading(false);
+      setMomentTabLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
     const urlTag = searchParams.get("tag");
@@ -261,6 +288,9 @@ function ExploreContent() {
 
   const handleTabChange = (tab: ExploreTab) => {
     setActiveTab(tab);
+    if (tab === "moments" && !momentTabLoaded) {
+      loadMomentsTab();
+    }
     if (query.trim().length >= 2) {
       updateUrl(query, tab);
       doSearch(query, tab);
@@ -285,6 +315,7 @@ function ExploreContent() {
     { key: "users", label: "Kişiler" },
     { key: "tags", label: "Etiketler" },
     { key: "posts", label: "Gönderiler" },
+    { key: "moments", label: "Moments" },
   ];
 
   const handleTagClick = (tag: SearchTag) => {
@@ -490,6 +521,8 @@ function ExploreContent() {
     if (activeTab === "for_you") {
       return (
         <div className="mt-1">
+          {/* Moments carousel */}
+          <MomentsCarousel />
           {trendingPosts.length > 0 ? (
             <>
               {trendingPosts.map((post, index) => (
@@ -513,7 +546,7 @@ function ExploreContent() {
 
     if (activeTab === "tags") {
       return (
-        <div className="mt-4 px-3 sm:px-4">
+        <div className="mt-4 px-5 sm:px-6">
           {trendingTags.length > 0 ? (
             <>
               <div className="flex items-center gap-2 mb-3">
@@ -546,6 +579,35 @@ function ExploreContent() {
             </>
           ) : (
             <p className="text-sm text-text-muted py-8 text-center">Henüz gönderi yok.</p>
+          )}
+        </div>
+      );
+    }
+
+    if (activeTab === "moments") {
+      if (momentTabLoading && !momentTabLoaded) {
+        return <div className="mt-2"><MomentGridSkeleton count={9} /></div>;
+      }
+      return (
+        <div className="mt-2">
+          {momentTabPosts.length > 0 ? (
+            <>
+              <div className="grid grid-cols-3 gap-0.5">
+                {momentTabPosts.map(m => (
+                  <MomentGridCard key={m.id} moment={m} />
+                ))}
+              </div>
+              <LoadMoreTrigger
+                onLoadMore={() => {
+                  const last = momentTabPosts[momentTabPosts.length - 1];
+                  if (last) loadMomentsTab(String(last.id));
+                }}
+                loading={momentTabLoading}
+                hasMore={momentTabHasMore}
+              />
+            </>
+          ) : (
+            <p className="text-sm text-text-muted py-8 text-center">Henüz moment yok.</p>
           )}
         </div>
       );

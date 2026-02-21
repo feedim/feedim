@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Search, X, Hash } from "lucide-react";
+import { Search, X, Hash, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
+import MomentGridCard from "@/components/MomentGridCard";
 import { PostGridSkeleton, UserListSkeleton } from "@/components/Skeletons";
 import { cn } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -60,6 +61,9 @@ export default function TagPage() {
   const [page, setPage] = useState(1);
   const [isFollowing, setIsFollowing] = useState(false);
 
+  // Moments for grid section
+  const [tagMoments, setTagMoments] = useState<{ id: number; title: string; slug: string; video_thumbnail?: string; featured_image?: string; video_duration?: number; view_count?: number }[]>([]);
+
   // Search
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<TagPost[] | null>(null);
@@ -94,8 +98,16 @@ export default function TagPage() {
             setIsFollowing(true);
           }
         }
-        // Load initial posts
+        // Load initial posts + moments
         await loadPosts(1, "trending");
+        // Load moments for this tag
+        try {
+          const mRes = await fetch(`/api/posts/explore?tag=${encodeURIComponent(slug)}&content_type=moment&page=1`);
+          if (mRes.ok) {
+            const mData = await mRes.json();
+            setTagMoments((mData.posts || []).slice(0, 6));
+          }
+        } catch {}
       } catch {
         // Silent
       } finally {
@@ -316,17 +328,33 @@ export default function TagPage() {
       ) : (
         // Posts tabs (popular, latest, posts)
         <div className="mt-1">
+          {/* Moments grid section */}
+          {tagMoments.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between px-3 sm:px-4 py-2">
+                <span className="text-[0.88rem] font-bold">Moments</span>
+                <Link href="/dashboard/moments" className="flex items-center gap-0.5 text-xs font-semibold text-text-muted hover:text-text-primary transition">
+                  Tümünü gör <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-3 gap-0.5">
+                {tagMoments.map(m => (
+                  <MomentGridCard key={m.id} moment={m} />
+                ))}
+              </div>
+            </div>
+          )}
           {posts.length > 0 ? (
             <>
               {posts.map(post => <PostCard key={post.id} post={post} />)}
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
-          ) : (
+          ) : tagMoments.length === 0 ? (
             <div className="py-16 text-center">
-              <Hash className="h-10 w-10 text-text-muted/30 mx-auto mb-3" />
+              <Hash className="h-10 w-10 text-text-muted mx-auto mb-3" />
               <p className="text-sm text-text-muted">Bu etikette gönderi bulunamadı.</p>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </AppLayout>

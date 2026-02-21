@@ -145,25 +145,25 @@ function RegisterForm() {
       // Client-side validation
       if (!VALIDATION.name.pattern.test(name) || !VALIDATION.name.pattern.test(surname)) {
         await waitMin();
-        feedimAlert("error", "Ad ve soyad sadece harf ve boşluk içerebilir.");
+        feedimAlert("error", "Ad ve soyad sadece harf ve boşluk içerebilir");
         return;
       }
 
       if (isGibberish(name) || isGibberish(surname)) {
         await waitMin();
-        feedimAlert("error", "Lütfen geçerli bir ad ve soyad girin.");
+        feedimAlert("error", "Lütfen geçerli bir ad ve soyad girin");
         return;
       }
 
       if (password !== confirmPassword) {
         await waitMin();
-        feedimAlert("error", "Şifreler eşleşmiyor.");
+        feedimAlert("error", "Şifreler eşleşmiyor");
         return;
       }
 
       if (username && !VALIDATION.username.pattern.test(username)) {
         await waitMin();
-        feedimAlert("error", "Geçersiz kullanıcı adı formatı.");
+        feedimAlert("error", "Geçersiz kullanıcı adı formatı");
         return;
       }
 
@@ -179,11 +179,11 @@ function RegisterForm() {
       if (error) {
         await waitMin();
         if (error.message.includes('User already registered')) {
-          feedimAlert("error", "Bu e-posta adresi zaten kullanılıyor.");
+          feedimAlert("error", "Bu e-posta adresi zaten kullanılıyor");
         } else if (error.message.includes('Password')) {
-          feedimAlert("error", "Şifre en az 6 karakter olmalıdır.");
+          feedimAlert("error", "Şifre en az 6 karakter olmalıdır");
         } else if (error.message.includes('Email')) {
-          feedimAlert("error", "Geçerli bir e-posta adresi girin.");
+          feedimAlert("error", "Geçerli bir e-posta adresi girin");
         } else {
           feedimAlert("error", "Kayıt oluşturulamadı, lütfen daha sonra tekrar deneyin");
         }
@@ -199,7 +199,7 @@ function RegisterForm() {
       await waitMin();
 
       if (data.user && !data.session) {
-        feedimAlert("info", "Lütfen e-postanızı kontrol edin ve doğrulayın.");
+        feedimAlert("info", "Lütfen e-postanızı kontrol edin ve doğrulayın");
         router.push("/login");
       } else if (data.session) {
         router.replace("/dashboard");

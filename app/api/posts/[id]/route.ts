@@ -14,6 +14,7 @@ export async function GET(
     const { id } = await params;
     const supabase = await createClient();
 
+    const isSlug = isNaN(Number(id));
     const { data: post, error } = await supabase
       .from('posts')
       .select(`
@@ -22,7 +23,7 @@ export async function GET(
         post_tags(tag_id, tags(id, name, slug)),
         post_categories(category_id, categories(id, name, slug))
       `)
-      .eq('id', id)
+      .eq(isSlug ? 'slug' : 'id', id)
       .single();
 
     if (error || !post) {

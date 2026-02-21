@@ -178,7 +178,7 @@ export default function SuggestionsPage() {
           <UserListSkeleton count={8} />
         ) : users.length === 0 ? (
           <div className="text-center py-16">
-            <Users className="h-12 w-12 text-text-muted/30 mx-auto mb-3" />
+            <Users className="h-12 w-12 text-text-muted mx-auto mb-3" />
             <h2 className="text-lg font-bold mb-2">Öneri bulunamadı</h2>
             <p className="text-sm text-text-muted">Daha fazla kişiyi takip ettikçe öneriler gelişecek.</p>
           </div>

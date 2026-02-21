@@ -310,7 +310,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       }
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
-        feedimAlert("error", data.error || "Günlük takip limitine ulaştın.");
+        feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
       }
     }
   }, [profile.username, profile.account_private, following, requested, requireAuth]);
@@ -614,7 +614,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         {/* Suggestion carousel for 0-follower profiles */}
         {!profile.is_own && !isAnyBlocked && followerCount === 0 && (
           <div className="-mx-4 mb-3">
-            <SuggestionCarousel />
+            <SuggestionCarousel excludeUserId={profile.user_id} />
           </div>
         )}
 

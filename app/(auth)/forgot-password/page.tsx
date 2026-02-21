@@ -44,7 +44,6 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      feedimAlert("success", "Doğrulama kodu e-postanıza gönderildi!");
       setCooldown(60);
       setStep("code");
     } catch {
@@ -70,7 +69,7 @@ export default function ForgotPasswordPage() {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length < 6) {
-      feedimAlert("error", "Doğrulama kodunu girin.");
+      feedimAlert("error", "Doğrulama kodunu girin");
       return;
     }
 
@@ -83,12 +82,11 @@ export default function ForgotPasswordPage() {
       });
 
       if (error) {
-        feedimAlert("error", "Kod geçersiz veya süresi dolmuş.");
+        feedimAlert("error", "Kod geçersiz veya süresi dolmuş");
         if (process.env.NODE_ENV === "development") console.log("Verify error:", error.message);
         return;
       }
 
-      feedimAlert("success", "Doğrulama başarılı!");
       router.push("/reset-password");
     } catch {
       feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
@@ -145,7 +143,8 @@ export default function ForgotPasswordPage() {
               }}
               maxLength={8}
               autoFocus
-              className="input-modern w-full text-center text-2xl font-mono tracking-[0.5em]"
+              className="w-full text-center bg-transparent border-none outline-none focus:ring-0"
+              style={{ height: 50, fontSize: 50, fontWeight: 700, fontFamily: "sans-serif", letterSpacing: "0.3em" }}
             />
           </div>
 

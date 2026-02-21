@@ -17,7 +17,7 @@ export default function EmptyState({ title, description, icon, action }: EmptySt
         </div>
       )}
       <h2 className="text-lg sm:text-xl font-bold mb-2">{title}</h2>
-      <p className="text-sm text-text-muted mb-5 sm:mb-6 px-4 max-w-[300px] mx-auto">{description}</p>
+      <p className="text-[13px] text-text-muted mb-5 sm:mb-6 px-4 max-w-[300px] mx-auto">{description}</p>
       {action && (
         typeof action === "object" && action !== null && "label" in action ? (
           action.href ? (

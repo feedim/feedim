@@ -402,8 +402,8 @@ const articles: Article[] = [
   {
     section: "premium",
     question: "Premium planları ve fiyatları nelerdir?",
-    searchText: "Basic (39,99 TL/ay), Pro (79,99 TL/ay), Max (129 TL/ay) ve Business (249 TL/ay) planları mevcuttur. Her plan farklı özellikler sunar.",
-    answer: <>Feedim&apos;de dört Premium plan bulunur: <strong>Basic</strong> (39,99 TL/ay), <strong>Pro</strong> (79,99 TL/ay), <strong>Max</strong> (129 TL/ay) ve <strong>Business</strong> (249 TL/ay). Her plan farklı ayrıcalıklar sunar. Pro ve üzeri planlarda Jeton kazanma, analitik ve önde gösterim gibi ek özellikler mevcuttur. Business planı işletmeler için tasarlanmıştır. Planları karşılaştırmak için <Link href="/premium" className={lnk}>Premium sayfasını</Link> ziyaret edin.</>,
+    searchText: "Super (39,99 TL/ay), Pro (79,99 TL/ay), Max (129 TL/ay) ve Business (249 TL/ay) planları mevcuttur. Her plan farklı özellikler sunar.",
+    answer: <>Feedim&apos;de dört Premium plan bulunur: <strong>Super</strong> (39,99 TL/ay), <strong>Pro</strong> (79,99 TL/ay), <strong>Max</strong> (129 TL/ay) ve <strong>Business</strong> (249 TL/ay). Her plan farklı ayrıcalıklar sunar. Pro ve üzeri planlarda Jeton kazanma, analitik ve önde gösterim gibi ek özellikler mevcuttur. Business planı işletmeler için tasarlanmıştır. Planları karşılaştırmak için <Link href="/premium" className={lnk}>Premium sayfasını</Link> ziyaret edin.</>,
   },
   {
     section: "premium",

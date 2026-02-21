@@ -134,7 +134,7 @@ export default function SuggestionWidget() {
         setRequested(revertedReq);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın.");
+          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
         }
       } else {
         const data = await res.json();

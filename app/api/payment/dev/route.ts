@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // Fallback plan fiyatları (DB'de yoksa kullanılır)
 const PLAN_PRICES: Record<string, { name: string; price: number }> = {
-  basic: { name: "Basic", price: 39.99 },
+  basic: { name: "Super", price: 39.99 },
   pro: { name: "Pro", price: 79.99 },
   max: { name: "Max", price: 129 },
   business: { name: "Business", price: 249 },

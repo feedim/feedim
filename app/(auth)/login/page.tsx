@@ -139,7 +139,7 @@ function LoginPageContent() {
         const data = await res.json();
         if (!res.ok) {
           await waitMin();
-          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin.");
+          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin");
           return;
         }
         email = data.email;
@@ -150,9 +150,9 @@ function LoginPageContent() {
       if (error) {
         await waitMin();
         if (error.message === 'Invalid login credentials') {
-          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin.");
+          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin");
         } else if (error.message.includes('Email not confirmed')) {
-          feedimAlert("error", "E-posta adresinizi onaylamanız gerekiyor.");
+          feedimAlert("error", "E-posta adresinizi onaylamanız gerekiyor");
         } else {
           feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
         }
@@ -191,7 +191,7 @@ function LoginPageContent() {
             } else {
               document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
               await supabase.auth.signOut();
-              feedimAlert("error", "Hesap kurtarılamadı, lütfen destek ile iletişime geçin.");
+              feedimAlert("error", "Hesap kurtarılamadı, lütfen destek ile iletişime geçin");
             }
             setLoading(false);
             return;
@@ -200,7 +200,7 @@ function LoginPageContent() {
           // Disabled/blocked account check
           if (profile?.status === "disabled" || profile?.status === "blocked") {
             await waitMin();
-            feedimAlert("error", "Hesabınız devre dışı bırakılmış. Destek ile iletişime geçin.");
+            feedimAlert("error", "Hesabınız devre dışı bırakılmış. Destek ile iletişime geçin");
             document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
             await supabase.auth.signOut();
             return;

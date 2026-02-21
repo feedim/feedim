@@ -23,7 +23,7 @@ interface Subscription {
 }
 
 const planNames: Record<string, string> = {
-  basic: "Basic",
+  basic: "Super",
   pro: "Pro",
   max: "Max",
   business: "Business",
@@ -99,7 +99,7 @@ export default function PremiumSettingsPage() {
           }
 
           setSubscription(prev => prev ? { ...prev, status: "cancelled", cancelled_at: new Date().toISOString(), auto_renew: false } : null);
-          feedimAlert("success", "Aboneliğiniz iptal edildi. Dönem sonuna kadar premium özellikler aktif kalacak.");
+          feedimAlert("success", "Aboneliğiniz iptal edildi. Dönem sonuna kadar premium özellikler aktif kalacak");
         } catch {
           await minWait;
           feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
@@ -144,7 +144,7 @@ export default function PremiumSettingsPage() {
                     </span>
                     {subscription.status === "active" && (
                       <>
-                        <span className="text-text-muted/30">·</span>
+                        <span className="text-text-muted">·</span>
                         <span className="text-xs text-text-muted">{daysRemaining} gün kaldı</span>
                       </>
                     )}

@@ -191,7 +191,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
             <button
               onClick={() => {
                 if (!canUseBusiness) {
-                  feedimAlert("error", "İşletme hesabı sadece Business abonelere özeldir.");
+                  feedimAlert("error", "İşletme hesabı sadece Business abonelere özeldir");
                   return;
                 }
                 setAccountType("business"); setCategory(""); setStep(2);

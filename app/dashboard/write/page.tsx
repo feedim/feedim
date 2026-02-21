@@ -113,19 +113,19 @@ function WritePageContent() {
     const editId = searchParams.get("edit");
     if (editId) {
       setIsEditMode(true);
-      loadDraft(Number(editId));
+      loadDraft(editId);
     }
   }, []);
 
-  const loadDraft = async (draftPostId: number) => {
+  const loadDraft = async (slug: string) => {
     setLoadingDraft(true);
     try {
-      const res = await fetch(`/api/posts/${draftPostId}`);
+      const res = await fetch(`/api/posts/${slug}`);
       const data = await res.json();
       if (res.ok && data.post) {
         setTitle(data.post.title || "");
         setContent(data.post.content || "");
-        setDraftId(draftPostId);
+        setDraftId(data.post.id);
         setFeaturedImage(data.post.featured_image || "");
         setVisibility(data.post.visibility || "public");
         setAllowComments(data.post.allow_comments !== false);
@@ -475,6 +475,7 @@ function WritePageContent() {
         if (status === "published" && data.post?.slug) {
           router.push(`/post/${data.post.slug}`);
         } else {
+          sessionStorage.setItem("fdm-open-create-modal", "1");
           router.push("/dashboard");
         }
       } else {
@@ -652,7 +653,19 @@ function WritePageContent() {
                     <input
                       type="text"
                       value={tagSearch}
-                      onChange={e => setTagSearch(e.target.value)}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        const normalized = raw
+                          .replace(/\s/g, '')
+                          .replace(/[şŞ]/g, 's')
+                          .replace(/[ıİ]/g, 'i')
+                          .replace(/[ğĞ]/g, 'g')
+                          .replace(/[üÜ]/g, 'u')
+                          .replace(/[öÖ]/g, 'o')
+                          .replace(/[çÇ]/g, 'c')
+                          .toLowerCase();
+                        setTagSearch(normalized);
+                      }}
                       onKeyDown={handleTagKeyDown}
                       placeholder="Etiket ara veya yeni oluştur..."
                       className="input-modern w-full"
@@ -683,8 +696,11 @@ function WritePageContent() {
                         disabled={tagCreating}
                         className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50"
                       >
-                        {tagCreating ? <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} /> : <Plus className="h-3.5 w-3.5" />}
-                        Oluştur
+                        {tagCreating ? (
+                          <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} />
+                        ) : (
+                          <><Plus className="h-3.5 w-3.5" /> Oluştur</>
+                        )}
                       </button>
                     )}
                   </div>

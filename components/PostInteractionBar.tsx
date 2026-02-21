@@ -131,7 +131,7 @@ export default function PostInteractionBar({
         setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın.");
+          feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın");
         }
       }
     } finally {
@@ -156,7 +156,7 @@ export default function PostInteractionBar({
         setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın.");
+          feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın");
         }
       }
     } finally {

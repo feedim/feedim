@@ -69,10 +69,10 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   const handleEdit = () => {
     onClose();
     const editPath = contentType === "moment"
-      ? `/dashboard/write/moment?edit=${postId}`
+      ? `/dashboard/write/moment?edit=${postSlug}`
       : contentType === "video"
-        ? `/dashboard/write/video?edit=${postId}`
-        : `/dashboard/write?edit=${postId}`;
+        ? `/dashboard/write/video?edit=${postSlug}`
+        : `/dashboard/write?edit=${postSlug}`;
     router.push(editPath);
   };
 

@@ -14,6 +14,13 @@ export default memo(function MobileBottomNav() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    if (sessionStorage.getItem("fdm-open-create-modal")) {
+      sessionStorage.removeItem("fdm-open-create-modal");
+      setCreateModalOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!isLoggedIn) return;
 
     const load = () => {

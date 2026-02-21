@@ -62,7 +62,7 @@ const planPerks: Record<string, string[]> = {
 /** Turkish vowel harmony for dative suffix */
 function getDativeSuffix(planId: string): string {
   switch (planId) {
-    case "basic": return "Basic'e";
+    case "basic": return "Super'a";
     case "pro": return "Pro'ya";
     case "max": return "Max'e";
     case "business": return "Business'a";

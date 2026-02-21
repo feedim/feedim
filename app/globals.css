@@ -48,12 +48,12 @@
 /* ── Light Mode (Default) ── */
 :root, [data-theme="light"] {
   --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
-  --bg-elevated: #f1f3f4;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #ebebeb;
+  --bg-elevated: #f0f0f0;
   --bg-inverse: #000000;
   --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-blur-overlay: rgba(241, 243, 244, 0.97);
+  --bg-blur-overlay: rgba(240, 240, 240, 0.97);
   --bg-modal-overlay: rgba(255, 255, 255, 0.78);
 
   --text-primary: #000000;
@@ -1460,9 +1460,9 @@ html[data-ambient-light][data-theme="dim"] [data-modal] {
   --bg-elevated: rgba(32, 45, 62, 1);
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal] {
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
-  --bg-elevated: #f1f3f4;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #ebebeb;
+  --bg-elevated: #f0f0f0;
 }
 
 /* Ambient light: frosted glass overlays (e.g. İstatistikler card) */
@@ -1507,7 +1507,7 @@ html[data-ambient-light][data-theme="dim"] .bg-solid {
   background-color: rgba(32, 45, 62, 1);
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-solid {
-  background-color: #f1f3f4;
+  background-color: #f0f0f0;
 }
 
 /* ── Mobile tap feedback: mirror Tailwind hover utilities on :active ── */

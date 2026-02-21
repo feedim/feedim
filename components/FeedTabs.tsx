@@ -39,7 +39,7 @@ export default memo(function FeedTabs({ activeTab, onTabChange, followedTags = [
             key={tab.id}
             onClick={() => handleClick(tab.id)}
             className={cn(
-              "px-4 py-3 text-[0.97rem] font-bold whitespace-nowrap border-b-[2.5px] transition-colors",
+              "px-[5px] py-3 text-[0.97rem] font-bold whitespace-nowrap border-b-[2.5px] transition-colors",
               activeTab === tab.id
                 ? "border-accent-main text-text-primary"
                 : "border-transparent text-text-muted opacity-60 hover:opacity-100 hover:text-text-primary"

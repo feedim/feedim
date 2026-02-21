@@ -271,7 +271,7 @@ export function VideoGridSkeleton({ count = 8 }: { count?: number }) {
 export function MomentGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <div className="grid grid-cols-3 gap-0.5">
-      <Repeat count={count}>{(i) => <Bone key={i} className="aspect-[9/16] rounded-[4px]" />}</Repeat>
+      <Repeat count={count}>{(i) => <Bone key={i} className="aspect-[9/16]" />}</Repeat>
     </div>
   );
 }

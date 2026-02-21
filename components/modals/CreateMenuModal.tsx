@@ -15,6 +15,7 @@ interface CreateMenuModalProps {
 interface Draft {
   id: number;
   title: string;
+  slug: string;
   updated_at: string;
   content_type?: string;
 }
@@ -35,7 +36,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
         if (!user) { setLoading(false); return; }
         const { data } = await supabase
           .from("posts")
-          .select("id, title, updated_at, content_type")
+          .select("id, title, slug, updated_at, content_type")
           .eq("author_id", user.id)
           .eq("status", "draft")
           .order("updated_at", { ascending: false })
@@ -138,7 +139,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                 className="group w-full flex items-center gap-3 px-3 py-3 rounded-[6px] hover:bg-bg-tertiary transition text-left mb-1"
               >
                 <button
-                  onClick={() => go(draft.content_type === "moment" ? `/dashboard/write/moment?edit=${draft.id}` : draft.content_type === "video" ? `/dashboard/write/video?edit=${draft.id}` : `/dashboard/write?edit=${draft.id}`)}
+                  onClick={() => go(draft.content_type === "moment" ? `/dashboard/write/moment?edit=${draft.slug}` : draft.content_type === "video" ? `/dashboard/write/video?edit=${draft.slug}` : `/dashboard/write?edit=${draft.slug}`)}
                   className="flex items-center gap-3 flex-1 min-w-0"
                 >
                   {draft.content_type === "moment" ? (

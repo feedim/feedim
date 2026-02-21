@@ -469,7 +469,7 @@ export default function SettingsPage() {
                 <Link href="/dashboard/settings/freeze" className="text-xs text-text-muted hover:text-accent-main transition">
                   Hesabı dondur
                 </Link>
-                <span className="text-text-muted/30">|</span>
+                <span className="text-text-muted">|</span>
                 <Link href="/dashboard/settings/delete-account" className="text-xs text-text-muted hover:text-error transition">
                   Hesabı sil
                 </Link>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getPresignedUploadUrl } from "@/lib/r2";
 
-const MAX_FILE_SIZE = 52428800; // 50MB
+const MAX_FILE_SIZE = 209715200; // 200MB
 
 // POST: Generate presigned URL for direct-to-R2 upload
 export async function POST(request: NextRequest) {

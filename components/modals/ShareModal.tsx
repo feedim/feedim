@@ -44,7 +44,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
         });
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük paylaşım limitine ulaştın.");
+          feedimAlert("error", data.error || "Günlük paylaşım limitine ulaştın");
         }
       } catch {}
     }

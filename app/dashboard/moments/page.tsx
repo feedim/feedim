@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import MomentCard from "@/components/MomentCard";
+import AdBanner from "@/components/AdBanner";
 import { useDashboardShell } from "@/components/DashboardShell";
+import { useUser } from "@/components/UserContext";
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
 const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
@@ -53,6 +55,7 @@ function MomentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setMobileNavVisible } = useDashboardShell();
+  const { isLoggedIn } = useUser();
   const [moments, setMoments] = useState<Moment[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -69,7 +72,7 @@ function MomentsContent() {
   const [shareModal, setShareModal] = useState<{ url: string; title: string; postId: number; slug: string } | null>(null);
   const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string } | null>(null);
 
-  const startId = searchParams.get("id");
+  const startSlug = searchParams.get("s");
 
   // Hide mobile bottom nav
   useEffect(() => {
@@ -100,11 +103,11 @@ function MomentsContent() {
       const data = await loadMoments();
       let items = data.moments;
 
-      if (startId) {
-        const exists = items.find((m: Moment) => m.id === Number(startId));
+      if (startSlug) {
+        const exists = items.find((m: Moment) => m.slug === startSlug);
         if (!exists) {
           try {
-            const res = await fetch(`/api/posts/${startId}`);
+            const res = await fetch(`/api/posts/${startSlug}`);
             const postData = await res.json();
             if (res.ok && postData.post && postData.post.content_type === "moment") {
               const p = postData.post;
@@ -121,7 +124,7 @@ function MomentsContent() {
       setHasMore(data.hasMore);
       setLoading(false);
     })();
-  }, [startId]);
+  }, [startSlug]);
 
   // IntersectionObserver
   useEffect(() => {
@@ -145,10 +148,14 @@ function MomentsContent() {
     return () => observerRef.current?.disconnect();
   }, [moments]);
 
-  // Infinite loading
+  // Infinite loading — guests redirected to login on loadMore
   useEffect(() => {
     if (!hasMore || loadingMore) return;
     if (activeIndex >= moments.length - 2) {
+      if (!isLoggedIn) {
+        window.location.href = `/login?next=${encodeURIComponent('/dashboard/moments')}`;
+        return;
+      }
       setLoadingMore(true);
       const lastMoment = moments[moments.length - 1];
       loadMoments(String(lastMoment.id)).then((data) => {
@@ -157,7 +164,7 @@ function MomentsContent() {
         setLoadingMore(false);
       });
     }
-  }, [activeIndex, moments.length, hasMore, loadingMore]);
+  }, [activeIndex, moments.length, hasMore, loadingMore, isLoggedIn]);
 
   const handleLike = useCallback((momentId: number) => {
     const wasLiked = likedSet.has(momentId);
@@ -191,7 +198,7 @@ function MomentsContent() {
     setMoments(prev => prev.map(m =>
       m.id === momentId ? { ...m, save_count: (m.save_count || 0) + (wasSaved ? -1 : 1) } : m
     ));
-    fetch(`/api/posts/${momentId}/bookmark`, { method: "POST" }).catch(() => {
+    fetch(`/api/posts/${momentId}/save`, { method: "POST" }).catch(() => {
       setSavedSet(prev => {
         const next = new Set(prev);
         if (wasSaved) next.add(momentId); else next.delete(momentId);
@@ -280,21 +287,30 @@ function MomentsContent() {
           style={{ backgroundColor: "#000" }}
         >
           {moments.map((moment, index) => (
-            <div key={moment.id} data-index={index}>
-              <MomentCard
-                moment={moment}
-                isActive={index === activeIndex}
-                liked={likedSet.has(moment.id)}
-                saved={savedSet.has(moment.id)}
-                muted={globalMuted}
-                onToggleMute={handleToggleMute}
-                onLike={() => handleLike(moment.id)}
-                onComment={() => handleComment(moment)}
-                onShare={() => handleShare(moment)}
-                onSave={() => handleSave(moment.id)}
-                onOptions={() => handleOptions(moment)}
-              />
-            </div>
+            <React.Fragment key={moment.id}>
+              <div data-index={index}>
+                <MomentCard
+                  moment={moment}
+                  isActive={index === activeIndex}
+                  liked={likedSet.has(moment.id)}
+                  saved={savedSet.has(moment.id)}
+                  muted={globalMuted}
+                  onToggleMute={handleToggleMute}
+                  onLike={() => handleLike(moment.id)}
+                  onComment={() => handleComment(moment)}
+                  onShare={() => handleShare(moment)}
+                  onSave={() => handleSave(moment.id)}
+                  onOptions={() => handleOptions(moment)}
+                />
+              </div>
+              {(index + 1) % 25 === 0 && (
+                <div className="snap-start snap-always h-[100dvh] md:h-screen flex items-center justify-center" style={{ backgroundColor: "#000" }}>
+                  <div className="w-full max-w-[380px] px-4">
+                    <AdBanner slot="feed" className="rounded-xl overflow-hidden" />
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
           ))}
 
           {loadingMore && (

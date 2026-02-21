@@ -28,14 +28,14 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
 
   return (
     <Link
-      href={`/dashboard/moments?id=${moment.id}`}
-      className="relative block aspect-[9/16] bg-black rounded-[4px] overflow-hidden group"
+      href={`/dashboard/moments?s=${moment.slug}`}
+      className="relative block aspect-[9/16] bg-black overflow-hidden group"
     >
       {thumb ? (
         <img src={thumb} alt={moment.title} className="w-full h-full object-cover" loading="lazy" />
       ) : (
         <div className="w-full h-full bg-bg-tertiary flex items-center justify-center">
-          <svg className="h-8 w-8 text-text-muted/30" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          <svg className="h-8 w-8 text-text-muted" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
         </div>
       )}
 

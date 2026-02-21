@@ -43,7 +43,7 @@ export default function DistanceSalesContractPage() {
               ve çeşitli platform özelliklerinden yararlanmak için kullanılır. Farklı paketler halinde satışa sunulur.
             </li>
             <li>
-              <strong>Premium Üyelik:</strong> Aylık veya yıllık abonelik planları (Basic, Pro, Max, Business).
+              <strong>Premium Üyelik:</strong> Aylık veya yıllık abonelik planları (Super, Pro, Max, Business).
               Reklamsız deneyim, onaylı rozet, gelişmiş analitik, içerik öne çıkarma ve daha fazla özellik sunar.
             </li>
           </ul>

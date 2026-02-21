@@ -15,7 +15,7 @@ export default function NoImage({ className = "", iconSize = 20 }: NoImageProps)
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-text-muted/30"
+        className="text-text-muted"
       >
         <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
         <circle cx="9" cy="9" r="2" />

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, Upload, Film } from "lucide-react";
+import { X, Plus, Upload, Film, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import {
@@ -73,6 +73,12 @@ function MomentWriteContent() {
   const [isForKids, setIsForKids] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
 
+  // SEO meta
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [metaExpanded, setMetaExpanded] = useState(false);
+
   // State
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -96,23 +102,26 @@ function MomentWriteContent() {
     if (editId) {
       setIsEditMode(true);
       setStep(2);
-      loadDraft(Number(editId));
+      loadDraft(editId);
     }
   }, []);
 
-  const loadDraft = async (draftPostId: number) => {
+  const loadDraft = async (slug: string) => {
     setLoadingDraft(true);
     try {
-      const res = await fetch(`/api/posts/${draftPostId}`);
+      const res = await fetch(`/api/posts/${slug}`);
       const data = await res.json();
       if (res.ok && data.post) {
         setTitle(data.post.title || "");
-        setDraftId(draftPostId);
+        setDraftId(data.post.id);
         setVideoUrl(data.post.video_url || "");
         setVideoDuration(data.post.video_duration || 0);
         setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        if (data.post.meta_title) setMetaTitle(data.post.meta_title);
+        if (data.post.meta_description) setMetaDescription(data.post.meta_description);
+        if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
         const postTags = (data.post.post_tags || [])
           .map((pt: { tags: Tag }) => pt.tags)
           .filter(Boolean);
@@ -225,7 +234,7 @@ function MomentWriteContent() {
 
   const handleVideoSelect = async (file: File) => {
     if (!file.type.startsWith("video/")) {
-      feedimAlert("error", "Desteklenmeyen format. Geçerli bir video dosyası seçin.");
+      feedimAlert("error", "Desteklenmeyen format. Geçerli bir video dosyası seçin");
       return;
     }
     if (file.size > MOMENT_MAX_SIZE_MB * 1024 * 1024) {
@@ -242,7 +251,7 @@ function MomentWriteContent() {
     }
 
     if (!result.isVertical && result.duration > 0) {
-      feedimAlert("error", "Moment için dikey (9:16) video gerekli. Lütfen dikey formatta bir video seçin.");
+      feedimAlert("error", "Moment için dikey (9:16) video gerekli. Lütfen dikey formatta bir video seçin");
       return;
     }
 
@@ -467,6 +476,9 @@ function MomentWriteContent() {
           blurhash: thumbBlurhash,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          meta_title: metaTitle.trim() || null,
+          meta_description: metaDescription.trim() || null,
+          meta_keywords: metaKeywords.trim() || null,
         }),
       });
 
@@ -474,7 +486,7 @@ function MomentWriteContent() {
       if (res.ok) {
         setHasUnsavedChanges(false);
         if (status === "published" && data.post?.slug) router.push(`/post/${data.post.slug}`);
-        else router.push("/dashboard");
+        else { sessionStorage.setItem("fdm-open-create-modal", "1"); router.push("/dashboard"); }
       } else {
         feedimAlert("error", data.error || "Bir hata oluştu");
       }
@@ -608,7 +620,7 @@ function MomentWriteContent() {
                     )}
                   </div>
                   <button onClick={removeVideo} className="text-xs text-error hover:underline">
-                    Kaldır
+                    İptal Et
                   </button>
                 </div>
               </div>
@@ -644,8 +656,10 @@ function MomentWriteContent() {
               </div>
             </div>
 
+            {/* Etiketler + Küçük Resim — yan yana */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Thumbnail */}
-            <div>
+            <div className="md:order-2">
               <label className="block text-sm font-semibold mb-2">Küçük Resim</label>
               {thumbnail ? (
                 <div className="relative rounded-xl overflow-hidden max-w-[200px]">
@@ -670,7 +684,7 @@ function MomentWriteContent() {
             </div>
 
             {/* Tags */}
-            <div>
+            <div className="md:order-1">
               <label className="block text-sm font-semibold mb-2">Etiketler</label>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -687,7 +701,19 @@ function MomentWriteContent() {
                   <input
                     type="text"
                     value={tagSearch}
-                    onChange={(e) => setTagSearch(e.target.value)}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      const normalized = raw
+                        .replace(/\s/g, '')
+                        .replace(/[şŞ]/g, 's')
+                        .replace(/[ıİ]/g, 'i')
+                        .replace(/[ğĞ]/g, 'g')
+                        .replace(/[üÜ]/g, 'u')
+                        .replace(/[öÖ]/g, 'o')
+                        .replace(/[çÇ]/g, 'c')
+                        .toLowerCase();
+                      setTagSearch(normalized);
+                    }}
                     onKeyDown={handleTagKeyDown}
                     placeholder="Etiket ara veya yeni oluştur..."
                     className="input-modern w-full"
@@ -713,8 +739,11 @@ function MomentWriteContent() {
                       disabled={tagCreating}
                       className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50"
                     >
-                      {tagCreating ? <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} /> : <Plus className="h-3.5 w-3.5" />}
-                      Oluştur
+                      {tagCreating ? (
+                        <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} />
+                      ) : (
+                        <><Plus className="h-3.5 w-3.5" /> Oluştur</>
+                      )}
                     </button>
                   )}
                 </div>
@@ -730,6 +759,38 @@ function MomentWriteContent() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+            </div>
+
+            {/* SEO / Gönderi bilgileri */}
+            <div>
+              <button type="button" onClick={() => setMetaExpanded(v => !v)}
+                className="flex items-center justify-between w-full text-left">
+                <label className="block text-sm font-semibold">Gönderi bilgileri</label>
+                <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${metaExpanded ? "rotate-180" : ""}`} />
+              </button>
+              {metaExpanded && (
+                <div className="mt-3 space-y-4">
+                  <div>
+                    <label className="block text-xs text-text-muted mb-1.5">Ana konu başlığı</label>
+                    <input type="text" value={metaTitle} onChange={e => setMetaTitle(e.target.value)} placeholder="Moment ana konusu..." maxLength={60} className="input-modern w-full" />
+                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaTitle.length}/60</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-muted mb-1.5">Açıklama</label>
+                    <textarea value={metaDescription} onChange={e => setMetaDescription(e.target.value)} placeholder="Moment açıklaması..." maxLength={155} rows={3} className="input-modern w-full resize-none" />
+                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaDescription.length}/155</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-muted mb-1.5">Anahtar kelime</label>
+                    <input type="text" value={metaKeywords} onChange={e => setMetaKeywords(e.target.value)} placeholder="Anahtar kelime..." maxLength={200} className="input-modern w-full" />
+                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaKeywords.length}/200</span>
+                  </div>
+                  <p className="text-[0.7rem] text-text-muted/60 leading-relaxed">
+                    Bu alandaki metinler içeriğinizin görünürlüğünü ve sıralamasını belirleyen etkenlerdir. Arama motorları için de kullanılır. Manuel girilmezse Feedim AI tarafından otomatik oluşturulur.
+                  </p>
                 </div>
               )}
             </div>

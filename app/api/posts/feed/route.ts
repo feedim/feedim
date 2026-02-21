@@ -105,7 +105,8 @@ export async function GET(request: NextRequest) {
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
       `)
       .in('id', pageIds)
-      .eq('status', 'published');
+      .eq('status', 'published')
+      .neq('content_type', 'moment');
 
     // Filter out blocked authors
     if (blockedIds.size > 0) {

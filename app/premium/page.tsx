@@ -22,7 +22,7 @@ const VerifiedHero = ({ className }: { className?: string }) => (
 );
 
 const planHero: Record<string, { title: string; subtitle: string }> = {
-  basic: { title: "Feedim Basic", subtitle: "Reklamsız deneyim ve artırılmış limitlerle farkını göster." },
+  basic: { title: "Feedim Super", subtitle: "Reklamsız deneyim ve artırılmış limitlerle farkını göster." },
   pro: { title: "Feedim Pro", subtitle: "Keşfette öne çık, analitik paneli ve daha fazlası." },
   max: { title: "Feedim Max", subtitle: "Tüm özellikler, tam kontrol, sınırsız deneyim." },
   business: { title: "Feedim Business", subtitle: "Markalar ve işletmeler için tam donanımlı profesyonel paket." },
@@ -62,7 +62,7 @@ const allFeatures: Feature[] = [
 const plans = [
   {
     id: "basic",
-    name: "Basic",
+    name: "Super",
     monthly: 39.99,
     yearly: 399,
     popular: false,
@@ -363,7 +363,7 @@ export default function PremiumPage() {
             {/* Table header */}
             <div className="grid grid-cols-[1fr_repeat(4,36px)] sm:grid-cols-[1fr_50px_50px_50px_60px] items-center px-3 sm:px-4 py-3 bg-bg-secondary text-[0.62rem] sm:text-[0.72rem] font-semibold text-text-muted">
               <span className="text-[0.75rem] sm:text-[0.78rem]">Özellik</span>
-              <span className="text-center">Basic</span>
+              <span className="text-center">Super</span>
               <span className="text-center">Pro</span>
               <span className="text-center">Max</span>
               <span className="text-center">Biz</span>
@@ -376,7 +376,7 @@ export default function PremiumPage() {
                   <span key={tier} className="flex justify-center">
                     {f[tier]
                       ? <Check className="h-[14px] w-[14px] text-accent-main" strokeWidth={2.5} />
-                      : <X className="h-[14px] w-[14px] text-text-muted/30" strokeWidth={2} />
+                      : <X className="h-[14px] w-[14px] text-text-muted" strokeWidth={2} />
                     }
                   </span>
                 ))}

@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
     try {
       if (password !== confirmPassword) {
         await waitMin();
-        feedimAlert("error", "Şifreler eşleşmiyor.");
+        feedimAlert("error", "Şifreler eşleşmiyor");
         return;
       }
 
@@ -52,12 +52,12 @@ export default function ResetPasswordPage() {
       if (error) throw error;
 
       await waitMin();
-      feedimAlert("success", "Şifre başarıyla güncellendi!");
+      feedimAlert("success", "Şifreniz değiştirildi");
       await supabase.auth.signOut();
       router.push("/login");
     } catch (error: any) {
       await waitMin();
-      feedimAlert("error", translateError(error.message) || "Şifre güncellenemedi.");
+      feedimAlert("error", translateError(error.message) || "Şifre güncellenemedi");
     } finally {
       setLoading(false);
     }
@@ -84,6 +84,7 @@ export default function ResetPasswordPage() {
           minLength={VALIDATION.password.min}
           maxLength={VALIDATION.password.max}
           className="input-modern w-full"
+          style={{ height: 50, fontSize: 16, fontWeight: 600 }}
         />
         <PasswordInput
           placeholder="Yeni şifre (tekrar)"
@@ -93,13 +94,14 @@ export default function ResetPasswordPage() {
           minLength={VALIDATION.password.min}
           maxLength={VALIDATION.password.max}
           className="input-modern w-full"
+          style={{ height: 50, fontSize: 16, fontWeight: 600 }}
         />
         <button
           type="submit"
           className="t-btn accept w-full relative"
           disabled={loading}
         >
-          {loading ? <span className="loader" /> : "Şifreyi Güncelle"}
+          {loading ? <span className="loader" /> : "Şifreyi değiştir"}
         </button>
         <div className="text-center">
           <Link href="/login" className="text-sm text-text-muted hover:text-text-primary transition font-semibold">

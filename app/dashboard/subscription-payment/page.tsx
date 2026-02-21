@@ -62,7 +62,7 @@ const planFeatures: Record<string, { icon: typeof Check; text: string }[]> = {
 };
 
 const planNames: Record<string, string> = {
-  basic: "Basic",
+  basic: "Super",
   pro: "Pro",
   max: "Max",
   business: "Business",

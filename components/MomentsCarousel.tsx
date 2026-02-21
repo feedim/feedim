@@ -26,7 +26,7 @@ interface MomentItem {
 
 const DISMISS_KEY = "fdm-moments-carousel-dismissed";
 
-export default function MomentsCarousel() {
+export default function MomentsCarousel({ maxItems = 4 }: { maxItems?: number }) {
   const [moments, setMoments] = useState<MomentItem[]>([]);
   const [dismissed, setDismissed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -41,16 +41,16 @@ export default function MomentsCarousel() {
 
   const loadMoments = useCallback(async () => {
     try {
-      const res = await fetch("/api/posts/moments?limit=5");
+      const res = await fetch(`/api/posts/moments?limit=${maxItems}`);
       if (!res.ok) return;
       const data = await res.json();
-      setMoments(data.moments || []);
+      setMoments((data.moments || []).slice(0, maxItems));
     } catch {
       // Silent
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [maxItems]);
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);
@@ -66,7 +66,7 @@ export default function MomentsCarousel() {
   if (dismissed || !loaded || moments.length === 0) return null;
 
   return (
-    <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px]">
+    <div className="sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px]" style={{ marginLeft: 11, marginRight: 11 }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">Moments</span>
@@ -89,23 +89,12 @@ export default function MomentsCarousel() {
           return (
             <Link
               key={m.id}
-              href={`/dashboard/moments?id=${m.id}`}
+              href={`/dashboard/moments?s=${m.slug}`}
               className="relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-black"
               style={{ scrollSnapAlign: "start" }}
             >
-              {/* Video thumbnail or silent autoplay */}
-              {m.video_url ? (
-                <video
-                  src={m.video_url}
-                  poster={thumb}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  muted
-                  autoPlay
-                  loop
-                  playsInline
-                  preload="metadata"
-                />
-              ) : thumb ? (
+              {/* Thumbnail only (no autoplay for performance) */}
+              {thumb ? (
                 <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="absolute inset-0 bg-bg-tertiary" />

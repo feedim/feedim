@@ -15,9 +15,13 @@ interface SuggestedUser {
   premium_plan?: string | null;
 }
 
+interface Props {
+  excludeUserId?: string;
+}
+
 const DISMISS_KEY = "fdm-carousel-dismissed";
 
-export default function SuggestionCarousel() {
+export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState(false);
@@ -29,11 +33,12 @@ export default function SuggestionCarousel() {
       return;
     }
     loadUsers();
-  }, []);
+  }, [excludeUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUsers = useCallback(async () => {
     try {
-      const res = await fetch("/api/suggestions?limit=8");
+      const url = `/api/suggestions?limit=8${excludeUserId ? `&exclude=${excludeUserId}` : ''}`;
+      const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
       setUsers(data.users || []);
@@ -63,7 +68,7 @@ export default function SuggestionCarousel() {
         setFollowing(reverted);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın.");
+          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
         }
       }
     } catch {

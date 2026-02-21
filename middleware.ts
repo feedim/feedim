@@ -154,7 +154,7 @@ export async function middleware(request: NextRequest) {
   const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
   const isAuthPage = pathname === '/login' || pathname === '/register'
   const isOnboarding = pathname === '/onboarding'
-  const publicDashboardPaths = ['/dashboard', '/dashboard/explore']
+  const publicDashboardPaths = ['/dashboard', '/dashboard/explore', '/dashboard/moments']
   const isPublicDashboard = publicDashboardPaths.includes(pathname) || pathname.startsWith('/dashboard/explore/')
 
   // Helper: redirect that preserves refreshed auth cookies

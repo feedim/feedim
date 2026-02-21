@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Feedim Premium — Ayrıcalıklı Deneyim",
-  description: "Feedim Premium ile reklamsız deneyim, onaylı rozet, analitik paneli ve daha fazlası. Basic, Pro, Max ve Business planlarını keşfet.",
+  description: "Feedim Premium ile reklamsız deneyim, onaylı rozet, analitik paneli ve daha fazlası. Super, Pro, Max ve Business planlarını keşfet.",
   keywords: ["feedim premium", "premium üyelik", "onaylı rozet", "reklamsız"],
   openGraph: {
     title: "Feedim Premium — Ayrıcalıklı Deneyim",
