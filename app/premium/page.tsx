@@ -341,7 +341,7 @@ export default function PremiumPage() {
         </div>
 
         {/* Sticky CTA */}
-        <div className="sticky bottom-0 z-40 bg-bg-primary bg-solid py-3 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-12 border-t border-border-primary/50">
+        <div className="sticky bottom-0 z-40 bg-bg-primary py-3 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-12 border-t border-border-primary/50">
           {isLoggedIn && userCurrentPlan === selectedPlan ? (
             <button disabled className="premium-cta-btn w-full !opacity-60 !cursor-not-allowed">
               Mevcut Plan
