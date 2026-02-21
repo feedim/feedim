@@ -296,14 +296,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // AI moderation — arka planda çalışır, yanıtı geciktirmez
-    // NSFW yorumlar: status=approved, is_nsfw=true (sadece yazarı görür, moderasyona gider)
+    // Politika: yalnızca ağır ihlaller (block) NSFW'ye düşürülür; 'flag' ihlaller dokunulmaz
     if (!isGif && content) {
       const commentId = comment.id;
       after(async () => {
         try {
           const modResult = await checkTextContent('', content);
-          if (modResult.severity === 'block' || modResult.severity === 'flag') {
+          if (modResult.severity === 'block') {
             await admin.from('comments').update({ is_nsfw: true }).eq('id', commentId);
+          } else if (modResult.severity === null) {
+            await admin.from('comments').update({ is_nsfw: false }).eq('id', commentId);
           }
         } catch {}
       });
@@ -320,4 +322,3 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }
 }
-

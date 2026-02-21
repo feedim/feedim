@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { slugify, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION } from '@/lib/constants';
-import { moderateContent } from '@/lib/moderation';
+import { checkImageContent, checkTextContent } from '@/lib/moderation';
+import { createAdminClient } from '@/lib/supabase/admin';
 import sanitizeHtml from 'sanitize-html';
 
 export async function GET(
@@ -195,24 +196,15 @@ export async function PUT(
     }
 
 
-    // Content moderation: when publishing or updating published content
-    let moderationApplied = false;
-    if (updates.status === 'published' || (existing.status === 'published' && updates.content)) {
-      const finalTitle = (updates.title as string) || existing.title;
-      const finalContent = (updates.content as string) || existing.content || '';
-      const modResult = await moderateContent(finalTitle, finalContent);
-      if (modResult.action === 'block') {
-        return NextResponse.json(
-          { error: modResult.reason || 'İçerik politikamıza aykırı içerik tespit edildi' },
-          { status: 400 }
-        );
-      }
-      if (modResult.action === 'moderation') {
-        // NSFW: publish but flag for moderation review
-        updates.is_nsfw = true;
-        updates.moderation_due_at = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-        moderationApplied = true;
-      }
+    // Moderation policy update:
+    // - Always allow publishing
+    // - Run AI moderation in background
+    //   - Images flagged/block => NSFW + moderation_due_at = now
+    //   - Text severe (block) => NSFW + moderation_due_at = now
+    //   - Text mild (flag) => no change
+    let runAsyncModeration = false;
+    if (updates.status === 'published' || (existing.status === 'published' && (updates.title || updates.content))) {
+      runAsyncModeration = true;
     }
 
     const { data: post, error } = await supabase
@@ -272,12 +264,32 @@ export async function PUT(
       }
     }
 
-    const response: Record<string, unknown> = { post };
-    if (moderationApplied) {
-      response.moderation = true;
-      response.message = 'Gönderiniz yayınlandı ancak incelemeye alındı. Moderatörler incelediğinde herkese açılacak.';
+    // Background AI moderation
+    if (runAsyncModeration && post) {
+      const finalTitle = (updates.title as string) || existing.title;
+      const finalContent = (updates.content as string) || existing.content || '';
+      const admin = createAdminClient();
+      after(async () => {
+        try {
+          const [imgRes, txtRes] = await Promise.all([
+            checkImageContent(finalContent),
+            checkTextContent(finalTitle, finalContent),
+          ]);
+
+          let shouldNSFW = false;
+          if (imgRes.action !== 'allow') shouldNSFW = true; // any flagged image
+          if (txtRes.severity === 'block') shouldNSFW = true; // only severe text
+
+          const modUpdates: Record<string, unknown> = shouldNSFW
+            ? { is_nsfw: true, moderation_due_at: new Date().toISOString() }
+            : { is_nsfw: false, moderation_due_at: null };
+
+          await admin.from('posts').update(modUpdates).eq('id', post.id);
+        } catch {}
+      });
     }
-    return NextResponse.json(response);
+
+    return NextResponse.json({ post });
   } catch {
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }

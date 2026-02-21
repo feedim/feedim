@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkTextContent, checkImageContent } from "@/lib/moderation";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -54,16 +55,45 @@ export async function POST(request: NextRequest) {
     .eq("content_id", Number(target_id))
     .eq("status", "pending");
 
-  // 3+ reports → auto NSFW flag
+  // 3+ rapor → AI kontrol (arka planda):
+  // Post: görsel flagged/block veya metin 'block' ise NSFW; aksi halde dokunma
+  // Comment: yalnızca 'block' ise NSFW
   if (reportCount && reportCount >= 3) {
-    if (type === "post") {
-      await admin.from("posts").update({
-        is_nsfw: true,
-        moderation_due_at: new Date().toISOString(),
-      }).eq("id", Number(target_id)).eq("is_nsfw", false);
-    } else if (type === "comment") {
-      await admin.from("comments").update({ is_nsfw: true }).eq("id", Number(target_id));
-    }
+    after(async () => {
+      try {
+        const admin2 = createAdminClient();
+        if (type === "post") {
+          const { data: postData } = await admin2
+            .from("posts")
+            .select("id, title, content")
+            .eq("id", Number(target_id))
+            .single();
+          if (postData) {
+            const [imgRes, txtRes] = await Promise.all([
+              checkImageContent(postData.content || ""),
+              checkTextContent(postData.title || "", postData.content || ""),
+            ]);
+            const shouldNSFW = (imgRes.action !== 'allow') || (txtRes.severity === 'block');
+            const modUpdates: Record<string, unknown> = shouldNSFW
+              ? { is_nsfw: true, moderation_due_at: new Date().toISOString() }
+              : { is_nsfw: false, moderation_due_at: null };
+            await admin2.from("posts").update(modUpdates).eq("id", postData.id);
+          }
+        } else if (type === "comment") {
+          const { data: c } = await admin2
+            .from("comments")
+            .select("id, content")
+            .eq("id", Number(target_id))
+            .single();
+          if (c) {
+            const t = await checkTextContent('', c.content || '');
+            if (t.severity === 'block') {
+              await admin2.from('comments').update({ is_nsfw: true }).eq('id', c.id);
+            }
+          }
+        }
+      } catch {}
+    });
   }
 
   // 5+ reports → auto removal
