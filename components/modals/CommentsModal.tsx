@@ -232,16 +232,16 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const handleDeleteComment = useCallback((commentId: number) => {
     feedimAlert("question", "Bu yorumu silmek istediğine emin misin?", {
       showYesNo: true,
-      onYes: async () => {
-        const res = await fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE" });
-        if (res.ok) {
-          setComments(prev => prev.filter(c => c.id !== commentId).map(c => ({
-            ...c,
-            replies: c.replies?.filter(r => r.id !== commentId),
-            reply_count: c.replies?.some(r => r.id === commentId) ? c.reply_count - 1 : c.reply_count,
-          })));
-          setTotalCount(c => Math.max(0, c - 1));
-        }
+      onYes: () => {
+        // Optimistic: immediately remove from UI
+        setComments(prev => prev.filter(c => c.id !== commentId).map(c => ({
+          ...c,
+          replies: c.replies?.filter(r => r.id !== commentId),
+          reply_count: c.replies?.some(r => r.id === commentId) ? c.reply_count - 1 : c.reply_count,
+        })));
+        setTotalCount(c => Math.max(0, c - 1));
+        // Fire-and-forget background delete
+        fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE" }).catch(() => {});
       },
     });
   }, [postId]);
@@ -482,7 +482,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
       {/* Mention dropdown */}
       {mentionUsers.length > 0 && (
-        <div className="bg-bg-elevated border border-border-primary rounded-xl shadow-xl mb-2 max-h-[200px] overflow-y-auto">
+        <div className="bg-bg-elevated bg-solid border border-border-primary rounded-xl shadow-xl mb-2 max-h-[200px] overflow-y-auto">
           {mentionUsers.map((u, i) => (
             <button
               key={u.user_id}

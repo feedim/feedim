@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
 import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
-import { VALIDATION } from '@/lib/constants';
+import { VALIDATION, MOMENT_MAX_DURATION } from '@/lib/constants';
 import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
 import { moderateContent } from '@/lib/moderation';
 import { revalidateTag } from 'next/cache';
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash } = body;
-    const isVideo = content_type === 'video';
+    const isVideo = content_type === 'video' || content_type === 'moment';
+    const isMoment = content_type === 'moment';
 
     // Validate title
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
@@ -61,6 +62,11 @@ export async function POST(request: NextRequest) {
     // Validate video fields
     if (isVideo && status === 'published' && !video_url) {
       return NextResponse.json({ error: 'Video URL gerekli' }, { status: 400 });
+    }
+
+    // Moment: 60s duration limit
+    if (isMoment && video_duration && video_duration > MOMENT_MAX_DURATION) {
+      return NextResponse.json({ error: `Moment en fazla ${MOMENT_MAX_DURATION} saniye olabilir` }, { status: 400 });
     }
 
     // Generate slug
@@ -172,7 +178,7 @@ export async function POST(request: NextRequest) {
         slug,
         content: sanitizedContent,
         excerpt,
-        content_type: isVideo ? 'video' : 'post',
+        content_type: isMoment ? 'moment' : (isVideo ? 'video' : 'post'),
         featured_image: featured_image || (isVideo ? video_thumbnail : null) || null,
         video_url: isVideo ? (video_url || null) : null,
         video_duration: isVideo ? (video_duration || null) : null,

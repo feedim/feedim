@@ -92,8 +92,6 @@ export default function RootLayout({
             }),
           }}
         />
-        {/* Google AdSense — must be plain script to avoid data-nscript attribute */}
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1411343179923275" crossOrigin="anonymous" />
       </head>
       <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
         <AuthModalProvider>
@@ -101,6 +99,8 @@ export default function RootLayout({
           {children}
         </AuthModalProvider>
         <FeedimAlertProvider />
+        {/* Google AdSense */}
+        <Script src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1411343179923275" strategy="afterInteractive" crossOrigin="anonymous" />
         {/* Google Analytics */}
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-H0J8RKSJ59" strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-H0J8RKSJ59');` }} />

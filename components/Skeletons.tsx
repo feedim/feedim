@@ -267,6 +267,15 @@ export function VideoGridSkeleton({ count = 8 }: { count?: number }) {
   );
 }
 
+/* ─── Moment Grid (Profile) ─── */
+export function MomentGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-3 gap-0.5">
+      <Repeat count={count}>{(i) => <Bone key={i} className="aspect-[9/16] rounded-[4px]" />}</Repeat>
+    </div>
+  );
+}
+
 /* ─── Stats Modal ─── */
 export function StatsSkeleton() {
   return (

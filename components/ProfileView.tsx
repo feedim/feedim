@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock, Users, FileText, Flag, AlertTriangle, EyeOff } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock, Users, FileText, Flag, AlertTriangle, EyeOff, Clapperboard } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 import PostListSection from "@/components/PostListSection";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -14,6 +14,8 @@ import FollowButton from "@/components/FollowButton";
 import { getCategoryLabel, isProfessional } from "@/lib/professional";
 import SuggestionCarousel from "@/components/SuggestionCarousel";
 import ShareIcon from "@/components/ShareIcon";
+import MomentGridCard from "@/components/MomentGridCard";
+import { MomentGridSkeleton } from "@/components/Skeletons";
 
 const EditProfileModal = lazy(() => import("@/components/modals/EditProfileModal"));
 const FollowersModal = lazy(() => import("@/components/modals/FollowersModal"));
@@ -65,7 +67,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [followerCount, setFollowerCount] = useState(initialProfile.follower_count || 0);
   const [isBlocked, setIsBlocked] = useState(initialProfile.is_blocked || false);
   const [isBlockedBy, setIsBlockedBy] = useState(initialProfile.is_blocked_by || false);
-  const [activeTab, setActiveTab] = useState<"posts" | "likes" | "comments">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "moments" | "likes" | "comments">("posts");
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -80,6 +82,11 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [momentPosts, setMomentPosts] = useState<any[]>([]);
+  const [momentsLoading, setMomentsLoading] = useState(false);
+  const [momentsPage, setMomentsPage] = useState(1);
+  const [momentsHasMore, setMomentsHasMore] = useState(false);
+  const [momentsLoaded, setMomentsLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Modals
@@ -199,13 +206,35 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     }
   }, [profile.username]);
 
-  // Load likes/comments when tab switches for the first time
+  const loadMoments = useCallback(async (pageNum: number) => {
+    setMomentsLoading(true);
+    try {
+      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&content_type=moment`);
+      const data = await res.json();
+      if (pageNum === 1) {
+        setMomentPosts(data.posts || []);
+      } else {
+        setMomentPosts(prev => [...prev, ...(data.posts || [])]);
+      }
+      setMomentsHasMore(data.hasMore || false);
+      setMomentsLoaded(true);
+    } catch {
+      // Silent
+    } finally {
+      setMomentsLoading(false);
+    }
+  }, [profile.username]);
+
+  // Load likes/comments/moments when tab switches for the first time
   useEffect(() => {
     if (activeTab === "likes" && !likesLoaded) {
       loadLikes(1);
     }
     if (activeTab === "comments" && !commentsLoaded) {
       loadComments(1);
+    }
+    if (activeTab === "moments" && !momentsLoaded) {
+      loadMoments(1);
     }
   }, [activeTab]);
 
@@ -709,6 +738,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                                 "bg-bg-tertiary text-text-muted"
                               }`}>{p.status}</span>
                               {p.content_type === "video" && <span className="text-accent-main">Video</span>}
+                              {p.content_type === "moment" && <span className="text-accent-main">Moment</span>}
                               <span>{p.view_count || 0}g · {p.like_count || 0}b</span>
                             </div>
                           </div>
@@ -777,6 +807,15 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 {activeTab === "posts" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
               </button>
               <button
+                onClick={() => setActiveTab("moments")}
+                className={`flex-1 flex items-center justify-center py-3 transition relative ${
+                  activeTab === "moments" ? "text-text-primary" : "text-text-muted"
+                }`}
+              >
+                <Clapperboard className="h-[22px] w-[22px]" strokeWidth={activeTab === "moments" ? 2.2 : 1.8} />
+                {activeTab === "moments" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
+              </button>
+              <button
                 onClick={() => setActiveTab("comments")}
                 className={`flex-1 flex items-center justify-center py-3 transition relative ${
                   activeTab === "comments" ? "text-text-primary" : "text-text-muted"
@@ -809,6 +848,39 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
                   />
                 ) : null}
+              </div>
+            )}
+
+            {/* Moments Tab */}
+            {activeTab === "moments" && (
+              <div className="pt-2">
+                {momentsLoading && !momentsLoaded ? (
+                  <MomentGridSkeleton />
+                ) : momentPosts.length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-sm font-semibold text-text-primary mb-1">Henüz moment yok</p>
+                    <p className="text-xs text-text-muted">{profile.is_own ? "İlk momentinizi oluşturun!" : "Bu kullanıcı henüz moment paylaşmamış."}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {momentPosts.map((m: any) => (
+                        <MomentGridCard key={m.id} moment={m} />
+                      ))}
+                    </div>
+                    {momentsHasMore && (
+                      <div className="flex justify-center py-4">
+                        <button
+                          onClick={() => { setMomentsPage(p => p + 1); loadMoments(momentsPage + 1); }}
+                          disabled={momentsLoading}
+                          className="text-sm text-accent-main font-medium hover:underline disabled:opacity-50"
+                        >
+                          {momentsLoading ? "Yükleniyor..." : "Daha fazla"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 

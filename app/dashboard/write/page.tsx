@@ -659,7 +659,7 @@ function WritePageContent() {
                     />
                     {/* Suggestions dropdown */}
                     {tagSuggestions.length > 0 && (
-                      <div className="absolute left-0 right-0 top-full mt-1 bg-bg-elevated border border-border-primary rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-bg-elevated bg-solid border border-border-primary rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
                         {tagSuggestions.map((s, i) => (
                           <button
                             key={s.id}

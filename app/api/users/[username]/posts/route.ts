@@ -9,6 +9,7 @@ export async function GET(
   const supabase = await createClient();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
+  const contentType = searchParams.get("content_type");
   const limit = 12;
 
   const { data: profile } = await supabase
@@ -48,15 +49,21 @@ export async function GET(
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const { data: posts, error } = await supabase
+  let query = supabase
     .from("posts")
     .select(`
       id, title, slug, excerpt, featured_image, reading_time,
-      like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail, blurhash,
+      like_count, comment_count, save_count, view_count, published_at, content_type, video_duration, video_thumbnail, blurhash,
       profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
     `)
     .eq("author_id", profile.user_id)
-    .eq("status", "published")
+    .eq("status", "published");
+
+  if (contentType) {
+    query = query.eq("content_type", contentType);
+  }
+
+  const { data: posts, error } = await query
     .order("published_at", { ascending: false })
     .range(from, to);
 

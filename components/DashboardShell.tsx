@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import PublicFooter from "@/components/PublicFooter";
@@ -27,6 +28,8 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
+  const pathname = usePathname();
+  const isSettingsPage = pathname.startsWith("/dashboard/settings");
 
   const setNav = useCallback((visible: boolean) => setMobileNavVisible(visible), []);
 
@@ -40,9 +43,11 @@ export default function DashboardShell({
             <div className="max-w-[1400px] mx-auto w-full">
               {children}
             </div>
-            <div className="md:hidden pb-4">
-              <PublicFooter variant="compact" />
-            </div>
+            {isSettingsPage && (
+              <div className="md:hidden pb-4">
+                <PublicFooter variant="compact" />
+              </div>
+            )}
           </main>
           {mobileNavVisible && <MobileBottomNav />}
         </div>

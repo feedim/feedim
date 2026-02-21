@@ -1496,6 +1496,20 @@ html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-so
   background-color: #ffffff;
 }
 
+/* Dropdowns / popups: always solid regardless of ambient light */
+.bg-solid {
+  background-color: var(--bg-elevated);
+}
+html[data-ambient-light][data-theme="dark"] .bg-solid {
+  background-color: rgba(36, 36, 36, 1);
+}
+html[data-ambient-light][data-theme="dim"] .bg-solid {
+  background-color: rgba(32, 45, 62, 1);
+}
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-solid {
+  background-color: #f1f3f4;
+}
+
 /* ── Mobile tap feedback: mirror Tailwind hover utilities on :active ── */
 .hover\:bg-bg-tertiary:active { background-color: var(--bg-tertiary); }
 .hover\:bg-bg-secondary:active { background-color: var(--bg-secondary); }

@@ -148,10 +148,16 @@ export const VIDEO_MAX_SIZE_MB = 50; // MB (Supabase free tier limit)
 export const VIDEO_ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/3gpp', 'video/x-m4v', 'video/ogg', 'video/mpeg'] as const;
 export const VIDEO_PAGE_SIZE = 12;
 
+// Moment
+export const MOMENT_MAX_DURATION = 60; // saniye
+export const MOMENT_MAX_SIZE_MB = 50; // MB
+export const MOMENT_PAGE_SIZE = 10;
+
 // İçerik tipleri
 export const CONTENT_TYPES = {
   post: { label: 'Gönderi', icon: '📝' },
   video: { label: 'Video', icon: '🎥' },
+  moment: { label: 'Moment', icon: '🎬' },
 } as const;
 
 // Bildirim tipleri

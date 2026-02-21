@@ -21,9 +21,10 @@ interface PostMoreModalProps {
   onShare?: () => void;
   isOwnPost?: boolean;
   postSlug?: string;
+  contentType?: "post" | "video" | "moment";
 }
 
-export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug }: PostMoreModalProps) {
+export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug, contentType }: PostMoreModalProps) {
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -67,29 +68,30 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
 
   const handleEdit = () => {
     onClose();
-    router.push(`/dashboard/write?edit=${postId}`);
+    const editPath = contentType === "moment"
+      ? `/dashboard/write/moment?edit=${postId}`
+      : contentType === "video"
+        ? `/dashboard/write/video?edit=${postId}`
+        : `/dashboard/write?edit=${postId}`;
+    router.push(editPath);
   };
 
   const handleDelete = async () => {
     feedimAlert("question", "Bu gönderiyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.", {
       showYesNo: true,
-      onYes: async () => {
-        setDeleting(true);
+      onYes: () => {
+        // Optimistic: immediately close, navigate, and show success
+        onClose();
+        feedimAlert("success", "Gönderi silindi");
+        // Mark as deleted in sessionStorage so feed hides it immediately
         try {
-          const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
-          if (res.ok) {
-            feedimAlert("success", "Gönderi silindi");
-            onClose();
-            router.push("/dashboard");
-          } else {
-            const data = await res.json();
-            feedimAlert("error", data.error || "Silinemedi");
-          }
-        } catch {
-          feedimAlert("error", "Bir hata oluştu");
-        } finally {
-          setDeleting(false);
-        }
+          const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
+          deleted.push(postId);
+          sessionStorage.setItem("fdm-deleted-posts", JSON.stringify(deleted));
+        } catch {}
+        router.push("/dashboard");
+        // Fire-and-forget background delete
+        fetch(`/api/posts/${postId}`, { method: "DELETE" }).catch(() => {});
       },
     });
   };

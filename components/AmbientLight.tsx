@@ -77,14 +77,26 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
   const rafRef = useRef<number>(0);
   const [mounted, setMounted] = useState(false);
   const [autoSrc, setAutoSrc] = useState<string | null>(null);
+  const [momentsActive, setMomentsActive] = useState(false);
   const pathname = usePathname();
 
   const effectiveSrc = imageSrc || autoSrc;
+  const effectiveVideoMode = videoMode || momentsActive;
 
   // Reset autoSrc on navigation so the glow updates for new page content
   useEffect(() => {
     if (!imageSrc) setAutoSrc(null);
   }, [pathname, imageSrc]);
+
+  // Detect moments page via data-moments-active attribute on <html>
+  useEffect(() => {
+    if (!mounted || videoMode) return;
+    const check = () => setMomentsActive(document.documentElement.hasAttribute("data-moments-active"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-moments-active"] });
+    return () => observer.disconnect();
+  }, [mounted, videoMode]);
 
   // ── Mount & html attribute (respect user preference) ──
   useEffect(() => {
@@ -209,8 +221,15 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
   const drawVideoFrame = useCallback(() => {
     if (failedRef.current) return;
     const canvas = canvasRef.current;
-    const video = document.querySelector("video[src]") as HTMLVideoElement | null;
-    if (!canvas || !video || video.readyState < 2) return;
+    if (!canvas) return;
+    // Prefer currently playing video (important for moments with multiple videos)
+    const videos = document.querySelectorAll<HTMLVideoElement>("video[src]");
+    let video: HTMLVideoElement | null = null;
+    for (const v of videos) {
+      if (!v.paused && v.readyState >= 2) { video = v; break; }
+    }
+    if (!video) video = videos[0] || null;
+    if (!video || video.readyState < 2) return;
     try {
       const ctx = canvas.getContext("2d", { willReadFrequently: false });
       if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -222,10 +241,10 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
   }, [syncThemeColor]);
 
   useEffect(() => {
-    if (!mounted || !videoMode) return;
+    if (!mounted || !effectiveVideoMode) return;
 
     let frameCount = 0;
-    let video: HTMLVideoElement | null = null;
+    let trackedVideos = new Set<HTMLVideoElement>();
 
     const tick = () => {
       if (++frameCount % 30 === 0) drawVideoFrame();
@@ -236,7 +255,9 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
       if (!rafRef.current) rafRef.current = requestAnimationFrame(tick);
     };
     const onPause = () => {
-      if (rafRef.current) {
+      // Only stop if no video is playing (moments: another video may start)
+      const anyPlaying = Array.from(document.querySelectorAll<HTMLVideoElement>("video[src]")).some(v => !v.paused);
+      if (!anyPlaying && rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = 0;
       }
@@ -244,25 +265,32 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
     };
 
     const poll = setInterval(() => {
-      video = document.querySelector("video[src]") as HTMLVideoElement | null;
-      if (!video) return;
-      clearInterval(poll);
-      video.addEventListener("play", onPlay);
-      video.addEventListener("pause", onPause);
-      video.addEventListener("ended", onPause);
-      if (!video.paused) onPlay();
+      const videos = document.querySelectorAll<HTMLVideoElement>("video[src]");
+      if (videos.length === 0) return;
+      // Track all videos for play/pause events (moments has multiple)
+      videos.forEach(v => {
+        if (!trackedVideos.has(v)) {
+          trackedVideos.add(v);
+          v.addEventListener("play", onPlay);
+          v.addEventListener("pause", onPause);
+          v.addEventListener("ended", onPause);
+          if (!v.paused) onPlay();
+        }
+      });
     }, 150);
 
     return () => {
       clearInterval(poll);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (video) {
-        video.removeEventListener("play", onPlay);
-        video.removeEventListener("pause", onPause);
-        video.removeEventListener("ended", onPause);
-      }
+      rafRef.current = 0;
+      trackedVideos.forEach(v => {
+        v.removeEventListener("play", onPlay);
+        v.removeEventListener("pause", onPause);
+        v.removeEventListener("ended", onPause);
+      });
+      trackedVideos.clear();
     };
-  }, [mounted, videoMode, drawVideoFrame]);
+  }, [mounted, effectiveVideoMode, drawVideoFrame]);
 
   if (!mounted) return null;
 

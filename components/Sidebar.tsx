@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Home, Search, Plus, Bell, Bookmark, User, Settings,
-  Sun, Moon, CloudMoon, Monitor, LogIn, BarChart3, Wallet, Film
+  Sun, Moon, CloudMoon, Monitor, LogIn, BarChart3, Wallet, Film, Clapperboard
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import DarkModeModal from "@/components/modals/DarkModeModal";
@@ -58,6 +58,7 @@ export default memo(function Sidebar() {
     { href: "/dashboard", icon: Home, label: "Ana Sayfa" },
     { href: "/dashboard/explore", icon: Search, label: "Keşfet" },
     { href: "/dashboard/video", icon: Film, label: "Video" },
+    { href: "/dashboard/moments", icon: Clapperboard, label: "Moments" },
     { href: "/dashboard/notifications", icon: Bell, label: "Bildirimler" },
     { href: "/dashboard/bookmarks", icon: Bookmark, label: "Kaydedilenler" },
     { href: "/dashboard/analytics", icon: BarChart3, label: "Analitik" },

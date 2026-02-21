@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, FileText, Trash2, Film } from "lucide-react";
+import { Plus, FileText, Trash2, Film, Clapperboard } from "lucide-react";
 import Modal from "./Modal";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -111,6 +111,20 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
           </div>
         </button>
 
+        {/* Moment */}
+        <button
+          onClick={() => go("/dashboard/write/moment")}
+          className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[6px] hover:bg-bg-tertiary transition text-left"
+        >
+          <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
+            <Clapperboard className="h-[18px] w-[18px] text-accent-main" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Moment</p>
+            <p className="text-xs text-text-muted mt-0.5">Kısa dikey video (maks 60 sn, 9:16)</p>
+          </div>
+        </button>
+
         {/* Taslaklar */}
         {drafts.length > 0 && (
           <>
@@ -124,10 +138,12 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                 className="group w-full flex items-center gap-3 px-3 py-3 rounded-[6px] hover:bg-bg-tertiary transition text-left mb-1"
               >
                 <button
-                  onClick={() => go(draft.content_type === "video" ? `/dashboard/write/video?edit=${draft.id}` : `/dashboard/write?edit=${draft.id}`)}
+                  onClick={() => go(draft.content_type === "moment" ? `/dashboard/write/moment?edit=${draft.id}` : draft.content_type === "video" ? `/dashboard/write/video?edit=${draft.id}` : `/dashboard/write?edit=${draft.id}`)}
                   className="flex items-center gap-3 flex-1 min-w-0"
                 >
-                  {draft.content_type === "video" ? (
+                  {draft.content_type === "moment" ? (
+                    <Clapperboard className="h-4 w-4 text-text-muted shrink-0" />
+                  ) : draft.content_type === "video" ? (
                     <Film className="h-4 w-4 text-text-muted shrink-0" />
                   ) : (
                     <FileText className="h-4 w-4 text-text-muted shrink-0" />
@@ -136,7 +152,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                     <p className="text-sm font-medium truncate">{draft.title || "Başlıksız"}</p>
                     <p className="text-xs text-text-muted mt-0.5">
                       {new Date(draft.updated_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      {" · "}{draft.content_type === "video" ? "Video" : "Gönderi"}
+                      {" · "}{draft.content_type === "moment" ? "Moment" : draft.content_type === "video" ? "Video" : "Gönderi"}
                     </p>
                   </div>
                 </button>

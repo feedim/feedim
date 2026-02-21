@@ -86,7 +86,7 @@ export async function PUT(
 
     const body = await request.json();
     const { title, content, status, tags, category_id, featured_image, excerpt: customExcerpt, meta_title, meta_description, meta_keywords, allow_comments, is_for_kids, video_url, video_duration, video_thumbnail, content_type } = body;
-    const isVideo = content_type === 'video' || existing.content_type === 'video';
+    const isVideo = content_type === 'video' || content_type === 'moment' || existing.content_type === 'video' || existing.content_type === 'moment';
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 

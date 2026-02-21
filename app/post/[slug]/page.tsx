@@ -133,14 +133,14 @@ async function getAuthorPosts(authorId: string, currentPostId: number) {
 async function getNextVideos(currentPostId: number, authorId: string): Promise<VideoItem[]> {
   const admin = createAdminClient();
 
-  // Fetch videos: prioritize same author, then others
+  // Fetch videos + moments: prioritize same author, then others
   const { data: authorVideos } = await admin
     .from("posts")
     .select(`
       id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan)
     `)
-    .eq("content_type", "video")
+    .in("content_type", ["video", "moment"])
     .eq("status", "published")
     .eq("author_id", authorId)
     .neq("id", currentPostId)
@@ -153,7 +153,7 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
       id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan)
     `)
-    .eq("content_type", "video")
+    .in("content_type", ["video", "moment"])
     .eq("status", "published")
     .neq("author_id", authorId)
     .neq("id", currentPostId)
@@ -206,7 +206,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? post.meta_keywords.split(",").map((k: string) => k.trim()).filter(Boolean)
     : undefined;
 
-  const isVideo = post.content_type === "video";
+  const isVideo = post.content_type === "video" || post.content_type === "moment";
   const ogImage = post.video_thumbnail || post.featured_image;
 
   return {
@@ -262,7 +262,7 @@ export default async function PostPage({ params }: PageProps) {
     }
   }
 
-  const isVideo = post.content_type === "video";
+  const isVideo = post.content_type === "video" || post.content_type === "moment";
   const categoryIds = (post.post_categories || []).map((pc: { category_id: number }) => pc.category_id);
   const [relatedPosts, authorPosts, interactions, nextVideos] = await Promise.all([
     getCachedRelatedPosts(post.id, categoryIds),
@@ -319,13 +319,13 @@ export default async function PostPage({ params }: PageProps) {
         {post.video_url && <link rel="preload" href={post.video_url} as="fetch" crossOrigin="anonymous" />}
         <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
         <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
-        <HeaderTitle title="Video" />
+        <HeaderTitle title={post.content_type === "moment" ? "Moment" : "Video"} />
         <VideoViewTracker postId={post.id} />
         <PostHeaderActions
           postId={post.id} postUrl={`/post/${post.slug}`} postTitle={post.title}
           authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
           isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
-          isVideo
+          isVideo contentType={post.content_type}
         />
 
         {/* Portal: inject VideoSidebar into the existing right sidebar */}
@@ -463,6 +463,7 @@ export default async function PostPage({ params }: PageProps) {
             isOwnPost={isOwnPost}
             postSlug={post.slug}
             portalToHeader
+            contentType={post.content_type}
           />
 
           {/* Stats — views + likes */}

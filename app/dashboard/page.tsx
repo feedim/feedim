@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import FeedTabs from "@/components/FeedTabs";
 import SuggestionCarousel from "@/components/SuggestionCarousel";
+import MomentsCarousel from "@/components/MomentsCarousel";
 import { PostGridSkeleton } from "@/components/Skeletons";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
@@ -52,6 +53,26 @@ export default function DashboardPage() {
   const router = useRouter();
   const supabase = createClient();
   const { user: ctxUser, isLoggedIn } = useUser();
+  const [deletedPostIds, setDeletedPostIds] = useState<Set<number>>(new Set());
+
+  // Check sessionStorage for optimistically deleted posts
+  useEffect(() => {
+    try {
+      const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
+      if (deleted.length > 0) setDeletedPostIds(new Set(deleted));
+    } catch {}
+    // Listen for storage changes (e.g. deletion from another tab/component)
+    const handleStorage = () => {
+      try {
+        const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
+        setDeletedPostIds(new Set(deleted));
+      } catch {}
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const visiblePosts = posts.filter(p => !deletedPostIds.has(p.id));
 
   // Premium hoşgeldin modalı
   useEffect(() => {
@@ -219,12 +240,13 @@ export default function DashboardPage() {
       {/* Content */}
       {loading ? (
         <PostGridSkeleton count={4} />
-      ) : posts.length > 0 ? (
+      ) : visiblePosts.length > 0 ? (
         <>
           <div className="divide-y-0">
-            {posts.map((post, index) => (
+            {visiblePosts.map((post, index) => (
               <div key={post.id}>
                 <PostCard post={post} />
+                {index === 2 && <MomentsCarousel />}
                 {index === 4 && isLoggedIn && <SuggestionCarousel />}
                 <FeedAdSlot index={index} />
               </div>

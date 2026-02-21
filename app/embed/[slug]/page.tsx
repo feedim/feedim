@@ -17,7 +17,7 @@ async function getVideoPost(rawSlug: string) {
     .select("id, title, slug, video_url, video_thumbnail, featured_image, content_type, status, excerpt")
     .eq("slug", slug)
     .eq("status", "published")
-    .eq("content_type", "video")
+    .in("content_type", ["video", "moment"])
     .single();
 
   if (error || !post || !post.video_url) return null;

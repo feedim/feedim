@@ -82,18 +82,18 @@ export default memo(function PostCard({ post }: PostCardProps) {
             ) : (
               <NoImage className="w-full h-full" iconSize={28} />
             )}
-            {/* Play icon overlay for videos with thumbnails */}
-            {post.content_type === "video" && (post.video_thumbnail || post.featured_image) && (
+            {/* Play icon overlay for videos/moments with thumbnails */}
+            {(post.content_type === "video" || post.content_type === "moment") && (post.video_thumbnail || post.featured_image) && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
                   <svg className="h-4 w-4 text-white ml-0.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                 </div>
               </div>
             )}
-            {/* Video badge */}
-            {post.content_type === "video" && (
+            {/* Video/Moment badge */}
+            {(post.content_type === "video" || post.content_type === "moment") && (
               <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
-                {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : "Video"}
+                {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : (post.content_type === "moment" ? "Moment" : "Video")}
               </div>
             )}
           </div>
@@ -110,7 +110,7 @@ export default memo(function PostCard({ post }: PostCardProps) {
             {formatCount(post.view_count || 0)}
           </span>
           <span className="text-text-muted/60">
-            {post.content_type === "video" ? "Video" : "Gonderi"}
+            {post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : "Gönderi"}
           </span>
         </div>
       </Link>
