@@ -5,16 +5,6 @@ import { useUser } from "@/components/UserContext";
 
 type AdSlot = "feed" | "post-top" | "post-detail" | "post-bottom" | "explore" | "sidebar";
 
-// Ad slot IDs from AdSense panel — fill these after creating ad units
-const SLOT_IDS: Partial<Record<AdSlot, string>> = {
-  // "feed": "1234567890",
-  // "post-top": "1234567891",
-  // "post-detail": "1234567892",
-  // "post-bottom": "1234567893",
-  // "explore": "1234567894",
-  // "sidebar": "1234567895",
-};
-
 const AD_CLIENT = "ca-pub-1411343179923275";
 
 interface AdBannerProps {
@@ -31,38 +21,36 @@ declare global {
 export default function AdBanner({ slot, className = "" }: AdBannerProps) {
   const { user } = useUser();
   const insRef = useRef<HTMLModElement>(null);
-  const pushed = useRef(false);
-
-  const slotId = SLOT_IDS[slot];
 
   useEffect(() => {
-    // Only push if we have a real slot ID and haven't pushed yet
-    if (!slotId || pushed.current) return;
     const ins = insRef.current;
-    if (!ins || ins.getAttribute("data-adsbygoogle-status")) return;
-    pushed.current = true;
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch {}
-  }, [slotId]);
+    if (!ins) return;
+    // Skip if this ins already has an ad loaded
+    if (ins.getAttribute("data-adsbygoogle-status")) return;
+    // Small delay to ensure DOM is ready and script is loaded
+    const timer = setTimeout(() => {
+      try {
+        if (!ins.getAttribute("data-adsbygoogle-status")) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch {}
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Premium subscribers see no ads
   if (user?.isPremium) return null;
 
-  // No slot ID configured → Auto Ads handles placement, skip manual ins
-  if (!slotId) return null;
-
   return (
     <div
       className={`ad-container overflow-hidden ${className}`}
-      data-ad-slot={slot}
+      data-ad-slot-name={slot}
     >
       <ins
         ref={insRef}
         className="adsbygoogle"
-        style={{ display: "block" }}
+        style={{ display: "block", textAlign: "center" }}
         data-ad-client={AD_CLIENT}
-        data-ad-slot={slotId}
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
