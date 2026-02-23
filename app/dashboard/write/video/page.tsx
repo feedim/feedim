@@ -767,19 +767,7 @@ function VideoWriteContent() {
                   <input
                     type="text"
                     value={tagSearch}
-                    onChange={e => {
-                      const raw = e.target.value;
-                      const normalized = raw
-                        .replace(/\s/g, '')
-                        .replace(/[şŞ]/g, 's')
-                        .replace(/[ıİ]/g, 'i')
-                        .replace(/[ğĞ]/g, 'g')
-                        .replace(/[üÜ]/g, 'u')
-                        .replace(/[öÖ]/g, 'o')
-                        .replace(/[çÇ]/g, 'c')
-                        .toLowerCase();
-                      setTagSearch(normalized);
-                    }}
+                    onChange={e => setTagSearch(e.target.value)}
                     onKeyDown={handleTagKeyDown}
                     placeholder="Etiket ara veya yeni oluştur..."
                     className="input-modern w-full"

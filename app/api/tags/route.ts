@@ -24,9 +24,6 @@ export async function GET(request: NextRequest) {
 
     const limit = Math.min(Number(request.nextUrl.searchParams.get('limit')) || 20, 100);
 
-    // Best-effort cleanup: remove tags with 0 posts
-    void admin.from('tags').delete().eq('post_count', 0).then(() => {});
-
     let query = supabase
       .from('tags')
       .select('id, name, slug, post_count')
@@ -41,8 +38,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Only return tags that have at least 1 post
-    const { data, error } = await query.gt('post_count', 0);
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
