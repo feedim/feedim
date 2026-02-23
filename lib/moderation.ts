@@ -119,9 +119,9 @@ ALLOW (publish immediately):
 {"action":"allow"}
 
 Severity guide:
-- critical: CSAM, terör, doxxing, ölüm tehdidi, açık pornografi, Porn≥0.7 görsel
-- high: nefret söylemi, şiddet teşviki, açık küfür+hedef, büyük çaplı dolandırıcılık, Porn≥0.55 veya çıplaklık görseli
-- medium: siyasi propaganda, taciz, spam, platform yönlendirme, ima-cinsel, Sexy≥0.75 görsel
+- critical: CSAM, terör, doxxing, ölüm tehdidi, açık pornografi, Porn≥0.85 görsel
+- high: nefret söylemi, şiddet teşviki, açık küfür+hedef, büyük çaplı dolandırıcılık, Porn≥0.70 görsel
+- medium: siyasi propaganda, taciz, spam, platform yönlendirme, ima-cinsel, Sexy≥0.88 görsel
 - low: sınırda içerik, hafif argo, tek link şüphesi, bağlamsal belirsizlik
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -144,7 +144,7 @@ NUANCED GUIDANCE
 4. Humor defense: "Şaka olsun diye" veya "ironi" gerekçesi geçerli değildir; nefret/tehdit içeriği yine flag.
 5. Profil: Birden fazla alanda ihlal varsa → flag. Tek küçük argo tek alanda → allow unless otherwise qualifying.
 6. Yeni hesap riski: account_age_days < 7 veya report_count > 3 → spam/scam eşiğini düşür.
-7. Image context: NSFW skorları verilir (Porn, Sexy, Hentai, Neutral). DİKKAT: NSFWJS modeli Hentai kategorisinde çok fazla yanlış pozitif verir (kediler, karikatürler, renkli görseller 0.2-0.4 arası skor alır). Bu nedenle SADECE yüksek skorları flag et: Porn≥0.55 veya Hentai≥0.55 veya Sexy≥0.75 → görsel uygunsuz. Düşük/orta seviye Hentai skoru (0.1-0.54) TEK BAŞINA flag sebebi DEĞİLDİR. Görsel uygunsuzsa → flag, reason'da görsel içeriği de belirt. Örnek reason'lar: "Cinsel/müstehcen görsel içerik.", "Çıplaklık içeren görsel.", "Erotik görsel içerik." Metin temiz olsa bile görsel skoru yüksekse flag. Skorlar düşük olsa bile metin cinsel/şiddet içerikliyse bağımsız olarak flag.
+7. Image context: NSFW skorları verilir (Porn, Sexy, Hentai, Neutral). ÖNEMLİ: NSFWJS modeli çok fazla yanlış pozitif verir — zombi, korku, karikatür, renkli, sıcak tonlu görseller 0.3-0.8 arası skor alabilir. Bu nedenle görsel skorlarını TEK BAŞINA flag sebebi YAPMA. SADECE aşağıdaki eşikleri aşan skorlar gerçekten uygunsuz kabul edilebilir: Porn≥0.70, Hentai≥0.70, Sexy≥0.88. Bu eşiklerin altındaki TÜM skorlar (örn. Sexy=0.83, Hentai=0.35, Porn=0.40) NORMAL ve GÜVENLİ kabul edilir — bunları flag ETME. Görsel skoru eşiğin üstündeyse ve gerçekten uygunsuz bir görsel varsa flag et. Metin temiz olsa bile görsel eşiği aşmışsa flag. Ancak metin cinsel/şiddet içerikliyse görsel skorundan bağımsız olarak flag.
 8. Platform redirect: "Bio'ma bak", "linke tıkla", "DM'den ulaş", "WhatsApp/Telegram'a gel" → flag (platform_redirect).
 9. Dini tartışma: Hakaret yok, akademik/felsefi tartışma → allow. Dini figüre hakaret veya dini grubu hedef alan saldırı → flag.
 10. Siyaset: Siyasi olayları tarafsızca haberdar etmek → allow. Propaganda, slogan, oy çağrısı → flag.
@@ -381,17 +381,18 @@ async function loadModel(): Promise<NSFWJS> {
 
 type NsfwAction = 'allow' | 'flag';
 
-// Balanced thresholds — NSFWJS Hentai class is noisy (cats, cartoons score 0.2-0.4)
+// Conservative thresholds — NSFWJS has high false-positive rate on Sexy/Hentai
+// (zombies, cartoons, warm-toned images frequently score 0.3-0.8)
 function evaluateScores(scores: Record<string, number>): { action: NsfwAction; reason?: string } {
   const porn = scores['Porn'] || 0;
   const hentai = scores['Hentai'] || 0;
   const sexy = scores['Sexy'] || 0;
   const neutral = scores['Neutral'] || 0;
-  if (porn >= 0.55) return { action: 'flag', reason: 'Görsel: pornografi' };
-  if (hentai >= 0.55) return { action: 'flag', reason: 'Görsel: hentai' };
-  if (sexy >= 0.75) return { action: 'flag', reason: 'Görsel: erotik içerik' };
-  if (porn + hentai >= 0.65) return { action: 'flag', reason: 'Görsel: cinsel içerik' };
-  if (porn + hentai + sexy >= 0.85 && neutral < 0.3) return { action: 'flag', reason: 'Görsel: uygunsuz içerik' };
+  if (porn >= 0.70) return { action: 'flag', reason: 'Görsel: pornografi' };
+  if (hentai >= 0.70) return { action: 'flag', reason: 'Görsel: hentai' };
+  if (sexy >= 0.88) return { action: 'flag', reason: 'Görsel: erotik içerik' };
+  if (porn + hentai >= 0.80) return { action: 'flag', reason: 'Görsel: cinsel içerik' };
+  if (porn + hentai + sexy >= 0.92 && neutral < 0.15) return { action: 'flag', reason: 'Görsel: uygunsuz içerik' };
   return { action: 'allow' };
 }
 

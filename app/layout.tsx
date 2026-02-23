@@ -43,14 +43,16 @@ export const metadata: Metadata = {
 };
 
 import AdsScriptLoader from "@/components/AdsScriptLoader";
+import { getAdsEnabled } from "@/lib/siteSettings";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const adsEnabled = await getAdsEnabled();
   return (
-    <html lang="tr" suppressHydrationWarning data-ads-enabled="0">
+    <html lang="tr" suppressHydrationWarning data-ads-enabled={adsEnabled ? "1" : "0"}>
       <head>
         <meta charSet="utf-8" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

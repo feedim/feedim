@@ -359,7 +359,7 @@ export default function NotificationsPage() {
                     <div className="flex items-center shrink-0 z-[1]">
                       <button
                         onClick={() => deleteNotification(n.id)}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-secondary transition text-text-muted hover:text-error pointer-events-auto"
+                        className="p-2 rounded-full hover:bg-bg-secondary transition text-text-muted hover:text-error pointer-events-auto"
                         title="Sil"
                       >
                         <Trash2 className="h-[18px] w-[18px]" />

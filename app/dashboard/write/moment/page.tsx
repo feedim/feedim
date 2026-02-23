@@ -170,7 +170,9 @@ function MomentWriteContent() {
       if (!video) return;
 
       if (selectedSound) {
-        // VideoPlayer manages video muted/volume — only manage the sound overlay audio
+        // Mute original video when a sound overlay is selected (Reels/TikTok behavior)
+        video.muted = true;
+        video.volume = 0;
 
         // Create audio element for selected sound
         const audio = new Audio();
@@ -227,6 +229,11 @@ function MomentWriteContent() {
           previewAudioRef.current.pause();
           previewAudioRef.current.src = "";
           previewAudioRef.current = null;
+        }
+        // Restore original video sound
+        if (video) {
+          video.muted = false;
+          video.volume = 1;
         }
       }
     }, 50);
@@ -623,7 +630,7 @@ function MomentWriteContent() {
       const data = await res.json();
       if (res.ok) {
         setHasUnsavedChanges(false);
-        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(`/post/${data.post.slug}`); }
+        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(`/dashboard/moments?s=${data.post.slug}`); }
         else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/dashboard"); }
       } else {
         feedimAlert("error", data.error || "Bir hata oluştu");
@@ -751,8 +758,11 @@ function MomentWriteContent() {
                               previewAudioRef.current.src = "";
                               previewAudioRef.current = null;
                             }
-                            // Restore video volume
-                            if (previewVideoRef.current) previewVideoRef.current.volume = 1;
+                            // Restore video volume and unmute
+                            if (previewVideoRef.current) {
+                              previewVideoRef.current.muted = false;
+                              previewVideoRef.current.volume = 1;
+                            }
                             setSelectedSound(null);
                             setUseOriginalSound(true);
                           }}

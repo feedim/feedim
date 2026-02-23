@@ -170,7 +170,8 @@ export default memo(function PostCard({ post }: PostCardProps) {
           {/* Thumbnail */}
           <div
             ref={thumbRef}
-            className="mt-2 rounded-[21px] overflow-hidden bg-bg-tertiary"
+            className="mt-2 rounded-[21px] overflow-hidden bg-bg-tertiary cursor-pointer relative z-[1]"
+            onClick={() => router.push(`/post/${post.slug}`)}
           >
             <div className="relative w-full" style={{ aspectRatio: isVideo ? "16/9" : "4/3" }}>
               {hasThumbnail ? (

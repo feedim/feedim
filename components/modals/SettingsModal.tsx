@@ -61,6 +61,16 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    // Clear all client-side caches to prevent stale data on next login
+    try {
+      const { invalidateCache } = await import("@/lib/fetchWithCache");
+      invalidateCache("");
+    } catch {}
+    try {
+      localStorage.removeItem("fdm-blocked-words");
+      localStorage.removeItem("fdm-deleted-posts");
+      sessionStorage.clear();
+    } catch {}
     await supabase.auth.signOut();
     onClose();
     emitNavigationStart();

@@ -235,8 +235,15 @@ export default function Modal({
     hasMoved.current = false;
     scrollDisabled.current = false;
 
-    if (sheet) sheet.style.transition = "none";
-    if (backdropRef.current) backdropRef.current.style.transition = "none";
+    // Kill CSS animation so inline transform can take priority
+    // (CSS animations override inline styles, causing drag to be invisible)
+    if (sheet) {
+      sheet.style.animation = "none";
+      sheet.style.transition = "none";
+    }
+    if (backdropRef.current) {
+      backdropRef.current.style.transition = "none";
+    }
   }, []);
 
   const moveDrag = useCallback((clientY: number, clientX: number) => {
@@ -284,6 +291,7 @@ export default function Modal({
       : translateY;
 
     if (sheetRef.current) {
+      sheetRef.current.style.transition = "transform 0.08s ease-out";
       sheetRef.current.style.transform = `translateY(${dampened}px)`;
     }
 
@@ -323,7 +331,7 @@ export default function Modal({
     const shouldClose = dy > h * 0.3 || velocity > 950;
 
     if (shouldClose) {
-      if (sheet) { sheet.style.animation = "none"; sheet.style.transform = `translateY(${h + 50}px)`; }
+      if (sheet) { sheet.style.transform = `translateY(${h + 50}px)`; }
       if (backdrop) backdrop.style.opacity = "0";
       resetDragState();
       setTimeout(() => {
@@ -332,12 +340,13 @@ export default function Modal({
         onClose();
       }, 300);
     } else {
-      if (sheet) sheet.style.transform = "";
+      // Snap back to origin
+      if (sheet) sheet.style.transform = "translateY(0px)";
       if (backdrop) backdrop.style.opacity = "";
       resetDragState();
       setTimeout(() => {
-        if (sheet) sheet.style.transition = "";
-        if (backdrop) backdrop.style.transition = "";
+        if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; sheet.style.animation = ""; }
+        if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
       }, 300);
     }
   }, [onClose, resetDragState]);

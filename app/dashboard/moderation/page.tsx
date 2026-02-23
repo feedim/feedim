@@ -278,16 +278,26 @@ export default function AdminPage() {
     { id: "withdrawals", label: "Çekim", icon: Wallet },
   ] as const;
 
-  const POST_REASONS = [
+  const POST_APPROVE_REASONS = [
+    'İçerik uygun', 'AI yanlış pozitif', 'Eğitim/bilgi', 'Haber/gündem',
+    'Eğlence/mizah', 'Sanat/yaratıcı içerik',
+  ];
+  const POST_REJECT_REASONS = [
     'Cinsellik/çıplaklık', 'Şiddet', 'Nefret söylemi', 'Küfür/hakaret',
     'Spam/promosyon', 'Telif/Kopya içerik', 'Yanıltıcı/misinformation',
     'Siyaset/propaganda', 'Uyuşturucu/illegal', 'Kendine zarar teşviki',
   ];
-  const COMMENT_REASONS = [
+  const COMMENT_APPROVE_REASONS = [
+    'Yorum uygun', 'AI yanlış pozitif', 'Normal tartışma',
+  ];
+  const COMMENT_REJECT_REASONS = [
     'Küfür/hakaret', 'Nefret söylemi', 'Tehdit/taciz',
     'Spam/promosyon', 'Cinsellik/çıplaklık', 'PII ifşası',
   ];
-  const PROFILE_REASONS = [
+  const PROFILE_APPROVE_REASONS = [
+    'Profil uygun', 'AI yanlış pozitif', 'Normal kullanıcı',
+  ];
+  const PROFILE_REJECT_REASONS = [
     'Müstehcen avatar', 'Uygunsuz kullanıcı adı', 'Uygunsuz bio',
     'Taklit profil', 'Bot davranışı', 'Spam/promosyon',
     'Çoklu hesap kötüye kullanım', 'Platform dışı yönlendirme',
@@ -665,16 +675,47 @@ export default function AdminPage() {
                     ><Eye className="h-4 w-4" /></Link>
                   </div>
                 </div>
-                {/* Reject with preset reasons */}
+                {/* Approve with preset reasons */}
                 <div className="flex flex-wrap gap-1.5">
-                  {POST_REASONS.map(r => {
+                  {POST_APPROVE_REASONS.map(r => {
                     const selected = (postReasons[p.id] || []).includes(r);
                     return (
                       <button
                         key={r}
                         onClick={() => setPostReasons(prev => {
                           const cur = prev[p.id] || [];
-                          const next = selected ? cur.filter(x => x !== r) : [...cur, r];
+                          // Clear any reject reasons when selecting approve reasons
+                          const cleaned = cur.filter(x => POST_APPROVE_REASONS.includes(x));
+                          const next = selected ? cleaned.filter(x => x !== r) : [...cleaned, r];
+                          return { ...prev, [p.id]: next };
+                        })}
+                        className={`px-2 py-1 rounded-full text-[0.68rem] ${selected ? 'bg-success text-white' : 'bg-success/10 text-success hover:bg-success/20'}`}
+                      >{r}</button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      const reasons = (postReasons[p.id] || []).filter(r => POST_APPROVE_REASONS.includes(r));
+                      takeAction("approve_content", "post", p.id, reasons.join(', ') || undefined);
+                    }}
+                    disabled={actionLoading === String(p.id)}
+                    className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
+                  >Onayla</button>
+                </div>
+                {/* Reject with preset reasons */}
+                <div className="flex flex-wrap gap-1.5">
+                  {POST_REJECT_REASONS.map(r => {
+                    const selected = (postReasons[p.id] || []).includes(r);
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setPostReasons(prev => {
+                          const cur = prev[p.id] || [];
+                          // Clear any approve reasons when selecting reject reasons
+                          const cleaned = cur.filter(x => POST_REJECT_REASONS.includes(x));
+                          const next = selected ? cleaned.filter(x => x !== r) : [...cleaned, r];
                           return { ...prev, [p.id]: next };
                         })}
                         className={`px-2 py-1 rounded-full text-[0.68rem] ${selected ? 'bg-text-primary text-bg-primary' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}
@@ -682,17 +723,12 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => takeAction("approve_content", "post", p.id, (postReasons[p.id] || []).join(', ') || undefined)}
-                    disabled={actionLoading === String(p.id)}
-                    className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Onayla</button>
+                <div className="flex justify-end">
                   <button
                     onClick={() => {
-                      const reason = (postReasons[p.id] || []).join(', ');
-                      if (!reason) return feedimAlert("error", "En az bir sebep seçin");
-                      takeAction("reject_content", "post", p.id, reason);
+                      const reasons = (postReasons[p.id] || []).filter(r => POST_REJECT_REASONS.includes(r));
+                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
+                      takeAction("reject_content", "post", p.id, reasons.join(', '));
                     }}
                     disabled={actionLoading === String(p.id)}
                     className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -949,15 +985,45 @@ export default function AdminPage() {
                 {/* Hazır nedenler */}
                 {!isBlocked && !isDeleted && (
                 <>
+                {/* Approve reasons */}
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {PROFILE_REASONS.map(r => {
+                  {PROFILE_APPROVE_REASONS.map(r => {
                     const selected = (userReasons[u.user_id] || []).includes(r);
                     return (
                       <button
                         key={r}
                         onClick={() => setUserReasons(prev => {
                           const cur = prev[u.user_id] || [];
-                          const next = selected ? cur.filter(x => x !== r) : [...cur, r];
+                          const cleaned = cur.filter(x => PROFILE_APPROVE_REASONS.includes(x));
+                          const next = selected ? cleaned.filter(x => x !== r) : [...cleaned, r];
+                          return { ...prev, [u.user_id]: next };
+                        })}
+                        className={`px-2 py-1 rounded-full text-[0.68rem] ${selected ? 'bg-success text-white' : 'bg-success/10 text-success hover:bg-success/20'}`}
+                      >{r}</button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    onClick={() => {
+                      const reasons = (userReasons[u.user_id] || []).filter(r => PROFILE_APPROVE_REASONS.includes(r));
+                      takeAction("activate_user", "user", u.user_id, reasons.join(', ') || undefined);
+                    }}
+                    disabled={actionLoading === u.user_id}
+                    className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
+                  >Onayla</button>
+                </div>
+                {/* Reject reasons */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {PROFILE_REJECT_REASONS.map(r => {
+                    const selected = (userReasons[u.user_id] || []).includes(r);
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setUserReasons(prev => {
+                          const cur = prev[u.user_id] || [];
+                          const cleaned = cur.filter(x => PROFILE_REJECT_REASONS.includes(x));
+                          const next = selected ? cleaned.filter(x => x !== r) : [...cleaned, r];
                           return { ...prev, [u.user_id]: next };
                         })}
                         className={`px-2 py-1 rounded-full text-[0.68rem] ${selected ? 'bg-text-primary text-bg-primary' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}
@@ -965,19 +1031,14 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end gap-2 mt-2">
-                  <button
-                    onClick={() => takeAction("activate_user", "user", u.user_id, (userReasons[u.user_id] || []).join(', ') || undefined)}
-                    disabled={actionLoading === u.user_id}
-                    className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Onayla</button>
+                <div className="flex justify-end gap-2 mt-1.5">
                   <button
                     onClick={() => {
-                      const reason = (userReasons[u.user_id] || []).join(', ');
-                      if (!reason) return feedimAlert("error", "En az bir sebep seçin");
+                      const reasons = (userReasons[u.user_id] || []).filter(r => PROFILE_REJECT_REASONS.includes(r));
+                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
                       feedimAlert("question", `${u.username} hesabını kapatmak istediğinize emin misiniz?`, {
                         showYesNo: true,
-                        onYes: () => takeAction("ban_user", "user", u.user_id, reason),
+                        onYes: () => takeAction("ban_user", "user", u.user_id, reasons.join(', ')),
                       });
                     }}
                     disabled={actionLoading === u.user_id}
@@ -985,11 +1046,11 @@ export default function AdminPage() {
                   >Kapat</button>
                   <button
                     onClick={() => {
-                      const reason = (userReasons[u.user_id] || []).join(', ');
-                      if (!reason) return feedimAlert("error", "En az bir sebep seçin");
+                      const reasons = (userReasons[u.user_id] || []).filter(r => PROFILE_REJECT_REASONS.includes(r));
+                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
                       feedimAlert("question", `${u.username} hesabını silmek istediğinize emin misiniz?`, {
                         showYesNo: true,
-                        onYes: () => takeAction("delete_user", "user", u.user_id, reason),
+                        onYes: () => takeAction("delete_user", "user", u.user_id, reasons.join(', ')),
                       });
                     }}
                     disabled={actionLoading === u.user_id}
@@ -1043,16 +1104,45 @@ export default function AdminPage() {
                     ><Eye className="h-4 w-4" /></Link>
                   </div>
                 </div>
-                {/* Reject with preset reasons */}
+                {/* Approve with preset reasons */}
                 <div className="flex flex-wrap gap-1.5">
-                  {COMMENT_REASONS.map(r => {
+                  {COMMENT_APPROVE_REASONS.map(r => {
                     const selected = (commentReasons[c.id] || []).includes(r);
                     return (
                       <button
                         key={r}
                         onClick={() => setCommentReasons(prev => {
                           const cur = prev[c.id] || [];
-                          const next = selected ? cur.filter(x => x !== r) : [...cur, r];
+                          const cleaned = cur.filter(x => COMMENT_APPROVE_REASONS.includes(x));
+                          const next = selected ? cleaned.filter(x => x !== r) : [...cleaned, r];
+                          return { ...prev, [c.id]: next };
+                        })}
+                        className={`px-2 py-1 rounded-full text-[0.68rem] ${selected ? 'bg-success text-white' : 'bg-success/10 text-success hover:bg-success/20'}`}
+                      >{r}</button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      const reasons = (commentReasons[c.id] || []).filter(r => COMMENT_APPROVE_REASONS.includes(r));
+                      takeAction("approve_content", "comment", String(c.id), reasons.join(', ') || undefined);
+                    }}
+                    disabled={actionLoading === String(c.id)}
+                    className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
+                  >Onayla</button>
+                </div>
+                {/* Reject with preset reasons */}
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMENT_REJECT_REASONS.map(r => {
+                    const selected = (commentReasons[c.id] || []).includes(r);
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setCommentReasons(prev => {
+                          const cur = prev[c.id] || [];
+                          const cleaned = cur.filter(x => COMMENT_REJECT_REASONS.includes(x));
+                          const next = selected ? cleaned.filter(x => x !== r) : [...cleaned, r];
                           return { ...prev, [c.id]: next };
                         })}
                         className={`px-2 py-1 rounded-full text-[0.68rem] ${selected ? 'bg-text-primary text-bg-primary' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}
@@ -1060,17 +1150,12 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => takeAction("approve_content", "comment", String(c.id), (commentReasons[c.id] || []).join(', ') || undefined)}
-                    disabled={actionLoading === String(c.id)}
-                    className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Onayla</button>
+                <div className="flex justify-end">
                   <button
                     onClick={() => {
-                      const reason = (commentReasons[c.id] || []).join(', ');
-                      if (!reason) return feedimAlert("error", "En az bir sebep seçin");
-                      takeAction("reject_content", "comment", String(c.id), reason);
+                      const reasons = (commentReasons[c.id] || []).filter(r => COMMENT_REJECT_REASONS.includes(r));
+                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
+                      takeAction("reject_content", "comment", String(c.id), reasons.join(', '));
                     }}
                     disabled={actionLoading === String(c.id)}
                     className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"

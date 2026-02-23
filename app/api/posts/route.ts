@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
         moderation_reason: modReason,
         moderation_category: modCategory,
         moderation_due_at: (isNsfw || postStatus === 'moderation') ? new Date().toISOString() : null,
-        published_at: postStatus === 'published' ? new Date().toISOString() : null,
+        published_at: new Date().toISOString(),
         meta_title: finalMetaTitle,
         meta_description: finalMetaDescription,
         meta_keywords: finalMetaKeywords,
