@@ -741,7 +741,6 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           playsInline
           muted={externalMuted}
           loop={loop}
-          fetchPriority={externalPaused ? "low" : "high"}
           className={videoClassName}
           suppressHydrationWarning
           controlsList="nodownload noremoteplayback"
@@ -796,7 +795,6 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           suppressHydrationWarning
           controlsList="nodownload noremoteplayback"
           draggable={false}
-          fetchPriority={disabled ? "low" : "high"}
           className={`w-full pointer-events-none select-none ${cinemaMode && !miniPlayer ? "h-full object-contain" : "aspect-video"}`}
           style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
           onContextMenu={(e) => e.preventDefault()}
