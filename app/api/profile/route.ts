@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkTextContent } from "@/lib/moderation";
 import { getUserPlan } from "@/lib/limits";
 import { revalidateTag } from "next/cache";
 
@@ -31,6 +32,23 @@ export async function PUT(req: NextRequest) {
   for (const key of allowed) {
     if (body[key] !== undefined) {
       updates[key] = body[key];
+    }
+  }
+
+  // Doğum tarihi doğrulaması
+  if (updates.birth_date) {
+    const d = new Date(updates.birth_date);
+    if (isNaN(d.getTime())) {
+      return NextResponse.json({ error: "Geçersiz tarih formatı" }, { status: 400 });
+    }
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const monthDiff = now.getMonth() - d.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) {
+      age--;
+    }
+    if (age < 13 || age > 120) {
+      return NextResponse.json({ error: "Yaş 13-120 arasında olmalı" }, { status: 400 });
     }
   }
 
@@ -198,6 +216,59 @@ export async function PUT(req: NextRequest) {
       await admin.from("profiles").update({ follower_count: followerCount || 0 }).eq("user_id", user.id);
     })().catch(() => {});
   }
+
+  // AI moderation on profile text fields (name, surname, username, bio)
+  try {
+    const { data: current } = await supabase
+      .from("profiles")
+      .select("name, surname, username, bio, profile_score, spam_score, status")
+      .eq("user_id", user.id)
+      .single();
+    const fields = {
+      name: (updates.name ?? current?.name ?? '') as string,
+      surname: (updates.surname ?? current?.surname ?? '') as string,
+      username: (updates.username ?? current?.username ?? '') as string,
+      bio: (updates.bio ?? current?.bio ?? '') as string,
+    };
+    const linkCount = (fields.bio.match(/https?:\/\//g) || []).length;
+    // Overall check
+    const overall = await checkTextContent('', [fields.name, fields.surname, fields.username, fields.bio].filter(Boolean).join(' '), {
+      contentType: 'profile',
+      linkCount,
+      profileScore: current?.profile_score,
+      spamScore: current?.spam_score,
+    });
+    if (overall.safe === false) {
+      // Per-field checks; require >= 2 fields flagged to set moderation
+      let flaggedCount = 0;
+      for (const value of [fields.username, fields.bio]) {
+        if (value && value.trim().length >= 2) {
+          try {
+            const res = await checkTextContent('', value, { contentType: 'profile', linkCount: (value.match(/https?:\/\//g) || []).length });
+            if (res.safe === false) flaggedCount++;
+          } catch {}
+        }
+      }
+      if (flaggedCount >= 2) {
+        updates.status = 'moderation';
+        updates.moderation_reason = overall.reason || 'Profil alanlarında ihlal tespit edildi';
+      }
+    } else {
+      // If profile is clean and currently in moderation, restore to active
+      if (current?.status === 'moderation') {
+        updates.status = 'active';
+        updates.moderation_reason = null;
+        try {
+          const admin = createAdminClient();
+          await Promise.all([
+            admin.from("reports").delete().eq("content_type", "user").eq("content_id", user.id),
+            admin.from("moderation_decisions").delete().eq("target_type", "user").eq("target_id", String(user.id)),
+            admin.from("moderation_logs").delete().eq("target_type", "user").eq("target_id", String(user.id)),
+          ]);
+        } catch {}
+      }
+    }
+  } catch {}
 
   const { data, error } = await supabase
     .from("profiles")

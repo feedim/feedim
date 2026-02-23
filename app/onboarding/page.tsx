@@ -2,17 +2,20 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { createClient } from "@/lib/supabase/client";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { feedimAlert } from "@/components/FeedimAlert";
-import { Camera, ChevronLeft, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import FollowButton from "@/components/FollowButton";
 import { Spinner } from "@/components/FeedimLoader";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import AvatarCropModal from "@/components/modals/AvatarCropModal";
+import EditableAvatar from "@/components/EditableAvatar";
 
 const TOTAL_STEPS = 8;
-const MIN_TOPIC_TAGS = 5;
+const MIN_TOPIC_TAGS = 1;
+const MAX_TOPIC_TAGS = 5;
 
 interface Profile {
   avatar_url?: string;
@@ -36,6 +39,7 @@ interface Suggestion {
   bio?: string;
   is_verified?: boolean;
   premium_plan?: string | null;
+  role?: string;
 }
 
 export default function OnboardingPage() {
@@ -49,6 +53,10 @@ export default function OnboardingPage() {
 
   // Step-specific state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const avatarLoadStartRef = useRef<number>(0);
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
   const [bio, setBio] = useState("");
@@ -64,21 +72,25 @@ export default function OnboardingPage() {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
 
-  const [skipTopics, setSkipTopics] = useState(false);
-
   // Load profile and tags on mount
   useEffect(() => {
     loadProfile();
-    // Pre-fetch tags to check count — if < 50 tags exist, skip topic step
-    fetch("/api/tags?limit=100")
+    // En popüler 50 etiketi çek
+    fetch("/api/tags?limit=50")
       .then((r) => r.json())
       .then((d) => {
-        const tags = d.tags || [];
-        setAvailableTags(tags);
+        setAvailableTags(d.tags || []);
         setTagsLoaded(true);
-        if (tags.length < 50) setSkipTopics(true);
       })
       .catch(() => {});
+
+    // Başka sekmede giriş/çıkış yapıldığında algıla ve sayfayı yenile
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "SIGNED_IN") {
+        router.replace("/login");
+      }
+    });
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   const loadProfile = async () => {
@@ -95,6 +107,7 @@ export default function OnboardingPage() {
       .single();
 
     if (data?.onboarding_completed) {
+      emitNavigationStart();
       router.push("/dashboard");
       return;
     }
@@ -115,12 +128,11 @@ export default function OnboardingPage() {
     setLoading(false);
   };
 
-  // Resolve next step (skip email verify if already verified, skip topics if < 50 tags)
+  // Resolve next step (skip email verify if already verified)
   const resolveStep = useCallback((s: number) => {
     if (s === 5 && emailVerified) s = 6;
-    if (s === 6 && skipTopics) s = 7;
     return s;
-  }, [emailVerified, skipTopics]);
+  }, [emailVerified]);
 
   // Save step and advance
   const saveStep = useCallback(async (payload: Record<string, unknown> = {}) => {
@@ -195,6 +207,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ action: "complete" }),
       });
       await waitMin();
+      emitNavigationStart();
       router.push("/dashboard");
     } catch {
       await waitMin();
@@ -210,6 +223,41 @@ export default function OnboardingPage() {
 
     switch (step) {
       case 1:
+        // Upload pending avatar if exists (same flow as EditProfileModal)
+        if (pendingAvatarFile) {
+          setProcessing("next");
+          setAvatarUploading(true);
+          setAvatarLoading(true);
+          avatarLoadStartRef.current = Date.now();
+          try {
+            const formData = new FormData();
+            formData.append("file", pendingAvatarFile);
+            const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
+            const data = await res.json();
+            if (res.ok) {
+              setAvatarPreview(data.url);
+              setPendingAvatarFile(null);
+            } else {
+              feedimAlert("error", data.error || "Avatar yüklenemedi.");
+              setProcessing(false);
+              setAvatarLoading(false);
+              setAvatarUploading(false);
+              return;
+            }
+          } catch {
+            feedimAlert("error", "Avatar yüklenemedi.");
+            setProcessing(false);
+            setAvatarLoading(false);
+            setAvatarUploading(false);
+            return;
+          }
+          const elapsed = Date.now() - avatarLoadStartRef.current;
+          const remain = Math.max(0, 2000 - elapsed);
+          await new Promise(r => setTimeout(r, remain));
+          setAvatarLoading(false);
+          setAvatarUploading(false);
+          setProcessing(false);
+        }
         await saveStep();
         break;
       case 2:
@@ -227,14 +275,14 @@ export default function OnboardingPage() {
         await saveStep();
         break;
       case 6:
-        // Topics — must select at least 5
+        // Topics — must select at least 1
         if (selectedTagIds.size < MIN_TOPIC_TAGS) {
           feedimAlert("error", `En az ${MIN_TOPIC_TAGS} konu seçmelisiniz`);
           return;
         }
         // Follow selected tags in background (fire and forget)
         for (const tagId of selectedTagIds) {
-          fetch(`/api/tags/${tagId}/follow`, { method: "POST" }).catch(() => {});
+          fetch(`/api/tags/${tagId}/follow`, { method: "POST", keepalive: true }).catch(() => {});
         }
         await saveStep();
         break;
@@ -245,7 +293,7 @@ export default function OnboardingPage() {
         await completeOnboarding();
         break;
     }
-  }, [step, processing, birthDate, gender, bio, selectedTagIds, saveStep, completeOnboarding]);
+  }, [step, processing, pendingAvatarFile, birthDate, gender, bio, selectedTagIds, saveStep, completeOnboarding]);
 
   // Handle prev
   const handlePrev = useCallback(async () => {
@@ -253,43 +301,32 @@ export default function OnboardingPage() {
     setProcessing("prev");
     await new Promise(r => setTimeout(r, 1000));
     let prev = step - 1;
-    if (prev === 6 && skipTopics) prev = 5; // Skip topics going back
     if (prev === 5 && emailVerified) prev = 4; // Skip email verify going back
     setStep(prev);
     setProcessing(false);
-  }, [step, processing, emailVerified, skipTopics]);
+  }, [step, processing, emailVerified]);
 
-  // Avatar upload — open crop modal
+  // Avatar upload — open crop modal (same validation as EditProfileModal)
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      feedimAlert("error", "Dosya boyutu 10MB'dan küçük olmalı");
+      return;
+    }
     setCropFile(file);
     setCropOpen(true);
     e.target.value = "";
   };
 
-  // After crop, upload the cropped file
-  const handleCroppedUpload = async (croppedFile: File) => {
-    const formData = new FormData();
-    formData.append("file", croppedFile);
-    try {
-      const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok && (data.avatar_url || data.url)) {
-        setAvatarPreview(data.avatar_url || data.url);
-        if (step === 1) await saveStep();
-      }
-    } catch {
-      feedimAlert("error", "Yükleme başarısız, lütfen daha sonra tekrar deneyin");
+  // After crop, save file locally (upload happens on "İleri")
+  const handleCroppedUpload = (croppedFile: File) => {
+    if (avatarPreview && avatarPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
     }
+    setPendingAvatarFile(croppedFile);
+    setAvatarPreview(URL.createObjectURL(croppedFile));
   };
-
-  // Auto-skip step 6 if skipTopics becomes true while on that step
-  useEffect(() => {
-    if (step === 6 && skipTopics) {
-      setStep(7);
-    }
-  }, [step, skipTopics]);
 
   // Load suggestions when reaching step 7
   useEffect(() => {
@@ -337,14 +374,14 @@ export default function OnboardingPage() {
   }
 
   const progress = (step / TOTAL_STEPS) * 100;
-  const canSkip = [1, 4, 5, 7].includes(step) && step < 8;
+  const canSkip = [1, 4, 5, 6, 7].includes(step) && step < 8;
 
   return (
     <div className="min-h-screen text-text-primary">
       <div className="max-w-[500px] w-full mx-auto px-4 pt-[27px] pb-[50px]">
         {/* Progress bar */}
         <div className="flex items-center gap-3 mb-5">
-          <FeedimIcon className="h-[36px] w-[36px] shrink-0 text-accent-main" />
+          <FeedimIcon className="h-[40px] w-[40px] shrink-0 text-accent-main" />
           <div className="w-px h-4 bg-border-primary shrink-0" />
           <div className="flex-1 h-1 bg-border-primary rounded-full overflow-hidden">
             <div
@@ -359,16 +396,23 @@ export default function OnboardingPage() {
 
         {/* Step content */}
         <div className="mb-[10px]" style={{ animation: "fadeUp 0.3s ease" }} key={step}>
-          {step === 1 && <StepProfilePhoto avatarPreview={avatarPreview} fileInputRef={fileInputRef} onUpload={handleAvatarSelect} profile={profile} />}
+          {step === 1 && (
+            <StepProfilePhoto
+              avatarPreview={avatarPreview}
+              onAvatarClick={() => { if (!avatarUploading && !avatarLoading) fileInputRef.current?.click(); }}
+              loading={avatarLoading}
+              uploading={avatarUploading}
+            />
+          )}
           {step === 2 && <StepBirthDate value={birthDate} onChange={setBirthDate} />}
           {step === 3 && <StepGender value={gender} onChange={setGender} />}
           {step === 4 && <StepBiography value={bio} onChange={setBio} />}
           {step === 5 && <StepEmailVerify />}
           {step === 6 && <StepTopicTags tags={availableTags} selectedIds={selectedTagIds} onToggle={(id) => {
             const newSet = new Set(selectedTagIds);
-            if (newSet.has(id)) { newSet.delete(id); } else { newSet.add(id); }
+            if (newSet.has(id)) { newSet.delete(id); } else if (newSet.size < MAX_TOPIC_TAGS) { newSet.add(id); }
             setSelectedTagIds(newSet);
-          }} loaded={tagsLoaded} minRequired={MIN_TOPIC_TAGS} />}
+          }} loaded={tagsLoaded} minRequired={MIN_TOPIC_TAGS} maxAllowed={MAX_TOPIC_TAGS} />}
           {step === 7 && <StepSuggestions suggestions={suggestions} followedIds={followedIds} onToggle={toggleFollow} loaded={suggestionsLoaded} />}
           {step === 8 && <StepWelcome profile={profile} avatarPreview={avatarPreview} />}
         </div>
@@ -376,7 +420,7 @@ export default function OnboardingPage() {
         {/* Navigation */}
         <div className="flex items-center gap-[10px] mt-[15px]">
           {step > 1 && (
-            <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" style={{ background: "var(--bg-elevated)" }}>
+            <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" style={{ background: "var(--bg-elevated)" }} aria-label="Geri">
               {processing === "prev" ? <Spinner size={18} /> : "Geri"}
             </button>
           )}
@@ -384,6 +428,7 @@ export default function OnboardingPage() {
             onClick={handleNext}
             disabled={!!processing || (step === 6 && selectedTagIds.size < MIN_TOPIC_TAGS)}
             className="t-btn accept flex-1 relative"
+            aria-label="İleri"
           >
             {processing === "next" ? <Spinner size={18} /> : step === 8 ? "Bitir" : "İleri"}
           </button>
@@ -396,12 +441,22 @@ export default function OnboardingPage() {
               onClick={skipStep}
               disabled={!!processing}
               className="t-btn cancel relative w-full min-h-[38px]"
+              aria-label="Bu Adımı Atla"
             >
               {processing === "skip" ? <Spinner size={16} /> : "Bu adımı atla"}
             </button>
           </div>
         )}
       </div>
+
+      {/* Hidden file input — kept in parent like EditProfileModal */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarSelect}
+        className="hidden"
+      />
 
       <AvatarCropModal
         open={cropOpen}
@@ -415,42 +470,27 @@ export default function OnboardingPage() {
 
 // ── Step Components ──
 
-function StepProfilePhoto({ avatarPreview, fileInputRef, onUpload, profile }: {
+function StepProfilePhoto({ avatarPreview, onAvatarClick, loading, uploading }: {
   avatarPreview: string | null;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  profile: Profile;
+  onAvatarClick: () => void;
+  loading: boolean;
+  uploading: boolean;
 }) {
-  const initials = (profile.full_name?.[0] || profile.name?.[0] || "U").toUpperCase();
   return (
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">Profil fotoğrafı ekle</h2>
-        <p className="text-sm text-text-muted">Başkalarının sizi tanıması için bir profil resmi ekleyin</p>
+        <p className="text-sm text-text-muted">Başkalarının sizi tanıması için bir profil resmi ekleyin.</p>
       </div>
       <div className="flex justify-center">
-        <div className="relative">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-[150px] h-[150px] rounded-full overflow-hidden bg-bg-secondary border-2 border-border-primary flex items-center justify-center cursor-pointer hover:opacity-80 transition"
-          >
-            {avatarPreview ? (
-              <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <img className="default-avatar-auto w-full h-full rounded-full object-cover" alt="" />
-            )}
-          </button>
-          <div className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-accent-main text-white flex items-center justify-center shadow-lg pointer-events-none">
-            <Camera className="h-5 w-5" />
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={onUpload}
-            className="hidden"
-          />
-        </div>
+        <EditableAvatar
+          src={avatarPreview}
+          alt=""
+          sizeClass="w-[150px] h-[150px]"
+          editable={!uploading && !loading}
+          loading={loading}
+          onClick={onAvatarClick}
+        />
       </div>
     </div>
   );
@@ -487,7 +527,7 @@ function StepBirthDate({ value, onChange }: { value: string; onChange: (v: strin
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">Doğum tarihiniz nedir?</h2>
-        <p className="text-sm text-text-muted">Deneyiminizi kişiselleştirmemize yardımcı olur</p>
+        <p className="text-sm text-text-muted">Deneyiminizi kişiselleştirmemize yardımcı olur.</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         <select value={selDay} onChange={(e) => updateDate(selYear, selMonth, e.target.value)} className="select-modern w-full">
@@ -518,7 +558,7 @@ function StepGender({ value, onChange }: { value: string; onChange: (v: string) 
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">Cinsiyetiniz nedir?</h2>
-        <p className="text-sm text-text-muted">Deneyiminizi kişiselleştirmemize yardımcı olur</p>
+        <p className="text-sm text-text-muted">Deneyiminizi kişiselleştirmemize yardımcı olur.</p>
       </div>
       <select
         value={value}
@@ -539,7 +579,7 @@ function StepBiography({ value, onChange }: { value: string; onChange: (v: strin
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">Kendinizi tanıtmak ister misiniz?</h2>
-        <p className="text-sm text-text-muted">Kısa bir biyografi yazın, başkaları sizi daha iyi tanısın</p>
+        <p className="text-sm text-text-muted">Kısa bir biyografi yazın, başkaları sizi daha iyi tanısın.</p>
       </div>
       <div className="relative">
         <textarea
@@ -561,32 +601,33 @@ function StepEmailVerify() {
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">E-posta doğrulaması</h2>
-        <p className="text-sm text-text-muted">E-posta adresiniz Supabase tarafından otomatik doğrulanmıştır</p>
+        <p className="text-sm text-text-muted">E-posta adresiniz Supabase tarafından otomatik doğrulanmıştır.</p>
       </div>
       <div className="bg-bg-secondary rounded-2xl p-5 text-center">
         <div className="w-12 h-12 rounded-full bg-success/20 text-success flex items-center justify-center mx-auto mb-3">
           <Check className="h-6 w-6" />
         </div>
-        <p className="text-sm font-medium">E-posta adresiniz doğrulandı</p>
-        <p className="text-xs text-text-muted mt-1">Devam etmek için İleri butonuna basın</p>
+        <p className="text-sm font-medium">E-posta adresiniz doğrulandı.</p>
+        <p className="text-xs text-text-muted mt-1">Devam etmek için İleri butonuna basın.</p>
       </div>
     </div>
   );
 }
 
-function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired }: {
+function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired, maxAllowed }: {
   tags: { id: number; name: string; slug: string; post_count: number }[];
   selectedIds: Set<number>;
   onToggle: (id: number) => void;
   loaded: boolean;
   minRequired: number;
+  maxAllowed: number;
 }) {
   return (
     <div>
-      <div className="mb-5">
+      <div className="mb-3">
         <h2 className="text-xl font-bold mb-2">İlgi alanlarını seç</h2>
         <p className="text-sm text-text-muted">
-          Sana özel içerikler önerebilmemiz için en az {minRequired} konu seç
+          Sana özel içerikler önerebilmemiz için en az {minRequired}, en fazla {maxAllowed} etiket seç.
         </p>
       </div>
       {!loaded ? (
@@ -595,13 +636,13 @@ function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired }: {
         </div>
       ) : tags.length === 0 ? (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-sm text-text-muted">Henüz konu etiketi yok</p>
+          <p className="text-sm text-text-muted">Henüz etiket yok.</p>
         </div>
       ) : (
         <>
           <div className="mb-3">
             <span className="text-xs text-text-muted">
-              {selectedIds.size}/{minRequired} seçildi
+              {selectedIds.size}/{maxAllowed} seçildi
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -611,13 +652,13 @@ function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired }: {
                 <button
                   key={tag.id}
                   onClick={() => onToggle(tag.id)}
-                  className={`px-4 py-2.5 rounded-full text-[0.84rem] font-bold border transition-all ${
+                  className={`px-5 py-2 rounded-full text-[0.94rem] font-bold border transition-all ${
                     selected
                       ? "bg-accent-main text-white border-accent-main"
                       : "bg-bg-secondary text-text-primary border-border-primary hover:border-accent-main/50"
                   }`}
                 >
-                  {tag.name}
+                  #{tag.name}
                 </button>
               );
             })}
@@ -638,7 +679,7 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">Tanıdıklarınızı bulun</h2>
-        <p className="text-sm text-text-muted">Akışınızda gönderileri görmek için kişileri takip edin</p>
+        <p className="text-sm text-text-muted">Akışınızda gönderileri görmek için kişileri takip edin.</p>
       </div>
       {!loaded ? (
         <div className="flex items-center justify-center min-h-[200px]">
@@ -646,7 +687,7 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
         </div>
       ) : suggestions.length === 0 ? (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-sm text-text-muted">Henüz önerilecek kullanıcı yok</p>
+          <p className="text-sm text-text-muted">Henüz önerilecek kullanıcı yok.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -662,7 +703,7 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold truncate">@{user.username}</span>
-                    {user.is_verified && <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} />}
+                    {user.is_verified && <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} role={user.role} />}
                   </div>
                   {user.bio && <p className="text-xs text-text-muted truncate">{user.bio}</p>}
                 </div>
@@ -678,7 +719,6 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
 
 function StepWelcome({ profile, avatarPreview }: { profile: Profile; avatarPreview: string | null }) {
   const name = (profile.name || profile.username || "Kullanıcı").trim();
-  const initials = name[0]?.toUpperCase() || "U";
 
   return (
     <div className="text-center py-6">
@@ -690,8 +730,7 @@ function StepWelcome({ profile, avatarPreview }: { profile: Profile; avatarPrevi
         )}
       </div>
       <h2 className="text-2xl font-bold mb-2">Hoş geldin, {name}!</h2>
-      <p className="text-sm text-text-muted">Her şey hazır! İnsanlarla bağlantı kurmaya ve anlarını paylaşmayı başlayabilirsin.</p>
+      <p className="text-sm text-text-muted">Her şey hazır! İnsanlarla bağlantı kurmaya ve içeriklerini paylaşmaya başlayabilirsin.</p>
     </div>
   );
 }
-

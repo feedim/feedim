@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("profiles")
-    .select("user_id, username, full_name, avatar_url, is_verified, premium_plan")
+    .select("user_id, username, full_name, avatar_url, is_verified, premium_plan, role")
     .eq("status", "active")
     .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
     .limit(5);

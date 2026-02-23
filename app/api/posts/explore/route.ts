@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     let query = admin
       .from('posts')
       .select(`
-        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, trending_score, published_at, content_type, video_duration, video_thumbnail, blurhash,
-        profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
+        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, trending_score, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash,
+        profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
       `)
       .eq('status', 'published')
       .order(sortBy === 'latest' ? 'published_at' : 'trending_score', { ascending: false })
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
           if (uniqueAuthorIds.length > 0) {
             const { data: users } = await admin
               .from('profiles')
-              .select('user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio')
+              .select('user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio')
               .in('user_id', uniqueAuthorIds)
               .eq('status', 'active')
               .neq('account_private', true)

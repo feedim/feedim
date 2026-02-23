@@ -1,27 +1,49 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import VideoPlayer from "@/components/VideoPlayer";
+import AdOverlay from "@/components/AdOverlay";
+import { emitNavigationStart } from "@/lib/navigationProgress";
+import { AD_NO_MIDROLL_MAX, AD_ONE_MIDROLL_MAX } from "@/lib/constants";
 
 interface VideoPlayerClientProps {
   src: string;
+  hlsUrl?: string;
   poster?: string;
   nextVideoSlug?: string;
   nextVideoTitle?: string;
   nextVideoThumbnail?: string;
+  videoDuration?: number;
+}
+
+function computeAdBreaks(duration?: number): number[] {
+  if (!duration || duration < AD_NO_MIDROLL_MAX) return [];
+  const margin = 15;
+  const usable = duration - margin * 2;
+  if (duration < AD_ONE_MIDROLL_MAX) return [margin + usable * 0.5];
+  return [margin + usable * 0.33, margin + usable * 0.66];
 }
 
 export default function VideoPlayerClient({
-  src, poster, nextVideoSlug, nextVideoTitle, nextVideoThumbnail,
+  src, hlsUrl, poster, nextVideoSlug, nextVideoTitle, nextVideoThumbnail,
+  videoDuration,
 }: VideoPlayerClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [autoplay, setAutoplay] = useState(true);
   const [ended, setEnded] = useState(false);
-  const [replayKey, setReplayKey] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  // Ad break state
+  const [adBreakActive, setAdBreakActive] = useState(false);
+  const [postRollActive, setPostRollActive] = useState(false);
+  const adBreaksCompletedRef = useRef<Set<number>>(new Set());
+  const lastTimeRef = useRef(0);
+
+  const adBreaks = useMemo(() => computeAdBreaks(videoDuration), [videoDuration]);
 
   const autoStart = searchParams.get("autoplay") === "1";
 
@@ -41,17 +63,98 @@ export default function VideoPlayerClient({
     });
   }, []);
 
+  // Track the exact time where ad paused the video — for anti-seek
+  const adPausedAtRef = useRef(0);
+
+  // Mid-roll: timeupdate listener
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || adBreaks.length === 0) return;
+
+    const onTimeUpdate = () => {
+      if (adBreakActive || postRollActive) return;
+      const ct = v.currentTime;
+      const prev = lastTimeRef.current;
+
+      for (const bp of adBreaks) {
+        if (adBreaksCompletedRef.current.has(bp)) continue;
+        const seeked = Math.abs(ct - prev) > 3;
+        if (seeked) {
+          for (const b of adBreaks) {
+            if (b <= ct) adBreaksCompletedRef.current.add(b);
+          }
+          break;
+        }
+        if (ct >= bp - 1.5 && ct <= bp + 1.5) {
+          adBreaksCompletedRef.current.add(bp);
+          adPausedAtRef.current = ct;
+          v.pause();
+          setAdBreakActive(true);
+          break;
+        }
+      }
+
+      lastTimeRef.current = ct;
+    };
+
+    v.addEventListener("timeupdate", onTimeUpdate);
+    return () => v.removeEventListener("timeupdate", onTimeUpdate);
+  }, [adBreaks, adBreakActive, postRollActive]);
+
+  // Anti-seek: revert any seek/play attempts during ad break
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (!adBreakActive && !postRollActive) return;
+
+    const onSeeking = () => {
+      // Revert to where the ad started — can't skip by seeking
+      v.currentTime = adPausedAtRef.current;
+    };
+
+    const onPlay = () => {
+      // Can't un-pause the video during ad
+      v.pause();
+    };
+
+    v.addEventListener("seeking", onSeeking);
+    v.addEventListener("play", onPlay);
+
+    // Also ensure video stays paused right now
+    if (!v.paused) v.pause();
+
+    return () => {
+      v.removeEventListener("seeking", onSeeking);
+      v.removeEventListener("play", onPlay);
+    };
+  }, [adBreakActive, postRollActive]);
+
   const handleEnded = useCallback(() => {
-    setEnded(true);
-    if (autoplay && nextVideoSlug) {
-      setCountdown(10);
+    const v = videoRef.current;
+    if (v) adPausedAtRef.current = v.currentTime;
+    setPostRollActive(true);
+  }, []);
+
+  const handleAdSkip = useCallback(() => {
+    if (adBreakActive) {
+      setAdBreakActive(false);
+      const v = videoRef.current;
+      if (v) v.play().catch(() => {});
+    } else if (postRollActive) {
+      setPostRollActive(false);
+      // Now show the normal end screen
+      setEnded(true);
+      if (autoplay && nextVideoSlug) {
+        setCountdown(10);
+      }
     }
-  }, [autoplay, nextVideoSlug]);
+  }, [adBreakActive, postRollActive, autoplay, nextVideoSlug]);
 
   // Countdown timer
   useEffect(() => {
     if (countdown === null) return;
     if (countdown <= 0) {
+      emitNavigationStart();
       router.push(`/post/${nextVideoSlug}?autoplay=1`);
       return;
     }
@@ -67,13 +170,19 @@ export default function VideoPlayerClient({
   };
 
   const playNow = () => {
+    emitNavigationStart();
     router.push(`/post/${nextVideoSlug}?autoplay=1`);
   };
 
   const replay = () => {
     setEnded(false);
     setCountdown(null);
-    setReplayKey(prev => prev + 1);
+    adBreaksCompletedRef.current.clear();
+    const v = videoRef.current;
+    if (v) {
+      v.currentTime = 0;
+      v.play().catch(() => {});
+    }
   };
 
   // SVG countdown circle params
@@ -81,24 +190,37 @@ export default function VideoPlayerClient({
   const circleC = 2 * Math.PI * circleR;
   const countdownMax = 10;
 
+  const adActive = adBreakActive || postRollActive;
+
   return (
-    <div className="relative">
-      <VideoPlayer key={replayKey} src={src} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
+    <div className="relative sm:rounded-lg overflow-hidden">
+      <div className={adActive ? "pointer-events-none" : ""}>
+        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
+      </div>
+
+      {/* Ad overlay — mid-roll or post-roll */}
+      <AdOverlay
+        active={adActive}
+        onSkip={handleAdSkip}
+        mode="overlay"
+      />
 
       {/* Autoplay toggle — top right of the player */}
-      <div className="absolute top-3 right-3 z-30 flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
-        style={{ opacity: ended ? 1 : undefined }}
-      >
-        <span className="text-white text-[0.72rem] font-medium">Otomatik oynat</span>
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleAutoplay(); }}
-          className={`relative w-9 h-5 rounded-full transition-colors ${autoplay ? "" : "bg-white/20"}`}
-          style={autoplay ? { backgroundColor: "var(--accent-color)" } : undefined}
-          aria-label="Otomatik oynatmayı aç/kapat"
+      {!adActive && (
+        <div className="absolute top-3 right-3 z-30 flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
+          style={{ opacity: ended ? 1 : undefined }}
         >
-          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoplay ? "left-[18px]" : "left-0.5"}`} />
-        </button>
-      </div>
+          <span className="text-white text-[0.72rem] font-medium">Otomatik oynat</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleAutoplay(); }}
+            className={`relative w-9 h-5 rounded-full transition-colors ${autoplay ? "" : "bg-white/20"}`}
+            style={autoplay ? { backgroundColor: "var(--accent-color)" } : undefined}
+            aria-label="Otomatik oynatmayı aç/kapat"
+          >
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoplay ? "left-[18px]" : "left-0.5"}`} />
+          </button>
+        </div>
+      )}
 
       {/* End screen — autoplay ON with countdown (compact & responsive) */}
       {ended && countdown !== null && countdown > 0 && (

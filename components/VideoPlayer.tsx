@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect, memo } from "react";
+import { useRef, useState, useCallback, useEffect, memo, forwardRef, useImperativeHandle } from "react";
+import { useHlsPlayer, type QualityLevel } from "@/lib/useHlsPlayer";
 
 /* ── Helpers (outside component to avoid re-creation) ── */
 const fmt = (s: number) => {
@@ -17,13 +18,45 @@ const _hk = (s: string) => {
 
 interface VideoPlayerProps {
   src: string;
+  hlsUrl?: string;
   poster?: string;
   onEnded?: () => void;
   autoStart?: boolean;
+  /** When true, video plays muted with no controls (upload preview mode) */
+  disabled?: boolean;
+  /** Moment mode — minimal render, no controls/chrome */
+  moment?: boolean;
+  /** External mute control (moment mode) */
+  externalMuted?: boolean;
+  /** External pause control — true = paused (moment mode) */
+  externalPaused?: boolean;
+  /** Loop video */
+  loop?: boolean;
+  /** CSS class for the video element */
+  videoClassName?: string;
 }
 
-function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
+const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function VideoPlayer({ src, hlsUrl, poster, onEnded, autoStart, disabled, moment, externalMuted, externalPaused, loop, videoClassName }, fwdRef) {
+  // Compute saved position ONCE on mount — must be stable across re-renders.
+  // If recomputed every render, effectiveSrc changes (video.mp4 → video.mp4#t=X)
+  // which reloads the <video> element and flashes the poster every few seconds.
+  const savedTimeRef = useRef<number | null>(null);
+  if (savedTimeRef.current === null) {
+    savedTimeRef.current = !disabled && !moment ? (() => {
+      try {
+        const s = localStorage.getItem(_hk(src));
+        if (s) { const t = parseFloat(s); if (isFinite(t) && t > 2) return t; }
+      } catch {}
+      return 0;
+    })() : 0;
+  }
+  const savedTime = savedTimeRef.current;
+  const hasSavedPos = savedTime > 2;
+  // Media fragment: browser issues Range request from this offset (skips byte 0)
+  const effectiveSrc = savedTime > 0 ? `${src}#t=${Math.floor(savedTime)}` : src;
+
   const videoRef = useRef<HTMLVideoElement>(null);
+  useImperativeHandle(fwdRef, () => videoRef.current!, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -54,7 +87,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
   const [error, setError] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [settingsMenu, setSettingsMenu] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"main" | "speed" | "shortcuts">("main");
+  const [settingsTab, setSettingsTab] = useState<"main" | "speed" | "quality" | "shortcuts">("main");
   const [speed, setSpeed] = useState(1);
   const [actionIcon, setActionIcon] = useState<"play" | "pause" | null>(null);
   const [volume, setVolume] = useState(1);
@@ -64,6 +97,21 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
   const [seekAnim, setSeekAnim] = useState<{ side: "left" | "right"; key: number } | null>(null);
   const seekAnimKey = useRef(0);
   const [touchSeeking, setTouchSeeking] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  // Detect touch device — skip preview video on mobile to save bandwidth
+  useEffect(() => {
+    if (moment) return;
+    setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
+  }, [moment]);
+
+  // HLS adaptive streaming — manages video source when hlsUrl is provided
+  const { isHls, qualities, currentQuality, setQuality } = useHlsPlayer({
+    hlsUrl: disabled ? undefined : hlsUrl,
+    fallbackSrc: effectiveSrc,
+    videoRef,
+    startPosition: savedTime > 2 ? savedTime : 0,
+  });
 
   // Stable ref for onEnded to prevent effect re-triggers
   const onEndedRef = useRef(onEnded);
@@ -228,11 +276,13 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     const pv = previewRef.current;
     const pt = previewTimeRef.current;
     if (!wrap || !pv) return;
+    // Lazy-load preview video src on first hover (avoids extra network request on page load)
+    if (!pv.src && src) { pv.src = src; pv.preload = "metadata"; }
     wrap.style.display = "block";
     wrap.style.left = `${Math.max(85, Math.min(x, barW - 85))}px`;
     if (pv.readyState >= 1) pv.currentTime = time;
     if (pt) pt.textContent = fmt(time);
-  }, []);
+  }, [src]);
 
   const hideSeekPreview = useCallback(() => {
     if (previewWrapRef.current) previewWrapRef.current.style.display = "none";
@@ -256,7 +306,6 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
 
   const toggleFullscreen = useCallback(async () => {
     const c = containerRef.current;
-    const v = videoRef.current;
     if (!c) return;
     try {
       if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
@@ -264,8 +313,8 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
       } else if (c.requestFullscreen) {
         await c.requestFullscreen();
-      } else if ((v as any)?.webkitEnterFullscreen) {
-        (v as any).webkitEnterFullscreen();
+      } else if ((c as any).webkitRequestFullscreen) {
+        (c as any).webkitRequestFullscreen();
       }
     } catch {}
   }, []);
@@ -329,7 +378,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
       stopRAF();
       // Clear video source to prevent residual access
       const v = videoRef.current;
-      if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
+      if (v) { v.pause(); }
       const sidebarTop = document.getElementById("right-sidebar-top");
       const rightAside = sidebarTop?.closest("aside") as HTMLElement | null;
       const content = rightAside?.previousElementSibling as HTMLElement | null;
@@ -353,17 +402,27 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [settingsMenu]);
 
-  // Video event listeners
+  // Disabled mode: pause + mute immediately when disabled becomes true
   useEffect(() => {
+    if (!disabled) return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.muted = true;
+  }, [disabled]);
+
+  // Video event listeners (full player mode only)
+  useEffect(() => {
+    if (moment) return;
     const v = videoRef.current;
     if (!v) return;
     const onPlay = () => { playingRef.current = true; setPlaying(true); startRAF(); showControls(); };
-    const onPause = () => { playingRef.current = false; setPlaying(false); stopRAF(); updateProgress(); controlsVisibleRef.current = true; setControls(true); };
+    const onPause = () => { playingRef.current = false; setPlaying(false); stopRAF(); updateProgress(); controlsVisibleRef.current = true; setControls(true); if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onPlaying = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onDurationChange = () => { durationRef.current = v.duration; const t = `${fmt(v.currentTime)} / ${fmt(v.duration)}`; if (timeRef.current) timeRef.current.textContent = t; if (miniTimeRef.current) miniTimeRef.current.textContent = t; };
     const onProgress = () => updateBuffer();
     // Debounce waiting — Safari fires it aggressively causing spinner flicker
-    const onWaiting = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); waitingTimer.current = setTimeout(() => setLoading(true), 150); };
+    const onWaiting = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); waitingTimer.current = setTimeout(() => setLoading(true), 300); };
     const onCanPlay = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onLoadedData = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onError = () => setError(true);
@@ -383,8 +442,34 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
 
-    // Start playback immediately
-    v.play().catch(() => {});
+    // Optimistic play: try immediately, on loadeddata (first frame), and on canplay
+    // Skip when disabled — upload preview mode should not auto-play
+    if (!disabled) {
+      const tryPlay = () => v.play().catch(() => {});
+      tryPlay();
+      const onLoadedDataStart = () => tryPlay();
+      const onCanPlayStart = () => tryPlay();
+      v.addEventListener("loadeddata", onLoadedDataStart, { once: true });
+      v.addEventListener("canplay", onCanPlayStart, { once: true });
+
+      return () => {
+        if (waitingTimer.current) clearTimeout(waitingTimer.current);
+        v.removeEventListener("loadeddata", onLoadedDataStart);
+        v.removeEventListener("canplay", onCanPlayStart);
+        v.removeEventListener("play", onPlay);
+        v.removeEventListener("pause", onPause);
+        v.removeEventListener("playing", onPlaying);
+        v.removeEventListener("durationchange", onDurationChange);
+        v.removeEventListener("progress", onProgress);
+        v.removeEventListener("waiting", onWaiting);
+        v.removeEventListener("canplay", onCanPlay);
+        v.removeEventListener("loadeddata", onLoadedData);
+        v.removeEventListener("error", onError);
+        v.removeEventListener("ended", onVideoEnded);
+        document.removeEventListener("fullscreenchange", onFsChange);
+        document.removeEventListener("webkitfullscreenchange", onFsChange);
+      };
+    }
 
     return () => {
       if (waitingTimer.current) clearTimeout(waitingTimer.current);
@@ -402,10 +487,11 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
       document.removeEventListener("webkitfullscreenchange", onFsChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer]);
+  }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer, disabled]);
 
   // Restore user's mute preference from localStorage
   useEffect(() => {
+    if (disabled || moment) return;
     const v = videoRef.current;
     if (!v) return;
     try {
@@ -415,11 +501,11 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         setMuted(false);
       }
     } catch {}
-  }, []);
+  }, [disabled]);
 
   // Auto-start from countdown — unmute since user already interacted
   useEffect(() => {
-    if (!autoStart) return;
+    if (disabled || moment || !autoStart) return;
     const v = videoRef.current;
     if (!v) return;
     v.muted = false;
@@ -429,25 +515,34 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
 
   // Position memory — resume from where the user left off
   useEffect(() => {
+    if (disabled || moment) return;
     const v = videoRef.current;
     if (!v) return;
     const key = _hk(src);
 
-    // Restore saved position
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        const t = parseFloat(saved);
-        if (isFinite(t) && t > 2) {
-          const restore = () => {
-            if (v.duration && t < v.duration - 2) v.currentTime = t;
-            v.removeEventListener("loadedmetadata", restore);
-          };
-          if (v.duration) restore();
-          else v.addEventListener("loadedmetadata", restore);
+    // Restore saved position (skip when HLS manages startPosition)
+    if (!isHls) {
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          const t = parseFloat(saved);
+          if (isFinite(t) && t > 2) {
+            const restore = () => {
+              if (v.duration && t < v.duration - 2) {
+                if (typeof (v as any).fastSeek === "function") {
+                  (v as any).fastSeek(t);
+                } else {
+                  v.currentTime = t;
+                }
+              }
+              v.removeEventListener("loadedmetadata", restore);
+            };
+            if (v.duration) restore();
+            else v.addEventListener("loadedmetadata", restore);
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
 
     // Save position periodically
     const save = () => {
@@ -469,10 +564,11 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
       clearInterval(interval);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [src]);
+  }, [src, isHls]);
 
   // Auto mini player on scroll away — only when playing, not in fullscreen/cinema
   useEffect(() => {
+    if (disabled || moment) return;
     const w = wrapperRef.current;
     if (!w) return;
 
@@ -492,12 +588,18 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     return () => observer.disconnect();
   }, [fullscreen, cinemaMode]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (full player mode only)
   useEffect(() => {
+    if (disabled || moment) return;
     const handle = (e: KeyboardEvent) => {
       const c = containerRef.current;
       if (!c) return;
-      if (!c.contains(document.activeElement) && document.activeElement !== c) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (active) {
+        const tag = active.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
+      }
+      if (!c.offsetParent) return;
       const v = videoRef.current;
       if (!v) return;
       // Block save / view-source shortcuts inside player
@@ -524,10 +626,50 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         case "<": e.preventDefault(); changeSpeed(Math.max(0.25, (v.playbackRate || 1) - 0.25)); break;
       }
     };
-    window.addEventListener("keydown", handle);
-    return () => window.removeEventListener("keydown", handle);
+    window.addEventListener("keydown", handle, { capture: true });
+    return () => window.removeEventListener("keydown", handle, { capture: true } as AddEventListenerOptions);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [togglePlay, toggleMute, toggleFullscreen, changeVolume, showControls, toggleCinema, updateProgress, changeSpeed]);
+
+  // ── Moment mode: external play/pause control ──
+  useEffect(() => {
+    if (!moment) return;
+    const v = videoRef.current;
+    if (!v) return;
+    if (externalPaused) {
+      v.pause();
+    } else {
+      v.play().catch(() => {});
+    }
+  }, [moment, externalPaused]);
+
+  // ── Moment mode: external mute control ──
+  useEffect(() => {
+    if (!moment) return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !!externalMuted;
+  }, [moment, externalMuted]);
+
+  // ── Moment mode: loading spinner ──
+  useEffect(() => {
+    if (!moment) return;
+    const v = videoRef.current;
+    if (!v) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onWaiting = () => { timer = setTimeout(() => setLoading(true), 300); };
+    const onPlaying = () => { clearTimeout(timer); setLoading(false); };
+    const onCanPlay = () => { clearTimeout(timer); setLoading(false); };
+    v.addEventListener("waiting", onWaiting);
+    v.addEventListener("playing", onPlaying);
+    v.addEventListener("canplay", onCanPlay);
+    return () => {
+      clearTimeout(timer);
+      v.removeEventListener("waiting", onWaiting);
+      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("canplay", onCanPlay);
+    };
+  }, [moment]);
 
   const lastMoveRef = useRef(0);
   const handleMouseMove = useCallback(() => {
@@ -587,6 +729,36 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
   // Preconnect to video host for faster initial load
   const videoOrigin = (() => { try { return new URL(src).origin; } catch { return null; } })();
 
+  // ── Moment mode: minimal render (video + optional spinner) ──
+  if (moment) {
+    return (
+      <>
+        <video
+          ref={videoRef}
+          {...(hlsUrl ? {} : src ? { src } : {})}
+          poster={poster}
+          preload="auto"
+          playsInline
+          muted={externalMuted}
+          loop={loop}
+          fetchPriority={externalPaused ? "low" : "high"}
+          className={videoClassName}
+          suppressHydrationWarning
+          controlsList="nodownload noremoteplayback"
+          draggable={false}
+          style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+        />
+        {loading && !externalPaused && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="w-10 h-10 rounded-full border-[3px] border-white/20 animate-spin" style={{ borderTopColor: "#fff" }} />
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       {videoOrigin && (
@@ -600,26 +772,31 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         ref={containerRef}
         className={`relative overflow-hidden select-none group/vp ${
           miniPlayer
-            ? "vp-mini fixed bottom-4 right-4 w-[360px] max-w-[45vw] rounded-xl shadow-2xl z-[9999] bg-black"
-            : "sm:rounded-xl z-10"
+            ? "vp-mini fixed bottom-4 right-4 w-[360px] max-w-[45vw] rounded-lg shadow-2xl z-[9999] bg-black"
+            : "sm:rounded-lg z-10"
         }`}
         style={!miniPlayer ? cinemaStyle : undefined}
         tabIndex={0}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => { if (playingRef.current) { controlsVisibleRef.current = false; setControls(false); } }}
-        onClick={handleVideoAreaClick}
+        onMouseMove={disabled ? undefined : handleMouseMove}
+        onMouseLeave={disabled ? undefined : () => { if (playingRef.current) { controlsVisibleRef.current = false; setControls(false); } }}
+        onClick={disabled ? undefined : handleVideoAreaClick}
         onContextMenu={(e) => e.preventDefault()}
       >
         {/* Video — pointer-events disabled; all interaction via container */}
+        {/* When HLS is active, hls.js/Safari manages the source — no src attribute */}
         <video
           ref={videoRef}
-          src={src}
+          {...(hlsUrl ? {} : { src: effectiveSrc })}
           poster={poster}
-          preload="auto"
+          preload={hlsUrl || hasSavedPos ? "metadata" : "auto"}
           playsInline
+          autoPlay={!disabled}
           muted
+          loop={loop || !!disabled}
+          suppressHydrationWarning
           controlsList="nodownload noremoteplayback"
           draggable={false}
+          fetchPriority={disabled ? "low" : "high"}
           className={`w-full pointer-events-none select-none ${cinemaMode && !miniPlayer ? "h-full object-contain" : "aspect-video"}`}
           style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
           onContextMenu={(e) => e.preventDefault()}
@@ -627,7 +804,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         />
 
         {/* Mini player close button — pauses and closes */}
-        {miniPlayer && (
+        {miniPlayer && !disabled && (
           <button
             className="vp-mini-close absolute top-2 right-2 z-30 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition"
             onClick={(e) => { e.stopPropagation(); setMiniPlayer(false); const v = videoRef.current; if (v) v.pause(); }}
@@ -636,8 +813,8 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
           </button>
         )}
 
-        {/* Loading spinner */}
-        {loading && !error && (
+        {/* Loading spinner — only while playing */}
+        {loading && playing && !error && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className={`rounded-full border-[3px] border-white/20 animate-spin ${miniPlayer ? "w-8 h-8" : "w-12 h-12"}`} style={{ borderTopColor: "var(--accent-color)" }} />
           </div>
@@ -654,7 +831,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         )}
 
         {/* Unmute overlay — shows when video is auto-playing muted */}
-        {playing && muted && !miniPlayer && !error && (
+        {playing && muted && !miniPlayer && !error && !disabled && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -669,7 +846,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         )}
 
         {/* Action indicator */}
-        {actionIcon && !miniPlayer && (
+        {actionIcon && !miniPlayer && !disabled && (
           <div key={actionCountRef.current} className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
             <div className="w-14 h-14 rounded-full bg-black/50 flex items-center justify-center" style={{ animation: "vpActionFade 800ms ease forwards" }}>
               {actionIcon === "play" ? (
@@ -682,7 +859,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
         )}
 
         {/* Double-tap seek animation */}
-        {seekAnim && !miniPlayer && (
+        {seekAnim && !miniPlayer && !disabled && (
           <div key={seekAnim.key} className={`absolute top-0 bottom-0 flex items-center justify-center pointer-events-none z-20 ${seekAnim.side === "left" ? "left-0 w-1/3" : "right-0 w-1/3"}`}>
             <div className="flex flex-col items-center" style={{ animation: "vpSeekAnim 600ms ease forwards" }}>
               <svg className="h-8 w-8 text-white" fill="white" viewBox="0 0 24 24">
@@ -695,7 +872,7 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
 
         {/* Controls overlay — simplified in mini mode */}
         <div
-          className={`vp-bar absolute bottom-0 left-0 right-0 transition-opacity duration-300 ${controls || !playing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`vp-bar absolute bottom-0 left-0 right-0 transition-opacity duration-300 ${disabled ? "!hidden" : controls || !playing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
@@ -717,11 +894,11 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
               }}
               onMouseLeave={() => { if (!seekingRef.current) hideSeekPreview(); }}
             >
-              {/* Seek preview tooltip — only in normal mode */}
-              {!miniPlayer && (
+              {/* Seek preview tooltip — desktop only (touch devices skip to save bandwidth) */}
+              {!miniPlayer && !isTouchDevice && (
                 <div ref={previewWrapRef} className="absolute bottom-full mb-4 pointer-events-none z-30 w-[160px]" style={{ display: "none", transform: "translateX(-50%)" }}>
                   <div className="rounded-lg overflow-hidden shadow-xl border border-white/20 bg-black w-[160px]">
-                    <video ref={previewRef} src={src} preload="metadata" muted controlsList="nodownload" disablePictureInPicture className="w-[160px] h-[90px] object-cover pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
+                    <video ref={previewRef} preload="none" muted controlsList="nodownload" disablePictureInPicture className="w-[160px] h-[90px] object-cover pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
                   </div>
                   <div ref={previewTimeRef} className="text-white text-[0.75rem] text-center mt-1.5 font-medium tabular-nums bg-black/80 rounded px-2 py-0.5 mx-auto w-fit" />
                 </div>
@@ -828,6 +1005,16 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
                             </span>
                           </button>
+                          {/* Quality — navigate to sub-tab (only when HLS streams available) */}
+                          {qualities.length > 0 && (
+                            <button onClick={() => setSettingsTab("quality")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors border-b border-white/10">
+                              <span className="text-[0.82rem] text-white font-medium">Kalite</span>
+                              <span className="text-[0.78rem] text-white/50 flex items-center gap-1">
+                                {currentQuality === -1 ? "Otomatik" : qualities[currentQuality]?.name || "Otomatik"}
+                                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
+                              </span>
+                            </button>
+                          )}
                           {/* Shortcuts — navigate to sub-tab */}
                           <button onClick={() => setSettingsTab("shortcuts")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors">
                             <span className="text-[0.82rem] text-white font-medium">Kısayollar</span>
@@ -845,6 +1032,24 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
                             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
                               <button key={rate} onClick={() => { changeSpeed(rate); setSettingsTab("main"); }} className={`w-full px-3.5 py-1.5 text-[0.78rem] text-left hover:bg-white/10 transition-colors ${speed === rate ? "font-semibold" : "text-white/70"}`} style={speed === rate ? { color: "var(--accent-color)" } : undefined}>
                                 {rate === 1 ? "Normal" : `${rate}x`}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : settingsTab === "quality" ? (
+                        <>
+                          {/* Quality sub-tab — back + auto + levels */}
+                          <button onClick={() => setSettingsTab("main")} className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors border-b border-white/10">
+                            <svg className="h-3.5 w-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
+                            <span className="text-[0.82rem] text-white font-medium">Kalite</span>
+                          </button>
+                          <div className="py-1">
+                            <button onClick={() => { setQuality(-1); setSettingsTab("main"); }} className={`w-full px-3.5 py-1.5 text-[0.78rem] text-left hover:bg-white/10 transition-colors ${currentQuality === -1 ? "font-semibold" : "text-white/70"}`} style={currentQuality === -1 ? { color: "var(--accent-color)" } : undefined}>
+                              Otomatik
+                            </button>
+                            {qualities.map((q, i) => (
+                              <button key={i} onClick={() => { setQuality(i); setSettingsTab("main"); }} className={`w-full px-3.5 py-1.5 text-[0.78rem] text-left hover:bg-white/10 transition-colors ${currentQuality === i ? "font-semibold" : "text-white/70"}`} style={currentQuality === i ? { color: "var(--accent-color)" } : undefined}>
+                                {q.name}
                               </button>
                             ))}
                           </div>
@@ -909,6 +1114,6 @@ function VideoPlayer({ src, poster, onEnded, autoStart }: VideoPlayerProps) {
     </div>
     </>
   );
-}
+});
 
-export default memo(VideoPlayer);
+export default memo(VideoPlayerInner);

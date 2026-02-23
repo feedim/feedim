@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link as LinkIcon, Ban, Eye, EyeOff, Flag, Check, Shield, ShieldOff, Snowflake, Sun, Trash2, BadgeCheck, BadgeX, AlertTriangle } from "lucide-react";
+import { Link as LinkIcon, Ban, Flag, Check, Shield, ShieldOff, Snowflake, Sun, Trash2, AlertTriangle, Eye, ImageOff, MessageCircleOff, HeartOff, UserX } from "lucide-react";
 import ShareIcon from "@/components/ShareIcon";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
@@ -172,14 +172,14 @@ export default function ProfileMoreModal({
                 <span className={labelClass}>Uyar (+20 spam puan)</span>
               </button>
 
-              <button onClick={() => confirmAction("ban_user", "Engelle")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("ban_user", "Hesabı kapat")} disabled={actionLoading} className={btnClass}>
                 <ShieldOff className={`${iconClass} text-error`} />
-                <span className={`${labelClass} text-error`}>Hesabı engelle</span>
+                <span className={`${labelClass} text-error`}>Hesabı kapat</span>
               </button>
 
-              <button onClick={() => confirmAction("unban_user", "Engeli kaldır")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("unban_user", "Hesabı aç")} disabled={actionLoading} className={btnClass}>
                 <ShieldOff className={`${iconClass} text-text-muted`} />
-                <span className={labelClass}>Engeli kaldır</span>
+                <span className={labelClass}>Hesabı aç</span>
               </button>
 
               <button onClick={() => doModAction("freeze_user", "Hesap donduruldu")} disabled={actionLoading} className={btnClass}>
@@ -192,42 +192,80 @@ export default function ProfileMoreModal({
                 <span className={labelClass}>Dondurmayı kaldır</span>
               </button>
 
-              <button onClick={() => confirmAction("shadow_ban", "Gölge engelle")} disabled={actionLoading} className={btnClass}>
-                <EyeOff className={`${iconClass} text-text-muted`} />
-                <span className={labelClass}>Gölge engelle</span>
-              </button>
 
-              <button onClick={() => doModAction("unshadow_ban", "Gölge engel kaldırıldı")} disabled={actionLoading} className={btnClass}>
-                <Eye className={`${iconClass} text-text-muted`} />
-                <span className={labelClass}>Gölge engeli kaldır</span>
-              </button>
-
-              <button onClick={() => confirmAction("moderation_user", "Moderasyona al")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("moderation_user", "Hesap incelemesi")} disabled={actionLoading} className={btnClass}>
                 <AlertTriangle className={`${iconClass} text-warning`} />
                 <span className={labelClass}>Moderasyona al</span>
               </button>
 
-              <button onClick={() => confirmAction("verify_user", "Doğrula")} disabled={actionLoading} className={btnClass}>
-                <BadgeCheck className={`${iconClass} text-info`} />
-                <span className={labelClass}>Doğrula (mavi tik)</span>
-              </button>
-
-              <button onClick={() => confirmAction("unverify_user", "Doğrulamayı kaldır")} disabled={actionLoading} className={btnClass}>
-                <BadgeX className={`${iconClass} text-text-muted`} />
-                <span className={labelClass}>Doğrulamayı kaldır</span>
+              <button onClick={() => doModAction("activate_user", "Moderasyon kaldırıldı")} disabled={actionLoading} className={btnClass}>
+                <Check className={`${iconClass} text-success`} />
+                <span className={labelClass}>Moderasyonu kaldır</span>
               </button>
 
               {isAdmin && (
                 <>
-                  <button onClick={() => confirmAction("grant_premium", "Premium ver")} disabled={actionLoading} className={btnClass}>
-                    <VerifiedBadge size="md" variant="max" />
-                    <span className={labelClass}>Premium ver</span>
-                  </button>
+                  {(["super", "pro", "max", "business"] as const).map((plan) => (
+                    <button
+                      key={plan}
+                      onClick={() => {
+                        feedimAlert("question", `${username} için "${plan.charAt(0).toUpperCase() + plan.slice(1)}" planı (30 gün) hediye edilsin mi?`, {
+                          showYesNo: true,
+                          onYes: async () => {
+                            setActionLoading(true);
+                            try {
+                              const res = await fetch("/api/admin/moderation", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ action: "grant_premium", target_id: userId, target_type: "user", plan }),
+                              });
+                              const data = await res.json();
+                              if (res.ok && data.success) {
+                                feedimAlert("success", `${plan.charAt(0).toUpperCase() + plan.slice(1)} planı hediye edildi`);
+                                onClose();
+                              } else {
+                                feedimAlert("error", data.error || "Hata oluştu");
+                              }
+                            } catch { feedimAlert("error", "Sunucu hatası"); } finally { setActionLoading(false); }
+                          },
+                        });
+                      }}
+                      disabled={actionLoading}
+                      className={btnClass}
+                    >
+                      <VerifiedBadge size="md" variant={plan === "max" || plan === "business" ? "max" : "default"} />
+                      <span className={labelClass}>{plan.charAt(0).toUpperCase() + plan.slice(1)} ver (30 gün)</span>
+                    </button>
+                  ))}
 
                   <button onClick={() => confirmAction("revoke_premium", "Premium kaldır")} disabled={actionLoading} className={btnClass}>
                     <VerifiedBadge size="md" className="opacity-40" />
                     <span className={labelClass}>Premium kaldır</span>
                   </button>
+
+                  <div className="border-t border-border-primary mx-4 my-1" />
+
+                  <button onClick={() => confirmAction("remove_avatar", "Avatarı kaldır")} disabled={actionLoading} className={btnClass}>
+                    <ImageOff className={`${iconClass} text-warning`} />
+                    <span className={labelClass}>Avatarı kaldır</span>
+                  </button>
+
+                  <button onClick={() => confirmAction("restrict_follow", "Takip engeli")} disabled={actionLoading} className={btnClass}>
+                    <UserX className={`${iconClass} text-warning`} />
+                    <span className={labelClass}>Takip engeli at/kaldır</span>
+                  </button>
+
+                  <button onClick={() => confirmAction("restrict_like", "Beğeni engeli")} disabled={actionLoading} className={btnClass}>
+                    <HeartOff className={`${iconClass} text-warning`} />
+                    <span className={labelClass}>Beğeni engeli at/kaldır</span>
+                  </button>
+
+                  <button onClick={() => confirmAction("restrict_comment", "Yorum engeli")} disabled={actionLoading} className={btnClass}>
+                    <MessageCircleOff className={`${iconClass} text-warning`} />
+                    <span className={labelClass}>Yorum engeli at/kaldır</span>
+                  </button>
+
+                  <div className="border-t border-border-primary mx-4 my-1" />
 
                   <button
                     onClick={() => confirmAction("delete_user", "Hesabı sil")}

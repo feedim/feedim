@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { checkImageBuffer } from '@/lib/moderation';
 import { uploadToR2 } from '@/lib/r2';
 import { encode as encodeBlurhash } from 'blurhash';
+import { computeImageHash } from '@/lib/copyright';
 import * as jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 
@@ -53,17 +54,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dosya çok büyük. Maksimum 5MB.' }, { status: 400 });
     }
 
-    // NSFW check (JPEG/PNG only — WebP/GIF pass through, caught at publish)
+    // NSFW pre-check — don't block upload, just tag it. Final check at publish time.
     const imageBuffer = Buffer.from(await file.arrayBuffer());
-    if (file.type === 'image/jpeg' || file.type === 'image/png') {
+    let nsfwFlag = false;
+    try {
       const nsfwResult = await checkImageBuffer(imageBuffer, file.type);
-      if (nsfwResult.action === 'block') {
-        return NextResponse.json(
-          { error: 'Uygunsuz görsel tespit edildi. Bu görseli yükleyemezsiniz.' },
-          { status: 400 }
-        );
-      }
-    }
+      if (nsfwResult.action === 'flag') nsfwFlag = true;
+    } catch {}
 
     const safeName = (fileName || file.name).replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 100);
     const ext = file.type === 'image/jpeg' ? '.jpg' : file.type === 'image/png' ? '.png' : file.type === 'image/gif' ? '.gif' : '.webp';
@@ -86,7 +83,15 @@ export async function POST(request: NextRequest) {
       // Blurhash generation failed — return without it
     }
 
-    return NextResponse.json({ success: true, url, blurhash });
+    // Compute perceptual image hash (dHash) for copyright detection
+    let imageHash: string | null = null;
+    try {
+      imageHash = await computeImageHash(imageBuffer);
+    } catch {
+      // Hash generation failed — return without it
+    }
+
+    return NextResponse.json({ success: true, url, blurhash, imageHash, nsfw: nsfwFlag });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Yükleme hatası' }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useCallback } from "react";
 import { UserPlus, Check, Clock } from "lucide-react";
 
 interface FollowButtonProps {
@@ -30,20 +30,33 @@ export default memo(function FollowButton({
 }: FollowButtonProps) {
   const texts = TEXT_MAP[variant];
   const isPendingRequest = following && isPrivate;
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = useCallback(() => {
+    if (loading) return;
+    setLoading(true);
+    setTimeout(() => {
+      onClick();
+      setLoading(false);
+    }, 1000);
+  }, [loading, onClick]);
 
   return (
     <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`follow-btn ${following ? "following" : ""} ${className}`}
+      onClick={handleClick}
+      disabled={disabled || loading}
+      className={`follow-btn relative ${following ? "following" : ""} ${className}`}
     >
-      {isPendingRequest ? (
-        <><Clock className="h-3.5 w-3.5" /> İstek</>
-      ) : following ? (
-        <><Check className="h-3.5 w-3.5" /> {texts.following}</>
-      ) : (
-        <><UserPlus className="h-3.5 w-3.5" /> {texts.follow}</>
-      )}
+      {loading && <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }} />}
+      <span className={`inline-flex items-center gap-[5px] ${loading ? "invisible" : ""}`}>
+        {isPendingRequest ? (
+          <><Clock className="h-3.5 w-3.5" /> İstek</>
+        ) : following ? (
+          <><Check className="h-3.5 w-3.5" /> {texts.following}</>
+        ) : (
+          <><UserPlus className="h-3.5 w-3.5" /> {texts.follow}</>
+        )}
+      </span>
     </button>
   );
 })

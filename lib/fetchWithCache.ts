@@ -92,6 +92,21 @@ function clearOldEntries(storage: Storage): void {
   }
 }
 
+/** Read cached data synchronously (for initializing state without loading flash) */
+export function readCache(url: string): unknown | null {
+  const storage = getStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(getCacheKey(url));
+    if (!raw) return null;
+    const entry: CacheEntry = JSON.parse(raw);
+    // Return data regardless of staleness — caller will revalidate
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
 export function invalidateCache(prefix: string): void {
   const storage = getStorage();
   if (!storage) return;

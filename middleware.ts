@@ -108,48 +108,102 @@ export async function middleware(request: NextRequest) {
   supabaseResponse = NextResponse.next({ request })
   responseCookies.forEach(c => supabaseResponse.cookies.set(c))
 
-  // ─── 3b. Account status check (frozen / moderation / blocked / deleted) ───
+  // ─── 3b. Account status + onboarding + role — batched DB query ───
+  const isAuthPage = pathname === '/login' || pathname === '/register'
+  const isOnboarding = pathname === '/onboarding'
+  const isAdminPath = pathname.startsWith('/dashboard/moderation') || pathname.startsWith('/dashboard/admin')
+  const isAuthenticated = !!user
+
   if (user && !pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/account/freeze') && !pathname.startsWith('/api/account/delete')) {
     const statusCookie = request.cookies.get('fdm-status')?.value
-    let status = statusCookie || ''
+    const onboardingCookie = request.cookies.get('fdm-onboarding')?.value
+    const roleCookie = request.cookies.get('fdm-role')?.value
 
-    if (!status) {
+    const needStatus = !statusCookie || statusCookie !== 'active'
+    const needOnboarding = onboardingCookie === undefined && !isOnboarding && !isAuthPage
+    const needRole = !roleCookie && isAdminPath
+
+    // Single batched DB query instead of up to 3 separate queries
+    let status = statusCookie || ''
+    let onboardingCompleted: boolean | null = null
+    let role = roleCookie || ''
+
+    if (needStatus || needOnboarding || needRole) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('status')
+        .select('status, onboarding_completed, role')
         .eq('user_id', user.id)
         .single()
-      status = profile?.status || 'active'
+
+      if (needStatus) status = profile?.status || 'active'
+      if (needOnboarding) onboardingCompleted = profile?.onboarding_completed ?? null
+      if (needRole) role = profile?.role || 'user'
+    }
+
+    // --- Status enforcement ---
+    if (needStatus && status === 'active') {
+      // Cache active status for 1 minute to skip DB on subsequent requests
+      supabaseResponse.cookies.set('fdm-status', 'active', {
+        maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+      })
     }
 
     if (status !== 'active') {
-      // Cache status for 60s to avoid repeated queries
       supabaseResponse.cookies.set('fdm-status', status, {
         maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
       })
 
-      if (pathname.startsWith('/api/')) {
+      if (pathname.startsWith('/api/') && !pathname.startsWith('/api/account/')) {
         return NextResponse.json(
           { error: 'Hesabınız aktif değil', status },
           { status: 403 }
         )
       }
 
-      // Moderation status: redirect to account-moderation page
-      if (status === 'moderation') {
-        if (pathname !== '/account-moderation' && pathname !== '/auth/signout') {
-          const modRedirect = NextResponse.redirect(new URL('/account-moderation', request.url))
-          supabaseResponse.cookies.getAll().forEach(c => modRedirect.cookies.set(c))
-          return modRedirect
-        }
-      } else {
-        // Allow signout even for inactive accounts
-        if (pathname !== '/auth/signout' && pathname !== '/login') {
-          const statusRedirect = NextResponse.redirect(new URL('/login', request.url))
-          supabaseResponse.cookies.getAll().forEach(c => statusRedirect.cookies.set(c))
-          return statusRedirect
-        }
+      // Helper: redirect that preserves refreshed auth cookies
+      const redirect = (path: string) => {
+        const response = NextResponse.redirect(new URL(path, request.url))
+        supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
+        return response
       }
+
+      if (pathname !== '/account-moderation' && pathname !== '/auth/signout' && !pathname.startsWith('/api/') && !pathname.startsWith('/help')) {
+        return redirect('/account-moderation')
+      }
+    }
+    // If status is active but cookie was stale, clear it
+    if (status === 'active' && statusCookie && statusCookie !== 'active') {
+      supabaseResponse.cookies.set('fdm-status', '', { maxAge: 0, path: '/' })
+    }
+
+    // --- Onboarding enforcement (only for non-API, non-auth, non-onboarding) ---
+    if (needOnboarding && onboardingCompleted !== null && !onboardingCompleted && !pathname.startsWith('/api/')) {
+      const redirect = (path: string) => {
+        const response = NextResponse.redirect(new URL(path, request.url))
+        supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
+        return response
+      }
+      return redirect('/onboarding')
+    }
+    if (needOnboarding && onboardingCompleted) {
+      supabaseResponse.cookies.set('fdm-onboarding', '1', {
+        maxAge: 3600, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+      })
+    }
+
+    // --- Admin role enforcement ---
+    if (isAdminPath) {
+      if (role !== 'admin' && role !== 'moderator') {
+        const redirect = (path: string) => {
+          const response = NextResponse.redirect(new URL(path, request.url))
+          supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
+          return response
+        }
+        return redirect('/dashboard')
+      }
+      supabaseResponse.cookies.set('fdm-role', role, {
+        maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+      })
     }
   }
 
@@ -159,17 +213,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 4. Route protection ───
-  const isAuthenticated = !!user
   const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
-  const isAuthPage = pathname === '/login' || pathname === '/register'
-  const isOnboarding = pathname === '/onboarding'
   const publicDashboardPaths = ['/dashboard', '/dashboard/explore', '/dashboard/moments']
   const isPublicDashboard = publicDashboardPaths.includes(pathname) || pathname.startsWith('/dashboard/explore/')
 
   // Helper: redirect that preserves refreshed auth cookies
   const redirect = (path: string) => {
     const response = NextResponse.redirect(new URL(path, request.url))
-    // Copy all cookies from supabaseResponse (includes refreshed auth + custom cookies)
     supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
     return response
   }
@@ -189,50 +239,6 @@ export async function middleware(request: NextRequest) {
     return redirect('/dashboard')
   }
 
-  // ─── 5. Onboarding check ───
-  if (isAuthenticated && user && !isOnboarding && !isAuthPage) {
-    const onboardingDone = request.cookies.get('fdm-onboarding')?.value
-    if (onboardingDone === undefined) {
-      // Query profile directly using the already-created Supabase client
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('user_id', user.id)
-        .single()
-
-      if (profile && !profile.onboarding_completed) {
-        return redirect('/onboarding')
-      }
-
-      // Cache for 5 minutes to avoid re-checking on every request
-      supabaseResponse.cookies.set('fdm-onboarding', '1', {
-        maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
-      })
-    }
-  }
-
-  // ─── 6. Admin role check ───
-  if (isAuthenticated && user && pathname.startsWith('/dashboard/admin')) {
-    let role = request.cookies.get('fdm-role')?.value || ''
-
-    if (!role) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single()
-      role = profile?.role || 'user'
-    }
-
-    if (role !== 'admin') {
-      return redirect('/dashboard')
-    }
-
-    supabaseResponse.cookies.set('fdm-role', role, {
-      maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
-    })
-  }
-
   return supabaseResponse
 }
 
@@ -248,5 +254,7 @@ export const config = {
     '/post/:path*',
     '/u/:path*',
     '/account-moderation',
+    '/premium',
+    '/payment/:path*',
   ],
 }

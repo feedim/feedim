@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 export interface InitialUser {
   id: string;
@@ -12,6 +12,8 @@ export interface InitialUser {
   premiumPlan: string | null;
   isVerified: boolean;
   role: string;
+  status?: string;
+  copyrightEligible?: boolean;
 }
 
 interface UserContextValue {
@@ -31,8 +33,10 @@ export function UserProvider({
   initialUser: InitialUser | null;
   children: React.ReactNode;
 }) {
+  const value = useMemo(() => ({ user: initialUser, isLoggedIn: !!initialUser }), [initialUser]);
+
   return (
-    <UserContext.Provider value={{ user: initialUser, isLoggedIn: !!initialUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );

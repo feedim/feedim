@@ -29,7 +29,7 @@ export default function EmojiPickerPanel({ onEmojiSelect, onClose }: EmojiPicker
   }, []);
 
   return (
-    <Modal open={true} onClose={onClose} title="Emoji" size="sm" zIndex="z-[10001]">
+    <Modal open={true} onClose={onClose} title="Emoji" size="sm" zIndex="z-[10001]" infoText="Emoji seçerek yorumlarına ekleyebilirsin.">
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <div className="overflow-hidden flex justify-center" onClick={(e) => e.stopPropagation()}>
         <Picker

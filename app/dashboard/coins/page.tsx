@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Coins, Send, Plus, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import TransactionCard from "@/components/TransactionCard";
 import AppLayout from "@/components/AppLayout";
+import LoadingShell from "@/components/LoadingShell";
 import { COIN_TO_TRY_RATE, COIN_COMMISSION_RATE } from "@/lib/constants";
 
 export default function CoinsPage() {
+  useSearchParams();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,12 +53,14 @@ export default function CoinsPage() {
     <AppLayout headerTitle="Bakiye" hideRightSidebar>
       <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
         {loading ? (
-          <div className="space-y-4">
-            <div className="skeleton h-44 rounded-2xl" />
-            <div className="skeleton h-14 rounded-2xl" />
-            <div className="skeleton h-14 rounded-2xl" />
-            <div className="skeleton h-32 rounded-2xl" />
-          </div>
+          <LoadingShell>
+            <div className="space-y-4">
+              <div className="skeleton h-44 rounded-2xl" />
+              <div className="skeleton h-14 rounded-2xl" />
+              <div className="skeleton h-14 rounded-2xl" />
+              <div className="skeleton h-32 rounded-2xl" />
+            </div>
+          </LoadingShell>
         ) : (
           <>
             {/* Bakiye Kartı */}

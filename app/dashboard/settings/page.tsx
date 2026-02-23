@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import {
   User, Mail, LogOut, Clock, Calendar, Wallet, Bookmark,
   Shield, HelpCircle, FileText, MessageCircle, ScrollText,
   ChevronRight, Check, Lock, Briefcase, Ban, Bell,
   Smartphone, Link2, EyeOff,
-  Sun, Moon, CloudMoon, Monitor, Sparkles
+  Sun, Moon, CloudMoon, Monitor, Sparkles, Keyboard
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -18,11 +19,13 @@ import ProfessionalAccountModal from "@/components/modals/ProfessionalAccountMod
 import DarkModeModal from "@/components/modals/DarkModeModal";
 import { isProfessional, getCategoryLabel } from "@/lib/professional";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 const minDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export default function SettingsPage() {
+  useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,9 @@ export default function SettingsPage() {
   const [contactPhone, setContactPhone] = useState("");
   const [proModalOpen, setProModalOpen] = useState(false);
   const [darkModeOpen, setDarkModeOpen] = useState(false);
+  const [copyrightEligible, setCopyrightEligible] = useState(false);
+  const [copyrightEligibleSince, setCopyrightEligibleSince] = useState<string | null>(null);
+  const [copyrightApplicationStatus, setCopyrightApplicationStatus] = useState<string | null>(null);
   const [currentTheme, setCurrentTheme] = useState("system");
   const [ambientLight, setAmbientLight] = useState("on");
   const router = useRouter();
@@ -66,7 +72,16 @@ export default function SettingsPage() {
         setProfessionalCategory(data.professional_category || "");
         setContactEmail(data.contact_email || "");
         setContactPhone(data.contact_phone || "");
+        setCopyrightEligible(data.copyright_eligible || false);
+        setCopyrightEligibleSince(data.copyright_eligible_since || null);
       }
+
+      try {
+        const appRes = await fetch("/api/copyright-applications");
+        const appData = await appRes.json();
+        if (appData.application) setCopyrightApplicationStatus(appData.application.status);
+      } catch {}
+
     } finally {
       setLoading(false);
     }
@@ -154,6 +169,7 @@ export default function SettingsPage() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    emitNavigationStart();
     router.push("/");
   };
 
@@ -163,7 +179,7 @@ export default function SettingsPage() {
     <AppLayout headerTitle="Ayarlar" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <SettingsItemSkeleton />
+          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
         ) : (
           <>
             {/* Profile Header */}
@@ -191,25 +207,27 @@ export default function SettingsPage() {
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
 
-            {/* Abonelik */}
-            {profile?.is_premium ? (
-              <Link href="/dashboard/settings/premium" className={`mx-4 mt-3 mb-1 flex items-center gap-3 px-4 py-3.5 rounded-[13px] transition-colors ${getBadgeVariant(profile.premium_plan) === "max" ? "bg-verified-max/[0.06] hover:bg-verified-max/[0.1]" : "bg-accent-main/[0.06] hover:bg-accent-main/[0.1]"}`}>
-                <VerifiedBadge size="lg" variant={getBadgeVariant(profile.premium_plan)} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">Feedim {(profile.premium_plan || "").charAt(0).toUpperCase() + (profile.premium_plan || "").slice(1)}</p>
-                  <p className="text-xs text-text-muted mt-0.5">Premium üyeliğin aktif</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
-              </Link>
-            ) : (
-              <Link href="/dashboard/settings/premium" className="mx-4 mt-3 mb-1 flex items-center gap-3 px-4 py-3.5 rounded-[13px] bg-bg-secondary hover:bg-bg-tertiary transition-colors">
-                <VerifiedBadge size="lg" className="opacity-50" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">Premium'a Yükselt</p>
-                  <p className="text-xs text-text-muted mt-0.5">Onaylı rozet, reklamsız deneyim ve daha fazlası</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
-              </Link>
+            {/* Abonelik — admin için gizle */}
+            {profile?.role !== "admin" && (
+              profile?.is_premium ? (
+                <Link href="/dashboard/settings/premium" className={`mx-4 mt-3 mb-1 flex items-center gap-3 px-4 py-3.5 rounded-[13px] transition-colors ${getBadgeVariant(profile.premium_plan) === "max" ? "bg-verified-max/[0.06] hover:bg-verified-max/[0.1]" : "bg-accent-main/[0.06] hover:bg-accent-main/[0.1]"}`}>
+                  <VerifiedBadge size="lg" variant={getBadgeVariant(profile.premium_plan)} role={profile?.role} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Feedim {(profile.premium_plan || "").charAt(0).toUpperCase() + (profile.premium_plan || "").slice(1)}</p>
+                    <p className="text-xs text-text-muted mt-0.5">Premium üyeliğin aktif</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
+                </Link>
+              ) : (
+                <Link href="/dashboard/settings/premium" className="mx-4 mt-3 mb-1 flex items-center gap-3 px-4 py-3.5 rounded-[13px] bg-bg-secondary hover:bg-bg-tertiary transition-colors">
+                  <VerifiedBadge size="lg" className="opacity-50" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Premium'a Yükselt</p>
+                    <p className="text-xs text-text-muted mt-0.5">Onaylı rozet, reklamsız deneyim ve daha fazlası</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
+                </Link>
+              )
             )}
 
             {/* Hesap */}
@@ -221,6 +239,15 @@ export default function SettingsPage() {
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
+            {(profile?.role === "admin" || profile?.role === "moderator") && (
+              <Link href="/dashboard/moderation" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-text-muted" />
+                  <span className="text-sm font-medium">Moderation</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </Link>
+            )}
             <Link href="/dashboard/transactions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-text-muted" />
@@ -331,6 +358,17 @@ export default function SettingsPage() {
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
 
+            <button
+              onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
+              className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <Keyboard className="h-5 w-5 text-text-muted" />
+                <span className="text-sm font-medium">Klavye Kısayolları</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-text-muted" />
+            </button>
+
             {/* Hesap Türü */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Hesap Türü</h3>
             {isProfessional(accountType) ? (
@@ -376,6 +414,42 @@ export default function SettingsPage() {
                 <ChevronRight className="h-4 w-4 text-text-muted" />
               </button>
             )}
+
+            {/* Hesap Sağlığı */}
+            <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Hesap Sağlığı</h3>
+            <Link href="/dashboard/settings/health" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-text-muted" />
+                <div>
+                  <span className="text-sm font-medium">Hesap Sağlığı</span>
+                  <p className="text-xs text-text-muted mt-0.5">İhlal hakları ve hesap durumu</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-text-muted" />
+            </Link>
+
+            {/* Telif Hakkı Koruması */}
+            <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Telif Hakkı Koruması</h3>
+            <Link href="/dashboard/settings/copyright" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-text-muted" />
+                <div>
+                  <span className="text-sm font-medium">Telif Hakki Korumasi</span>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {copyrightEligible
+                      ? "Etkin" + (copyrightEligibleSince ? ` — ${new Date(copyrightEligibleSince).toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" })}` : "")
+                      : copyrightApplicationStatus === "pending"
+                        ? "Basvurunuz inceleniyor..."
+                        : "Otomatik veya sirket basvurusu ile etkinlesir"}
+                  </p>
+                </div>
+              </div>
+              {copyrightEligible ? (
+                <span className="flex items-center gap-1 text-xs text-success font-semibold"><Check className="h-3.5 w-3.5" />Etkin</span>
+              ) : (
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              )}
+            </Link>
 
             {/* Güvenlik */}
             <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Güvenlik</h3>

@@ -51,6 +51,15 @@ export function slugify(text: string): string {
     .substring(0, 120);
 }
 
+// Encode/decode numeric IDs for URLs (XOR obfuscation + base36)
+const ID_XOR_KEY = 0x5A3C9E;
+export function encodeId(id: number): string {
+  return ((id ^ ID_XOR_KEY) >>> 0).toString(36);
+}
+export function decodeId(encoded: string): number {
+  return (parseInt(encoded, 36) ^ ID_XOR_KEY) >>> 0;
+}
+
 export function generateSlugHash(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let hash = '';

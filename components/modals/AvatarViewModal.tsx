@@ -10,9 +10,11 @@ interface AvatarViewModalProps {
   onClose: () => void;
   avatarUrl: string | null;
   name: string;
+  isOwn?: boolean;
+  onEdit?: () => void;
 }
 
-export default function AvatarViewModal({ open, onClose, avatarUrl, name }: AvatarViewModalProps) {
+export default function AvatarViewModal({ open, onClose, avatarUrl, name, isOwn, onEdit }: AvatarViewModalProps) {
   const [closing, setClosing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -104,6 +106,17 @@ export default function AvatarViewModal({ open, onClose, avatarUrl, name }: Avat
           />
         )}
       </div>
+
+      {isOwn && onEdit && (
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center">
+          <button
+            onClick={onEdit}
+            className="t-btn accept px-6 py-2.5 text-[0.85rem]"
+          >
+            Profil resmini değiştir
+          </button>
+        </div>
+      )}
     </div>,
     document.body
   );

@@ -23,6 +23,7 @@ export interface VideoItem {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 
@@ -44,7 +45,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
   return (
     <div>
       {title && (
-        <h3 className="text-[0.9rem] font-bold mb-3">{title}</h3>
+        <h3 className="text-[1.1rem] font-bold mb-3">{title}</h3>
       )}
       <div className="space-y-1.5">
         {videos.map(video => (
@@ -76,14 +77,14 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
               <p className={`font-semibold leading-snug line-clamp-2 group-hover:text-text-primary ${compact ? "text-[0.78rem]" : "text-[0.82rem]"}`}>
                 {video.title}
               </p>
-              <div className="mt-1.5 space-y-0.5">
-                <p className="text-[0.72rem] text-text-muted flex items-center gap-1">
+              <div className="mt-0 space-y-0.5">
+                <p className="text-[0.72rem] text-text-muted font-medium flex items-center gap-1">
                   @{video.profiles?.username}
-                  {video.profiles?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(video.profiles.premium_plan)} />}
+                  {video.profiles?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(video.profiles.premium_plan)} role={video.profiles?.role} />}
                 </p>
-                <p className="text-[0.68rem] text-text-muted">
+                <p className="text-[0.62rem] text-text-muted">
                   {video.view_count ? `${formatCount(video.view_count)} görüntülenme` : ""}
-                  {video.view_count && video.published_at ? " · " : ""}
+                  {video.view_count && video.published_at ? " " : ""}
                   {video.published_at ? formatRelativeDate(video.published_at) : ""}
                 </p>
               </div>

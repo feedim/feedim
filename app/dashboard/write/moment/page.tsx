@@ -2,8 +2,11 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, Upload, Film, ChevronDown } from "lucide-react";
+import { X, Plus, Upload, Film, Music } from "lucide-react";
+import PostMetaFields from "@/components/PostMetaFields";
+import VideoPlayer from "@/components/VideoPlayer";
 import { createClient } from "@/lib/supabase/client";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
 import {
   VALIDATION,
@@ -14,12 +17,15 @@ import { formatCount } from "@/lib/utils";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import CropModal from "@/components/modals/CropModal";
+import SoundPickerModal, { type SoundItem } from "@/components/modals/SoundPickerModal";
+import SoundPreviewButton from "@/components/SoundPreviewButton";
 
 interface Tag {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   post_count?: number;
+  virtual?: boolean;
 }
 
 export default function MomentWritePage() {
@@ -46,6 +52,8 @@ function MomentWriteContent() {
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [step, setStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -71,7 +79,15 @@ function MomentWriteContent() {
   const [thumbnail, setThumbnail] = useState("");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [copyrightProtected, setCopyrightProtected] = useState(false);
+  const [frameHashes, setFrameHashes] = useState<{ frameIndex: number; hash: string }[]>([]);
+  const [audioHashes, setAudioHashes] = useState<{ chunkIndex: number; hash: string }[]>([]);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+
+  // Sound
+  const [selectedSound, setSelectedSound] = useState<SoundItem | null>(null);
+  const [soundModalOpen, setSoundModalOpen] = useState(false);
+  const [useOriginalSound, setUseOriginalSound] = useState(true);
 
   // SEO meta
   const [metaTitle, setMetaTitle] = useState("");
@@ -80,7 +96,7 @@ function MomentWriteContent() {
   const [metaExpanded, setMetaExpanded] = useState(false);
 
   // State
-  const [saving, setSaving] = useState(false);
+  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
 
@@ -119,6 +135,7 @@ function MomentWriteContent() {
         setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setCopyrightProtected(data.post.copyright_protected === true);
         if (data.post.meta_title) setMetaTitle(data.post.meta_title);
         if (data.post.meta_description) setMetaDescription(data.post.meta_description);
         if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
@@ -126,6 +143,17 @@ function MomentWriteContent() {
           .map((pt: { tags: Tag }) => pt.tags)
           .filter(Boolean);
         setTags(postTags);
+        // Sound
+        const sound = data.post.sounds || (Array.isArray(data.post.sounds) ? data.post.sounds[0] : null);
+        if (sound) {
+          if (sound.is_original) {
+            setUseOriginalSound(true);
+            setSelectedSound(null);
+          } else {
+            setSelectedSound(sound);
+            setUseOriginalSound(false);
+          }
+        }
       }
     } catch {
       feedimAlert("error", "Taslak yüklenemedi");
@@ -133,6 +161,87 @@ function MomentWriteContent() {
       setLoadingDraft(false);
     }
   };
+
+  // Sync preview video with selected sound (editor-like preview)
+  useEffect(() => {
+    // Small delay to ensure video ref is mounted after render
+    const timer = setTimeout(() => {
+      const video = previewVideoRef.current;
+      if (!video) return;
+
+      if (selectedSound) {
+        // VideoPlayer manages video muted/volume — only manage the sound overlay audio
+
+        // Create audio element for selected sound
+        const audio = new Audio();
+        audio.src = selectedSound.audio_url;
+        audio.loop = true;
+        audio.preload = "auto";
+        previewAudioRef.current = audio;
+
+        // Sync play/pause/seek with video
+        const onPlay = () => {
+          if (audio.duration) {
+            audio.currentTime = video.currentTime % audio.duration;
+          }
+          audio.play().catch(() => {});
+        };
+        const onPause = () => audio.pause();
+        const onSeeked = () => {
+          if (!video.paused && audio.duration) {
+            audio.currentTime = video.currentTime % audio.duration;
+          }
+        };
+        const onEnded = () => {
+          // If video loops or ends, sync audio
+          audio.pause();
+          audio.currentTime = 0;
+        };
+
+        video.addEventListener("play", onPlay);
+        video.addEventListener("pause", onPause);
+        video.addEventListener("seeked", onSeeked);
+        video.addEventListener("ended", onEnded);
+
+        // If video is already playing, start audio now
+        if (!video.paused) {
+          audio.play().catch(() => {});
+        }
+
+        // Store cleanup
+        const cleanup = () => {
+          video.removeEventListener("play", onPlay);
+          video.removeEventListener("pause", onPause);
+          video.removeEventListener("seeked", onSeeked);
+          video.removeEventListener("ended", onEnded);
+          audio.pause();
+          audio.src = "";
+          previewAudioRef.current = null;
+        };
+
+        // Attach cleanup to ref for external access
+        (previewAudioRef as any)._cleanup = cleanup;
+      } else {
+        // Stop and clean up audio
+        if (previewAudioRef.current) {
+          previewAudioRef.current.pause();
+          previewAudioRef.current.src = "";
+          previewAudioRef.current = null;
+        }
+      }
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      // Cleanup previous audio on re-run
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current.src = "";
+        previewAudioRef.current = null;
+      }
+      // Cleanup audio on effect re-run
+    };
+  }, [selectedSound, videoPreviewUrl, videoUrl]);
 
   // Validate video duration & orientation
   const validateVideo = (file: File): Promise<{ duration: number; isVertical: boolean }> => {
@@ -258,13 +367,35 @@ function MomentWriteContent() {
     setVideoFile(file);
     setVideoDuration(result.duration);
     setVideoPreviewUrl(URL.createObjectURL(file));
+    // Start upload state immediately — overlay shows from the start, video stays muted & disabled
+    setUploading(true);
+    setUploadProgress(0);
 
     try {
       const thumb = await generateThumbnail(file);
       setThumbnail(thumb);
     } catch { /* user can add manually */ }
 
-    uploadVideo(file);
+    // Extract video frame hashes for copyright check (non-blocking)
+    import("@/lib/videoFrameHash")
+      .then(({ extractVideoFrameHashes }) => extractVideoFrameHashes(file))
+      .then(hashes => setFrameHashes(hashes.map(fh => ({ frameIndex: fh.frameIndex, hash: fh.hash }))))
+      .catch(() => { /* frame hash extraction failed, continue without */ });
+
+    // Extract audio fingerprint for copyright check (non-blocking)
+    import("@/lib/audioFingerprint")
+      .then(({ extractAudioFingerprint }) => extractAudioFingerprint(file))
+      .then(hashes => setAudioHashes(hashes.map(ah => ({ chunkIndex: ah.chunkIndex, hash: ah.hash }))))
+      .catch(() => { /* audio fingerprint extraction failed, continue without */ });
+
+    // Optimize MP4 for instant playback (defragment fMP4 or move moov atom)
+    let uploadFile = file;
+    try {
+      const { optimizeVideo } = await import("@/lib/videoOptimize");
+      uploadFile = await optimizeVideo(file);
+    } catch { /* optimization failed, upload original */ }
+
+    uploadVideo(uploadFile);
   };
 
   const uploadVideo = async (file: File) => {
@@ -290,9 +421,10 @@ function MomentWriteContent() {
       const { uploadUrl, publicUrl } = initData;
 
       await new Promise<void>((resolve, reject) => {
+        const ct = file.type || "video/mp4";
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", uploadUrl);
-        xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+        xhr.setRequestHeader("Content-Type", ct);
 
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
@@ -367,7 +499,7 @@ function MomentWriteContent() {
     try {
       const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setTagSuggestions((data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id)));
+      setTagSuggestions((data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug)));
       setTagHighlight(-1);
     } catch { setTagSuggestions([]); }
   }, [tags]);
@@ -378,7 +510,8 @@ function MomentWriteContent() {
   }, [tagSearch, searchTagsFn]);
 
   const addTag = (tag: Tag) => {
-    if (tags.length >= VALIDATION.postTags.max || tags.some(t => t.id === tag.id)) return;
+    if (tags.length >= VALIDATION.postTags.max) return;
+    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
     setTags([...tags, tag]);
     setTagSearch("");
     setTagSuggestions([]);
@@ -391,6 +524,7 @@ function MomentWriteContent() {
     if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", `Etiket en az ${VALIDATION.tagName.min} karakter olmalı`); return; }
     if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", `Etiket en fazla ${VALIDATION.tagName.max} karakter olabilir`); return; }
     setTagCreating(true);
+    await new Promise(r => setTimeout(r, 1000));
     try {
       const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
       const data = await res.json();
@@ -399,7 +533,7 @@ function MomentWriteContent() {
     } catch { feedimAlert("error", "Etiket oluşturulamadı"); } finally { setTagCreating(false); }
   };
 
-  const removeTag = (tagId: number) => setTags(tags.filter(t => t.id !== tagId));
+  const removeTag = (tagId: number | string) => setTags(tags.filter(t => t.id !== tagId));
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
     if (tagSuggestions.length > 0) {
@@ -437,7 +571,7 @@ function MomentWriteContent() {
     if (status === "published" && !videoUrl) { feedimAlert("error", "Video yüklenmeden yayınlanamaz"); return; }
     if (status === "published" && uploading) { feedimAlert("error", "Video hala yükleniyor, lütfen bekleyin"); return; }
 
-    setSaving(true);
+    setSavingAs(status);
     try {
       let thumbUrl = thumbnail;
       let thumbBlurhash: string | null = null;
@@ -468,7 +602,7 @@ function MomentWriteContent() {
           content: "",
           content_type: "moment",
           status,
-          tags: tags.map(t => t.id),
+          tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           featured_image: thumbUrl || null,
           video_url: videoUrl || null,
           video_duration: videoDuration || null,
@@ -476,21 +610,25 @@ function MomentWriteContent() {
           blurhash: thumbBlurhash,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          copyright_protected: copyrightProtected,
           meta_title: metaTitle.trim() || null,
           meta_description: metaDescription.trim() || null,
           meta_keywords: metaKeywords.trim() || null,
+          sound_id: selectedSound?.id || null,
+          frame_hashes: frameHashes,
+          audio_hashes: audioHashes,
         }),
       });
 
       const data = await res.json();
       if (res.ok) {
         setHasUnsavedChanges(false);
-        if (status === "published" && data.post?.slug) router.push(`/post/${data.post.slug}`);
-        else { sessionStorage.setItem("fdm-open-create-modal", "1"); router.push("/dashboard"); }
+        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(`/post/${data.post.slug}`); }
+        else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/dashboard"); }
       } else {
         feedimAlert("error", data.error || "Bir hata oluştu");
       }
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setSaving(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setSavingAs(null); }
   };
 
   const goToStep2 = () => {
@@ -525,17 +663,18 @@ function MomentWriteContent() {
         <>
           <button
             onClick={() => savePost("draft")}
-            disabled={saving || !title.trim()}
-            className="t-btn cancel !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
+            disabled={savingAs !== null || !title.trim()}
+            className="t-btn cancel relative !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
           >
-            Kaydet
+            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
           </button>
           <button
             onClick={() => savePost("published")}
-            disabled={saving || !title.trim() || !videoUrl || uploading}
+            disabled={savingAs !== null || !title.trim() || !videoUrl || uploading}
             className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
+            aria-label="Yayınla"
           >
-            {saving ? <span className="loader" style={{ width: 16, height: 16, borderTopColor: "var(--bg-primary)" }} /> : "Yayınla"}
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Yayınla"}
           </button>
         </>
       )}
@@ -585,44 +724,91 @@ function MomentWriteContent() {
               </label>
             ) : (
               <div className="space-y-3">
+                {/* Sound selection — top, before video */}
+                {!uploading && (videoUrl || videoFile) && (
+                  <div className="mb-[10px]">
+                    {selectedSound ? (
+                      <div className="flex items-center gap-3 p-3 bg-bg-tertiary rounded-xl max-w-[300px] mx-auto">
+                        <div className="w-9 h-9 rounded-lg bg-accent-main/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          {selectedSound.cover_image_url ? (
+                            <img src={selectedSound.cover_image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Music className="h-4 w-4 text-accent-main" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{selectedSound.title}</p>
+                          {selectedSound.artist && (
+                            <p className="text-xs text-text-muted truncate">{selectedSound.artist}</p>
+                          )}
+                        </div>
+                        <SoundPreviewButton audioUrl={selectedSound.audio_url} />
+                        <button
+                          onClick={() => {
+                            // Stop preview audio immediately
+                            if (previewAudioRef.current) {
+                              previewAudioRef.current.pause();
+                              previewAudioRef.current.src = "";
+                              previewAudioRef.current = null;
+                            }
+                            // Restore video volume
+                            if (previewVideoRef.current) previewVideoRef.current.volume = 1;
+                            setSelectedSound(null);
+                            setUseOriginalSound(true);
+                          }}
+                          className="p-1 hover:bg-bg-secondary rounded-full"
+                        >
+                          <X className="h-3.5 w-3.5 text-text-muted" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setSoundModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition mx-auto"
+                      >
+                        <Music className="h-4 w-4 text-text-muted" />
+                        <span className="text-sm text-text-muted">Ses ekle...</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="relative rounded-xl overflow-hidden max-w-[300px] mx-auto bg-black" style={{ aspectRatio: "9/16" }}>
                   {(videoPreviewUrl || videoUrl) && (
-                    <video
+                    <VideoPlayer
+                      ref={previewVideoRef}
                       src={videoPreviewUrl || videoUrl}
                       poster={thumbnail || undefined}
-                      className="w-full h-full object-cover"
-                      controls
-                      playsInline
-                      controlsList="nodownload"
+                      disabled={uploading}
                     />
                   )}
 
                   {uploading && (
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
                       <span className="loader mb-3" style={{ width: 28, height: 28, borderTopColor: "var(--accent-color)" }} />
-                      <p className="text-white/80 text-[0.82rem] font-medium">%{uploadProgress}</p>
+                      <p className="text-white/80 text-[0.82rem] font-medium">{uploadProgress > 0 ? `%${uploadProgress}` : "İşleniyor..."}</p>
                       <div className="w-48 h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, backgroundColor: "var(--accent-color)" }} />
                       </div>
+                      <button onClick={removeVideo} className="text-xs text-error hover:underline mt-3">
+                        İptal Et
+                      </button>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between px-1">
+                <div className="flex items-center justify-center px-1">
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <Film className="h-3.5 w-3.5" />
                     <span>{fmtDuration(videoDuration)}</span>
                     {videoFile && (
                       <>
-                        <span>&middot;</span>
                         <span>{fmtSize(videoFile.size)}</span>
                       </>
                     )}
                   </div>
-                  <button onClick={removeVideo} className="text-xs text-error hover:underline">
-                    İptal Et
-                  </button>
                 </div>
+
               </div>
             )}
           </div>
@@ -646,7 +832,7 @@ function MomentWriteContent() {
                 maxLength={VALIDATION.postTitle.max}
                 placeholder="Moment açıklaması..."
                 rows={3}
-                className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px]"
+                className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px] pt-3"
                 autoFocus
               />
               <div className="flex justify-end mt-1">
@@ -737,10 +923,10 @@ function MomentWriteContent() {
                     <button
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50"
+                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                       {tagCreating ? (
-                        <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} />
+                        <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
                       ) : (
                         <><Plus className="h-3.5 w-3.5" /> Oluştur</>
                       )}
@@ -792,39 +978,37 @@ function MomentWriteContent() {
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
                   </div>
                 </button>
+                <div>
+                <button
+                  onClick={() => {
+                    if (!user?.copyrightEligible) return;
+                    if (isEditMode && copyrightProtected) return;
+                    setCopyrightProtected(!copyrightProtected);
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition text-left ${!user?.copyrightEligible || (isEditMode && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-medium">Telif hakkı koruması</p>
+                    <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? "Telif hakkı koruması etkin içeriklerde kapatılamaz." : !user?.copyrightEligible ? "Düzenli özgün içerik üretiminde sistem tarafından otomatik olarak etkinleşir." : "Açıldığında içeriğiniz telif hakkıyla korunur."}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                {!user?.copyrightEligible && (
+                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">Otomatik etkinleştirme hakkında daha fazla bilgi &rarr;</a>
+                )}
+                </div>
               </div>
             </div>
 
-            {/* SEO / Gönderi bilgileri */}
-            <div>
-              <button type="button" onClick={() => setMetaExpanded(v => !v)}
-                className="flex items-center justify-between w-full text-left">
-                <label className="block text-sm font-semibold">Gönderi bilgileri</label>
-                <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${metaExpanded ? "rotate-180" : ""}`} />
-              </button>
-              {metaExpanded && (
-                <div className="mt-3 space-y-4">
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Ana konu başlığı</label>
-                    <input type="text" value={metaTitle} onChange={e => setMetaTitle(e.target.value)} placeholder="Moment ana konusu..." maxLength={60} className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaTitle.length}/60</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Açıklama</label>
-                    <textarea value={metaDescription} onChange={e => setMetaDescription(e.target.value)} placeholder="Moment açıklaması..." maxLength={155} rows={3} className="input-modern w-full resize-none" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaDescription.length}/155</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Anahtar kelime</label>
-                    <input type="text" value={metaKeywords} onChange={e => setMetaKeywords(e.target.value)} placeholder="Anahtar kelime..." maxLength={200} className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaKeywords.length}/200</span>
-                  </div>
-                  <p className="text-[0.7rem] text-text-muted/60 leading-relaxed">
-                    Bu alandaki metinler içeriğinizin görünürlüğünü ve sıralamasını belirleyen etkenlerdir. Arama motorları için de kullanılır. Manuel girilmezse Feedim AI tarafından otomatik oluşturulur.
-                  </p>
-                </div>
-              )}
-            </div>
+            <PostMetaFields
+              metaTitle={metaTitle} setMetaTitle={setMetaTitle}
+              metaDescription={metaDescription} setMetaDescription={setMetaDescription}
+              metaKeywords={metaKeywords} setMetaKeywords={setMetaKeywords}
+              expanded={metaExpanded} setExpanded={setMetaExpanded}
+              contentType="moment"
+            />
           </div>
         )}
       </div>
@@ -836,6 +1020,13 @@ function MomentWriteContent() {
         imageSrc={cropSrc || ""}
         aspectRatio={9 / 16}
         onCrop={(croppedUrl) => { setThumbnail(croppedUrl); setCropSrc(null); }}
+      />
+
+      {/* Sound Picker Modal */}
+      <SoundPickerModal
+        open={soundModalOpen}
+        onClose={() => setSoundModalOpen(false)}
+        onSelect={(sound) => { setSelectedSound(sound); setUseOriginalSound(false); }}
       />
     </AppLayout>
   );

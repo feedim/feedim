@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (!user) {
       const { data: profiles } = await admin
         .from("profiles")
-        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio, follower_count, following_count, profile_score, account_private")
+        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count, following_count, profile_score, account_private")
         .eq("status", "active")
         .neq("account_private", true)
         .order("follower_count", { ascending: false })
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
     if (candidateIds.length > 0) {
       const { data: candidateProfiles } = await admin
         .from("profiles")
-        .select("user_id, profile_score, is_verified, premium_plan")
+        .select("user_id, profile_score, is_verified, premium_plan, role")
         .in("user_id", candidateIds);
 
       (candidateProfiles || []).forEach(p => {
@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
     // Phase 4: Popular backfill
     const { data: popular } = await admin
       .from("profiles")
-      .select("user_id, follower_count, profile_score, is_verified, premium_plan")
+      .select("user_id, follower_count, profile_score, is_verified, premium_plan, role")
       .eq("status", "active")
       .not("user_id", "in", `(${excludeIds.join(",")})`)
       .order("follower_count", { ascending: false })
@@ -187,7 +187,7 @@ export async function GET(req: NextRequest) {
     if (allCandidateIds.length > 0) {
       const { data: allProfiles } = await admin
         .from("profiles")
-        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio, follower_count, following_count, profile_score, status, account_private")
+        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count, following_count, profile_score, status, account_private")
         .in("user_id", allCandidateIds);
 
       (allProfiles || []).forEach(p => profileMap.set(p.user_id, p));

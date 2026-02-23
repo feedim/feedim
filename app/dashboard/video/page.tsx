@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+
+import { useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Film } from "lucide-react";
 import ColumnHeader from "@/components/ColumnHeader";
@@ -10,16 +12,28 @@ import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import VideoGridCard from "@/components/VideoGridCard";
 import type { VideoGridItem } from "@/components/VideoGridCard";
-import { fetchWithCache } from "@/lib/fetchWithCache";
+import { fetchWithCache, readCache } from "@/lib/fetchWithCache";
 
 type VideoPost = VideoGridItem & { like_count?: number };
 
+const VIDEO_URL = "/api/posts/explore?content_type=video&sort=latest&page=1";
+
 export default function VideoPage() {
+  useSearchParams();
   const [videos, setVideos] = useState<VideoPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Read cache before first paint — avoids skeleton flash for cached data
+  useLayoutEffect(() => {
+    const cached = readCache(VIDEO_URL) as any;
+    if (cached?.posts?.length) {
+      setVideos(cached.posts);
+      setLoading(false);
+    }
+  }, []);
 
   const loadVideos = useCallback(async (pageNum: number) => {
     if (pageNum === 1) setLoading(true);
@@ -62,7 +76,7 @@ export default function VideoPage() {
       <div className="pb-8">
         {loading ? (
           <div className="pt-4">
-            <VideoGridSkeleton count={6} />
+            <VideoGridSkeleton count={8} />
           </div>
         ) : videos.length > 0 ? (
           <>

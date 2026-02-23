@@ -1,77 +1,49 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-// POST — freeze account (reversible)
-export async function POST(request: Request) {
-  const supabase = await createClient();
-  const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  // Parse optional reason from body
-  let reason: string | null = null;
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    if (body.reason && typeof body.reason === "string") {
-      reason = body.reason.slice(0, 500);
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { reason } = await req.json()
+    const admin = createAdminClient()
+
+    // Self-freeze limit: max 2 times per month
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const { count } = await admin
+      .from('moderation_decisions')
+      .select('id', { count: 'exact', head: true })
+      .eq('target_type', 'user')
+      .eq('target_id', user.id)
+      .eq('moderator_id', user.id)
+      .eq('decision', 'frozen')
+      .gte('created_at', thirtyDaysAgo)
+
+    if (count && count >= 2) {
+      return NextResponse.json(
+        { error: 'Hesabınızı ayda en fazla 2 kez dondurabilirsiniz.' },
+        { status: 429 }
+      )
     }
-  } catch {}
 
-  const { error } = await admin
-    .from("profiles")
-    .update({
-      status: "frozen",
-      frozen_at: new Date().toISOString(),
-      freeze_reason: reason,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
+    await admin.from('profiles')
+      .update({ status: 'frozen', frozen_at: new Date().toISOString() })
+      .eq('user_id', user.id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    try {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await admin.from('moderation_decisions').insert({
+        target_type: 'user', target_id: user.id, decision: 'frozen', reason: reason || 'Kullanıcı hesabını dondurdu', moderator_id: user.id, decision_code: code,
+      })
+    } catch {}
 
-  // Sign out the user
-  await supabase.auth.signOut();
-
-  return NextResponse.json({ success: true });
-}
-
-// DELETE — unfreeze account (reactivate)
-export async function DELETE() {
-  const supabase = await createClient();
-  const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("status, frozen_at")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profile || profile.status !== "frozen") {
-    return NextResponse.json({ error: "Hesap dondurulmamış" }, { status: 400 });
+    const res = NextResponse.json({ success: true, status: 'frozen' })
+    res.cookies.set('fdm-status', 'frozen', { maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
+    return res
+  } catch {
+    return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 })
   }
-
-  // Check if within 14-day window (pending delete)
-  if (profile.frozen_at) {
-    const frozenAt = new Date(profile.frozen_at).getTime();
-    const fourteenDays = 14 * 24 * 60 * 60 * 1000;
-    if (Date.now() - frozenAt > fourteenDays) {
-      return NextResponse.json({ error: "Hesap silme süresi dolmuş" }, { status: 410 });
-    }
-  }
-
-  const { error } = await admin
-    .from("profiles")
-    .update({
-      status: "active",
-      frozen_at: null,
-      freeze_reason: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
 }

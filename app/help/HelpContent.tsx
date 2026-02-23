@@ -36,6 +36,8 @@ const sections = [
   { id: "guvenlik", label: "Gizlilik ve Güvenlik" },
   { id: "profil", label: "Profil ve Ayarlar" },
   { id: "icerik", label: "Gönderi, Video ve İçerik" },
+  { id: "moderasyon", label: "Moderasyon ve İçerik Güvenliği" },
+  { id: "telif", label: "Telif Hakkı ve Kopya İçerik" },
   { id: "etkilesim", label: "Etkileşim ve Sosyal" },
   { id: "bildirim", label: "Bildirimler" },
   { id: "jeton", label: "Jeton ve Kazanç" },
@@ -50,9 +52,20 @@ const pageLinks: PageLink[] = [
   { title: "Kullanım Koşulları", href: "/help/terms", description: "Platform kullanım koşulları ve kuralları" },
   { title: "Gizlilik Politikası", href: "/help/privacy", description: "Kişisel verilerin korunması ve gizlilik" },
   { title: "KVKK", href: "/help/privacy", description: "Kişisel Verilerin Korunması Kanunu" },
+  { title: "Topluluk Kuralları", href: "/help/community-guidelines", description: "İçerik standartları, davranış kuralları ve yaptırımlar" },
   { title: "İletişim", href: "/help/contact", description: "Bize ulaşın, destek alın" },
-  { title: "Sorumluluk Reddi", href: "/help/disclaimer", description: "Yasal sorumluluk reddi beyanı" },
+  { title: "Telif Hakkı Koruması", href: "/help/copyright", description: "Telif hakkı koruma sistemi, kopya içerik politikası ve strike sistemi" },
+  { title: "Moderasyon Sistemi", href: "/help/moderation", description: "İçerik moderasyonu, AI inceleme ve itiraz süreçleri" },
+  { title: "Feedim AI", href: "/help/ai", description: "Yapay zeka destekli içerik moderasyonu ve öneriler" },
+  { title: "İçerik Türleri", href: "/help/content-types", description: "Gönderi, video, moment ve içerik formatları" },
+  { title: "Jeton Sistemi", href: "/help/coins", description: "Jeton kazanma, satın alma ve bakiye yönetimi" },
+  { title: "Para Kazanma", href: "/help/earning", description: "İçerik üreticileri için kazanç modeli ve çekim" },
+  { title: "Analitik", href: "/help/analytics", description: "Gönderi istatistikleri, profil analitiği ve performans" },
+  { title: "Veri Paylaşımı", href: "/help/data-sharing", description: "Üçüncü taraf ve devlet yetkilileriyle veri paylaşım politikası" },
+  { title: "Erişim Kısıtlamaları", href: "/help/access-restrictions", description: "Yaş kısıtlamaları, bölge ve hesap sınırlamaları" },
+  { title: "Erişilebilirlik", href: "/help/accessibility", description: "Erişilebilirlik özellikleri ve uyumluluk" },
   { title: "Premium", href: "/premium", description: "Premium üyelik planları ve fiyatları" },
+  { title: "Sorumluluk Reddi", href: "/help/disclaimer", description: "Yasal sorumluluk reddi beyanı" },
   { title: "Mesafeli Satış Sözleşmesi", href: "/help/distance-sales-contract", description: "Jeton ve premium satın alma sözleşmesi" },
   { title: "Ön Bilgilendirme Formu", href: "/help/pre-information-form", description: "Mesafeli satış öncesi tüketici bilgilendirmesi" },
   { title: "Ödeme Güvenliği", href: "/help/payment-security", description: "SSL, 3D Secure ve PCI-DSS ödeme güvenliği" },
@@ -272,6 +285,70 @@ const articles: Article[] = [
     answer: <>Gönderiniz topluluk kurallarına aykırı bulunduğu için kaldırılmış olabilir. Yaygın nedenler: telif hakkı ihlali, spam içerik, nefret söylemi, yanıltıcı bilgi veya diğer kullanıcılardan gelen şikayetler. Kaldırma işlemi hakkında detaylı bilgi almak veya itiraz etmek için <a href="mailto:support@feedim.com" className={lnk}>support@feedim.com</a> adresine yazabilirsiniz.</>,
   },
 
+  // ─── Moderasyon ve İçerik Güvenliği ────────────────────────
+  {
+    section: "moderasyon",
+    question: "Moderasyon sistemi nasıl çalışır?",
+    searchText: "Feedim moderasyon sistemi AI destekli otomatik inceleme ve insan moderatör kontrolü ile çalışır. İçerikler yayınlanmadan önce AI tarafından taranır.",
+    answer: <>Feedim, AI destekli otomatik moderasyon ve insan moderatör incelemesi olmak üzere iki katmanlı bir sistem kullanır. Yeni içerikler yayınlandığında AI tarafından taranır. Sorunlu içerikler moderasyona alınır ve sadece yazara görünür. Detaylar için <Link href="/help/moderation" className={lnk}>Moderasyon Sistemi</Link> sayfasını inceleyin.</>,
+  },
+  {
+    section: "moderasyon",
+    question: "İçeriğim neden moderasyona alındı?",
+    searchText: "İçerik topluluk kurallarına aykırı bulunursa moderasyona alınır. NSFW, nefret söylemi, telif ihlali, spam gibi nedenlerle gizlenebilir.",
+    answer: <>İçeriğiniz topluluk kurallarına aykırı bulunduğu için moderasyona alınmış olabilir. Yaygın nedenler: NSFW/cinsel içerik, nefret söylemi, telif hakkı ihlali, kopya içerik veya spam. Moderasyona alınan içerik sadece size görünür. Moderasyon durumunuzu gönderi üzerindeki &ldquo;İncelemede&rdquo; rozetine tıklayarak görebilirsiniz.</>,
+  },
+  {
+    section: "moderasyon",
+    question: "Feedim AI ne yapar?",
+    searchText: "Feedim AI içerikleri otomatik olarak tarar. NSFW tespiti, nefret söylemi kontrolü, spam algılama ve telif hakkı karşılaştırması yapar.",
+    answer: <>Feedim AI, içerikleri yayınlandığı anda otomatik olarak inceler. NSFW/cinsel içerik tespiti, nefret söylemi ve hakaret kontrolü, spam algılama ve telif hakkı karşılaştırması yapar. Sorunlu bulunan içerikler moderasyona alınır. Detaylar için <Link href="/help/ai" className={lnk}>Feedim AI</Link> sayfasını inceleyin.</>,
+  },
+  {
+    section: "moderasyon",
+    question: "NSFW içerik nedir ve nasıl korunurum?",
+    searchText: "NSFW cinsel veya uygunsuz içeriktir. Feedim AI otomatik olarak tespit eder ve moderasyona alır. Kullanıcılar bu tür içeriklerden otomatik olarak korunur.",
+    answer: <>NSFW (Not Safe For Work) cinsel, şiddet veya uygunsuz içerikleri ifade eder. Feedim AI bu tür içerikleri otomatik tespit eder ve moderasyona alır. Platform genelinde güvenli bir ortam sağlanır. Detaylar için <Link href="/help/moderation" className={lnk}>Moderasyon Sistemi</Link> sayfasını inceleyin.</>,
+  },
+  {
+    section: "moderasyon",
+    question: "Moderasyon kararına itiraz edebilir miyim?",
+    searchText: "Moderasyon kararına itiraz etmek için support@feedim.com adresine yazabilirsiniz. İnsan moderatörler tarafından tekrar değerlendirilir.",
+    answer: <>Evet. Moderasyon kararının haksız olduğunu düşünüyorsanız <a href="mailto:support@feedim.com" className={lnk}>support@feedim.com</a> adresine yazarak itiraz edebilirsiniz. İtirazınız insan moderatörler tarafından tekrar değerlendirilir. Detaylar için <Link href="/help/moderation" className={lnk}>Moderasyon Sistemi</Link> sayfasını inceleyin.</>,
+  },
+
+  // ─── Telif Hakkı ve Kopya İçerik ─────────────────────────
+  {
+    section: "telif",
+    question: "Telif hakkı koruması nedir?",
+    searchText: "Telif hakkı koruması içeriğinizin kopyalanmasını engelleyen bir sistemdir. Metin, görsel ve video bazlı karşılaştırma yapılır.",
+    answer: <>Telif hakkı koruması, içeriğinizin izinsiz kopyalanmasını engellemek için tasarlanmış bir sistemdir. Korumayı açtığınızda metin, görsel ve video bazlı tam kapsamlı tarama yapılır. Benzerlik tespit edildiğinde içerik moderasyona alınır veya telif rozeti eklenir. Detaylar için <Link href="/help/copyright" className={lnk}>Telif Hakkı Koruması</Link> sayfasını inceleyin.</>,
+  },
+  {
+    section: "telif",
+    question: "Telif hakkı korumasını nasıl açarım?",
+    searchText: "Gönderi video veya moment oluştururken ayarlardaki telif hakkı koruması toggle'ını açarak içeriğinizi koruyabilirsiniz.",
+    answer: <>Gönderi, video veya moment oluştururken ayarlar bölümündeki <strong>&ldquo;Telif hakkı koruması&rdquo;</strong> özelliğini aktifleştirerek içeriğinizi koruma altına alabilirsiniz. Koruma aktifleştirildiğinde içeriğiniz metin, görsel ve video bazında taranır.</>,
+  },
+  {
+    section: "telif",
+    question: "Kopya içerik nedir?",
+    searchText: "Kopya içerik başka bir kullanıcının içeriğiyle %90 ve üzeri metin benzerliği olan içeriktir. Her zaman aktif olarak taranır ve moderasyona alınır.",
+    answer: <>Kopya içerik, platformdaki mevcut bir içerikle %90 ve üzeri metin benzerliği tespit edilen içeriktir. Bu tarama <strong>her zaman aktif</strong>tir ve kapatılamaz — telif koruması açılmamış olsa bile çalışır. Tespit edilen kopya içerik moderasyona alınır.</>,
+  },
+  {
+    section: "telif",
+    question: "Telif hakkı strike sistemi nasıl çalışır?",
+    searchText: "Her telif veya kopya ihlalinde hesaba strike eklenir. 3 strike'tan sonra profil puanı cezaları başlar. 10 strike'ta hesap kalıcı olarak silinir.",
+    answer: <>Her telif hakkı veya kopya içerik ihlalinde hesabınıza bir strike eklenir. Strike sayınız arttıkça profil puanınız düşer ve hesabınıza kademeli yaptırımlar uygulanır. Belirli bir strike sayısına ulaşıldığında hesabınız kalıcı olarak askıya alınabilir. Detaylar için <Link href="/help/copyright" className={lnk}>Telif Hakkı Koruması</Link> sayfasını inceleyin.</>,
+  },
+  {
+    section: "telif",
+    question: "Telif hakkı şikayeti nasıl açılır?",
+    searchText: "İçeriğinizin kopyalandığını düşünüyorsanız Şikayet Et menüsünden telif hakkı şikayeti açabilirsiniz. Orijinal ve kopya URL gereklidir.",
+    answer: <>İçeriğinizin izinsiz kopyalandığını düşünüyorsanız, ilgili içeriğin menüsünden <strong>&ldquo;Şikayet Et&rdquo;</strong> seçeneğiyle telif hakkı şikayeti açabilirsiniz. Orijinal içerik URL&apos;si ve kopya içerik URL&apos;si zorunludur. Asıl içerik sahibi olduğunuzu kanıtlamanız gerekebilir. Haksız şikayetler güvenilirlik puanınızı olumsuz etkiler.</>,
+  },
+
   // ─── Etkileşim ve Sosyal ────────────────────────────────────
   {
     section: "etkilesim",
@@ -358,14 +435,8 @@ const articles: Article[] = [
   {
     section: "jeton",
     question: "Jeton nasıl kazanırım?",
-    searchText: "Premium okuyucular gönderinizi okuduğunda otomatik Jeton kazanırsınız. Okuyucunun en az 30 saniye ve içeriğin %40'ını okuması gerekir. 24 saat kuralı.",
-    answer: "Premium üyeliğe sahip okuyucular gönderinizi okuduğunda otomatik olarak Jeton kazanırsınız. Kazanım koşulları: okuyucunun en az 30 saniye harcaması ve içeriğin en az %40'ını okuması gerekir. Aynı okuyucu aynı gönderiyi 24 saat içinde tekrar okursa ek Jeton kazanılmaz.",
-  },
-  {
-    section: "jeton",
-    question: "1 Jeton kaç TL eder?",
-    searchText: "1 Jeton = 0,10 TL değerindedir. Çekim işlemleri bu kur üzerinden hesaplanır.",
-    answer: "1 Jeton = 0,10 TL değerindedir. Çekim işlemleri bu kur üzerinden hesaplanır. Örneğin 1000 Jeton = 100 TL. Kur oranı Feedim tarafından belirlenebilir ve güncellenebilir.",
+    searchText: "Premium okuyucular gönderinizi okuduğunda otomatik Jeton kazanırsınız. İçeriğinizin gerçek anlamda okunması gerekmektedir.",
+    answer: "Premium üyeliğe sahip okuyucular gönderinizi gerçek anlamda okuduğunda otomatik olarak Jeton kazanırsınız. Sistem, nitelikli okumaları otomatik olarak doğrular ve kazancınızı hesabınıza yansıtır.",
   },
   {
     section: "jeton",
@@ -381,9 +452,9 @@ const articles: Article[] = [
   },
   {
     section: "jeton",
-    question: "Günlük Jeton kazanım limiti var mı?",
-    searchText: "Evet, günlük maksimum 500 Jeton kazanabilirsiniz. Tek bir gönderi için maksimum 10.000 Jeton kazanılabilir.",
-    answer: "Evet, günlük maksimum 500 Jeton kazanabilirsiniz. Tek bir gönderi için toplam maksimum 10.000 Jeton kazanılabilir. Bu limitler sistemin sürdürülebilirliğini ve adil dağılımını sağlar.",
+    question: "Jeton kazanım limiti var mı?",
+    searchText: "Adil kullanım için günlük ve gönderi bazlı kazanım limitleri uygulanmaktadır.",
+    answer: "Evet, adil kullanımı sağlamak amacıyla günlük ve gönderi bazlı kazanım limitleri uygulanmaktadır. Detaylar için Jeton sayfasını inceleyebilirsiniz.",
   },
   {
     section: "jeton",

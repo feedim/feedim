@@ -3,6 +3,7 @@
 import { memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { ArrowLeft } from "lucide-react";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { useUser } from "@/components/UserContext";
@@ -48,19 +49,20 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
         return;
       }
     } catch {}
+    emitNavigationStart();
     router.push("/dashboard");
   });
 
   return (
-    <header className={`${scrollable ? "" : "sticky top-0"} z-50 bg-bg-primary sticky-ambient`}>
+    <header className={`${scrollable ? "" : "sticky top-0"} z-50 sticky-ambient mt-[4px]`}>
       <nav className="relative flex items-center justify-between px-4 h-[53px]">
         {/* Left */}
         {isHome && !customTitle ? (
           <>
-            <Link href="/dashboard" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2">
+            <Link href="/dashboard" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2 rounded-full hover:bg-bg-secondary transition">
               <FeedimIcon className="h-14 w-14" />
             </Link>
-            <span className="hidden md:block text-[1.1rem] font-bold">Ana Sayfa</span>
+            <span className="hidden md:block text-[1.5rem] font-bold">Ana Sayfa</span>
           </>
         ) : (
           <div className="flex items-center gap-2.5">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Shield, Mail, Check, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -10,10 +10,12 @@ import PasswordInput from "@/components/PasswordInput";
 import AppLayout from "@/components/AppLayout";
 import { useUser } from "@/components/UserContext";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 
 const minDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export default function SecurityPage() {
+  useSearchParams();
   const [loading, setLoading] = useState(true);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [userEmail, setUserEmail] = useState("");
@@ -224,7 +226,7 @@ export default function SecurityPage() {
     <AppLayout hideRightSidebar>
       <div className="px-4 py-4 space-y-4">
         {loading ? (
-          <SettingsItemSkeleton count={4} />
+          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
         ) : (
           <>
             {/* Email Verification */}
@@ -268,7 +270,7 @@ export default function SecurityPage() {
                   <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value.replace(/\s/g, ""))} className="input-modern w-full" placeholder="Yeni e-posta adresiniz" maxLength={255} />
                   <div className="flex gap-2">
                     <button onClick={() => { setEditEmail(false); setNewEmail(""); }} className="flex-1 t-btn cancel py-2 text-sm">İptal</button>
-                    <button onClick={handleUpdateEmail} disabled={!newEmail.trim() || updatingEmail} className="flex-1 t-btn accept py-2 text-sm flex items-center justify-center gap-2">
+                    <button onClick={handleUpdateEmail} disabled={!newEmail.trim() || updatingEmail} className="flex-1 t-btn accept py-2 text-sm flex items-center justify-center gap-2" aria-label="E-postayı Kaydet">
                       {updatingEmail ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
                     </button>
                   </div>
@@ -280,7 +282,7 @@ export default function SecurityPage() {
                   <p className="text-xs text-text-muted">E-postanıza gönderilen 8 haneli kodu girin.</p>
                   <div className="flex gap-2">
                     <input type="text" inputMode="numeric" value={emailCode} onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" maxLength={8} className="input-modern flex-1 text-center font-mono tracking-[0.3em]" />
-                    <button onClick={handleVerifyEmailCode} disabled={verifyingCode || emailCode.length < 6} className="t-btn accept px-4 py-2 text-sm flex items-center justify-center gap-1.5 min-w-[90px]">
+                    <button onClick={handleVerifyEmailCode} disabled={verifyingCode || emailCode.length < 6} className="t-btn accept px-4 py-2 text-sm flex items-center justify-center gap-1.5 min-w-[90px]" aria-label="E-posta Kodunu Doğrula">
                       {verifyingCode ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Check className="h-3.5 w-3.5" /> Doğrula</>}
                     </button>
                   </div>
@@ -335,7 +337,7 @@ export default function SecurityPage() {
                     <button onClick={() => { setShowChangePassword(false); setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword(""); }} className="flex-1 t-btn cancel py-2.5 text-sm">
                       İptal
                     </button>
-                    <button onClick={handleChangePassword} disabled={changingPassword || !currentPassword || !newPassword || !confirmNewPassword} className="flex-1 t-btn accept py-2.5 text-sm flex items-center justify-center gap-2">
+                    <button onClick={handleChangePassword} disabled={changingPassword || !currentPassword || !newPassword || !confirmNewPassword} className="flex-1 t-btn accept py-2.5 text-sm flex items-center justify-center gap-2" aria-label="Şifreyi Değiştir">
                       {changingPassword ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Değiştir"}
                     </button>
                   </div>
@@ -391,7 +393,7 @@ export default function SecurityPage() {
                       <PasswordInput placeholder="Şifre" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value.replace(/\s/g, ""))} maxLength={128} autoComplete="current-password" className="input-modern w-full" />
                       <div className="flex gap-2">
                         <button onClick={() => { setDisableStep(0); setDisablePassword(""); }} className="flex-1 t-btn cancel py-2.5 text-sm">İptal</button>
-                        <button onClick={handleDisablePasswordStep} disabled={disableSending || !disablePassword.trim()} className="flex-1 t-btn accept py-2.5 text-sm flex items-center justify-center gap-2">
+                        <button onClick={handleDisablePasswordStep} disabled={disableSending || !disablePassword.trim()} className="flex-1 t-btn accept py-2.5 text-sm flex items-center justify-center gap-2" aria-label="Devam Et">
                           {disableSending ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Devam"}
                         </button>
                       </div>
@@ -403,7 +405,7 @@ export default function SecurityPage() {
                       <p className="text-xs text-text-muted">E-postanıza gönderilen 8 haneli kodu girin.</p>
                       <div className="flex gap-2">
                         <input type="text" inputMode="numeric" value={disableCode} onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" maxLength={8} className="input-modern flex-1 text-center font-mono tracking-[0.3em]" />
-                        <button onClick={handleDisableOtpStep} disabled={disabling || disableCode.length < 6} className="t-btn accept px-4 py-2.5 text-sm flex items-center justify-center gap-1.5 min-w-[80px]">
+                        <button onClick={handleDisableOtpStep} disabled={disabling || disableCode.length < 6} className="t-btn accept px-4 py-2.5 text-sm flex items-center justify-center gap-1.5 min-w-[80px]" aria-label="İki Faktörlü Doğrulamayı Kapat">
                           {disabling ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Check className="h-3.5 w-3.5" /> Kapat</>}
                         </button>
                       </div>
@@ -434,7 +436,7 @@ export default function SecurityPage() {
                       <PasswordInput placeholder="Şifre" value={enablePassword} onChange={(e) => setEnablePassword(e.target.value.replace(/\s/g, ""))} maxLength={128} autoComplete="current-password" className="input-modern w-full" />
                       <div className="flex gap-2">
                         <button onClick={() => { setEnableStep(0); setEnablePassword(""); }} className="flex-1 t-btn cancel py-2.5 text-sm">İptal</button>
-                        <button onClick={handleEnablePasswordStep} disabled={enableSending || !enablePassword.trim()} className="flex-1 t-btn accept py-2.5 text-sm flex items-center justify-center gap-2">
+                        <button onClick={handleEnablePasswordStep} disabled={enableSending || !enablePassword.trim()} className="flex-1 t-btn accept py-2.5 text-sm flex items-center justify-center gap-2" aria-label="Devam Et">
                           {enableSending ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Devam"}
                         </button>
                       </div>
@@ -446,7 +448,7 @@ export default function SecurityPage() {
                       <p className="text-xs text-text-muted">E-postanıza gönderilen 8 haneli kodu girin.</p>
                       <div className="flex gap-2">
                         <input type="text" inputMode="numeric" value={enableCode} onChange={(e) => setEnableCode(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" maxLength={8} className="input-modern flex-1 text-center font-mono tracking-[0.3em]" />
-                        <button onClick={handleEnableOtpStep} disabled={enabling || enableCode.length < 6} className="t-btn accept px-4 py-2.5 text-sm flex items-center justify-center gap-1.5 min-w-[110px]">
+                        <button onClick={handleEnableOtpStep} disabled={enabling || enableCode.length < 6} className="t-btn accept px-4 py-2.5 text-sm flex items-center justify-center gap-1.5 min-w-[110px]" aria-label="İki Faktörlü Doğrulamayı Etkinleştir">
                           {enabling ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Shield className="h-3.5 w-3.5" /> Etkinleştir</>}
                         </button>
                       </div>

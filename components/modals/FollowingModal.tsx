@@ -20,6 +20,7 @@ export default function FollowingModal({ open, onClose, username }: FollowingMod
       filterTabs={[
         { key: "verified", label: "Doğrulanmış" },
         { key: "all", label: "Tümü" },
+        { key: "following", label: "Takip Edilenler" },
       ]}
     />
   );

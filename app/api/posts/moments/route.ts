@@ -20,8 +20,9 @@ export async function GET(req: NextRequest) {
       .select(`
         id, title, slug, excerpt, featured_image, video_url, video_duration, video_thumbnail, blurhash,
         like_count, comment_count, view_count, save_count, share_count, published_at, author_id,
-        profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan),
-        post_tags(tag_id, tags(id, name, slug))
+        profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role),
+        post_tags(tag_id, tags(id, name, slug)),
+        sounds!posts_sound_id_fkey(id, title, artist, audio_url, duration, status, cover_image_url, is_original)
       `)
       .eq("content_type", "moment")
       .eq("status", "published")
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
     const items = (moments || []).slice(0, limit).map((m: any) => ({
       ...m,
       profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles,
+      sounds: Array.isArray(m.sounds) ? m.sounds[0] : (m.sounds || null),
     }));
 
     return NextResponse.json({

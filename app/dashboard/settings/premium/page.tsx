@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, Calendar, CreditCard, RefreshCw, XCircle, Check, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 interface Subscription {
@@ -24,12 +25,13 @@ interface Subscription {
 
 const planNames: Record<string, string> = {
   basic: "Super",
+  super: "Super",
   pro: "Pro",
   max: "Max",
   business: "Business",
 };
 
-const planOrder = ["basic", "pro", "max", "business"];
+const planOrder = ["basic", "super", "pro", "max", "business"];
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   active: { label: "Aktif", color: "text-accent-main" },
@@ -39,6 +41,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 };
 
 export default function PremiumSettingsPage() {
+  useSearchParams();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -58,7 +61,7 @@ export default function PremiumSettingsPage() {
       // Load profile
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("is_premium, premium_plan, coin_balance")
+        .select("is_premium, premium_plan, premium_until, coin_balance")
         .eq("user_id", user.id)
         .single();
 
@@ -129,7 +132,7 @@ export default function PremiumSettingsPage() {
     <AppLayout headerTitle="Abonelik" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <SettingsItemSkeleton count={4} />
+          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
         ) : isPremium && subscription ? (
           <>
             {/* Plan Banner */}
@@ -144,7 +147,6 @@ export default function PremiumSettingsPage() {
                     </span>
                     {subscription.status === "active" && (
                       <>
-                        <span className="text-text-muted">·</span>
                         <span className="text-xs text-text-muted">{daysRemaining} gün kaldı</span>
                       </>
                     )}
@@ -251,6 +253,68 @@ export default function PremiumSettingsPage() {
                   </div>
                 </button>
               )}
+            </div>
+          </>
+        ) : isPremium && !subscription ? (
+          /* Admin tarafından hediye edilen premium — subscription kaydı yok */
+          <>
+            <div className={`mx-4 mt-3 p-5 rounded-[16px] ${getBadgeVariant(currentPlan) === "max" ? "bg-verified-max/[0.06]" : "bg-accent-main/[0.06]"}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <VerifiedBadge size="lg" variant={getBadgeVariant(currentPlan)} className="!h-[28px] !w-[28px] !min-w-[28px]" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[1.1rem] font-bold">Feedim {planNames[currentPlan] || currentPlan}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs font-semibold text-accent-main">Aktif</span>
+                    {profile?.premium_until && (
+                      <span className="text-xs text-text-muted">
+                        {Math.max(0, Math.ceil((new Date(profile.premium_until).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} gün kaldı
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {profile?.premium_until && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-bg-secondary rounded-[14px] p-3">
+                    <p className="text-[0.65rem] text-text-muted uppercase tracking-wider mb-1">Bitiş</p>
+                    <p className="text-[0.82rem] font-semibold">{formatDate(profile.premium_until)}</p>
+                  </div>
+                  <div className="bg-bg-secondary rounded-[14px] p-3">
+                    <p className="text-[0.65rem] text-text-muted uppercase tracking-wider mb-1">Tür</p>
+                    <p className="text-[0.82rem] font-semibold">Hediye</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5">
+              <h3 className="px-4 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">İşlemler</h3>
+              {canUpgrade && (
+                <Link
+                  href="/premium"
+                  className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <ArrowUpRight className="h-5 w-5 text-accent-main" />
+                    <div>
+                      <span className="text-sm font-medium text-accent-main">Planı Yükselt</span>
+                      <p className="text-xs text-text-muted mt-0.5">Daha fazla özellik ve daha yüksek limitler</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-text-muted" />
+                </Link>
+              )}
+              <Link
+                href="/premium"
+                className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-text-muted" />
+                  <span className="text-sm font-medium">Tüm Planları Gör</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </Link>
             </div>
           </>
         ) : (

@@ -24,7 +24,7 @@ export async function createNotification({
   content,
 }: CreateNotificationParams) {
   // Don't notify yourself (except for milestone/system notifications)
-  const selfNotifyTypes = ['milestone', 'system', 'coin_earned', 'premium_expired', 'moderation_approved', 'moderation_rejected', 'account_moderation'];
+  const selfNotifyTypes = ['milestone', 'system', 'coin_earned', 'premium_expired', 'moderation_approved', 'moderation_rejected', 'moderation_review', 'account_moderation', 'copyright_detected', 'copyright_claim_submitted', 'copyright_verified', 'copyright_rejected', 'copyright_verification_needed', 'copyright_similar_detected', 'copyright_application_approved', 'copyright_application_rejected', 'copyright_revoked'];
   if (user_id === actor_id && !selfNotifyTypes.includes(type)) return;
 
   // Check user's notification settings
@@ -46,21 +46,25 @@ export async function createNotification({
   }
 
   // Duplicate prevention: same actor + type + object within 24 hours
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  let dupeQuery = admin
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user_id)
-    .eq("actor_id", actor_id)
-    .eq("type", type)
-    .gte("created_at", twentyFourHoursAgo);
+  // Skip duplicate check for account_moderation (status can change multiple times)
+  const skipDupeTypes = ['account_moderation', 'copyright_similar_detected'];
+  if (!skipDupeTypes.includes(type)) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    let dupeQuery = admin
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user_id)
+      .eq("actor_id", actor_id)
+      .eq("type", type)
+      .gte("created_at", twentyFourHoursAgo);
 
-  if (object_id !== undefined) {
-    dupeQuery = dupeQuery.eq("object_id", object_id);
+    if (object_id !== undefined) {
+      dupeQuery = dupeQuery.eq("object_id", object_id);
+    }
+
+    const { count } = await dupeQuery;
+    if (count && count > 0) return;
   }
-
-  const { count } = await dupeQuery;
-  if (count && count > 0) return;
 
   const record: Record<string, unknown> = { user_id, actor_id, type };
   if (object_type) record.object_type = object_type;

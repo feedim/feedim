@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
 
 import Modal from "./Modal";
+import LoadingShell from "@/components/LoadingShell";
 
 interface GifPickerPanelProps {
   onGifSelect: (gifUrl: string, previewUrl: string) => void;
@@ -108,7 +109,7 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
   );
 
   return (
-    <Modal open={true} onClose={onClose} title="GIF" size="sm" zIndex="z-[10001]" footer={giphyFooter}>
+    <Modal open={true} onClose={onClose} title="GIF" size="sm" zIndex="z-[10001]" footer={giphyFooter} infoText="GIF arayarak yorumlarına ekleyebilirsin.">
       {/* Search bar */}
       <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-2.5 px-4 py-2.5 border-b border-border-primary">
         <Search className="h-4 w-4 text-text-muted shrink-0" />
@@ -130,9 +131,7 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
       {/* GIF grid */}
       <div className="p-2.5">
         {loading ? (
-          <div className="flex items-center justify-center h-[200px]">
-            <span className="loader" />
-          </div>
+          <LoadingShell />
         ) : gifs.length === 0 ? (
           <div className="flex items-center justify-center h-[200px] text-sm text-text-muted">
             GIF bulunamadi

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import { Snowflake, Info } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +20,7 @@ const REASONS = [
 ];
 
 export default function FreezeAccountPage() {
+  useSearchParams();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [otherText, setOtherText] = useState("");
   const [freezing, setFreezing] = useState(false);
@@ -45,6 +47,7 @@ export default function FreezeAccountPage() {
 
       if (res.ok) {
         await supabase.auth.signOut();
+        emitNavigationStart();
         router.push("/");
       } else {
         const data = await res.json();
@@ -131,6 +134,7 @@ export default function FreezeAccountPage() {
             onClick={handleFreeze}
             disabled={!selectedReason || freezing}
             className="t-btn accept w-full disabled:opacity-50"
+            aria-label="Hesabı Dondur"
           >
             {freezing ? <span className="loader" /> : "Hesabı Dondur"}
           </button>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
   req: NextRequest,
@@ -8,14 +9,37 @@ export async function GET(
   const { username } = await params;
   const supabase = await createClient();
 
-  const { data: profile, error } = await supabase
+  let profile: any = null;
+
+  // Try active profile first
+  const { data: activeProfile } = await supabase
     .from("profiles")
     .select("*")
     .eq("username", username)
     .eq("status", "active")
     .single();
 
-  if (error || !profile) {
+  if (activeProfile) {
+    profile = activeProfile;
+  } else {
+    // Check if viewer is staff (admin/moderator) — allow viewing any profile
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const adminClient = createAdminClient();
+      const { data: viewerP } = await adminClient.from('profiles').select('role').eq('user_id', user.id).single();
+      const isStaff = viewerP?.role === 'admin' || viewerP?.role === 'moderator';
+      if (isStaff) {
+        const { data: anyProfile } = await adminClient.from('profiles').select('*').eq('username', username).single();
+        if (anyProfile) profile = anyProfile;
+      } else {
+        // Check if it's the user's own profile
+        const { data: ownProfile } = await adminClient.from('profiles').select('*').eq('username', username).eq('user_id', user.id).single();
+        if (ownProfile) profile = ownProfile;
+      }
+    }
+  }
+
+  if (!profile) {
     // Check username redirects
     const { data: redir } = await supabase
       .from("username_redirects")

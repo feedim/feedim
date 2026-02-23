@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect } from "react";
 import { Check, Copy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +26,7 @@ function fallbackCopy(text: string) {
 }
 
 export default function InvitePage() {
+  useSearchParams();
   const [username, setUsername] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const supabase = createClient();

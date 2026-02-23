@@ -29,65 +29,71 @@ const reasons = [
 export default function ReportModal({ open, onClose, targetType, targetId, authorUserId, authorName }: ReportModalProps) {
   const [selectedReason, setSelectedReason] = useState("");
   const [description, setDescription] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [copyrightOwnerName, setCopyrightOwnerName] = useState("");
+  const [copyrightEmail, setCopyrightEmail] = useState("");
+  const [copyrightOriginalUrl, setCopyrightOriginalUrl] = useState("");
 
   const handleSubmit = async () => {
-    if (!selectedReason || submitting) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: targetType,
-          target_id: targetId,
-          reason: selectedReason,
-          description: description.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        feedimAlert("error", data.error || "Şikayet gönderilemedi");
-        return;
-      }
-      setSubmitted(true);
+    if (!selectedReason || submitted) return;
 
+    // Optimistic: show success immediately
+    setSubmitted(true);
+
+    // Capture payload before state resets
+    const payload = {
+      type: targetType,
+      target_id: targetId,
+      reason: selectedReason,
+      description: description.trim() || null,
+      ...(selectedReason === "copyright" ? {
+        original_url: copyrightOriginalUrl.trim() || undefined,
+        copy_url: typeof window !== "undefined" ? window.location.href : undefined,
+        copyright_owner_name: copyrightOwnerName.trim() || undefined,
+        copyright_email: copyrightEmail.trim() || undefined,
+      } : {}),
+    };
+    const capturedAuthorUserId = authorUserId;
+    const capturedAuthorName = authorName;
+
+    // Fire-and-forget: send report in background
+    fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).then(res => {
+      if (!res.ok) return;
       // After successful report, ask if user wants to block the author
-      if (authorUserId) {
+      if (capturedAuthorUserId) {
         setTimeout(() => {
           handleClose();
           setTimeout(() => {
-            const name = authorName || "Bu kişi";
+            const name = capturedAuthorName || "Bu kişi";
             feedimAlert("question", `${name} engellensin mi?`, {
               showYesNo: true,
               onYes: async () => {
-                try {
-                  await fetch("/api/blocks", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ blocked_id: authorUserId }),
-                  });
-                  feedimAlert("success", `${name} engellendi`);
-                } catch {
-                  feedimAlert("error", "Engellenemedi");
-                }
+                fetch("/api/blocks", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ blocked_id: capturedAuthorUserId }),
+                  keepalive: true,
+                }).catch(() => {});
               },
             });
           }, 300);
         }, 1500);
       }
-    } catch {
-      feedimAlert("error", "Bir hata oluştu");
-    } finally {
-      setSubmitting(false);
-    }
+    }).catch(() => {});
   };
 
   const handleClose = () => {
     setSelectedReason("");
     setDescription("");
     setSubmitted(false);
+    setCopyrightOwnerName("");
+    setCopyrightEmail("");
+    setCopyrightOriginalUrl("");
     onClose();
   };
 
@@ -124,6 +130,42 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
               ))}
             </div>
 
+            {selectedReason === "copyright" && (
+              <div className="space-y-3 mt-4">
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">Ad Soyad / Şirket Adı *</label>
+                  <input
+                    value={copyrightOwnerName}
+                    onChange={e => setCopyrightOwnerName(e.target.value)}
+                    className="input-modern w-full"
+                    placeholder="Telif hakkı sahibinin adı"
+                    maxLength={200}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">E-posta *</label>
+                  <input
+                    type="email"
+                    value={copyrightEmail}
+                    onChange={e => setCopyrightEmail(e.target.value)}
+                    className="input-modern w-full"
+                    placeholder="iletisim@sirket.com"
+                    maxLength={200}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">Orijinal İçerik Linki</label>
+                  <input
+                    value={copyrightOriginalUrl}
+                    onChange={e => setCopyrightOriginalUrl(e.target.value)}
+                    className="input-modern w-full"
+                    placeholder="https://..."
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+            )}
+
             {selectedReason && (
               <div className="mt-4">
                 <textarea
@@ -139,10 +181,11 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
 
             <button
               onClick={handleSubmit}
-              disabled={!selectedReason || submitting}
+              disabled={!selectedReason}
               className="t-btn accept w-full relative mt-4 disabled:opacity-40"
+              aria-label="Şikayet Gönder"
             >
-              {submitting ? <span className="loader" style={{ width: 16, height: 16, borderTopColor: "#fff" }} /> : "Gönder"}
+              Gönder
             </button>
           </>
         )}

@@ -65,6 +65,12 @@ function saveTouchStart(e: TouchEvent) {
 }
 
 let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+let popstateAttached = false;
+
+function onPopState() {
+  // Sayfa geri/ileri gidildiğinde kalan kilidi temizle
+  if (lockCount > 0) forceUnlock();
+}
 
 export function lockScroll() {
   lockCount++;
@@ -75,12 +81,26 @@ export function lockScroll() {
     document.addEventListener("touchmove", preventScroll, { passive: false });
     document.addEventListener("touchstart", saveTouchStart, { passive: true });
 
-    // Güvenlik: WordPress gibi periyodik kontrol
+    // Route değişiminde kilidi temizle
+    if (!popstateAttached) {
+      window.addEventListener("popstate", onPopState);
+      popstateAttached = true;
+    }
+
+    // Güvenlik: periyodik kontrol — DOM'da modal yoksa kilidi kaldır
     cleanupInterval = setInterval(() => {
       if (lockCount <= 0) {
         forceUnlock();
+        return;
       }
-    }, 1000);
+      // DOM kontrolü: body'de modal-open var ama gerçek modal yok
+      if (document.body.classList.contains("modal-open")) {
+        const hasModal = document.querySelector("[data-modal]") || document.querySelector(".x32flP4rs.show");
+        if (!hasModal) {
+          forceUnlock();
+        }
+      }
+    }, 800);
   }
 }
 
@@ -94,6 +114,10 @@ export function unlockScroll() {
 function forceUnlock() {
   lockCount = 0;
   document.body.style.overflow = "";
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
   document.body.classList.remove("modal-open");
   document.removeEventListener("wheel", preventScroll);
   document.removeEventListener("touchmove", preventScroll);

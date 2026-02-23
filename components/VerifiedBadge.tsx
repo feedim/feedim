@@ -5,14 +5,33 @@ interface VerifiedBadgeProps {
   size?: "sm" | "md" | "lg";
   /** "max" renders the gold badge for Max subscribers */
   variant?: "default" | "max";
+  /** When "admin", renders a shield badge instead of the verified checkmark */
+  role?: string;
 }
 
-export default function VerifiedBadge({ className, size = "sm", variant = "default" }: VerifiedBadgeProps) {
+export default function VerifiedBadge({ className, size = "sm", variant = "default", role }: VerifiedBadgeProps) {
   const sizeMap = {
     sm: "h-[12px] w-[12px] min-w-[12px]",
     md: "h-[15px] w-[15px] min-w-[15px]",
     lg: "h-[20px] w-[20px] min-w-[20px]",
   };
+
+  // Admin badge — custom admin SVG
+  if (role === "admin") {
+    const imgSizeMap = { sm: 14, md: 17, lg: 22 };
+    const s = imgSizeMap[size];
+    return (
+      <img
+        src="/imgs/admin-badge.svg"
+        alt="Feedim Admin"
+        width={s}
+        height={s}
+        className={cn("shrink-0", className)}
+        style={{ width: s, height: s, minWidth: s }}
+        draggable={false}
+      />
+    );
+  }
 
   const colorClass = variant === "max" ? "text-verified-max" : "text-accent-main";
 

@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('comments')
       .select(`
         id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw,
-        profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)
+        profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)
       `)
       .eq('post_id', postId)
       .is('parent_id', null)
@@ -85,8 +85,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       comments = scored.slice(offset, offset + limit).map(({ _smart, ...rest }: any) => rest);
     }
 
-    // Filter out inactive authors and NSFW comments (only author sees their own NSFW comments)
+    // Check if viewer is staff (admin/moderator)
+    let isStaffViewer = false;
+    if (user) {
+      const { data: viewerP } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
+      isStaffViewer = viewerP?.role === 'admin' || viewerP?.role === 'moderator';
+    }
+
+    // Filter out inactive authors and NSFW comments (staff sees all)
     const activeComments = (comments || []).filter((c: any) => {
+      if (isStaffViewer) return true;
       const authorProfile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
       if (authorProfile?.status && authorProfile.status !== 'active') return false;
       // NSFW comments: only visible to the comment author
@@ -101,7 +109,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (commentIdsWithReplies.length > 0) {
       let replyQuery = admin
         .from('comments')
-        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, status)`)
+        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)`)
         .in('parent_id', commentIdsWithReplies)
         .eq('status', 'approved')
         .order('created_at', { ascending: true });
@@ -113,9 +121,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const { data: allReplies } = await replyQuery;
       for (const r of (allReplies || [])) {
         const rAuthor = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
-        if (rAuthor?.status && rAuthor.status !== 'active') continue;
-        // NSFW replies: only visible to the reply author
-        if ((r as any).is_nsfw && r.author_id !== user?.id) continue;
+        if (!isStaffViewer) {
+          if (rAuthor?.status && rAuthor.status !== 'active') continue;
+          // NSFW replies: only visible to the reply author
+          if ((r as any).is_nsfw && r.author_id !== user?.id) continue;
+        }
         const parentId = r.parent_id as number;
         if (!replyMap.has(parentId)) replyMap.set(parentId, []);
         const bucket = replyMap.get(parentId)!;
@@ -149,10 +159,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { content, parent_id, content_type, gif_url } = await request.json();
-
-    const isGif = content_type === 'gif';
     const admin = createAdminClient();
+
+    // Access restriction check
+    const { data: myProfile } = await admin
+      .from('profiles')
+      .select('restricted_comment')
+      .eq('user_id', user.id)
+      .single();
+    if (myProfile?.restricted_comment) {
+      return NextResponse.json({ error: 'Yorum özelliğiniz kısıtlanmıştır' }, { status: 403 });
+    }
+
+    const { content, parent_id, content_type, gif_url } = await request.json();
+    const isGif = content_type === 'gif';
 
     // Plan bazli yorum karakter limiti (max/business: 500, digerleri: 250)
     const plan = await getUserPlan(admin, user.id);
@@ -239,6 +259,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Aynı yorumu tekrar gönderemezsiniz' }, { status: 429 });
     }
 
+    // Admin bypass for AI moderation
+    const { data: commenterProfile } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
+    const isAdminUser = commenterProfile?.role === 'admin';
+
+    // Immediate AI moderation for text comments (synchronous) — admin immune
+    let initialNSFW = false;
+    let commentModReason: string | null = null;
+    let commentModCategory: string | null = null;
+    if (!isGif && content && !isAdminUser) {
+      try {
+        // Fetch author profile signals
+        let profileMeta: { profileScore?: number; spamScore?: number } = {};
+        try { const { getProfileSignals } = await import('@/lib/modSignals'); profileMeta = await getProfileSignals(user.id); } catch {}
+        const linkCount = (content.match(/https?:\/\//g) || []).length;
+        const mod = await checkTextContent('', content, { contentType: 'comment', linkCount, ...profileMeta });
+        if (mod.safe === false) {
+          initialNSFW = true;
+          commentModReason = mod.reason || null;
+          commentModCategory = mod.category || null;
+        }
+      } catch {}
+    }
+
     const { data: comment, error } = await admin
       .from('comments')
       .insert({
@@ -249,13 +292,49 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         gif_url: isGif ? gif_url : null,
         parent_id: parent_id || null,
         status: 'approved',
+        is_nsfw: initialNSFW,
+        moderation_reason: commentModReason,
+        moderation_category: commentModCategory,
       })
-      .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan)`)
+      .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role)`)
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Triggers handle: comment_count on posts, reply_count on parent comment
+    // Recalculate post comment_count to ensure accuracy (exclude NSFW)
+    try {
+      const { count } = await admin
+        .from('comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('post_id', postId)
+        .eq('status', 'approved')
+        .eq('is_nsfw', false);
+      await admin.from('posts').update({ comment_count: count || 0 }).eq('id', postId);
+    } catch {}
+
+    // Notify author if comment is under moderation + AI decision record
+    if (initialNSFW) {
+      try {
+        const aiComCode = String(Math.floor(100000 + Math.random() * 900000));
+        await admin.from('moderation_decisions').insert({
+          target_type: 'comment', target_id: String(comment.id), decision: 'flagged', reason: commentModReason || 'Feedim AI tarafından işaretlendi', moderator_id: 'system', decision_code: aiComCode,
+        });
+      } catch {}
+      try {
+        const raw = (content || "").replace(/\s+/g, " ").trim();
+        const snippet = raw.slice(0, 20);
+        const shortText = raw.length > 20 ? `${snippet}...` : snippet;
+        await createNotification({
+          admin,
+          user_id: user.id,
+          actor_id: user.id,
+          type: 'moderation_review',
+          object_type: 'comment',
+          object_id: comment.id,
+          content: `"${shortText}" yorumunuz inceleniyor. Detaylar için tıklayın.`,
+        });
+      } catch {}
+    }
 
     // Create notification for post author (comment) or parent comment author (reply)
     const notifContent = isGif ? 'GIF gönderdi' : (content || '').trim().slice(0, 80);
@@ -295,21 +374,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // AI moderation — arka planda çalışır, yanıtı geciktirmez
-    // Politika: yalnızca ağır ihlaller (block) NSFW'ye düşürülür; 'flag' ihlaller dokunulmaz
-    if (!isGif && content) {
-      const commentId = comment.id;
-      after(async () => {
-        try {
-          const modResult = await checkTextContent('', content);
-          if (modResult.severity === 'block' || modResult.severity === 'flag') {
-            await admin.from('comments').update({ is_nsfw: true }).eq('id', commentId);
-          } else {
-            await admin.from('comments').update({ is_nsfw: false }).eq('id', commentId);
-          }
-        } catch {}
-      });
-    }
+    // Not: AI kontrolü artık senkron yapıldı; arka plan güncellemesine gerek yok.
 
     return NextResponse.json({
       comment: {

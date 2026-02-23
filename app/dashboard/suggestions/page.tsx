@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import { Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import UserListItem from "@/components/UserListItem";
 import { UserListSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import FollowButton from "@/components/FollowButton";
 import { feedimAlert } from "@/components/FeedimAlert";
 
@@ -27,6 +28,7 @@ interface SuggestedUser {
 const FOLLOW_COOLDOWN = 3000;
 
 export default function SuggestionsPage() {
+  useSearchParams();
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -175,7 +177,7 @@ export default function SuggestionsPage() {
     <AppLayout hideRightSidebar headerTitle="Kişileri Bul" headerRightAction={refreshButton}>
       <div className="px-3 sm:px-4 py-4">
         {loading ? (
-          <UserListSkeleton count={8} />
+          <LoadingShell><UserListSkeleton count={8} /></LoadingShell>
         ) : users.length === 0 ? (
           <div className="text-center py-16">
             <Users className="h-12 w-12 text-text-muted mx-auto mb-3" />

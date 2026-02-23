@@ -100,6 +100,7 @@ export default function ResetPasswordPage() {
           type="submit"
           className="t-btn accept w-full relative"
           disabled={loading}
+          aria-label="Şifreyi Değiştir"
         >
           {loading ? <span className="loader" /> : "Şifreyi değiştir"}
         </button>

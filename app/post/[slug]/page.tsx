@@ -26,6 +26,7 @@ import PostFollowButton from "@/components/PostFollowButton";
 import AdBanner from "@/components/AdBanner";
 import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
+import ModerationBadge from "@/components/ModerationBadge";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -41,19 +42,15 @@ async function getPost(rawSlug: string) {
     .from("posts")
     .select(`
       *,
-      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, is_premium, premium_plan, profile_score, follower_count, post_count, status, account_private),
+      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, is_premium, premium_plan, role, profile_score, follower_count, post_count, status, account_private),
       post_tags(tag_id, tags(id, name, slug)),
       post_categories(category_id, categories(id, name, slug))
     `)
     .eq("slug", slug)
-    .in("status", ["published", "removed"])
+    .in("status", ["published", "removed", "moderation"])
     .single();
 
   if (error || !post) return null;
-
-  // Check author status
-  const author = post.profiles;
-  if (author?.status && author.status !== 'active') return null;
 
   return post;
 }
@@ -74,7 +71,7 @@ async function getRelatedPosts(postId: number, categoryIds: number[]) {
     .from("posts")
     .select(`
       id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at,
-      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
+      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role)
     `)
     .in("id", catPostIds.map(cp => cp.post_id))
     .eq("status", "published")
@@ -115,7 +112,7 @@ async function getAuthorPosts(authorId: string, currentPostId: number) {
     .from("posts")
     .select(`
       id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at, word_count,
-      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
+      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role)
     `)
     .eq("author_id", authorId)
     .eq("status", "published")
@@ -139,7 +136,7 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
     .from("posts")
     .select(`
       id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
-      profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan)
+      profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role)
     `)
     .in("content_type", ["video", "moment"])
     .eq("status", "published")
@@ -152,7 +149,7 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
     .from("posts")
     .select(`
       id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
-      profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan)
+      profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role)
     `)
     .in("content_type", ["video", "moment"])
     .eq("status", "published")
@@ -252,21 +249,69 @@ export default async function PostPage({ params }: PageProps) {
 
   const currentUserId = await getAuthUserId();
 
-  // Removed post: show template to author (24h window), 404 to others
-  if (post.status === 'removed') {
-    if (post.author_id !== currentUserId) notFound();
-    const removedAt = post.removed_at ? new Date(post.removed_at) : null;
-    const hoursAgo = removedAt ? (Date.now() - removedAt.getTime()) / (1000 * 60 * 60) : 999;
-    if (hoursAgo > 24) notFound();
-    return <RemovedPostTemplate reason={post.removal_reason} decisionNumber={post.removal_decision_id} />;
+  // Check if viewer is admin or moderator
+  let isStaff = false;
+  if (currentUserId) {
+    const staffAdmin = createAdminClient();
+    const { data: viewerProfile } = await staffAdmin
+      .from('profiles')
+      .select('role')
+      .eq('user_id', currentUserId)
+      .single();
+    isStaff = viewerProfile?.role === 'admin' || viewerProfile?.role === 'moderator';
   }
 
-  // NSFW post: only author can view
-  if (post.is_nsfw && post.author_id !== currentUserId) notFound();
+  // Author status check — staff can see posts from inactive authors
+  const postAuthorData = post.profiles;
+  if (!isStaff && postAuthorData?.status && postAuthorData.status !== 'active') notFound();
 
-  // Private account check — only author + followers can view
+  // Moderation status — staff, author, and copyright owner can view
+  if (post.status === 'moderation') {
+    let canViewModeration = isStaff || post.author_id === currentUserId;
+    // Allow copyright owner to view infringing post
+    if (!canViewModeration && currentUserId && post.copyright_match_id) {
+      const adminCheck = createAdminClient();
+      const { data: originalPost } = await adminCheck
+        .from('posts')
+        .select('author_id')
+        .eq('id', post.copyright_match_id)
+        .single();
+      if (originalPost?.author_id === currentUserId) canViewModeration = true;
+    }
+    if (!canViewModeration) notFound();
+  }
+
+  // Removed post: show template to author (24h window), staff can always view
+  if (post.status === 'removed') {
+    if (!isStaff) {
+      if (post.author_id !== currentUserId) notFound();
+      const removedAt = post.removed_at ? new Date(post.removed_at) : null;
+      const hoursAgo = removedAt ? (Date.now() - removedAt.getTime()) / (1000 * 60 * 60) : 999;
+      if (hoursAgo > 24) notFound();
+    }
+    if (!isStaff) {
+      return <RemovedPostTemplate reason={post.removal_reason} decisionNumber={post.removal_decision_id} />;
+    }
+  }
+
+  // NSFW post: only author, staff, or copyright owner can view
+  if (post.is_nsfw && post.author_id !== currentUserId && !isStaff) {
+    let isCopyrightOwner = false;
+    if (currentUserId && post.copyright_match_id) {
+      const adminCheck2 = createAdminClient();
+      const { data: origPost } = await adminCheck2
+        .from('posts')
+        .select('author_id')
+        .eq('id', post.copyright_match_id)
+        .single();
+      if (origPost?.author_id === currentUserId) isCopyrightOwner = true;
+    }
+    if (!isCopyrightOwner) notFound();
+  }
+
+  // Private account check — staff bypasses
   const postAuthor = post.profiles;
-  if (postAuthor?.account_private) {
+  if (postAuthor?.account_private && !isStaff) {
     if (currentUserId !== postAuthor.user_id) {
       const adminClient = createAdminClient();
       const { data: follow } = await adminClient
@@ -326,11 +371,20 @@ export default async function PostPage({ params }: PageProps) {
   if (isVideo) {
     const nextVideo = nextVideos[0] || null;
     const plainDescription = sanitizedContent ? sanitizedContent.replace(/<[^>]+>/g, '') : '';
+    let videoOrigin: string | null = null;
+    if (post.video_url) {
+      try { videoOrigin = new URL(post.video_url).origin; } catch {}
+    }
 
     return (
       <div suppressHydrationWarning>
         {/* Preload video for faster playback start */}
-        {post.video_url && <link rel="preload" href={post.video_url} as="fetch" crossOrigin="anonymous" />}
+        {post.video_url && (
+          <>
+            {videoOrigin && <link rel="preconnect" href={videoOrigin} crossOrigin="anonymous" />}
+            {videoOrigin && <link rel="dns-prefetch" href={videoOrigin} />}
+          </>
+        )}
         <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
         <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
         <HeaderTitle title={post.content_type === "moment" ? "Moment" : "Video"} />
@@ -338,10 +392,10 @@ export default async function PostPage({ params }: PageProps) {
 
         {/* NSFW moderation banner */}
         {post.is_nsfw && isOwnPost && (
-          <div className="mx-3 sm:mx-4 mb-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-            <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Gönderiniz moderatörler tarafından inceleniyor.</p>
-            <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">İnceleme tamamlanana kadar sadece siz görebilirsiniz.</p>
-          </div>
+          <Link href={`/post/${post.slug}/moderation`} className="block mx-3 sm:mx-4 mb-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
+            <ModerationBadge label="Gönderiniz moderatörler tarafından inceleniyor" />
+            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">İnceleme tamamlanana kadar sadece siz görebilirsiniz. Detaylar &rarr;</p>
+          </Link>
         )}
         <PostHeaderActions
           postId={post.id} postUrl={`/post/${post.slug}`} postTitle={post.title}
@@ -353,16 +407,18 @@ export default async function PostPage({ params }: PageProps) {
         {/* Portal: inject VideoSidebar into the existing right sidebar */}
         <VideoSidebarPortal videos={nextVideos} />
 
-        <article className="px-3 sm:px-4 overflow-x-hidden">
+        <article className="px-3 sm:px-4" style={{ overflowX: "clip" }}>
           {/* Video Player — edge-to-edge */}
           {post.video_url && (
             <div className="mb-3 -mx-3 sm:-mx-4 sm:mx-0">
               <VideoPlayerClient
                 src={post.video_url}
+                hlsUrl={post.hls_url || undefined}
                 poster={post.video_thumbnail || post.featured_image || undefined}
                 nextVideoSlug={nextVideo?.slug}
                 nextVideoTitle={nextVideo?.title}
                 nextVideoThumbnail={nextVideo?.video_thumbnail || nextVideo?.featured_image}
+                videoDuration={post.video_duration || undefined}
               />
             </div>
           )}
@@ -375,7 +431,6 @@ export default async function PostPage({ params }: PageProps) {
             <span>{formatCount(post.view_count || 0)} görüntülenme</span>
             {post.published_at && (
               <>
-                <span>·</span>
                 <span>{formatRelativeDate(post.published_at)}</span>
               </>
             )}
@@ -395,7 +450,7 @@ export default async function PostPage({ params }: PageProps) {
                 <Link href={`/u/${author?.username}`} className="font-semibold text-[0.9rem] hover:underline truncate">
                   @{author?.username}
                 </Link>
-                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} />}
+                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
               </div>
               {author?.follower_count !== undefined && (
                 <p className="text-[0.72rem] text-text-muted">{formatCount(author.follower_count)} takipçi</p>
@@ -407,6 +462,16 @@ export default async function PostPage({ params }: PageProps) {
           {/* Description — above interaction bar */}
           {plainDescription && (
             <VideoDescription text={plainDescription} />
+          )}
+
+          {/* Copyright protection badge */}
+          {post.copyright_protected && (
+            <div className="flex items-center gap-1 mt-2 mb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+              <span className="text-xs text-text-muted">Telif hakkı koruması altında</span>
+              <span className="text-text-muted/40 mx-0.5">·</span>
+              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">Daha fazla bilgi</Link>
+            </div>
           )}
 
           {/* Interaction bar — stats → buttons → tags → liked-by */}
@@ -445,8 +510,8 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
           {nextVideos.length > 0 && (
-            <div className="xl:hidden mb-6">
-              <h3 className="text-[0.9rem] font-bold mb-4">Sonraki videolar</h3>
+            <div className="xl:hidden mb-6 pt-3.5">
+              <h3 className="text-[1.1rem] font-bold mb-4">Sonraki videolar</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
                 {nextVideos.map(video => (
                   <VideoGridCard key={video.id} video={video} />
@@ -464,21 +529,22 @@ export default async function PostPage({ params }: PageProps) {
 
   // ─── Regular post layout (unchanged) ───
   return (
-    <div className="overflow-x-hidden" suppressHydrationWarning>
+    <div suppressHydrationWarning style={{ overflowX: "clip" }}>
       <script
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
       />
       {post.featured_image && <AmbientLight imageSrc={post.featured_image} />}
+      <HeaderTitle title="Gönderi" />
       <PostViewTracker postId={post.id} />
 
         {/* NSFW moderation banner */}
         {post.is_nsfw && isOwnPost && (
-          <div className="mx-4 sm:mx-5 mt-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-            <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Gönderiniz moderatörler tarafından inceleniyor.</p>
-            <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">İnceleme tamamlanana kadar sadece siz görebilirsiniz.</p>
-          </div>
+          <Link href={`/post/${post.slug}/moderation`} className="block mx-4 sm:mx-5 mt-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
+            <ModerationBadge label="Gönderiniz moderatörler tarafından inceleniyor" />
+            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">İnceleme tamamlanana kadar sadece siz görebilirsiniz. Detaylar &rarr;</p>
+          </Link>
         )}
 
         {/* Main content */}
@@ -520,7 +586,7 @@ export default async function PostPage({ params }: PageProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <Link href={`/u/${author?.username}`} className="font-semibold text-[0.85rem] hover:underline truncate">@{author?.username}</Link>
-                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} />}
+                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
               </div>
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
                 {post.published_at && (
@@ -577,6 +643,16 @@ export default async function PostPage({ params }: PageProps) {
               "[&_iframe]:rounded-[12px] [&_iframe]:max-w-full [&_iframe]:my-4",
             ].join(" ")}
           />
+
+          {/* Copyright protection badge */}
+          {post.copyright_protected && (
+            <div className="flex items-center gap-1 mt-2 mb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+              <span className="text-xs text-text-muted">Telif hakkı koruması altında</span>
+              <span className="text-text-muted/40 mx-0.5">·</span>
+              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">Daha fazla bilgi</Link>
+            </div>
+          )}
 
           {/* PostNavBar — Like, Comment, Save, More */}
           <PostInteractionBar

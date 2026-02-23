@@ -10,7 +10,18 @@ const links = [
   { href: "/help/terms", label: "Kullanım Koşulları", short: "Koşullar" },
   { href: "/help/privacy", label: "Gizlilik", short: "Gizlilik" },
   { href: "/help/privacy", label: "KVKK", short: "KVKK" },
+  { href: "/help/community-guidelines", label: "Topluluk Kuralları", short: "Topluluk Kuralları" },
   { href: "/help/contact", label: "İletişim", short: "İletişim" },
+  { href: "/help/copyright", label: "Telif Hakkı Koruması", short: "Telif Hakkı" },
+  { href: "/help/moderation", label: "Moderasyon Sistemi", short: "Moderasyon" },
+  { href: "/help/ai", label: "Feedim AI", short: "Feedim AI" },
+  { href: "/help/content-types", label: "İçerik Türleri", short: "İçerik Türleri" },
+  { href: "/help/coins", label: "Jeton Sistemi", short: "Jeton Sistemi" },
+  { href: "/help/earning", label: "Para Kazanma", short: "Para Kazanma" },
+  { href: "/help/analytics", label: "Analitik", short: "Analitik" },
+  { href: "/help/data-sharing", label: "Veri Paylaşımı", short: "Veri Paylaşımı" },
+  { href: "/help/access-restrictions", label: "Erişim Kısıtlamaları", short: "Erişim Kısıtlamaları" },
+  { href: "/help/accessibility", label: "Erişilebilirlik", short: "Erişilebilirlik" },
   { href: "/help/disclaimer", label: "Sorumluluk Reddi", short: "Sorumluluk Reddi" },
   { href: "/help/distance-sales-contract", label: "Mesafeli Satış Sözleşmesi", short: "Satış Sözleşmesi" },
   { href: "/help/refund-policy", label: "İade Politikası", short: "İade Politikası" },
@@ -35,16 +46,23 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
 
   // Compact — sidebar footer
   if (variant === "compact") {
+    const compactLinks = [
+      { href: "/help", label: "Yardım" },
+      { href: "/help/about", label: "Hakkımızda" },
+      { href: "/help/terms", label: "Koşullar" },
+      { href: "/help/privacy", label: "Gizlilik" },
+      { href: "/help/community-guidelines", label: "Topluluk Kuralları" },
+      { href: "/help/contact", label: "İletişim" },
+    ];
     return (
       <nav className="px-4 pb-3 pt-1">
         <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[0.65rem] text-text-muted leading-relaxed">
-          {links.map((link) => (
-            <Link key={link.href + link.label} href={link.href} className="hover:underline">{link.short}</Link>
+          {compactLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:underline">{link.label}</Link>
           ))}
           <Link href="/premium" className="hover:underline">Premium ol</Link>
         </div>
-        <div className="mt-2">{paymentLogo}</div>
-        <p className="text-[0.6rem] text-text-muted/60 mt-1">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
+        <p className="text-[0.6rem] text-text-muted/60 mt-1.5">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
       </nav>
     );
   }

@@ -11,6 +11,7 @@ export interface UserListItemUser {
   avatar_url?: string | null;
   is_verified?: boolean;
   premium_plan?: string | null;
+  role?: string;
   bio?: string;
   mutual_count?: number;
 }
@@ -62,7 +63,7 @@ export default function UserListItem({
       : undefined;
 
   return (
-    <div className="flex items-center gap-3 py-2.5 px-2 rounded-[14px] hover:bg-bg-secondary transition">
+    <div className="flex items-center gap-2 py-2 px-2 rounded-[14px] hover:bg-bg-secondary transition">
       <Link href={`/u/${user.username}`} onClick={onNavigate} className="shrink-0">
         {user.avatar_url ? (
           <img
@@ -83,12 +84,12 @@ export default function UserListItem({
         <div className="flex items-center gap-1">
           <p className={`${nameSize} font-semibold truncate hover:underline`}>{displayName}</p>
           {user.is_verified && (
-            <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} />
+            <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} role={user.role} />
           )}
         </div>
         <p className="text-xs text-text-muted truncate">@{user.username}</p>
         {resolvedSubtitle && (
-          <p className="text-[0.72rem] text-text-muted mt-0.5 line-clamp-1">{resolvedSubtitle}</p>
+          <p className="text-[0.66rem] text-text-muted mt-0.5 line-clamp-1">{resolvedSubtitle}</p>
         )}
       </Link>
       {action && <div className="shrink-0">{action}</div>}

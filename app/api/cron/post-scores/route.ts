@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
               .eq("post_id", postId).limit(500),
             // 9. Yazar profili
             admin.from("profiles")
-              .select("profile_score, trust_level, is_verified, spam_score")
+              .select("profile_score, is_verified, spam_score")
               .eq("user_id", post.author_id).single(),
             // 10. Yazarın diğer yazılarının quality_score ortalaması (tutarlılık)
             admin.from("posts")
@@ -312,7 +312,6 @@ export async function GET(request: NextRequest) {
             quickLikerRatio,
             quickSaverRatio,
             authorProfileScore: author?.profile_score ?? 0,
-            authorTrustLevel: author?.trust_level ?? 0,
             authorIsVerified: author?.is_verified ?? false,
             authorSpamScore: author?.spam_score ?? 0,
             giftCount,

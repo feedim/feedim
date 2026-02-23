@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Wallet, Check, Shield, Send, Coins,
@@ -10,6 +10,7 @@ import {
 import { feedimAlert } from "@/components/FeedimAlert";
 import { COIN_MIN_WITHDRAWAL, COIN_TO_TRY_RATE, COIN_COMMISSION_RATE } from "@/lib/constants";
 import AppLayout from "@/components/AppLayout";
+import LoadingShell from "@/components/LoadingShell";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUser } from "@/components/UserContext";
 
@@ -37,6 +38,7 @@ interface ProfileInfo {
 const ALLOWED_PLANS = ["pro", "max", "business"];
 
 export default function WithdrawalPage() {
+  useSearchParams();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,11 +167,13 @@ export default function WithdrawalPage() {
     <AppLayout headerTitle="Ödeme Alma" hideRightSidebar>
       <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
         {loading ? (
-          <div className="space-y-4">
-            <div className="skeleton h-32 rounded-2xl" />
-            <div className="skeleton h-48 rounded-2xl" />
-            <div className="skeleton h-32 rounded-2xl" />
-          </div>
+          <LoadingShell>
+            <div className="space-y-4">
+              <div className="skeleton h-32 rounded-2xl" />
+              <div className="skeleton h-48 rounded-2xl" />
+              <div className="skeleton h-32 rounded-2xl" />
+            </div>
+          </LoadingShell>
         ) : (
           <>
             {/* Mevcut Bakiye */}

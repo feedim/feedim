@@ -16,6 +16,7 @@ interface Visitor {
   avatar_url?: string;
   is_verified?: boolean;
   premium_plan?: string | null;
+  role?: string;
   bio?: string;
 }
 
@@ -85,7 +86,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                       <p className="text-sm font-semibold truncate group-hover:underline">{displayName}</p>
-                      {v.is_verified && <VerifiedBadge variant={getBadgeVariant(v.premium_plan)} />}
+                      {v.is_verified && <VerifiedBadge variant={getBadgeVariant(v.premium_plan)} role={v.role} />}
                     </div>
                     <p className="text-xs text-text-muted truncate">@{v.username}</p>
                   </div>

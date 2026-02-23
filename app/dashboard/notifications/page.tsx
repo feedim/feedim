@@ -1,18 +1,23 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect, useCallback } from "react";
-import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Trash2, Sparkles, Undo2, ChevronRight } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Trash2, Sparkles, Undo2, ChevronRight, Clock, CheckCircle, XCircle, Copyright } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeDate } from "@/lib/utils";
+import { encodeId } from "@/lib/hashId";
 import AppLayout from "@/components/AppLayout";
 import EmptyState from "@/components/EmptyState";
 import { NOTIFICATIONS_PAGE_SIZE } from "@/lib/constants";
 import Link from "next/link";
 import { NotificationListSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowRequestsModal from "@/components/modals/FollowRequestsModal";
 import { isBlockedContent } from "@/lib/blockedWords";
 import { useUser } from "@/components/UserContext";
+import { feedimAlert } from "@/components/FeedimAlert";
 
 interface Notification {
   id: number;
@@ -30,6 +35,7 @@ interface Notification {
     avatar_url?: string;
   } | null;
   post_slug?: string;
+  comment_post_slug?: string | null;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -46,19 +52,38 @@ const iconMap: Record<string, React.ReactNode> = {
   first_post: <Sparkles className="h-4 w-4 text-success" />,
   comeback_post: <Undo2 className="h-4 w-4 text-info" />,
   system: <AlertCircle className="h-4 w-4 text-text-muted" />,
+  moderation_review: <Clock className="h-4 w-4 text-accent-main" />,
+  moderation_approved: <CheckCircle className="h-4 w-4 text-success" />,
+  moderation_rejected: <XCircle className="h-4 w-4 text-error" />,
+  account_moderation: <AlertCircle className="h-4 w-4 text-warning" />,
+  copyright_detected: <Copyright className="h-4 w-4 text-warning" />,
 };
 
 function getNotificationLink(n: Notification): string | null {
   if (n.type === "follow" && n.actor?.username) return `/u/${n.actor.username}`;
   if (n.type === "follow_request" && n.actor?.username) return `/u/${n.actor.username}`;
   if (n.type === "follow_accepted" && n.actor?.username) return `/u/${n.actor.username}`;
+  if (n.type === "account_moderation") return `/account-moderation`;
+  if (n.type === "copyright_detected" && n.object_type === "post" && n.post_slug) return `/post/${n.post_slug}`;
+  if (n.type === "copyright_similar_detected" && n.object_type === "post" && n.post_slug) return `/post/${n.post_slug}`;
+  // Moderation notifications → /post/slug/moderation
+  if ((n.type === "moderation_review" || n.type === "moderation_approved" || n.type === "moderation_rejected") && n.object_type === "post" && n.post_slug) {
+    return `/post/${n.post_slug}/moderation`;
+  }
+  if ((n.type === "moderation_review" || n.type === "moderation_approved" || n.type === "moderation_rejected") && n.object_type === "comment" && n.comment_post_slug && n.object_id) {
+    return `/post/${n.comment_post_slug}/moderation?comment=${encodeId(n.object_id)}`;
+  }
   if ((n.type === "like" || n.type === "comment" || n.type === "reply" || n.type === "mention" || n.type === "first_post" || n.type === "comeback_post" || n.type === "milestone") && n.post_slug) {
     return `/post/${n.post_slug}`;
+  }
+  if (n.object_type === "comment" && n.comment_post_slug && n.object_id) {
+    return `/post/${n.comment_post_slug}?comment=${encodeId(n.object_id)}`;
   }
   return null;
 }
 
 export default function NotificationsPage() {
+  useSearchParams();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -149,10 +174,33 @@ export default function NotificationsPage() {
         }
       }
 
+      // Load post slugs for comment-related notifications
+      const commentIds = [...new Set(items.filter(n => n.object_id && n.object_type === "comment").map(n => n.object_id))];
+      let commentPostMap = new Map<number, string>();
+      if (commentIds.length > 0) {
+        const { data: comments } = await supabase
+          .from("comments")
+          .select("id, post_id")
+          .in("id", commentIds);
+        const cPostIds = [...new Set((comments || []).map(c => c.post_id))];
+        if (cPostIds.length > 0) {
+          const { data: cPosts } = await supabase
+            .from("posts")
+            .select("id, slug")
+            .in("id", cPostIds);
+          const cPostMap = new Map((cPosts || []).map(p => [p.id, p.slug]));
+          for (const c of comments || []) {
+            const slug = cPostMap.get(c.post_id) || null;
+            if (slug) commentPostMap.set(c.id, slug);
+          }
+        }
+      }
+
       const enriched = items.map(n => ({
         ...n,
         actor: n.actor_id ? actorMap.get(n.actor_id) || null : null,
         post_slug: n.object_id && n.object_type === "post" ? postMap.get(n.object_id) || null : null,
+        comment_post_slug: n.object_id && n.object_type === "comment" ? commentPostMap.get(n.object_id) || null : null,
       }));
 
       if (pageNum === 1) {
@@ -180,13 +228,16 @@ export default function NotificationsPage() {
     } catch {}
   };
 
-  const deleteNotification = async (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    try {
-      await fetch(`/api/notifications?id=${id}`, { method: "DELETE" });
-    } catch {
-      loadNotifications(1);
-    }
+  const deleteNotification = (id: number) => {
+    feedimAlert("question", "Bu bildirimi silmek istediğine emin misin?", {
+      showYesNo: true,
+      onYes: () => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        fetch(`/api/notifications?id=${id}`, { method: "DELETE", keepalive: true }).catch(() => {
+          loadNotifications(1);
+        });
+      },
+    });
   };
 
   useEffect(() => {
@@ -243,7 +294,9 @@ export default function NotificationsPage() {
         )}
 
         {loading && notifications.length === 0 ? (
-          <NotificationListSkeleton count={5} />
+          <LoadingShell>
+            <NotificationListSkeleton count={5} />
+          </LoadingShell>
         ) : notifications.length === 0 && !(isPrivateAccount && followRequestCount > 0) ? (
           /* empty state below */
           <EmptyState
@@ -265,19 +318,14 @@ export default function NotificationsPage() {
             )}
             <div className="px-1.5">
               {notifications.filter(n => n.actor_id === ctxUser?.id || !isBlockedContent(n.content || "")).map((n) => {
-                const actorName = n.actor?.username ? `@${n.actor.username}` : "Birisi";
+                const isSystemNotif = ['system', 'account_moderation'].includes(n.type);
+                const actorName = isSystemNotif ? "" : (n.actor?.username ? `@${n.actor.username}` : "Birisi");
                 const link = getNotificationLink(n);
-                const Wrapper = link ? Link : "div";
-                const wrapperProps = link ? { href: link } : {};
 
-                return (
-                  <Wrapper
-                    key={n.id}
-                    {...wrapperProps as any}
-                    className={`group flex gap-3 py-3.5 px-4 my-[5px] rounded-[15px] transition ${!n.is_read ? "bg-accent-main/5" : "hover:bg-bg-secondary"}`}
-                  >
+                const content = (
+                  <>
                     {/* Avatar or icon */}
-                    {n.actor?.avatar_url ? (
+                    {!isSystemNotif && n.actor?.avatar_url ? (
                       <img src={n.actor.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover shrink-0" />
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-bg-secondary flex items-center justify-center shrink-0">
@@ -286,24 +334,38 @@ export default function NotificationsPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm leading-snug">
-                        <span className="font-semibold">{actorName}</span>{" "}
-                        <span className="text-text-muted">{n.content || getDefaultText(n.type)}</span>
+                        {actorName && <><span className="font-semibold">{actorName}</span>{" "}</>}
+                        <span className={isSystemNotif ? "text-text-primary font-medium" : "text-text-muted"}>{n.content || getDefaultText(n.type)}</span>
                       </p>
                       <p className="text-xs text-text-muted mt-1">{formatRelativeDate(n.created_at)}</p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {!n.is_read && (
-                        <div className="w-2 h-2 rounded-full bg-accent-main" />
-                      )}
+                    {!n.is_read && (
+                      <div className="w-2 h-2 rounded-full bg-accent-main shrink-0 self-center" />
+                    )}
+                  </>
+                );
+
+                return (
+                  <div
+                    key={n.id}
+                    className={`group relative flex gap-3 py-3.5 px-4 my-[5px] rounded-[15px] transition ${!n.is_read ? "bg-accent-main/5" : "hover:bg-bg-secondary"}`}
+                  >
+                    {link ? (
+                      <Link href={link} className="absolute inset-0 z-0 rounded-[15px]" aria-label="Bildirime git" />
+                    ) : null}
+                    <div className="flex gap-3 flex-1 min-w-0 z-[1] pointer-events-none">
+                      {content}
+                    </div>
+                    <div className="flex items-center shrink-0 z-[1]">
                       <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteNotification(n.id); }}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-secondary transition text-text-muted hover:text-error"
+                        onClick={() => deleteNotification(n.id)}
+                        className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-secondary transition text-text-muted hover:text-error pointer-events-auto"
                         title="Sil"
                       >
                         <Trash2 className="h-[18px] w-[18px]" />
                       </button>
                     </div>
-                  </Wrapper>
+                  </div>
                 );
               })}
             </div>
@@ -341,6 +403,11 @@ function getDefaultText(type: string): string {
     case "gift_received": return "sana hediye gönderdi";
     case "premium_expired": return "premium üyeliğiniz sona erdi";
     case "system": return "sistem bildirimi";
+    case "moderation_review": return "içeriğiniz inceleniyor";
+    case "moderation_approved": return "içeriğiniz onaylandı";
+    case "moderation_rejected": return "içeriğiniz kaldırıldı";
+    case "account_moderation": return "hesabınız inceleme altında";
+    case "copyright_detected": return "içeriğinize benzer bir gönderi tespit edildi";
     default: return "";
   }
 }

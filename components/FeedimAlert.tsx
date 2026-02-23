@@ -90,6 +90,7 @@ export default function FeedimAlertProvider() {
   const currentAlerts = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [mounted, setMounted] = useState(false);
   const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set());
+  const [closingIds, setClosingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -100,32 +101,49 @@ export default function FeedimAlertProvider() {
   }, []);
 
   // Scroll lock when any alert is visible
+  const hasAlerts = currentAlerts.length > 0;
   useEffect(() => {
-    if (currentAlerts.length > 0) {
-      const scrollY = window.scrollY;
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.left = "0";
-      document.body.style.right = "0";
-      return () => {
-        document.body.style.overflow = "";
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.left = "";
-        document.body.style.right = "";
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [currentAlerts.length > 0]);
+    if (!hasAlerts) return;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [hasAlerts]);
+
+  const closeWithAnimation = useCallback((a: AlertState) => {
+    setClosingIds(prev => {
+      if (prev.has(a.id)) return prev;
+      const next = new Set(prev);
+      next.add(a.id);
+      return next;
+    });
+    setTimeout(() => {
+      setClosingIds(prev => {
+        const next = new Set(prev);
+        next.delete(a.id);
+        return next;
+      });
+      removeAlert(a.id);
+    }, 150);
+  }, []);
 
   const handleClose = useCallback((a: AlertState) => {
     a.onNo?.();
-    removeAlert(a.id);
-  }, []);
+    closeWithAnimation(a);
+  }, [closeWithAnimation]);
 
   const handleYes = useCallback(async (a: AlertState) => {
-    if (!a.onYes) { removeAlert(a.id); return; }
+    if (!a.onYes) { closeWithAnimation(a); return; }
     const result = a.onYes();
     if (result && typeof (result as Promise<void>).then === "function") {
       setLoadingIds((prev) => new Set(prev).add(a.id));
@@ -134,10 +152,10 @@ export default function FeedimAlertProvider() {
       } catch {}
       setLoadingIds((prev) => { const next = new Set(prev); next.delete(a.id); return next; });
     }
-    removeAlert(a.id);
-  }, []);
+    closeWithAnimation(a);
+  }, [closeWithAnimation]);
 
-  const handleNo = useCallback((a: AlertState) => { a.onNo?.(); removeAlert(a.id); }, []);
+  const handleNo = useCallback((a: AlertState) => { a.onNo?.(); closeWithAnimation(a); }, [closeWithAnimation]);
 
   useEffect(() => {
     if (currentAlerts.length === 0) return;
@@ -145,10 +163,10 @@ export default function FeedimAlertProvider() {
       const last = currentAlerts[currentAlerts.length - 1];
       if (!last) return;
       // Block keyboard when loading
-      if (loadingIds.has(last.id)) { e.preventDefault(); e.stopPropagation(); return; }
+      if (loadingIds.has(last.id)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (e.key === "Escape") {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         if (last.showInput) {
           handleNo(last);
         } else {
@@ -158,7 +176,7 @@ export default function FeedimAlertProvider() {
       // Don't handle Enter for input mode (handled by InputAlert component)
       if (e.key === "Enter" && !last.showInput) {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         last.showYesNo ? handleYes(last) : handleClose(last);
       }
     };
@@ -187,8 +205,12 @@ export default function FeedimAlertProvider() {
           >
             <div
               data-modal
-              className="pointer-events-auto max-w-[350px] w-[calc(100%-32px)] rounded-[27px] p-[9px_15px_15px] bg-bg-secondary border border-border-primary/30 select-none"
-              style={{ animation: "scaleIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) both" }}
+              className="pointer-events-auto max-w-[350px] w-[calc(100%-32px)] rounded-[27px] p-[15px] bg-bg-secondary border border-border-primary/30 select-none"
+              style={{
+                animation: closingIds.has(alert.id)
+                  ? "scaleOut 0.15s ease-in forwards"
+                  : "scaleIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) both",
+              }}
             >
               <div className="flex items-center gap-2 h-11 px-1">
                 <span className="text-[1.1rem] font-bold flex-1">
@@ -205,15 +227,15 @@ export default function FeedimAlertProvider() {
               )}
               {alert.showInput ? (
                 <div className="mt-1">
-                  <InputAlert alert={alert} onSubmit={(val) => { alert.onSubmit?.(val); removeAlert(alert.id); }} onCancel={() => handleNo(alert)} />
+                  <InputAlert alert={alert} onSubmit={(val) => { alert.onSubmit?.(val); closeWithAnimation(alert); }} onCancel={() => handleNo(alert)} />
                 </div>
               ) : alert.showYesNo ? (
                 <div className="flex gap-2">
-                  <button onClick={() => handleNo(alert)} disabled={isLoading} className="t-btn cancel flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50">
+                  <button onClick={() => handleNo(alert)} disabled={isLoading} className="t-btn cancel flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50 !bg-bg-tertiary">
                     Hayır
                   </button>
-                  <button onClick={() => handleYes(alert)} disabled={isLoading} className="t-btn accept flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50">
-                    {isLoading ? <span className="loader" style={{ width: 16, height: 16, borderColor: "rgba(0,0,0,0.15)", borderTopColor: "#000" }} /> : "Evet"}
+                  <button onClick={() => handleYes(alert)} disabled={isLoading} className="t-btn accept flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50" aria-label="Evet">
+                    {isLoading ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Evet"}
                   </button>
                 </div>
               ) : (
@@ -259,7 +281,7 @@ function InputAlert({ alert, onSubmit, onCancel }: { alert: AlertState; onSubmit
         autoFocus
       />
       <div className="flex gap-2">
-        <button onClick={onCancel} className="t-btn cancel flex-1 !h-[42px] !text-[0.84rem]">
+        <button onClick={onCancel} className="t-btn cancel flex-1 !h-[42px] !text-[0.84rem] !bg-bg-tertiary">
           Vazgeç
         </button>
         <button

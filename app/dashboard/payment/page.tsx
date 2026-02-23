@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import { ArrowLeft, Lock, AlertCircle, Coins, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +17,7 @@ interface CoinPaymentData {
 }
 
 export default function PaymentPage() {
+  useSearchParams();
   const [data, setData] = useState<CoinPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -109,7 +111,7 @@ export default function PaymentPage() {
       <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient">
         <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
           <button
-            onClick={() => { if (window.history.length > 1) router.back(); else router.push("/dashboard"); }}
+            onClick={() => { if (window.history.length > 1) router.back(); else { emitNavigationStart(); router.push("/dashboard"); } }}
             className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
           >
             <ArrowLeft className="h-5 w-5" />

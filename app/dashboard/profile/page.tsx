@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/components/UserContext";
 
 export default function ProfilePage() {
+  useSearchParams();
   const router = useRouter();
   const { user, isLoggedIn } = useUser();
 

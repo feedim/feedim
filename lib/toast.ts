@@ -41,7 +41,7 @@ function showToast(message: string, type: ToastType, options?: ToastOptions) {
     pointer-events: none;
     max-width: 90vw;
     text-align: center;
-    font-family: var(--font-inter), -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, sans-serif;
   `;
   toast.textContent = message;
 

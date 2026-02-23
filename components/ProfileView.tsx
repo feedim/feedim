@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
+import { useState, useEffect, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock, Users, FileText, Flag, AlertTriangle, EyeOff, Clapperboard } from "lucide-react";
 import { formatCount } from "@/lib/utils";
+import EditableAvatar from "@/components/EditableAvatar";
 import PostListSection from "@/components/PostListSection";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
@@ -21,7 +22,6 @@ const EditProfileModal = lazy(() => import("@/components/modals/EditProfileModal
 const FollowersModal = lazy(() => import("@/components/modals/FollowersModal"));
 const FollowingModal = lazy(() => import("@/components/modals/FollowingModal"));
 const AvatarViewModal = lazy(() => import("@/components/modals/AvatarViewModal"));
-const AvatarCropModal = lazy(() => import("@/components/modals/AvatarCropModal"));
 const ProfileMoreModal = lazy(() => import("@/components/modals/ProfileMoreModal"));
 const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
 const ProfileVisitorsModal = lazy(() => import("@/components/modals/ProfileVisitorsModal"));
@@ -40,6 +40,7 @@ interface Profile {
   is_verified?: boolean;
   premium_plan?: string | null;
   is_premium?: boolean;
+  role?: string;
   post_count?: number;
   follower_count?: number;
   following_count?: number;
@@ -57,6 +58,7 @@ interface Profile {
   contact_email?: string;
   contact_phone?: string;
   mutual_followers?: { username: string; avatar_url: string | null; full_name: string | null }[];
+  status?: string;
 }
 
 export default function ProfileView({ profile: initialProfile }: { profile: Profile }) {
@@ -87,10 +89,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [momentsPage, setMomentsPage] = useState(1);
   const [momentsHasMore, setMomentsHasMore] = useState(false);
   const [momentsLoaded, setMomentsLoaded] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-
   // Modals
   const [editOpen, setEditOpen] = useState(false);
+  const [editAvatarOnOpen, setEditAvatarOnOpen] = useState(false);
   const [followersOpen, setFollowersOpen] = useState(false);
   const [followingOpen, setFollowingOpen] = useState(false);
   const [avatarViewOpen, setAvatarViewOpen] = useState(false);
@@ -99,10 +100,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [visitorsOpen, setVisitorsOpen] = useState(false);
   const [followRequestsOpen, setFollowRequestsOpen] = useState(false);
   const [mutualFollowersOpen, setMutualFollowersOpen] = useState(false);
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const [cropOpen, setCropOpen] = useState(false);
   const [totalViews, setTotalViews] = useState<number | null>(null);
-  const [scores, setScores] = useState<{ profile: number; spam: number; trust: number } | null>(null);
+  const [scores, setScores] = useState<{ profile: number } | null>(null);
 
   // Admin panel
   const [adminTab, setAdminTab] = useState<"recent_users" | "recent_posts" | "reports">("recent_users");
@@ -125,7 +124,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   // Track profile visit
   useEffect(() => {
     if (!profile.is_own && !isAnyBlocked) {
-      fetch(`/api/users/${profile.username}/visit`, { method: "POST" }).catch(() => {});
+      fetch(`/api/users/${profile.username}/visit`, { method: "POST", keepalive: true }).catch(() => {});
     }
   }, [profile.username, profile.is_own, isAnyBlocked]);
 
@@ -143,7 +142,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         .then(r => r.json())
         .then(d => {
           if (d.profile?.profile_score !== undefined) {
-            setScores({ profile: d.profile.profile_score || 0, spam: d.profile.spam_score || 0, trust: d.profile.trust_level || 1 });
+            setScores({ profile: d.profile.profile_score || 0 });
           }
         })
         .catch(() => {});
@@ -153,7 +152,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const loadPosts = useCallback(async (pageNum: number) => {
     setPostsLoading(true);
     try {
-      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}`);
+      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&exclude_type=moment`);
       const data = await res.json();
       if (pageNum === 1) {
         setPosts(data.posts || []);
@@ -262,18 +261,15 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   }, [adminTab, profile.is_own, isAdminOrMod]);
 
   const doUnfollow = async () => {
-    if (requested) {
-      setRequested(false);
-      const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
-      if (!res.ok) setRequested(true);
-      return;
-    }
-    setFollowing(false);
-    setFollowerCount(c => Math.max(0, c - 1));
-    const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
-    if (!res.ok) {
-      setFollowing(true);
-      setFollowerCount(c => c + 1);
+    // Wait for API before updating state (alert shows loader meanwhile)
+    const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST", keepalive: true });
+    if (res.ok) {
+      if (requested) {
+        setRequested(false);
+      } else {
+        setFollowing(false);
+        setFollowerCount(c => Math.max(0, c - 1));
+      }
     }
   };
 
@@ -293,7 +289,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       setFollowing(true);
       setFollowerCount(c => c + 1);
     }
-    const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST" });
+    const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST", keepalive: true });
     if (res.ok) {
       const data = await res.json();
       if (data.requested && !profile.account_private) {
@@ -315,70 +311,58 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     }
   }, [profile.username, profile.account_private, following, requested, requireAuth]);
 
-  const handleBlock = useCallback(async () => {
+  const handleBlock = useCallback(() => {
     if (!isBlocked) {
-      // Confirm before blocking
       feedimAlert("warning", `@${profile.username} adlı kullanıcıyı engellemek istediğinize emin misiniz? Engellediğinizde aranızdaki takip ilişkisi kaldırılır ve birbirinizin içeriklerini göremezsiniz.`, {
         showYesNo: true,
-        onYes: async () => {
-          const res = await fetch(`/api/users/${profile.username}/block`, { method: "POST" });
-          if (res.ok) {
-            const data = await res.json();
-            setIsBlocked(data.blocked);
-            setFollowing(false);
-            setRequested(false);
-            setFollowerCount(0);
-            setPosts([]);
-            setLikedPosts([]);
-          }
+        onYes: () => {
+          const prevFollowing = following;
+          const prevRequested = requested;
+          const prevFollowerCount = followerCount;
+          const prevPosts = posts;
+          const prevLikedPosts = likedPosts;
+          setIsBlocked(true);
+          setFollowing(false);
+          setRequested(false);
+          setFollowerCount(0);
+          setPosts([]);
+          setLikedPosts([]);
+
+          fetch(`/api/users/${profile.username}/block`, { method: "POST", keepalive: true }).then(res => {
+            if (!res.ok) {
+              setIsBlocked(false);
+              setFollowing(prevFollowing);
+              setRequested(prevRequested);
+              setFollowerCount(prevFollowerCount);
+              setPosts(prevPosts);
+              setLikedPosts(prevLikedPosts);
+            }
+          }).catch(() => {
+            setIsBlocked(false);
+            setFollowing(prevFollowing);
+            setRequested(prevRequested);
+            setFollowerCount(prevFollowerCount);
+            setPosts(prevPosts);
+            setLikedPosts(prevLikedPosts);
+          });
         },
       });
     } else {
-      // Confirm before unblocking
       feedimAlert("question", `@${profile.username} adlı kullanıcının engelini kaldırmak istediğinize emin misiniz?`, {
         showYesNo: true,
-        onYes: async () => {
-          const res = await fetch(`/api/users/${profile.username}/block`, { method: "POST" });
-          if (res.ok) {
-            const data = await res.json();
-            setIsBlocked(data.blocked);
-          }
+        onYes: () => {
+          setIsBlocked(false);
+          fetch(`/api/users/${profile.username}/block`, { method: "POST", keepalive: true }).then(res => {
+            if (!res.ok) setIsBlocked(true);
+          }).catch(() => setIsBlocked(true));
         },
       });
     }
-  }, [profile.username, isBlocked]);
-
-  const handleAvatarSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCropFile(file);
-    setCropOpen(true);
-    e.target.value = "";
-  }, []);
-
-  const handleCroppedUpload = useCallback(async (croppedFile: File) => {
-    const formData = new FormData();
-    formData.append("file", croppedFile);
-    try {
-      const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(prev => ({ ...prev, avatar_url: data.url || data.avatar_url }));
-      }
-    } catch {
-      // Silent
-    }
-  }, []);
+  }, [profile.username, isBlocked, following, requested, followerCount, posts, likedPosts]);
 
   const handleAvatarClick = useCallback(() => {
-    if (profile.is_own) {
-      // Own profile: open file picker to change avatar
-      avatarInputRef.current?.click();
-    } else {
-      // Other profile: view avatar (works with both custom and default avatars)
-      setAvatarViewOpen(true);
-    }
-  }, [profile.is_own]);
+    if (!isAnyBlocked) setAvatarViewOpen(true);
+  }, [isAnyBlocked]);
 
   return (
     <div>
@@ -417,24 +401,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         <div className="flex items-start gap-4 mb-4">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <button onClick={isAnyBlocked ? undefined : handleAvatarClick} className="block" aria-label="Profil fotoğrafını görüntüle">
-              {isAnyBlocked ? (
-                <img className="default-avatar-auto w-20 h-20 rounded-full object-cover" alt="" loading="lazy" />
-              ) : profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={displayName} className="w-20 h-20 rounded-full object-cover cursor-pointer" loading="lazy" />
-              ) : (
-                <img className="default-avatar-auto w-20 h-20 rounded-full object-cover cursor-pointer" alt="" loading="lazy" />
-              )}
-            </button>
-            {profile.is_own && (
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarSelect}
-                className="hidden"
-              />
-            )}
+            <EditableAvatar
+              src={isAnyBlocked ? null : profile.avatar_url}
+              alt={displayName}
+              sizeClass="w-24 h-24"
+              editable={false}
+              loading={false}
+              onClick={isAnyBlocked ? undefined : handleAvatarClick}
+            />
           </div>
 
           {/* Stats */}
@@ -458,12 +432,16 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         <div className="mb-4">
           <div className="flex items-center gap-1.5">
             <h1 className="text-[1.1rem] font-bold truncate">{displayName}</h1>
-            {!isAnyBlocked && profile.is_verified && <VerifiedBadge size="md" variant={getBadgeVariant(profile.premium_plan)} />}
-            {!isAnyBlocked && profile.is_premium && profile.premium_plan && profile.premium_plan !== "basic" && (
-              <span className="text-[10px] font-bold bg-accent-main/15 text-accent-main px-1.5 py-0.5 rounded-full">
-                {profile.premium_plan === "max" ? "MAX" : "PRO"}
-              </span>
+            {!isAnyBlocked && (profile.role === "admin" || profile.is_verified) && (
+              <VerifiedBadge size="md" variant={getBadgeVariant(profile.premium_plan)} role={profile.role} />
             )}
+            {!isAnyBlocked && profile.role === "admin" ? (
+              <span className="text-[10px] font-bold bg-[#ff6200]/15 text-[#ff6200] px-1.5 py-0.5 rounded-full">ADMIN</span>
+            ) : !isAnyBlocked && profile.is_premium && profile.premium_plan && !["basic"].includes(profile.premium_plan) ? (
+              <span className="text-[10px] font-bold bg-accent-main/15 text-accent-main px-1.5 py-0.5 rounded-full">
+                {profile.premium_plan === "business" ? "BUSINESS" : profile.premium_plan === "max" ? "MAX" : profile.premium_plan === "super" ? "SUPER" : "PRO"}
+              </span>
+            ) : null}
           </div>
           {!isAnyBlocked && (
             <div className="mt-1.5 space-y-1">
@@ -509,7 +487,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
 
           {/* Mutual followers */}
           {!isAnyBlocked && !profile.is_own && profile.mutual_followers && profile.mutual_followers.length > 0 && (
-            <div className="flex items-center gap-2.5 mt-2.5">
+            <button onClick={() => setMutualFollowersOpen(true)} className="flex items-center gap-1.5 mt-2.5 w-full text-left hover:opacity-80 transition">
               <div className="flex -space-x-2">
                 {profile.mutual_followers.slice(0, 3).map((m) => (
                   m.avatar_url ? (
@@ -521,13 +499,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </div>
               <span className="text-[0.82rem] text-text-muted">
                 {profile.mutual_followers.length === 1
-                  ? <><Link href={`/u/${profile.mutual_followers[0].username}`} className="font-semibold text-text-primary hover:underline">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</Link> takip ediyor</>
+                  ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</span> takip ediyor</>
                   : profile.mutual_followers.length === 2
-                    ? <><Link href={`/u/${profile.mutual_followers[0].username}`} className="font-semibold text-text-primary hover:underline">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</Link> ve <Link href={`/u/${profile.mutual_followers[1].username}`} className="font-semibold text-text-primary hover:underline">{profile.mutual_followers[1].full_name || profile.mutual_followers[1].username}</Link> takip ediyor</>
-                    : <><Link href={`/u/${profile.mutual_followers[0].username}`} className="font-semibold text-text-primary hover:underline">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</Link>, <Link href={`/u/${profile.mutual_followers[1].username}`} className="font-semibold text-text-primary hover:underline">{profile.mutual_followers[1].full_name || profile.mutual_followers[1].username}</Link> ve <button onClick={() => setMutualFollowersOpen(true)} className="font-semibold text-text-primary hover:underline">diğerleri</button> takip ediyor</>
+                    ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</span> ve <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || profile.mutual_followers[1].username}</span> takip ediyor</>
+                    : <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</span>, <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || profile.mutual_followers[1].username}</span> ve <span className="font-semibold text-text-primary">diğerleri</span> takip ediyor</>
                 }
               </span>
-            </div>
+            </button>
           )}
         </div>
 
@@ -557,9 +535,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               <span className="text-xs font-semibold text-text-primary">Profil Puanı</span>
             </div>
             <div className="flex items-center gap-3 text-xs font-mono">
-              <span><span className="text-text-muted">P:</span><span className="font-bold text-accent-main ml-0.5">{scores.profile}</span></span>
-              <span><span className="text-text-muted">S:</span><span className={`font-bold ml-0.5 ${scores.spam >= 40 ? "text-error" : scores.spam >= 20 ? "text-warning" : "text-success"}`}>{scores.spam}</span></span>
-              <span><span className="text-text-muted">T:</span><span className="font-bold text-accent-main ml-0.5">L{scores.trust}</span></span>
+              <span className="font-bold text-accent-main">%{Math.round(scores.profile * 10) / 10}</span>
             </div>
           </div>
         )}
@@ -568,10 +544,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         <div className="flex gap-2 mb-3">
           {profile.is_own ? (
             <>
-              <button onClick={() => setEditOpen(true)} className="flex-1 t-btn cancel">
+              <button onClick={() => setEditOpen(true)} data-hotkey="edit-profile" className="flex-1 t-btn cancel">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
                 Profili Düzenle
               </button>
-              <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
+              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
                 <ShareIcon className="h-4 w-4" /> Profili Paylaş
               </button>
             </>
@@ -585,7 +565,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               >
                 Engeli Kaldır
               </button>
-              <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
+              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
                 <ShareIcon className="h-4 w-4" /> Paylaş
               </button>
             </>
@@ -597,14 +577,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               >
                 <Clock className="h-4 w-4" /> İstek
               </button>
-              <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
+              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
                 <ShareIcon className="h-4 w-4" /> Paylaş
               </button>
             </>
           ) : (
             <>
               <FollowButton following={following} onClick={handleFollow} variant="profile" className="flex-1" />
-              <button onClick={() => setShareOpen(true)} className="flex-1 t-btn cancel">
+              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
                 <ShareIcon className="h-4 w-4" /> Paylaş
               </button>
             </>
@@ -642,156 +622,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </Link>
         )}
 
-        {/* Admin / Moderator Panel */}
-        {profile.is_own && isAdminOrMod && (
-          <div className="mb-4 rounded-[15px] bg-bg-secondary overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border-primary">
-              <ShieldCheck className="h-4 w-4 text-accent-main" />
-              <span className="text-[0.88rem] font-bold">Yönetim Paneli</span>
-            </div>
-            <div className="flex border-b border-border-primary">
-              <button
-                onClick={() => setAdminTab("recent_users")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[0.78rem] font-medium transition ${adminTab === "recent_users" ? "text-accent-main border-b-2 border-accent-main" : "text-text-muted"}`}
-              >
-                <Users className="h-3.5 w-3.5" /> Kullanıcılar
-              </button>
-              <button
-                onClick={() => setAdminTab("recent_posts")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[0.78rem] font-medium transition ${adminTab === "recent_posts" ? "text-accent-main border-b-2 border-accent-main" : "text-text-muted"}`}
-              >
-                <FileText className="h-3.5 w-3.5" /> İçerikler
-              </button>
-              <button
-                onClick={() => setAdminTab("reports")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[0.78rem] font-medium transition ${adminTab === "reports" ? "text-accent-main border-b-2 border-accent-main" : "text-text-muted"}`}
-              >
-                <Flag className="h-3.5 w-3.5" /> Raporlar
-              </button>
-            </div>
-            <div className="max-h-[400px] overflow-y-auto">
-              {adminLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="skeleton h-5 w-5 rounded-full" />
-                </div>
-              ) : adminTab === "recent_users" ? (
-                adminUsers.length === 0 ? (
-                  <p className="text-center text-text-muted text-sm py-6">Kullanıcı bulunamadı</p>
-                ) : (
-                  <div className="divide-y divide-border-primary">
-                    {adminUsers.map((u: any) => (
-                      <Link
-                        key={u.user_id}
-                        href={`/u/${u.username}`}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition"
-                      >
-                        {u.avatar_url ? (
-                          <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />
-                        ) : (
-                          <img className="default-avatar-auto w-8 h-8 rounded-full object-cover" alt="" loading="lazy" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[0.82rem] font-semibold truncate">{u.full_name || u.username}</span>
-                            {u.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(u.premium_plan)} />}
-                            {u.shadow_banned && <EyeOff className="h-3 w-3 text-error" />}
-                          </div>
-                          <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
-                            <span>@{u.username}</span>
-                            <span className={`px-1 py-0.5 rounded text-[0.6rem] font-medium ${
-                              u.status === "active" ? "bg-success/15 text-success" :
-                              u.status === "blocked" ? "bg-error/15 text-error" :
-                              u.status === "frozen" ? "bg-info/15 text-info" :
-                              "bg-warning/15 text-warning"
-                            }`}>{u.status}</span>
-                            {u.spam_score > 0 && <span className="text-error">S:{u.spam_score}</span>}
-                          </div>
-                        </div>
-                        <span className="text-[0.65rem] text-text-muted shrink-0">
-                          {new Date(u.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                )
-              ) : adminTab === "recent_posts" ? (
-                adminPosts.length === 0 ? (
-                  <p className="text-center text-text-muted text-sm py-6">İçerik bulunamadı</p>
-                ) : (
-                  <div className="divide-y divide-border-primary">
-                    {adminPosts.map((p: any) => {
-                      const author = Array.isArray(p.author) ? p.author[0] : p.author;
-                      return (
-                        <Link
-                          key={p.id}
-                          href={`/post/${p.slug}`}
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[0.82rem] font-semibold truncate">{p.title}</p>
-                            <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
-                              <span>@{author?.username || "?"}</span>
-                              <span className={`px-1 py-0.5 rounded text-[0.6rem] font-medium ${
-                                p.status === "published" ? "bg-success/15 text-success" :
-                                p.status === "moderation" ? "bg-warning/15 text-warning" :
-                                p.status === "removed" ? "bg-error/15 text-error" :
-                                "bg-bg-tertiary text-text-muted"
-                              }`}>{p.status}</span>
-                              {p.content_type === "video" && <span className="text-accent-main">Video</span>}
-                              {p.content_type === "moment" && <span className="text-accent-main">Moment</span>}
-                              <span>{p.view_count || 0}g · {p.like_count || 0}b</span>
-                            </div>
-                          </div>
-                          <span className="text-[0.65rem] text-text-muted shrink-0">
-                            {new Date(p.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )
-              ) : (
-                adminReports.length === 0 ? (
-                  <p className="text-center text-text-muted text-sm py-6">Bekleyen rapor yok</p>
-                ) : (
-                  <div className="divide-y divide-border-primary">
-                    {adminReports.map((r: any) => {
-                      const reporter = Array.isArray(r.reporter) ? r.reporter[0] : r.reporter;
-                      const contentAuthor = Array.isArray(r.content_author) ? r.content_author[0] : r.content_author;
-                      return (
-                        <div key={r.id} className="px-4 py-2.5">
-                          <div className="flex items-center gap-2 mb-1">
-                            <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
-                            <span className="text-[0.78rem] font-semibold truncate">{r.reason || "Rapor"}</span>
-                            <span className={`ml-auto px-1.5 py-0.5 rounded text-[0.6rem] font-medium ${
-                              r.content_type === "post" ? "bg-accent-main/15 text-accent-main" :
-                              r.content_type === "comment" ? "bg-info/15 text-info" :
-                              "bg-warning/15 text-warning"
-                            }`}>{r.content_type}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
-                            <span>Raporlayan: @{reporter?.username || "?"}</span>
-                            <span>·</span>
-                            <span>Hedef: @{contentAuthor?.username || "?"}</span>
-                            <span className="ml-auto">{new Date(r.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
-                          </div>
-                          {r.description && <p className="text-[0.72rem] text-text-muted mt-1 line-clamp-2">{r.description}</p>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-              )}
-            </div>
-            <Link
-              href="/dashboard/admin"
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 border-t border-border-primary text-[0.78rem] font-medium text-accent-main hover:bg-bg-tertiary transition"
-            >
-              Yönetim Paneline Git
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-            </Link>
-          </div>
-        )}
 
         {/* Tabs */}
         {!isAnyBlocked && (!profile.account_private || profile.is_own || following) && (
@@ -799,7 +629,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             <div className="flex border-b border-border-primary">
               <button
                 onClick={() => setActiveTab("posts")}
-                className={`flex-1 flex items-center justify-center py-3 transition relative ${
+                className={`flex-1 flex items-center justify-center py-4 transition relative ${
                   activeTab === "posts" ? "text-text-primary" : "text-text-muted"
                 }`}
               >
@@ -808,7 +638,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </button>
               <button
                 onClick={() => setActiveTab("moments")}
-                className={`flex-1 flex items-center justify-center py-3 transition relative ${
+                className={`flex-1 flex items-center justify-center py-4 transition relative ${
                   activeTab === "moments" ? "text-text-primary" : "text-text-muted"
                 }`}
               >
@@ -817,7 +647,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </button>
               <button
                 onClick={() => setActiveTab("comments")}
-                className={`flex-1 flex items-center justify-center py-3 transition relative ${
+                className={`flex-1 flex items-center justify-center py-4 transition relative ${
                   activeTab === "comments" ? "text-text-primary" : "text-text-muted"
                 }`}
               >
@@ -826,7 +656,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </button>
               <button
                 onClick={() => setActiveTab("likes")}
-                className={`flex-1 flex items-center justify-center py-3 transition relative ${
+                className={`flex-1 flex items-center justify-center py-4 transition relative ${
                   activeTab === "likes" ? "text-text-primary" : "text-text-muted"
                 }`}
               >
@@ -853,13 +683,15 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
 
             {/* Moments Tab */}
             {activeTab === "moments" && (
-              <div className="pt-2">
+              <div className="-mx-4 sm:mx-0">
                 {momentsLoading && !momentsLoaded ? (
                   <MomentGridSkeleton />
                 ) : momentPosts.length === 0 ? (
-                  <div className="text-center py-10">
-                    <p className="text-sm font-semibold text-text-primary mb-1">Henüz moment yok</p>
-                    <p className="text-xs text-text-muted">{profile.is_own ? "İlk momentinizi oluşturun!" : "Bu kullanıcı henüz moment paylaşmamış."}</p>
+                  <div className="text-center py-12 sm:py-20">
+                    <h2 className="text-lg sm:text-xl font-bold mb-2">Henüz moment yok</h2>
+                    <p className="text-[13px] text-text-muted mb-5 sm:mb-6 px-4 max-w-[300px] mx-auto">
+                      {profile.is_own ? "İlk momentinizi oluşturun!" : "Bu kullanıcı henüz moment paylaşmamış."}
+                    </p>
                   </div>
                 ) : (
                   <>
@@ -940,7 +772,11 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       {/* Modals */}
       <EditProfileModal
         open={editOpen}
-        onClose={() => setEditOpen(false)}
+        onClose={() => {
+          setEditOpen(false);
+          setEditAvatarOnOpen(false);
+        }}
+        openAvatarPicker={editAvatarOnOpen}
         onSave={(updated) => { setProfile({ ...profile, ...updated }); setEditOpen(false); }}
       />
       <FollowersModal open={followersOpen} onClose={() => setFollowersOpen(false)} username={profile.username} />
@@ -951,6 +787,12 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         onClose={() => setAvatarViewOpen(false)}
         avatarUrl={profile.avatar_url || null}
         name={displayName}
+        isOwn={!!profile.is_own}
+        onEdit={() => {
+          setAvatarViewOpen(false);
+          setEditAvatarOnOpen(true);
+          setEditOpen(true);
+        }}
       />
 
       <ProfileMoreModal
@@ -979,13 +821,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           username={profile.username}
         />
       )}
-
-      <AvatarCropModal
-        open={cropOpen}
-        onClose={() => setCropOpen(false)}
-        file={cropFile}
-        onCrop={handleCroppedUpload}
-      />
 
       {profile.is_own && (
         <FollowRequestsModal

@@ -34,7 +34,7 @@ export async function GET(
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan')
+      .select('user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role')
       .in('user_id', userIds)
       .eq('status', 'active');
 

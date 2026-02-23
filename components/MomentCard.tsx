@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, Bookmark, Volume2, VolumeX, Play, Pause, MoreHorizontal } from "lucide-react";
-import { formatCount } from "@/lib/utils";
+import { Heart, MessageCircle, Bookmark, Volume2, VolumeX, MoreHorizontal, Music } from "lucide-react";
+import { formatCount, encodeId } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import ShareIcon from "@/components/ShareIcon";
+import VideoPlayer from "@/components/VideoPlayer";
 
 interface MomentCardProps {
   moment: {
@@ -14,6 +15,7 @@ interface MomentCardProps {
     slug: string;
     excerpt?: string;
     video_url?: string;
+    hls_url?: string;
     video_thumbnail?: string;
     featured_image?: string;
     video_duration?: number;
@@ -31,23 +33,38 @@ interface MomentCardProps {
       avatar_url?: string;
       is_verified?: boolean;
       premium_plan?: string | null;
+      role?: string;
     };
     post_tags?: { tags: { id: number; name: string; slug: string } }[];
+    sounds?: {
+      id: number;
+      title: string;
+      artist?: string | null;
+      audio_url: string;
+      duration?: number | null;
+      status: string;
+      cover_image_url?: string | null;
+      is_original?: boolean;
+    } | null;
   };
   isActive?: boolean;
+  loadVideo?: boolean;
   onLike?: () => void;
   onComment?: () => void;
   onShare?: () => void;
   onSave?: () => void;
   onOptions?: () => void;
+  onLikesClick?: () => void;
   liked?: boolean;
   saved?: boolean;
   muted?: boolean;
   onToggleMute?: () => void;
 }
 
-export default memo(function MomentCard({ moment, isActive = false, onLike, onComment, onShare, onSave, onOptions, liked = false, saved = false, muted = true, onToggleMute }: MomentCardProps) {
+export default memo(function MomentCard({ moment, isActive = false, loadVideo = false, onLike, onComment, onShare, onSave, onOptions, onLikesClick, liked = false, saved = false, muted = true, onToggleMute }: MomentCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -57,6 +74,11 @@ export default memo(function MomentCard({ moment, isActive = false, onLike, onCo
   const titleRef = useRef<HTMLParagraphElement>(null);
   const [isClamped, setIsClamped] = useState(false);
 
+  // Sound state
+  const hasExternalSound = !!moment.sounds && !moment.sounds.is_original && moment.sounds.status === "active";
+  const soundMuted = moment.sounds?.status === "muted";
+  const effectiveMuted = soundMuted || muted;
+
   // Check if title is clamped or has tags (show "devamını oku" for both)
   useEffect(() => {
     const el = titleRef.current;
@@ -64,71 +86,199 @@ export default memo(function MomentCard({ moment, isActive = false, onLike, onCo
     setIsClamped(el.scrollHeight > el.clientHeight || tags.length > 0);
   }, [moment.title, tags.length]);
 
-  // Sync muted prop to video element
+  // Sync volume to video/audio elements (muted attribute handled by VideoPlayer's externalMuted)
   useEffect(() => {
     const video = videoRef.current;
-    if (video) video.muted = muted;
-  }, [muted]);
+    const audio = audioRef.current;
+    if (hasExternalSound) {
+      // External sound: video volume low, audio full
+      if (video) video.volume = muted ? 0 : 0.15;
+      if (audio) { audio.muted = muted; audio.volume = muted ? 0 : 1; }
+    } else if (!soundMuted) {
+      if (video) video.volume = 1;
+    }
+  }, [muted, hasExternalSound, soundMuted]);
 
-  // Auto play/pause based on visibility
+  // Auto play/pause based on visibility (play/pause delegated to VideoPlayer via externalPaused)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    const audio = audioRef.current;
 
     if (isActive) {
-      video.currentTime = 0;
-      video.muted = muted;
-      video.play().catch(() => {});
+      // Reset playback position
+      if (video) video.currentTime = 0;
+      // Start external audio
+      if (hasExternalSound && audio) {
+        audio.currentTime = 0;
+        audio.loop = true;
+        audio.play().catch(() => {});
+      }
       setPaused(false);
     } else {
-      video.pause();
+      audio?.pause();
       setExpanded(false);
     }
-  }, [isActive, muted]);
+  }, [isActive, hasExternalSound]);
 
-  const togglePlayPause = useCallback(() => {
+  // Keep UI in sync with actual video state (keyboard/headset/OS controls)
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (video.paused) {
-      video.play().catch(() => {});
+    const onPlay = () => {
       setPaused(false);
-    } else {
-      video.pause();
+      setShowPlayIcon(false);
+    };
+    const onPause = () => {
       setPaused(true);
-    }
+      setShowPlayIcon(true);
+    };
 
-    clearTimeout(playIconTimer.current);
-    setShowPlayIcon(true);
-    playIconTimer.current = setTimeout(() => setShowPlayIcon(false), 800);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+    return () => {
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
+    };
   }, []);
+
+  const togglePlayPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (paused) {
+      // Resuming — VideoPlayer reacts to externalPaused changing to false
+      if (hasExternalSound && audio) audio.play().catch(() => {});
+      setPaused(false);
+      clearTimeout(playIconTimer.current);
+      setShowPlayIcon(true);
+      playIconTimer.current = setTimeout(() => setShowPlayIcon(false), 800);
+    } else {
+      // Pausing — VideoPlayer reacts to externalPaused changing to true
+      if (hasExternalSound && audio) audio.pause();
+      setPaused(true);
+      clearTimeout(playIconTimer.current);
+      setShowPlayIcon(true);
+    }
+  }, [hasExternalSound, paused]);
+
+  // Shorts-style keyboard controls (active card only)
+  useEffect(() => {
+    if (!isActive) return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      const key = e.key.toLowerCase();
+      if (key === " " || key === "k") {
+        e.preventDefault();
+        togglePlayPause();
+        return;
+      }
+      if (key === "m") {
+        e.preventDefault();
+        onToggleMute?.();
+        return;
+      }
+      if (key === "arrowleft" || key === "j") {
+        e.preventDefault();
+        video.currentTime = Math.max(0, video.currentTime - 5);
+        return;
+      }
+      if (key === "arrowright" || key === "l") {
+        e.preventDefault();
+        video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 5);
+        return;
+      }
+      if (key === "arrowup") {
+        e.preventDefault();
+        video.volume = Math.min(1, (video.volume || 0) + 0.05);
+        return;
+      }
+      if (key === "arrowdown") {
+        e.preventDefault();
+        video.volume = Math.max(0, (video.volume || 0) - 0.05);
+        return;
+      }
+      if (key === "f") {
+        e.preventDefault();
+        const el = cardRef.current || video;
+        if (!document.fullscreenElement && el.requestFullscreen) {
+          el.requestFullscreen().catch(() => {});
+        } else if (document.fullscreenElement) {
+          document.exitFullscreen?.();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isActive, onToggleMute, togglePlayPause]);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onToggleMute?.();
   }, [onToggleMute]);
 
+  // Lightweight render for far-off cards to reduce scroll jank (Android)
+  if (!loadVideo && !isActive) {
+    return (
+      <div
+        ref={cardRef}
+        className="relative h-[100svh] md:h-[100dvh] w-full bg-black snap-start snap-always"
+        style={{ contentVisibility: "auto", containIntrinsicSize: "100svh 100vw" }}
+      >
+        {(moment.video_thumbnail || moment.featured_image) && (
+          <img
+            src={moment.video_thumbnail || moment.featured_image}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="relative h-[100dvh] w-full bg-black snap-start snap-always">
+    <div
+      ref={cardRef}
+      className="relative h-[100svh] md:h-[100dvh] w-full bg-black snap-start snap-always"
+      data-moment-active={isActive ? "true" : undefined}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "100svh 100vw" }}
+    >
       {/* Full-screen video */}
       <div className="absolute inset-0" onClick={togglePlayPause}>
-        <video
+        <VideoPlayer
           ref={videoRef}
-          src={moment.video_url}
+          src={loadVideo ? (moment.video_url || "") : ""}
+          hlsUrl={moment.hls_url || undefined}
           poster={moment.video_thumbnail || moment.featured_image}
-          className="absolute inset-0 w-full h-full object-cover"
+          moment
           loop
-          muted={muted}
-          playsInline
-          preload={isActive ? "auto" : "metadata"}
+          externalMuted={effectiveMuted}
+          externalPaused={!isActive || paused}
+          videoClassName="absolute inset-0 w-full h-full object-cover"
         />
 
+        {/* Hidden audio element for external sound */}
+        {hasExternalSound && moment.sounds && (
+          <audio ref={audioRef} src={moment.sounds.audio_url} loop preload={loadVideo ? "auto" : "none"} />
+        )}
+
         {/* Play/Pause indicator */}
-        {showPlayIcon && (
+        {paused && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="w-20 h-20 rounded-full bg-black/30 flex items-center justify-center">
-              {paused ? <Play className="h-10 w-10 text-white ml-1" /> : <Pause className="h-10 w-10 text-white" />}
-            </div>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-18 w-18 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.55)] ml-1"
+              aria-hidden="true"
+            >
+              <path d="M8 5.5v13l10-6.5-10-6.5z" fill="currentColor" />
+            </svg>
           </div>
         )}
 
@@ -140,92 +290,98 @@ export default memo(function MomentCard({ moment, isActive = false, onLike, onCo
       {/* Mute button — top right */}
       <button
         onClick={toggleMute}
-        className="absolute top-3 right-3 z-30 w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center touch-manipulation active:scale-90 transition-transform"
+        className="absolute top-3 right-3 z-30 w-11 h-11 md:w-10 md:h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center touch-manipulation active:scale-90 transition-transform"
       >
         {muted ? <VolumeX className="h-5 w-5 text-white" /> : <Volume2 className="h-5 w-5 text-white" />}
       </button>
 
       {/* Right side action buttons — TikTok/Reels style */}
-      <div className="absolute right-3 bottom-4 z-20 flex flex-col items-center gap-5 touch-manipulation">
+      <div className="absolute right-[10px] bottom-4 z-20 flex flex-col items-center gap-5 touch-manipulation">
         {/* Like */}
-        <button onClick={(e) => { e.stopPropagation(); onLike?.(); }} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Heart className={`h-6 w-6 transition-transform ${liked ? "fill-red-500 text-red-500 scale-110" : "text-white"}`} />
-          </div>
-          <span className="text-white text-[0.7rem] font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+        <div className="flex flex-col items-center gap-0.5" style={{ rowGap: 2 }}>
+          <button onClick={(e) => { e.stopPropagation(); onLike?.(); }} data-hotkey="like" className="active:scale-90 transition-transform">
+            <div className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
+              <Heart className={`h-7 w-7 md:h-6 md:w-6 transition-transform ${liked ? "fill-red-500 text-red-500 scale-110" : "text-white"}`} />
+            </div>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onLikesClick?.(); }}
+            className="text-white text-[0.68rem] leading-none font-semibold active:scale-95 transition-transform"
+            style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+          >
             {formatCount(moment.like_count || 0)}
-          </span>
-        </button>
+          </button>
+        </div>
 
         {/* Comment */}
-        <button onClick={(e) => { e.stopPropagation(); onComment?.(); }} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <MessageCircle className="h-6 w-6 text-white" />
+        <button onClick={(e) => { e.stopPropagation(); onComment?.(); }} data-hotkey="comments" className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
+          <div className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
+            <MessageCircle className="h-7 w-7 md:h-6 md:w-6 text-white" />
           </div>
-          <span className="text-white text-[0.7rem] font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
             {formatCount(moment.comment_count || 0)}
           </span>
         </button>
 
         {/* Save */}
-        <button onClick={(e) => { e.stopPropagation(); onSave?.(); }} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Bookmark className={`h-6 w-6 transition-transform ${saved ? "fill-white text-white scale-110" : "text-white"}`} />
+        <button onClick={(e) => { e.stopPropagation(); onSave?.(); }} data-hotkey="save" className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
+          <div className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
+            <Bookmark className={`h-7 w-7 md:h-6 md:w-6 transition-transform ${saved ? "fill-white text-white scale-110" : "text-white"}`} />
           </div>
-          <span className="text-white text-[0.7rem] font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
             {formatCount(moment.save_count || 0)}
           </span>
         </button>
 
         {/* Share */}
-        <button onClick={(e) => { e.stopPropagation(); onShare?.(); }} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <ShareIcon className="h-6 w-6 text-white" />
+        <button onClick={(e) => { e.stopPropagation(); onShare?.(); }} data-hotkey="share" className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
+          <div className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
+            <ShareIcon className="h-7 w-7 md:h-6 md:w-6 text-white" />
           </div>
-          <span className="text-white text-[0.7rem] font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
             {formatCount(moment.share_count || 0)}
           </span>
         </button>
 
         {/* Options */}
         <button onClick={(e) => { e.stopPropagation(); onOptions?.(); }} className="flex flex-col items-center active:scale-90 transition-transform">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <MoreHorizontal className="h-6 w-6 text-white" />
+          <div className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
+            <MoreHorizontal className="h-7 w-7 md:h-6 md:w-6 text-white" />
           </div>
         </button>
       </div>
 
-      {/* Bottom — author info + title + tags */}
-      <div className="absolute bottom-4 left-4 right-[72px] z-20">
+      {/* Bottom — author info + title + tags + sound */}
+      <div className="absolute bottom-4 left-4 right-[76px] z-20">
         <div className="flex items-center gap-2 mb-2.5">
           <Link href={`/u/${author?.username}`} className="flex items-center gap-2 min-w-0">
             {author?.avatar_url ? (
-              <img src={author.avatar_url} alt="" className="rounded-full object-cover border-2 border-white/30" style={{ width: 37, height: 37 }} loading="lazy" />
+              <img src={author.avatar_url} alt="" className="rounded-full object-cover border border-white/30" style={{ width: 30, height: 30 }} loading="lazy" />
             ) : (
-              <img className="default-avatar-auto rounded-full object-cover border-2 border-white/30" style={{ width: 37, height: 37 }} alt="" loading="lazy" />
+              <img className="default-avatar-auto rounded-full object-cover border border-white/30" style={{ width: 30, height: 30 }} alt="" loading="lazy" />
             )}
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-white font-bold truncate" style={{ fontSize: "0.84rem", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
                 @{author?.username}
               </span>
-              {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} />}
+              {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} className="!w-3.5 !h-3.5 !min-w-[14px]" />}
             </div>
           </Link>
           <Link
             href={`/u/${author?.username}`}
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 text-white text-[0.7rem] font-semibold border border-white/40 bg-transparent hover:bg-white/10 transition"
-            style={{ borderRadius: 6, padding: "1px 6px", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
+            style={{ borderRadius: 6, padding: "0 6px", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
           >
             Profili gör
           </Link>
         </div>
 
         {/* Title with "devamını oku" */}
-        <div className="mb-1.5">
+        <div className="mb-0.5">
           <p
             ref={titleRef}
-            className={`text-white text-[0.88rem] font-medium leading-snug ${expanded ? "" : "line-clamp-2"}`}
+            className={`text-white text-[0.82rem] font-medium leading-snug ${expanded ? "" : "line-clamp-2"}`}
             style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
           >
             {moment.title}
@@ -264,6 +420,25 @@ export default memo(function MomentCard({ moment, isActive = false, onLike, onCo
               </Link>
             ))}
           </div>
+        )}
+
+        {/* Sound marquee — TikTok/Reels style */}
+        {moment.sounds && moment.sounds.status !== "muted" && (
+          <Link
+            href={`/dashboard/sounds/${encodeId(moment.sounds.id)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2"
+          >
+            <Music className="h-3 w-3 text-white/80 shrink-0" />
+            <div className="overflow-hidden max-w-[200px]">
+              <span
+                className="text-white/90 text-[0.68rem] font-medium whitespace-nowrap animate-marquee"
+                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
+              >
+                {moment.sounds.title}{moment.sounds.artist ? ` \u00B7 ${moment.sounds.artist}` : ""}
+              </span>
+            </div>
+          </Link>
         )}
       </div>
 

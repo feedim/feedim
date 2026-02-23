@@ -1,10 +1,13 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect } from "react";
 import { Smartphone, Monitor, Shield, ShieldCheck, ShieldOff, LogOut } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import { getDeviceHash } from "@/lib/deviceHash";
 import { formatRelativeDate } from "@/lib/utils";
 
@@ -20,6 +23,7 @@ interface Session {
 }
 
 export default function SessionsPage() {
+  useSearchParams();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDeviceHash, setCurrentDeviceHash] = useState<string | null>(null);
@@ -123,7 +127,7 @@ export default function SessionsPage() {
     <AppLayout headerTitle="Aktif Oturumlar" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <SettingsItemSkeleton />
+          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
         ) : activeSessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <Smartphone className="h-10 w-10 text-text-muted/40 mb-3" />

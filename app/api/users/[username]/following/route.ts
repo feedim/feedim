@@ -42,7 +42,7 @@ export async function GET(
   const ids = follows.map(f => f.following_id);
   const { data: users } = await supabase
     .from("profiles")
-    .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio, account_private")
+    .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, account_private")
     .in("user_id", ids)
     .eq("status", "active");
 

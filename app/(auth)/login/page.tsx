@@ -402,7 +402,7 @@ function LoginPageContent() {
             className="input-modern w-full"
             autoFocus
           />
-          <button type="submit" className="t-btn accept w-full relative" disabled={loading}>
+          <button type="submit" className="t-btn accept w-full relative" disabled={loading} aria-label="Giriş Yap">
             {loading ? <span className="loader" /> : "Giriş yap"}
           </button>
         </form>
@@ -462,7 +462,7 @@ function LoginPageContent() {
             Şifremi unuttum?
           </Link>
         </div>
-        <button type="submit" className="t-btn accept w-full relative" disabled={loading}>
+        <button type="submit" className="t-btn accept w-full relative" disabled={loading} aria-label="Giriş Yap">
           {loading ? <span className="loader" /> : "Giriş yap"}
         </button>
       </form>

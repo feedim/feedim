@@ -40,7 +40,7 @@ export default function AppLayout({
 
   return (
     <div className="flex">
-      <div className="flex-1 min-w-0 max-w-[600px] mx-auto min-h-screen">
+      <div className="flex-1 min-w-0 max-w-[565px] mx-auto min-h-screen">
         {!hideColumnHeader && (
           <ColumnHeader
             rightAction={headerRightAction}

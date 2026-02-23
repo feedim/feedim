@@ -26,8 +26,8 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
 
     const supabase = createClient();
     Promise.all([
-      supabase.from("follows").select("id").eq("follower_id", ctxUser.id).eq("following_id", authorUserId).single(),
-      supabase.from("follow_requests").select("id").eq("requester_id", ctxUser.id).eq("target_id", authorUserId).eq("status", "pending").single(),
+      supabase.from("follows").select("id").eq("follower_id", ctxUser.id).eq("following_id", authorUserId).maybeSingle(),
+      supabase.from("follow_requests").select("id").eq("requester_id", ctxUser.id).eq("target_id", authorUserId).eq("status", "pending").maybeSingle(),
     ]).then(([followRes, reqRes]) => {
       setFollowing(!!followRes.data);
       setRequested(!!reqRes.data);
@@ -36,21 +36,12 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
   }, [authorUserId, ctxUser, isLoggedIn, isOwn]);
 
   const doFollow = async () => {
-    const wasFollowing = following;
-    const wasRequested = requested;
-
-    if (wasFollowing || wasRequested) {
-      setFollowing(false);
-      setRequested(false);
-    } else {
-      setFollowing(true);
-    }
-
+    // Follow — optimistic update
+    setFollowing(true);
     try {
-      const res = await fetch(`/api/users/${authorUsername}/follow`, { method: "POST" });
+      const res = await fetch(`/api/users/${authorUsername}/follow`, { method: "POST", keepalive: true });
       if (!res.ok) {
-        setFollowing(wasFollowing);
-        setRequested(wasRequested);
+        setFollowing(false);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
           feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
@@ -61,17 +52,34 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
       setFollowing(data.following);
       setRequested(data.requested);
     } catch {
-      setFollowing(wasFollowing);
-      setRequested(wasRequested);
+      setFollowing(false);
+    }
+  };
+
+  const doUnfollow = async () => {
+    // Unfollow — wait for API before updating state (alert shows loader)
+    try {
+      const res = await fetch(`/api/users/${authorUsername}/follow`, { method: "POST", keepalive: true });
+      if (!res.ok) {
+        if (res.status === 429) {
+          const data = await res.json().catch(() => ({}));
+          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+        }
+        return;
+      }
+      const data = await res.json();
+      setFollowing(data.following);
+      setRequested(data.requested);
+    } catch {
+      // Keep current state on error
     }
   };
 
   const handleFollow = async () => {
-    const user = await requireAuth();
-    if (!user) return;
+    if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
 
     if (following || requested) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: doFollow });
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: doUnfollow });
       return;
     }
     doFollow();

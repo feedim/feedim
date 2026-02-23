@@ -15,6 +15,16 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Access restriction check
+  const { data: myProfile } = await admin
+    .from("profiles")
+    .select("restricted_follow")
+    .eq("user_id", user.id)
+    .single();
+  if (myProfile?.restricted_follow) {
+    return NextResponse.json({ error: "Takip etme özelliğiniz kısıtlanmıştır" }, { status: 403 });
+  }
+
   const { data: target } = await admin
     .from("profiles")
     .select("user_id, account_private")

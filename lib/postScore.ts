@@ -72,7 +72,6 @@ export interface PostScoreInputs {
   quickSaverRatio: number;
   // Author
   authorProfileScore: number;
-  authorTrustLevel: number;
   authorIsVerified: boolean;
   authorSpamScore: number;
   // Economic
@@ -272,10 +271,6 @@ function calcAuthorAuthority(inputs: PostScoreInputs): number {
   else if (inputs.authorProfileScore >= 60) score += 3;
   else if (inputs.authorProfileScore >= 40) score += 2;
   else if (inputs.authorProfileScore >= 20) score += 1;
-
-  if (inputs.authorTrustLevel >= 5) score += 3;
-  else if (inputs.authorTrustLevel >= 4) score += 2;
-  else if (inputs.authorTrustLevel >= 3) score += 1;
 
   if (inputs.authorIsVerified) score += 2;
 

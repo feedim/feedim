@@ -59,6 +59,7 @@ export default function UserListModal({
   const [hasMore, setHasMore] = useState(false);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState(filterTabs[0]?.key || "all");
+  const [tabSwitching, setTabSwitching] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -93,39 +94,45 @@ export default function UserListModal({
     return users;
   }, [users, filter]);
 
-  const doFollowToggle = async (targetUsername: string, userId: string) => {
+  const doFollow = async (targetUsername: string, userId: string) => {
+    // Follow — optimistic update
     setToggling(prev => new Set(prev).add(userId));
-    const user = users.find(u => u.user_id === userId);
-    const wasFollowing = user?.is_following;
-    const wasRequested = user?.is_requested;
-
-    setUsers(prev => prev.map(u => u.user_id === userId ? {
-      ...u,
-      is_following: (wasFollowing || wasRequested) ? false : true,
-      is_requested: false,
-    } : u));
+    setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: true, is_requested: false } : u));
 
     try {
       const res = await fetch(`/api/users/${targetUsername}/follow`, { method: "POST" });
       if (!res.ok) {
-        setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: wasFollowing, is_requested: wasRequested } : u));
+        setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: false, is_requested: false } : u));
       } else {
         const data = await res.json();
         setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: data.following, is_requested: data.requested } : u));
       }
     } catch {
-      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: wasFollowing, is_requested: wasRequested } : u));
+      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: false, is_requested: false } : u));
     }
     setToggling(prev => { const s = new Set(prev); s.delete(userId); return s; });
+  };
+
+  const doUnfollow = async (targetUsername: string, userId: string) => {
+    // Unfollow — wait for API before updating state (alert shows loader)
+    try {
+      const res = await fetch(`/api/users/${targetUsername}/follow`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_following: data.following, is_requested: data.requested } : u));
+      }
+    } catch {
+      // Keep current state on error
+    }
   };
 
   const handleFollow = (targetUsername: string, userId: string) => {
     const user = users.find(u => u.user_id === userId);
     if (user?.is_following || user?.is_requested) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(targetUsername, userId) });
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doUnfollow(targetUsername, userId) });
       return;
     }
-    doFollowToggle(targetUsername, userId);
+    doFollow(targetUsername, userId);
   };
 
   const filterEmptyText = (key: string) => {
@@ -141,12 +148,17 @@ export default function UserListModal({
         {filterTabs.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setFilter(tab.key)}
+            onClick={() => {
+              if (tab.key === filter) return;
+              setFilter(tab.key);
+              setTabSwitching(true);
+              setTimeout(() => setTabSwitching(false), 200);
+            }}
             className={cn(
-              "px-4 py-2.5 text-[1rem] font-semibold whitespace-nowrap border-b-2 transition-colors",
+              "px-4 py-2.5 text-[0.88rem] font-bold whitespace-nowrap border-b-[2.5px] transition-colors",
               filter === tab.key
                 ? "border-accent-main text-text-primary"
-                : "border-transparent text-text-muted hover:text-text-primary"
+                : "border-transparent text-text-muted opacity-60 hover:opacity-100 hover:text-text-primary"
             )}
           >
             {tab.label}
@@ -155,7 +167,7 @@ export default function UserListModal({
       </div>
 
       <div className="px-4 py-3 min-h-[300px]">
-        {loading && users.length === 0 ? (
+        {(loading && users.length === 0) || tabSwitching ? (
           <UserListSkeleton count={5} />
         ) : users.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-8">{emptyText}</p>

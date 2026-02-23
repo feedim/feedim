@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/UserContext";
 
 type AdSlot = "feed" | "post-top" | "post-detail" | "post-bottom" | "explore" | "sidebar";
@@ -21,25 +21,61 @@ declare global {
 export default function AdBanner({ slot, className = "" }: AdBannerProps) {
   const { user } = useUser();
   const insRef = useRef<HTMLModElement>(null);
+  const [adsEnabled, setAdsEnabled] = useState<boolean>(false);
 
   useEffect(() => {
+    const enabled = document.documentElement.dataset.adsEnabled === "1";
+    setAdsEnabled(enabled);
+  }, []);
+
+  useEffect(() => {
+    if (!adsEnabled) return;
     const ins = insRef.current;
     if (!ins) return;
-    // Skip if this ins already has an ad loaded
     if (ins.getAttribute("data-adsbygoogle-status")) return;
-    // Small delay to ensure DOM is ready and script is loaded
-    const timer = setTimeout(() => {
+
+    const pushAd = () => {
       try {
         if (!ins.getAttribute("data-adsbygoogle-status")) {
           (window.adsbygoogle = window.adsbygoogle || []).push({});
         }
       } catch {}
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
+    };
+
+    // Defer ad loading when video player is on page (avoid video + adsense jank)
+    const hasVideoPlayer = !!document.querySelector("video, .vp-bar, [data-moment-active]");
+
+    if (hasVideoPlayer) {
+      // Use IntersectionObserver — only load ad when slot enters viewport
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            observer.disconnect();
+            if ("requestIdleCallback" in window) {
+              (window as any).requestIdleCallback(pushAd, { timeout: 2000 });
+            } else {
+              setTimeout(pushAd, 200);
+            }
+          }
+        },
+        { rootMargin: "200px" }
+      );
+      observer.observe(ins);
+      return () => observer.disconnect();
+    }
+
+    // Normal pages: use requestIdleCallback instead of setTimeout
+    if ("requestIdleCallback" in window) {
+      const id = (window as any).requestIdleCallback(pushAd, { timeout: 2000 });
+      return () => (window as any).cancelIdleCallback(id);
+    } else {
+      const timer = setTimeout(pushAd, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [adsEnabled]);
 
   // Premium subscribers see no ads
-  if (user?.isPremium) return null;
+  if (user?.isPremium || !adsEnabled) return null;
 
   return (
     <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo, useLayoutEffect } from "react";
 import { Heart, Trash2, Smile, X, MoreHorizontal, User, Copy, Flag, Link2 } from "lucide-react";
 import { encodeId } from "@/lib/hashId";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +24,7 @@ interface Comment {
   gif_url?: string | null;
   author_id: string | null;
   parent_id: number | null;
+  is_nsfw?: boolean;
   like_count: number;
   reply_count: number;
   created_at: string;
@@ -34,6 +35,7 @@ interface Comment {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   } | null;
   replies?: Comment[];
 }
@@ -72,11 +74,10 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   // Mention system
   const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionUsers, setMentionUsers] = useState<{ user_id: string; username: string; avatar_url?: string; is_verified?: boolean; premium_plan?: string | null }[]>([]);
+  const [mentionUsers, setMentionUsers] = useState<{ user_id: string; username: string; avatar_url?: string; is_verified?: boolean; premium_plan?: string | null; role?: string }[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionPos, setMentionPos] = useState(-1);
   const mentionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const likingRef = useRef<Set<number>>(new Set());
 
   const { requireAuth } = useAuthModal();
   const { user: ctxUser } = useUser();
@@ -84,6 +85,17 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   // Plan bazli yorum karakter limiti: max/business 500, digerleri 250
   const maxCommentLength = (ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business") ? 500 : 250;
+
+  const resizeTextarea = useCallback(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    resizeTextarea();
+  }, [newComment, pendingGif, resizeTextarea]);
 
   useEffect(() => {
     if (open) {
@@ -165,6 +177,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     setNewComment(value);
     const textarea = inputRef.current;
     if (!textarea) return;
+    resizeTextarea();
     const cursorPos = textarea.selectionStart;
     const textBeforeCursor = value.substring(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/(^|[^A-Za-z0-9._-])@(\w*)$/);
@@ -241,7 +254,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         })));
         setTotalCount(c => Math.max(0, c - 1));
         // Fire-and-forget background delete
-        fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE" }).catch(() => {});
+        fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE", keepalive: true }).catch(() => {});
       },
     });
   }, [postId]);
@@ -253,8 +266,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     if (!isGif && !hasText) return;
     if (submitting) return;
 
-    const user = await requireAuth();
-    if (!user) return;
+    if (!ctxUser) { const u = await requireAuth(); if (!u) return; }
 
     const content = hasText ? newComment.trim() : "";
     const parentId = replyTo?.id || null;
@@ -278,12 +290,13 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       gif_url: isGif ? gifData!.url : undefined,
       author_id: currentUserId,
       parent_id: parentId,
+      is_nsfw: false,
       like_count: 0,
       reply_count: 0,
       created_at: new Date().toISOString(),
       profiles: {
-        username: user.user_metadata?.username || "",
-        avatar_url: user.user_metadata?.avatar_url,
+        username: ctxUser?.username || "",
+        avatar_url: ctxUser?.avatarUrl || undefined,
       },
     };
 
@@ -333,6 +346,11 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       // Animate + replace temp
       setNewCommentId(data.comment.id);
       setTimeout(() => setNewCommentId(null), 400);
+
+      if (data?.debug) {
+        // eslint-disable-next-line no-console
+        console.log("[COMMENT][DEBUG][CLIENT]", data.debug);
+      }
 
       if (parentId) {
         setComments(prev => prev.map(c => {
@@ -392,12 +410,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   };
 
   const handleLikeComment = useCallback(async (commentId: number) => {
-    if (likingRef.current.has(commentId)) return;
-
-    const user = await requireAuth();
-    if (!user) return;
-
-    likingRef.current.add(commentId);
+    if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
 
     const isLiked = likedComments.has(commentId);
     setLikedComments(prev => {
@@ -415,13 +428,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     };
     updateCount(isLiked ? -1 : 1);
 
-    try {
-      const url = `/api/posts/${postId}/comments/${commentId}/like`;
-      const res = isLiked
-        ? await fetch(url, { method: "DELETE" })
-        : await fetch(url, { method: "POST" });
+    fetch(`/api/posts/${postId}/comments/${commentId}/like`, { method: isLiked ? "DELETE" : "POST", keepalive: true }).then(res => {
       if (!res.ok) {
-        // Rollback
         updateCount(isLiked ? 1 : -1);
         setLikedComments(prev => {
           const next = new Set(prev);
@@ -429,17 +437,15 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           return next;
         });
       }
-    } catch {
+    }).catch(() => {
       updateCount(isLiked ? 1 : -1);
       setLikedComments(prev => {
         const next = new Set(prev);
         if (isLiked) next.add(commentId); else next.delete(commentId);
         return next;
       });
-    } finally {
-      likingRef.current.delete(commentId);
-    }
-  }, [likedComments, postId, requireAuth]);
+    });
+  }, [likedComments, postId, ctxUser, requireAuth]);
 
   const toggleRepliesVisibility = (commentId: number) => {
     setShowReplies(prev => {
@@ -499,7 +505,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
               <div className="flex flex-col">
                 <span className="font-medium">{u.username}</span>
               </div>
-              {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} />}
+              {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} role={u.role} />}
             </button>
           ))}
         </div>
@@ -523,8 +529,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
       {/* Form row */}
       <form onSubmit={handleSubmit} className="flex flex-col my-[10px]">
-        <div className="flex flex-1 items-end rounded-[24px] bg-bg-tertiary">
+        <div className="flex flex-1 items-stretch rounded-[24px] bg-bg-tertiary relative">
           <textarea
+            data-hotkey="comment-input"
             ref={inputRef}
             value={newComment}
             onChange={e => {
@@ -536,12 +543,18 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             placeholder={pendingGif ? "GIF seçili." : "Düşüncelerini paylaş..."}
             rows={1}
             className={cn(
-              "flex-1 py-[13px] pl-[18px] pr-[4px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] max-h-[120px] align-middle placeholder:text-text-muted",
+              "comment-textarea flex-1 py-[13px] pl-[18px] pr-[56px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] overflow-hidden placeholder:text-text-muted",
               pendingGif && "opacity-20 cursor-default"
             )}
+            onInput={resizeTextarea}
             onKeyDown={handleMentionKeyDown}
             style={{ fontFamily: 'inherit' }}
           />
+          {newComment.length >= 100 && (
+            <span className="absolute left-[18px] bottom-[6px] text-[0.66rem] tabular-nums text-text-muted/60 pointer-events-none">
+              {newComment.length}/{maxCommentLength}
+            </span>
+          )}
           <div className="flex items-center shrink-0 my-[9px] mr-[7px] gap-[2px]">
             <button
               type="button"
@@ -570,6 +583,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 type="submit"
                 disabled={submitting}
                 className="flex items-center justify-center relative h-[35px] w-auto min-w-[53px] rounded-[2rem] bg-bg-inverse text-bg-primary disabled:opacity-50 transition shrink-0"
+                aria-label="Yorum Gönder"
               >
                 {submitting ? (
                   <span className="loader" style={{ width: 16, height: 16, borderTopColor: 'var(--bg-primary)' }} />
@@ -582,16 +596,6 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             )}
           </div>
         </div>
-        {newComment.length > 0 && !pendingGif && (
-          <div className="flex justify-end mt-1 px-3">
-            <span className={cn(
-              "text-[0.66rem] tabular-nums",
-              newComment.length >= maxCommentLength - 20 ? "text-error" : "text-text-muted/60"
-            )}>
-              {newComment.length}/{maxCommentLength}
-            </span>
-          </div>
-        )}
       </form>
     </div>
   );
@@ -599,10 +603,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   return (
     <>
     <Modal open={open} onClose={onClose} title={`Yorumlar (${totalCount})`} size="md" infoText="Düşüncelerini paylaş, emoji ve GIF gönder. Yorumları beğenebilir ve yanıtlayabilirsin." footer={commentFormFooter} fullHeight>
-      <div className="flex flex-col flex-1 min-h-0">
-        {/* Sort tabs */}
+        {/* Sort tabs - sticky */}
         {comments.length > 0 && (
-          <div className="flex items-center gap-1 px-4 py-2 border-b border-border-primary shrink-0">
+          <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-1 px-4 py-2 border-b border-border-primary">
             <button
               onClick={() => handleSortChange("smart")}
               className={cn(
@@ -633,14 +636,12 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           </div>
         )}
 
-        {/* Scrollable comment list */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide overscroll-contain modal-scroll-content relative" onScroll={() => openMenuId && setOpenMenuId(null)}>
           {loading && comments.length === 0 ? (
             <CommentDetailListSkeleton />
           ) : comments.length === 0 ? (
-            /* Empty state (WordPress birebir) */
-            <div className="flex absolute inset-0 items-center justify-center">
-              <div className="flex flex-col items-center mb-[20%] opacity-60 text-center">
+            /* Empty state */
+            <div className="flex items-center justify-center min-h-[50vh]">
+              <div className="flex flex-col items-center opacity-60 text-center">
                 <h6 className="font-semibold text-base mb-2">Düşüncelerini paylaş</h6>
                 <p className="text-[0.9rem] text-text-muted mt-[3px]">İlk yorumu siz yapın</p>
               </div>
@@ -711,9 +712,78 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
               </li>
             </ol>
           )}
-        </div>
-      </div>
     </Modal>
+
+    {/* Comment options modal */}
+    {openMenuId !== null && (() => {
+      const allComments = [...comments, ...comments.flatMap(c => c.replies || [])];
+      const menuComment = allComments.find(c => c.id === openMenuId);
+      if (!menuComment) return null;
+      const menuUsername = menuComment.profiles?.username || "anonim";
+      return (
+        <Modal open={true} onClose={() => setOpenMenuId(null)} hideHeader size="sm" zIndex="z-[99991]">
+          <div className="py-1 px-2">
+            {!menuComment.is_nsfw && (
+              <>
+                <a
+                  href={`/u/${menuUsername}`}
+                  className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full rounded-[12px]"
+                  onClick={() => setOpenMenuId(null)}
+                >
+                  <User className="h-[18px] w-[18px] text-text-muted" />
+                  Profile git
+                </a>
+                {postSlug && (
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/post/${postSlug}?comment=${encodeId(menuComment.id)}`;
+                      navigator.clipboard.writeText(url);
+                      setOpenMenuId(null);
+                      feedimAlert("success", "Yorum bağlantısı kopyalandı");
+                    }}
+                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
+                  >
+                    <Link2 className="h-[18px] w-[18px] text-text-muted" />
+                    Bağlantıyı kopyala
+                  </button>
+                )}
+                {menuComment.content_type !== "gif" && menuComment.content && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(menuComment.content);
+                      setOpenMenuId(null);
+                      feedimAlert("success", "Metin kopyalandı");
+                    }}
+                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
+                  >
+                    <Copy className="h-[18px] w-[18px] text-text-muted" />
+                    Metni kopyala
+                  </button>
+                )}
+                {currentUserId !== menuComment.author_id && (
+                  <button
+                    onClick={() => { setOpenMenuId(null); setReportTarget(menuComment.id); }}
+                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
+                  >
+                    <Flag className="h-[18px] w-[18px]" />
+                    Şikayet et
+                  </button>
+                )}
+              </>
+            )}
+            {(currentUserId === menuComment.author_id || ctxUser?.role === 'admin') && (
+              <button
+                onClick={() => { setOpenMenuId(null); handleDeleteComment(menuComment.id); }}
+                className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
+              >
+                <Trash2 className="h-[18px] w-[18px]" />
+                {ctxUser?.role === 'admin' && currentUserId !== menuComment.author_id ? 'Yorumu sil (Admin)' : 'Yorumu sil'}
+              </button>
+            )}
+          </div>
+        </Modal>
+      );
+    })()}
 
     {showEmojiPicker && (
       <EmojiPickerPanel
@@ -785,87 +855,33 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           <div className="flex flex-col items-start">
             <a href={`/u/${profileUsername}`} className="flex items-center gap-1 text-[0.8rem] font-bold leading-tight text-text-primary hover:underline">
               <span className="line-clamp-1">{displayName}</span>
-              {comment.profiles?.is_verified && <VerifiedBadge variant={getBadgeVariant(comment.profiles?.premium_plan)} />}
+              {comment.profiles?.is_verified && <VerifiedBadge variant={getBadgeVariant(comment.profiles?.premium_plan)} role={comment.profiles?.role} />}
             </a>
-            <span className="text-[0.7rem] text-text-muted mt-0.5">
+            <span className="text-[0.64rem] text-text-muted mt-0.5">
               {formatRelativeDate(comment.created_at)}
             </span>
           </div>
           {/* More menu (top right) */}
-          <div className="shrink-0">
-            <button
-              onClick={() => onToggleMenu(openMenuId === comment.id ? null : comment.id)}
-              className="flex items-center justify-center h-[30px] w-[30px] rounded-full text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition"
-            >
-              <MoreHorizontal className="h-[18px] w-[18px]" />
-            </button>
-            {openMenuId === comment.id && (
-              <>
-                <div className="fixed inset-0 z-[99990] bg-black/40" onClick={() => onToggleMenu(null)} />
-                <div className="fixed inset-x-0 bottom-0 z-[99991] bg-bg-elevated rounded-t-2xl shadow-xl py-2 px-2 pb-[max(env(safe-area-inset-bottom,0px),16px)] animate-[slideInBottom_0.22s_ease-out]">
-                  <div className="w-10 h-1 rounded-full bg-text-muted/20 mx-auto mb-2" />
-                  <a
-                    href={`/u/${profileUsername}`}
-                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full rounded-[12px]"
-                    onClick={() => onToggleMenu(null)}
-                  >
-                    <User className="h-[18px] w-[18px] text-text-muted" />
-                    Profile git
-                  </a>
-                  {postSlug && (
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/post/${postSlug}?comment=${encodeId(comment.id)}`;
-                        navigator.clipboard.writeText(url);
-                        onToggleMenu(null);
-                        feedimAlert("success", "Yorum bağlantısı kopyalandı");
-                      }}
-                      className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
-                    >
-                      <Link2 className="h-[18px] w-[18px] text-text-muted" />
-                      Bağlantıyı kopyala
-                    </button>
-                  )}
-                  {comment.content_type !== "gif" && comment.content && (
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(comment.content);
-                        onToggleMenu(null);
-                        feedimAlert("success", "Metin kopyalandı");
-                      }}
-                      className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
-                    >
-                      <Copy className="h-[18px] w-[18px] text-text-muted" />
-                      Metni kopyala
-                    </button>
-                  )}
-                  {currentUserId === comment.author_id && (
-                    <button
-                      onClick={() => { onToggleMenu(null); onDelete(comment.id); }}
-                      className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
-                    >
-                      <Trash2 className="h-[18px] w-[18px]" />
-                      Yorumu sil
-                    </button>
-                  )}
-                  {currentUserId !== comment.author_id && (
-                    <button
-                      onClick={() => { onToggleMenu(null); onReport(comment.id); }}
-                      className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
-                    >
-                      <Flag className="h-[18px] w-[18px]" />
-                      Şikayet et
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+          {(!comment.is_nsfw || currentUserId === comment.author_id) && (
+            <div className="shrink-0">
+              <button
+                onClick={() => onToggleMenu(openMenuId === comment.id ? null : comment.id)}
+                className="flex items-center justify-center h-[30px] w-[30px] rounded-full text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition"
+              >
+                <MoreHorizontal className="h-[18px] w-[18px]" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Comment body */}
+        {comment.is_nsfw && (
+          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold bg-accent-main/10 text-accent-main">
+            Yorumunuz denetleniyor
+          </div>
+        )}
         {comment.content_type === "gif" && comment.gif_url ? (
-          <img src={comment.gif_url} className="mt-1 max-w-[200px] rounded-xl" loading="lazy" alt="GIF" />
+          <img src={comment.gif_url} className="mt-1 max-w-[200px] rounded-xl cursor-pointer" loading="lazy" alt="GIF" />
         ) : (
           <div
             className="w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none mt-1 break-words pr-[26px]"
@@ -874,28 +890,30 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
         )}
 
         {/* Bottom action bar */}
-        <div className="flex items-center w-full h-[30px] justify-between pr-3 mt-[5px]">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => onLike(comment.id)}
-              className={cn(
-                "flex items-center gap-1 text-xs transition",
-                likedComments.has(comment.id) ? "text-error" : "text-text-muted hover:text-error"
-              )}
-            >
-              <Heart className={cn("h-[14px] w-[14px]", likedComments.has(comment.id) && "fill-current")} />
-              {comment.like_count > 0 && <span>{formatCount(comment.like_count)}</span>}
-            </button>
-            {!isReply && onReply && (
+        {!comment.is_nsfw && (
+          <div className="flex items-center w-full h-[30px] justify-between pr-3 mt-[5px]">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => onReply(comment.id, profileUsername)}
-                className="text-[0.84rem] text-text-muted hover:text-text-primary transition font-medium"
+                onClick={() => onLike(comment.id)}
+                className={cn(
+                  "flex items-center gap-1 text-xs transition",
+                  likedComments.has(comment.id) ? "text-error" : "text-text-muted hover:text-error"
+                )}
               >
-                Yanıtla
+                <Heart className={cn("h-[14px] w-[14px]", likedComments.has(comment.id) && "fill-current")} />
+                {comment.like_count > 0 && <span>{formatCount(comment.like_count)}</span>}
               </button>
-            )}
+              {!isReply && onReply && (
+                <button
+                  onClick={() => onReply(comment.id, profileUsername)}
+                  className="text-[0.84rem] text-text-muted hover:text-text-primary transition font-medium"
+                >
+                  Yanıtla
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

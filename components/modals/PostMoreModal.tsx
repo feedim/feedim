@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, PenLine, Trash2, BarChart3, Shield, ShieldOff, Archive, Eye } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useAuthModal } from "@/components/AuthModal";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { useUser } from "@/components/UserContext";
 import Modal from "./Modal";
 import ReportModal from "./ReportModal";
@@ -34,6 +35,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   const { requireAuth } = useAuthModal();
   const { user: currentUser } = useUser();
 
+  const isOwn = isOwnPost ?? (!!currentUser && !!authorUserId && currentUser.id === authorUserId);
   const isAdmin = currentUser?.role === "admin";
   const isMod = currentUser?.role === "moderator" || isAdmin;
 
@@ -73,6 +75,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
       : contentType === "video"
         ? `/dashboard/write/video?edit=${postSlug}`
         : `/dashboard/write?edit=${postSlug}`;
+    emitNavigationStart();
     router.push(editPath);
   };
 
@@ -89,9 +92,10 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
           deleted.push(postId);
           sessionStorage.setItem("fdm-deleted-posts", JSON.stringify(deleted));
         } catch {}
+        emitNavigationStart();
         router.push("/dashboard");
         // Fire-and-forget background delete
-        fetch(`/api/posts/${postId}`, { method: "DELETE" }).catch(() => {});
+        fetch(`/api/posts/${postId}`, { method: "DELETE", keepalive: true }).catch(() => {});
       },
     });
   };
@@ -148,14 +152,14 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M16 7L12 3M12 3L8 7M12 3V15M21 11V17.8C21 18.92 21 19.48 20.782 19.907C20.59 20.284 20.284 20.59 19.908 20.782C19.48 21 18.92 21 17.8 21H6.2C5.08 21 4.52 21 4.092 20.782C3.716 20.59 3.41 20.284 3.218 19.908C3 19.48 3 18.92 3 17.8V11"/></svg>
           </button>
 
-          {authorUsername && !isOwnPost && (
+          {authorUsername && !isOwn && (
             <button onClick={handleVisitAuthor} className={btnClass}>
               <span className={labelClass}>Profili ziyaret et</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 21V19C20 16.79 18.21 15 16 15H8C5.79 15 4 16.79 4 19V21"/><circle cx="12" cy="7" r="4"/></svg>
             </button>
           )}
 
-          {isOwnPost && (
+          {isOwn && (
             <>
               <div className="border-t border-border-primary mx-4 my-1" />
               <button
@@ -176,7 +180,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             </>
           )}
 
-          {!isOwnPost && (
+          {!isOwn && (
             <>
               <div className="border-t border-border-primary mx-4 my-1" />
               <button onClick={handleReport} className={btnClass}>
@@ -187,7 +191,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
           )}
 
           {/* Admin / Moderator Actions */}
-          {isMod && !isOwnPost && (
+          {isMod && !isOwn && (
             <>
               <div className="border-t border-border-primary mx-4 my-2" />
               <p className="px-5 py-1 text-[0.68rem] text-text-muted font-semibold uppercase tracking-wider">

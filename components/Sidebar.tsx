@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, lazy, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Home, Search, Plus, Bell, Bookmark, User, Settings,
-  Sun, Moon, CloudMoon, Monitor, LogIn, BarChart3, Wallet, Film, Clapperboard
+  Sun, Moon, CloudMoon, Monitor, LogIn, BarChart3, Wallet, Film, Clapperboard, Keyboard
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import DarkModeModal from "@/components/modals/DarkModeModal";
-import CreateMenuModal from "@/components/modals/CreateMenuModal";
+const DarkModeModal = lazy(() => import("@/components/modals/DarkModeModal"));
+const CreateMenuModal = lazy(() => import("@/components/modals/CreateMenuModal"));
 import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useUser } from "@/components/UserContext";
@@ -79,7 +79,7 @@ export default memo(function Sidebar() {
     <aside className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-40 w-[240px]">
       {/* Logo */}
       <div className="pt-5 pb-1 px-4">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link href="/dashboard" className="flex items-center gap-2.5 rounded-full hover:bg-bg-secondary transition w-max">
           <FeedimIcon className="h-[56px] w-[56px]" />
         </Link>
       </div>
@@ -136,6 +136,15 @@ export default memo(function Sidebar() {
           <Settings className="h-5 w-5 shrink-0" />
           <span>Ayarlar</span>
         </Link>
+
+        {/* Hotkeys */}
+        <button
+          onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
+          className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium text-left"
+        >
+          <Keyboard className="h-5 w-5 shrink-0" />
+          <span>Kısayollar</span>
+        </button>
       </nav>
 
       {/* Bottom: Write + User */}
@@ -154,7 +163,7 @@ export default memo(function Sidebar() {
             </button>
 
             {/* User info */}
-            <Link href="/dashboard/profile" className="flex items-center gap-2.5 py-2 px-2 rounded-[10px] hover:bg-bg-tertiary transition">
+            <Link href="/dashboard/profile" className="flex items-center gap-[7px] py-2 px-2 rounded-[10px] hover:bg-bg-tertiary transition">
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
               ) : (
@@ -162,12 +171,12 @@ export default memo(function Sidebar() {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                  <p className="text-sm font-semibold truncate">{user?.fullName || "Kullanıcı"}</p>
-                  {user?.isVerified && (
-                    <VerifiedBadge size="sm" variant={getBadgeVariant(user.premiumPlan)} />
+                  <p className="text-[0.87rem] font-semibold truncate">{user?.fullName || "Kullanıcı"}</p>
+                  {(user?.role === "admin" || user?.isVerified) && (
+                    <VerifiedBadge size="sm" variant={getBadgeVariant(user.premiumPlan)} role={user.role} />
                   )}
                 </div>
-                <p className="text-xs text-text-muted truncate">@{user?.username}</p>
+                <p className="text-[0.7rem] text-text-muted truncate -mt-[1px]">@{user?.username}</p>
               </div>
             </Link>
           </>
@@ -187,8 +196,16 @@ export default memo(function Sidebar() {
       <PublicFooter variant="compact" />
 
       {/* Modals */}
-      <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setTheme(localStorage.getItem("fdm-theme") || "system"); }} />
-      <CreateMenuModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+      {darkModeOpen && (
+        <Suspense fallback={null}>
+          <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setTheme(localStorage.getItem("fdm-theme") || "system"); }} />
+        </Suspense>
+      )}
+      {createModalOpen && (
+        <Suspense fallback={null}>
+          <CreateMenuModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+        </Suspense>
+      )}
     </aside>
   );
 })

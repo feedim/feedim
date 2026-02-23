@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bookmark, Heart, MessageCircle } from "lucide-react";
+import { Search, Bookmark } from "lucide-react";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import NoImage from "@/components/NoImage";
-import { formatCount } from "@/lib/utils";
+import { formatCount, formatRelativeDate } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import FollowButton from "@/components/FollowButton";
 import UserListItem from "@/components/UserListItem";
@@ -20,6 +21,7 @@ interface SuggestedUser {
   avatar_url?: string;
   is_verified?: boolean;
   premium_plan?: string | null;
+  role?: string;
   bio?: string;
 }
 
@@ -27,8 +29,9 @@ interface TrendingPost {
   id: number;
   title: string;
   slug: string;
-  like_count: number;
-  comment_count: number;
+  view_count?: number;
+  content_type?: string;
+  published_at?: string;
   featured_image?: string;
   author: {
     username: string;
@@ -36,6 +39,7 @@ interface TrendingPost {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 
@@ -83,8 +87,9 @@ export default function SuggestionWidget() {
         id: p.id,
         title: p.title,
         slug: p.slug,
-        like_count: p.like_count || 0,
-        comment_count: p.comment_count || 0,
+        view_count: p.view_count || 0,
+        content_type: p.content_type,
+        published_at: p.published_at || p.created_at,
         featured_image: p.featured_image,
         author: {
           username: p.profiles?.username || p.author?.username || "",
@@ -92,6 +97,7 @@ export default function SuggestionWidget() {
           avatar_url: p.profiles?.avatar_url || p.author?.avatar_url,
           is_verified: p.profiles?.is_verified || p.author?.is_verified || false,
           premium_plan: p.profiles?.premium_plan || p.author?.premium_plan || null,
+          role: p.profiles?.role || p.author?.role || undefined,
         },
       })));
     } catch {
@@ -109,29 +115,18 @@ export default function SuggestionWidget() {
     }
   }, []);
 
-  const doFollowToggle = useCallback(async (username: string, userId: string) => {
-    const wasFollowing = following.has(userId);
-    const wasRequested = requested.has(userId);
+  const doFollow = useCallback(async (username: string, userId: string) => {
+    // Follow — optimistic update
     const newFollowing = new Set(following);
-    const newRequested = new Set(requested);
-    if (wasFollowing || wasRequested) {
-      newFollowing.delete(userId);
-      newRequested.delete(userId);
-    } else {
-      newFollowing.add(userId);
-    }
+    newFollowing.add(userId);
     setFollowing(newFollowing);
-    setRequested(newRequested);
 
     try {
-      const res = await fetch(`/api/users/${username}/follow`, { method: "POST" });
+      const res = await fetch(`/api/users/${username}/follow`, { method: "POST", keepalive: true });
       if (!res.ok) {
         const reverted = new Set(following);
-        const revertedReq = new Set(requested);
-        if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
-        if (wasRequested) revertedReq.add(userId); else revertedReq.delete(userId);
+        reverted.delete(userId);
         setFollowing(reverted);
-        setRequested(revertedReq);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
           feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
@@ -147,25 +142,46 @@ export default function SuggestionWidget() {
       }
     } catch {
       const reverted = new Set(following);
-      const revertedReq = new Set(requested);
-      if (wasFollowing) reverted.add(userId); else reverted.delete(userId);
-      if (wasRequested) revertedReq.add(userId); else revertedReq.delete(userId);
+      reverted.delete(userId);
       setFollowing(reverted);
-      setRequested(revertedReq);
+    }
+  }, [following, requested]);
+
+  const doUnfollow = useCallback(async (username: string, userId: string) => {
+    // Unfollow — wait for API before updating state (alert shows loader)
+    try {
+      const res = await fetch(`/api/users/${username}/follow`, { method: "POST", keepalive: true });
+      if (!res.ok) {
+        if (res.status === 429) {
+          const data = await res.json().catch(() => ({}));
+          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+        }
+        return;
+      }
+      const data = await res.json();
+      const updated = new Set(following);
+      const updatedReq = new Set(requested);
+      if (data.following) updated.add(userId); else updated.delete(userId);
+      if (data.requested) updatedReq.add(userId); else updatedReq.delete(userId);
+      setFollowing(updated);
+      setRequested(updatedReq);
+    } catch {
+      // Keep current state on error
     }
   }, [following, requested]);
 
   const handleFollow = useCallback((username: string, userId: string) => {
     if (following.has(userId) || requested.has(userId)) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doUnfollow(username, userId) });
       return;
     }
-    doFollowToggle(username, userId);
-  }, [following, requested, doFollowToggle]);
+    doFollow(username, userId);
+  }, [following, requested, doFollow, doUnfollow]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      emitNavigationStart();
       router.push(`/dashboard/explore?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
@@ -180,6 +196,7 @@ export default function SuggestionWidget() {
           <Search className="h-[18px] w-[18px]" />
         </div>
         <input
+          data-hotkey="search"
           type="search"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
@@ -229,16 +246,25 @@ export default function SuggestionWidget() {
                   href={`/post/${post.slug}`}
                   className="flex flex-col gap-2 px-3 py-3 my-[3px] rounded-lg hover:bg-bg-secondary transition"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-[2px]" style={{ columnGap: "2px" }}>
                     {post.author.avatar_url ? (
-                      <img src={post.author.avatar_url} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
+                      <img src={post.author.avatar_url} alt="" className="h-[26px] w-[26px] rounded-full object-cover" loading="lazy" />
                     ) : (
-                      <img className="default-avatar-auto h-4 w-4 rounded-full object-cover" alt="" loading="lazy" />
+                      <img className="default-avatar-auto h-[26px] w-[26px] rounded-full object-cover" alt="" loading="lazy" />
                     )}
-                    <span className="text-[0.75rem] text-text-muted font-medium truncate">
-                      {post.author.username}
-                    </span>
-                    {post.author.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(post.author.premium_plan)} />}
+                    <div className="min-w-0 leading-none ml-[4px]">
+                      <div className="flex items-center gap-1 leading-none">
+                        <span className="text-[0.8rem] text-text-muted font-medium truncate">
+                          {post.author.username}
+                        </span>
+                        {post.author.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(post.author.premium_plan)} role={post.author.role} />}
+                      </div>
+                      {post.published_at && (
+                        <span className="text-[0.56rem] text-text-muted/70 leading-none relative -top-[2px]">
+                          {formatRelativeDate(post.published_at)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -247,12 +273,10 @@ export default function SuggestionWidget() {
                       </p>
                       <div className="flex items-center gap-3 mt-1.5 text-[0.72rem] text-text-muted">
                         <span className="flex items-center gap-0.5">
-                          <Heart className="h-3 w-3" />
-                          {formatCount(post.like_count)}
+                          {formatCount(post.view_count || 0)} görüntülenme
                         </span>
-                        <span className="flex items-center gap-0.5">
-                          <MessageCircle className="h-3 w-3" />
-                          {formatCount(post.comment_count)}
+                        <span className="text-text-muted/60">
+                          {post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : "Gönderi"}
                         </span>
                       </div>
                     </div>
@@ -285,7 +309,7 @@ export default function SuggestionWidget() {
               <Link
                 key={tag.id}
                 href={`/dashboard/explore/tag/${tag.slug}`}
-                className="block px-2 py-2 rounded-lg hover:bg-bg-secondary transition"
+                className="block px-4 py-2 rounded-[12px] hover:bg-bg-secondary transition"
               >
                 <p className="text-[0.84rem] font-semibold">#{tag.name}</p>
                 <p className="text-[0.68rem] text-text-muted">{formatCount(tag.post_count || 0)} gönderi</p>

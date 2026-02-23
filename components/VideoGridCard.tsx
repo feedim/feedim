@@ -20,6 +20,7 @@ export interface VideoGridItem {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 
@@ -66,11 +67,11 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
           </h3>
           <p className="text-[0.8rem] text-text-muted mt-1 flex items-center gap-1 truncate">
             @{author?.username}
-            {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author.premium_plan)} />}
+            {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author.premium_plan)} role={author?.role} />}
           </p>
-          <p className="text-[0.76rem] text-text-muted">
+          <p className="text-[0.7rem] text-text-muted">
             {video.view_count ? `${formatCount(video.view_count)} görüntüleme` : ""}
-            {video.view_count && video.published_at ? " · " : ""}
+            {video.view_count && video.published_at ? " " : ""}
             {video.published_at ? formatRelativeDate(video.published_at) : ""}
           </p>
         </div>

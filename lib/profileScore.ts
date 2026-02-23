@@ -1,5 +1,5 @@
 // Feedim — Profile Scoring Engine v4
-// 7 profile dimensions + 7 spam dimensions + content quality penalties + trust level + shadow ban
+// 8 profile dimensions + 7 spam dimensions + content quality penalties + shadow ban
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -78,17 +78,25 @@ export interface ScoreInputs {
   socialSharesByUser: number;
   organicCommentRatio: number;
   discussionPostCount: number;
-  // NSFW pattern
-  nsfwPostRatio: number;
+  // NSFW pattern (only rejected/removed NSFW posts, not pending review)
+  rejectedNsfwPostCount: number;
   // Profile visits
   profileVisitsLast30: number;
   uniqueProfileVisitors: number;
+  // ─── v5: Consumer (Reader) Profile ───
+  savedOtherPostCount: number;       // Saved other users' posts
+  likedOtherPostCount: number;       // Liked other users' posts
+  commentedOnOtherPostCount: number; // Commented on other users' posts
+  // ─── v5: Penalty Decay ───
+  lastPenaltyDate: string | null;    // Most recent penalty event date
   // ─── v4: Content Quality Penalties ───
   postAndDeleteCount: number;       // Posts published then deleted within 24h
   lowEffortPostRatio: number;       // Ratio of posts with word_count < 10
   duplicateContentCount: number;    // Posts with highly similar/duplicate content
   oneLineNoMediaPostRatio: number;  // Ratio of single-line posts with no media, < 30 words
   weirdCharPostRatio: number;       // Ratio of posts with excessive unicode/special chars
+  // ─── v6: Copyright Strike Penalty ───
+  copyrightStrikeCount: number;     // Total copyright strikes from copyright system
 }
 
 export interface PostStat {
@@ -101,6 +109,8 @@ export interface PostStat {
   trending_score: number;
   word_count: number;
   mention_count: number;
+  content_type: string;   // 'post' | 'video' | 'moment'
+  has_media: boolean;     // featured_image or video_thumbnail exists
 }
 
 export interface RateLimitHit {
@@ -108,7 +118,9 @@ export interface RateLimitHit {
   count: number;
 }
 
-// ─── Profile Score (0-100) — 7 Dimensions ────────────────────────────
+// ─── Profile Score (0-100) — 8 Dimensions ────────────────────────────
+// Caps: completeness(12) + activity(20) + socialTrust(16) + contentQuality(20)
+//     + engagementQuality(16) + economicActivity(8) + consumer(8) + penalties = 100
 
 function calcCompleteness(p: ProfileData): number {
   let score = 0;
@@ -121,18 +133,21 @@ function calcCompleteness(p: ProfileData): number {
   if (p.gender) score += 1;
   if (p.full_name && p.full_name.length > 2) score += 1;
   if (p.account_type && p.account_type !== 'personal') score += 2;
-  return Math.min(score, 15);
+  return Math.min(score, 12);
 }
 
 function calcActivity(inputs: ScoreInputs): number {
   const p = inputs.profile;
   let score = 0;
 
+  const ageMs = Date.now() - new Date(p.created_at).getTime();
+  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+
   // Post count tiers
   const pc = p.post_count;
-  if (pc >= 50) score += 8;
-  else if (pc >= 25) score += 6;
-  else if (pc >= 10) score += 5;
+  if (pc >= 50) score += 6;
+  else if (pc >= 25) score += 5;
+  else if (pc >= 10) score += 4;
   else if (pc >= 3) score += 3;
   else if (pc >= 1) score += 2;
 
@@ -140,32 +155,31 @@ function calcActivity(inputs: ScoreInputs): number {
   if (inputs.recentPublishedCount >= 1) score += 2;
 
   // Daily active usage
-  if (inputs.activeDaysLast30 >= 25) score += 4;
-  else if (inputs.activeDaysLast30 >= 15) score += 3;
-  else if (inputs.activeDaysLast30 >= 7) score += 2;
-  else if (inputs.activeDaysLast30 >= 3) score += 1;
+  if (inputs.activeDaysLast30 >= 25) score += 3;
+  else if (inputs.activeDaysLast30 >= 15) score += 2;
+  else if (inputs.activeDaysLast30 >= 7) score += 1;
 
   // Inactivity penalty — son 30 günde 3 günden az giriş
-  if (inputs.activeDaysLast30 < 3 && inputs.activeDaysLast30 >= 0) score -= 2;
+  // Yeni kullanıcı koruması: ilk 7 gün ceza yok
+  if (inputs.activeDaysLast30 < 3 && ageDays >= 7) score -= 2;
 
-  // Login streak bonus (ardışık gün)
-  if (inputs.loginStreak >= 30) score += 4;
-  else if (inputs.loginStreak >= 14) score += 3;
-  else if (inputs.loginStreak >= 7) score += 2;
-  else if (inputs.loginStreak >= 3) score += 1;
+  // Login streak bonus (ardışık gün — 1 gün toleranslı)
+  if (inputs.loginStreak >= 30) score += 3;
+  else if (inputs.loginStreak >= 14) score += 2;
+  else if (inputs.loginStreak >= 7) score += 1;
 
   // Account age (10 yıla kadar kademeli)
-  const ageMs = Date.now() - new Date(p.created_at).getTime();
-  const ageDays = ageMs / (1000 * 60 * 60 * 24);
-  if (ageDays >= 3650) score += 7;
-  else if (ageDays >= 2555) score += 6;
-  else if (ageDays >= 1825) score += 5;
-  else if (ageDays >= 1095) score += 4;
-  else if (ageDays >= 365) score += 3;
-  else if (ageDays >= 180) score += 2;
-  else if (ageDays >= 30) score += 1;
+  if (ageDays >= 3650) score += 6;
+  else if (ageDays >= 2555) score += 5;
+  else if (ageDays >= 1825) score += 4;
+  else if (ageDays >= 1095) score += 3;
+  else if (ageDays >= 365) score += 2;
+  else if (ageDays >= 90) score += 1;
 
-  return Math.min(score, 25);
+  // Yeni kullanıcı koruması: ilk 7 gün minimum taban puan
+  if (ageDays < 7) return Math.min(Math.max(score, 4), 20);
+
+  return Math.min(score, 20);
 }
 
 function calcSocialTrust(inputs: ScoreInputs): number {
@@ -193,7 +207,7 @@ function calcSocialTrust(inputs: ScoreInputs): number {
   else if (inputs.mutualFollowRatio >= 0.20) score += 2;
   else if (inputs.mutualFollowRatio >= 0.10) score += 1;
 
-  // Ağ kalitesi — takipçilerin ort. trust_level'ı
+  // Ağ kalitesi — takipçilerin ort. profil puanı
   if (inputs.networkTrustAvg >= 3.5) score += 2;
   else if (inputs.networkTrustAvg >= 2.5) score += 1;
 
@@ -202,12 +216,16 @@ function calcSocialTrust(inputs: ScoreInputs): number {
   else if (inputs.uniqueProfileVisitors >= 20) score += 2;
   else if (inputs.uniqueProfileVisitors >= 5) score += 1;
 
-  return Math.min(score, 20);
+  return Math.min(score, 16);
 }
 
 function calcContentQuality(inputs: ScoreInputs): number {
   let score = 0;
   const posts = inputs.postStats;
+
+  // İçerik tipi ayrımı
+  const textPosts = posts.filter(p => p.content_type === 'post' || !p.content_type);
+  const videoPosts = posts.filter(p => p.content_type === 'video' || p.content_type === 'moment');
 
   // Average engagement rate (posts with 10+ views)
   const qualifiedPosts = posts.filter(p => p.unique_view_count >= 10);
@@ -217,47 +235,55 @@ function calcContentQuality(inputs: ScoreInputs): number {
       return interactions / p.unique_view_count;
     });
     const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
-    if (avgRate >= 0.15) score += 8;
-    else if (avgRate >= 0.08) score += 6;
-    else if (avgRate >= 0.03) score += 4;
-    else if (avgRate > 0) score += 2;
+    if (avgRate >= 0.15) score += 6;
+    else if (avgRate >= 0.08) score += 4;
+    else if (avgRate >= 0.03) score += 3;
+    else if (avgRate > 0) score += 1;
   }
 
   // Qualified read ratio
   const totalViews = inputs.profile.total_views_received;
   if (totalViews > 0 && inputs.qualifiedReadCount > 0) {
     const qrRatio = inputs.qualifiedReadCount / totalViews;
-    if (qrRatio >= 0.30) score += 5;
-    else if (qrRatio >= 0.15) score += 3;
+    if (qrRatio >= 0.30) score += 4;
+    else if (qrRatio >= 0.15) score += 2;
     else if (qrRatio >= 0.05) score += 1;
   }
 
-  // Trending posts
-  const trendingCount = posts.filter(p => p.trending_score > 0).length;
-  if (trendingCount >= 3) score += 4;
+  // Trending posts (eşik yükseltildi: >0 → >10)
+  const trendingCount = posts.filter(p => p.trending_score > 10).length;
+  if (trendingCount >= 3) score += 3;
   else if (trendingCount >= 1) score += 2;
 
-  // Content depth (avg word count)
-  if (posts.length > 0) {
-    const avgWc = posts.reduce((a, p) => a + (p.word_count || 0), 0) / posts.length;
-    if (avgWc >= 300) score += 3;
-    else if (avgWc >= 100) score += 2;
-    else if (avgWc >= 30) score += 1;
+  // Content depth — içerik tipine göre farklı değerlendirme
+  if (textPosts.length > 0) {
+    // Yazılı içerik: kelime sayısı önemli
+    const avgWc = textPosts.reduce((a, p) => a + (p.word_count || 0), 0) / textPosts.length;
+    if (avgWc >= 300) score += 2;
+    else if (avgWc >= 100) score += 1;
+  }
+  if (videoPosts.length > 0) {
+    // Video/Moment: medya varlığı ve etkileşim oranı önemli
+    const avgEngagement = videoPosts.reduce((a, p) =>
+      a + p.like_count + p.comment_count + p.save_count, 0) / videoPosts.length;
+    if (avgEngagement >= 20) score += 2;
+    else if (avgEngagement >= 5) score += 1;
   }
 
-  // Ortalama okuma süresi (yüksek = kaliteli, düşük = ceza)
-  if (inputs.avgReadDurationOnPosts >= 120) score += 3;
-  else if (inputs.avgReadDurationOnPosts >= 60) score += 2;
-  else if (inputs.avgReadDurationOnPosts >= 30) score += 1;
-  else if (inputs.avgReadDurationOnPosts > 0 && inputs.avgReadDurationOnPosts < 15 && totalViews >= 50) {
-    score -= 3; // Çok kısa okuma süresi cezası
+  // Ortalama okuma süresi — sadece yazılı içerik için uygula
+  if (textPosts.length > 0) {
+    if (inputs.avgReadDurationOnPosts >= 120) score += 2;
+    else if (inputs.avgReadDurationOnPosts >= 60) score += 1;
+    else if (inputs.avgReadDurationOnPosts > 0 && inputs.avgReadDurationOnPosts < 15 && totalViews >= 50) {
+      score -= 2; // Çok kısa okuma süresi cezası (sadece yazılı içerik)
+    }
   }
 
   // Tartışma yaratan gönderiler (5+ farklı yorumcu)
-  if (inputs.discussionPostCount >= 3) score += 3;
+  if (inputs.discussionPostCount >= 3) score += 2;
   else if (inputs.discussionPostCount >= 1) score += 1;
 
-  return Math.min(score, 26);
+  return Math.min(score, 20);
 }
 
 function calcEngagementQuality(inputs: ScoreInputs): number {
@@ -307,7 +333,7 @@ function calcEngagementQuality(inputs: ScoreInputs): number {
   if (inputs.socialSharesByUser >= 20) score += 2;
   else if (inputs.socialSharesByUser >= 5) score += 1;
 
-  return Math.min(score, 22);
+  return Math.min(score, 16);
 }
 
 function calcEconomicActivity(inputs: ScoreInputs): number {
@@ -341,7 +367,7 @@ function calcEconomicActivity(inputs: ScoreInputs): number {
   else if (inputs.giftSenderDiversity >= 5) score += 2;
   else if (inputs.giftSenderDiversity >= 3) score += 1;
 
-  return Math.min(score, 13);
+  return Math.min(score, 8);
 }
 
 function calcPenalties(inputs: ScoreInputs): number {
@@ -378,11 +404,13 @@ function calcPenalties(inputs: ScoreInputs): number {
     else if (badRatio >= 0.15) penalty -= 4;
   }
 
-  // Sürekli NSFW içerik paylaşımı — baya bir ceza
-  if (inputs.publishedPostCount >= 3) {
-    if (inputs.nsfwPostRatio > 0.50) penalty -= 10;
-    else if (inputs.nsfwPostRatio > 0.30) penalty -= 6;
-    else if (inputs.nsfwPostRatio > 0.10) penalty -= 3;
+  // Sürekli NSFW içerik paylaşımı — sadece moderatör tarafından reddedilen NSFW postlar
+  // is_nsfw=true (inceleme bekleyen) cezalandırılmaz, sadece removed olanlar
+  if (inputs.publishedPostCount >= 3 && inputs.rejectedNsfwPostCount > 0) {
+    const rejectedRatio = inputs.rejectedNsfwPostCount / (inputs.publishedPostCount + inputs.removedPostCount);
+    if (rejectedRatio > 0.50) penalty -= 10;
+    else if (rejectedRatio > 0.30) penalty -= 6;
+    else if (rejectedRatio > 0.10) penalty -= 3;
   }
 
   // ─── v4: Content Quality Penalties ───
@@ -394,6 +422,7 @@ function calcPenalties(inputs: ScoreInputs): number {
   else if (inputs.postAndDeleteCount >= 1) penalty -= 2;
 
   // Low-effort content: tek karakter, anlamsız kısa içerik (word_count < 10)
+  // Video/moment postları hariç tutulur (lowEffortPostRatio cron'da hesaplanır)
   if (inputs.publishedPostCount >= 3) {
     if (inputs.lowEffortPostRatio >= 0.60) penalty -= 12;
     else if (inputs.lowEffortPostRatio >= 0.40) penalty -= 8;
@@ -420,7 +449,45 @@ function calcPenalties(inputs: ScoreInputs): number {
     else if (inputs.weirdCharPostRatio >= 0.15) penalty -= 3;
   }
 
+  // Copyright strikes — ağır ceza 3. strike'tan sonra başlar
+  if (inputs.copyrightStrikeCount >= 10) penalty -= 40;
+  else if (inputs.copyrightStrikeCount >= 7) penalty -= 30;
+  else if (inputs.copyrightStrikeCount >= 5) penalty -= 22;
+  else if (inputs.copyrightStrikeCount >= 3) penalty -= 15;
+
   return penalty;
+}
+
+// Penalty decay — cezalar zamanla azalır (spam score'daki rehabilitation decay gibi)
+function calcPenaltyDecay(lastPenaltyDate: string | null): number {
+  if (!lastPenaltyDate) return 1; // Tarih yoksa decay uygulanmaz (cezalar tam etkili)
+  const daysSince = (Date.now() - new Date(lastPenaltyDate).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSince >= 60) return 0.3;
+  if (daysSince >= 30) return 0.5;
+  if (daysSince >= 14) return 0.7;
+  return 1;
+}
+
+// ─── Consumer (Reader) Dimension — okuyucu profili (max 8) ───────────
+
+function calcConsumer(inputs: ScoreInputs): number {
+  let score = 0;
+
+  // Başkalarının postlarını beğenme
+  if (inputs.likedOtherPostCount >= 50) score += 3;
+  else if (inputs.likedOtherPostCount >= 20) score += 2;
+  else if (inputs.likedOtherPostCount >= 5) score += 1;
+
+  // Başkalarının postlarını kaydetme
+  if (inputs.savedOtherPostCount >= 20) score += 3;
+  else if (inputs.savedOtherPostCount >= 10) score += 2;
+  else if (inputs.savedOtherPostCount >= 3) score += 1;
+
+  // Başkalarının postlarına yorum yapma
+  if (inputs.commentedOnOtherPostCount >= 30) score += 2;
+  else if (inputs.commentedOnOtherPostCount >= 10) score += 1;
+
+  return Math.min(score, 8);
 }
 
 export function calculateProfileScore(inputs: ScoreInputs): number {
@@ -430,10 +497,21 @@ export function calculateProfileScore(inputs: ScoreInputs): number {
   const contentQuality = calcContentQuality(inputs);
   const engagementQuality = calcEngagementQuality(inputs);
   const economicActivity = calcEconomicActivity(inputs);
-  const penalties = calcPenalties(inputs);
+  const consumer = calcConsumer(inputs);
+  const rawPenalties = calcPenalties(inputs);
 
-  const dims = completeness + activity + socialTrust + contentQuality + engagementQuality + economicActivity + penalties;
-  const capped = Math.max(0, Math.min(100, dims));
+  // Penalty decay — cezalar zamanla azalır
+  const penaltyDecay = calcPenaltyDecay(inputs.lastPenaltyDate);
+  const penalties = Math.round(rawPenalties * penaltyDecay);
+
+  const dims = completeness + activity + socialTrust + contentQuality + engagementQuality + economicActivity + consumer + penalties;
+
+  // Yeni kullanıcı koruması: ilk 7 gün minimum 10 puan
+  const ageMs = Date.now() - new Date(inputs.profile.created_at).getTime();
+  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  const floor = ageDays < 7 ? 10 : 0;
+
+  const capped = Math.max(floor, Math.min(100, dims));
   const result = inputs.profile.shadow_banned ? Math.max(0, capped - 50) : capped;
 
   return Math.round(result * 100) / 100;
@@ -471,21 +549,9 @@ function calcBehavioral(inputs: ScoreInputs): number {
   else if (inputs.massDeleteLast24h >= 5) score += 6;
   else if (inputs.massDeleteLast24h >= 3) score += 3;
 
-  // Sürekli NSFW içerik paylaşımı — spam sinyali
-  if (inputs.publishedPostCount >= 3) {
-    if (inputs.nsfwPostRatio > 0.50) score += 12;
-    else if (inputs.nsfwPostRatio > 0.30) score += 6;
-  }
-
-  // Duplicate content — güçlü spam sinyali
-  if (inputs.duplicateContentCount >= 3) score += 12;
-  else if (inputs.duplicateContentCount >= 1) score += 6;
-
-  // Low-effort post oranı yüksekse spam
-  if (inputs.publishedPostCount >= 3 && inputs.lowEffortPostRatio >= 0.50) score += 8;
-
-  // Weird character spam
-  if (inputs.publishedPostCount >= 3 && inputs.weirdCharPostRatio >= 0.40) score += 8;
+  // NOT: rejectedNsfwPostCount, duplicateContentCount, lowEffortPostRatio,
+  // weirdCharPostRatio zaten calcPenalties'de cezalandırılıyor.
+  // Çift ceza önlemek için burada tekrarlanmıyor.
 
   return Math.min(score, 30);
 }
@@ -493,14 +559,8 @@ function calcBehavioral(inputs: ScoreInputs): number {
 function calcCommunitySignals(inputs: ScoreInputs): number {
   let score = 0;
 
-  // Blocks received
-  if (inputs.blocksReceived >= 6) score += 20;
-  else if (inputs.blocksReceived >= 3) score += 10;
-  else if (inputs.blocksReceived >= 1) score += 5;
-
-  // Reports received
-  if (inputs.reportsReceived >= 3) score += 15;
-  else if (inputs.reportsReceived >= 1) score += 5;
+  // NOT: blocksReceived ve reportsReceived zaten calcPenalties'de cezalandırılıyor.
+  // Çift ceza önlemek için burada tekrarlanmıyor.
 
   // Zero followers but following many
   if (inputs.profile.follower_count === 0 && inputs.profile.following_count > 20) {
@@ -554,12 +614,8 @@ function calcManipulation(inputs: ScoreInputs): number {
   // Aşırı etiketleme (ort. mention > 2.5)
   if (inputs.avgMentionPerPost > 2.5) score += 5;
 
-  // Küfür yorum oranı yüksek (removed+spam / total)
-  if (inputs.totalUserCommentCount > 5) {
-    const badRatio = (inputs.spamCommentCount + inputs.removedCommentCount) / inputs.totalUserCommentCount;
-    if (badRatio >= 0.30) score += 8;
-    else if (badRatio >= 0.15) score += 4;
-  }
+  // NOT: Kötü yorum oranı (badCommentRatio) zaten calcPenalties'de cezalandırılıyor.
+  // Çift ceza önlemek için burada tekrarlanmıyor.
 
   return Math.min(score, 20);
 }
@@ -592,29 +648,29 @@ export function calculateSpamScore(inputs: ScoreInputs): number {
   return Math.round(result * 100) / 100;
 }
 
-// ─── Trust Level (0-5) ───────────────────────────────────────────────
+// ─── Copyright Eligibility Check ────────────────────────────────────
+// Trust-based automatic copyright protection eligibility.
+// Once eligible, only admin can revoke (cron never sets false).
 
-export function calculateTrustLevel(
+export function checkCopyrightEligibility(
   profileScore: number,
-  spamScore: number,
-  profile: ProfileData,
-): number {
-  if (profile.shadow_banned) return Math.min(1, determineTrustLevel(profileScore, spamScore, profile));
-  return determineTrustLevel(profileScore, spamScore, profile);
-}
+  profile: ProfileData & { copyrightStrikeCount?: number },
+): boolean {
+  // Minimum profile score (encompasses spam/trust checks)
+  if (profileScore < 40) return false;
 
-function determineTrustLevel(
-  profileScore: number,
-  spamScore: number,
-  profile: ProfileData,
-): number {
-  const ageMs = Date.now() - new Date(profile.created_at).getTime();
-  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  // Email must be verified
+  if (!profile.email_verified) return false;
 
-  if (profileScore >= 80 && spamScore < 5 && profile.is_verified) return 5;
-  if (profileScore >= 60 && spamScore < 10 && ageDays > 90 && profile.email_verified) return 4;
-  if (profileScore >= 40 && spamScore < 20 && ageDays > 30) return 3;
-  if (profileScore >= 20 && spamScore < 40) return 2;
-  if (spamScore >= 70) return 0;
-  return 1;
+  // Account age: minimum 7 days
+  const accountAge = (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24);
+  if (accountAge < 7) return false;
+
+  // Copyright strike history: fewer than 3 strikes
+  if ((profile.copyrightStrikeCount || 0) >= 3) return false;
+
+  // Minimum content: at least 3 posts
+  if ((profile.post_count || 0) < 3) return false;
+
+  return true;
 }

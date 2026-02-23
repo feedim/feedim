@@ -3,7 +3,9 @@
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X, Plus, Upload, Smile, ChevronDown, Undo2, Redo2 } from "lucide-react";
+import PostMetaFields from "@/components/PostMetaFields";
 import { createClient } from "@/lib/supabase/client";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import dynamic from "next/dynamic";
 import type { RichTextEditorHandle } from "@/components/RichTextEditor";
 
@@ -26,10 +28,11 @@ import GifPickerPanel from "@/components/modals/GifPickerPanel";
 import CropModal from "@/components/modals/CropModal";
 
 interface Tag {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   post_count?: number;
+  virtual?: boolean;
 }
 
 export default function WritePage() {
@@ -71,6 +74,13 @@ function WritePageContent() {
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [copyrightProtected, setCopyrightProtected] = useState(false);
+
+  // Auto-disable copyright protection when content drops below 50 words
+  useEffect(() => {
+    const wordCount = content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50 && copyrightProtected) setCopyrightProtected(false);
+  }, [content, copyrightProtected]);
 
   // SEO meta
   const [metaTitle, setMetaTitle] = useState("");
@@ -79,7 +89,7 @@ function WritePageContent() {
   const [metaExpanded, setMetaExpanded] = useState(false);
 
   // State
-  const [saving, setSaving] = useState(false);
+  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
   const [autoSaving, setAutoSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -130,6 +140,7 @@ function WritePageContent() {
         setVisibility(data.post.visibility || "public");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setCopyrightProtected(data.post.copyright_protected === true);
         if (data.post.meta_title) setMetaTitle(data.post.meta_title);
         if (data.post.meta_description) setMetaDescription(data.post.meta_description);
         if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
@@ -149,7 +160,7 @@ function WritePageContent() {
   useEffect(() => {
     if (!title.trim() || !hasUnsavedChanges) return;
     const timer = setInterval(async () => {
-      if (saving || autoSaving) return;
+      if (savingAs || autoSaving) return;
       setAutoSaving(true);
       try {
         const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
@@ -162,7 +173,7 @@ function WritePageContent() {
             title: title.trim(),
             content: cleanedContent,
             status: "draft",
-            tags: tags.map(t => t.id),
+            tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
             featured_image: featuredImage || null,
             meta_title: metaTitle.trim() || null,
             meta_description: metaDescription.trim() || null,
@@ -178,7 +189,7 @@ function WritePageContent() {
       setAutoSaving(false);
     }, 30000);
     return () => clearInterval(timer);
-  }, [title, content, hasUnsavedChanges, saving, autoSaving, draftId, tags, featuredImage]);
+  }, [title, content, hasUnsavedChanges, savingAs, autoSaving, draftId, tags, featuredImage]);
 
   // Load popular tags on step 2
   useEffect(() => {
@@ -205,7 +216,7 @@ function WritePageContent() {
       const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       setTagSuggestions(
-        (data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id))
+        (data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
       );
       setTagHighlight(-1);
     } catch {
@@ -219,7 +230,8 @@ function WritePageContent() {
   }, [tagSearch, searchTags]);
 
   const addTag = (tag: Tag) => {
-    if (tags.length >= VALIDATION.postTags.max || tags.some(t => t.id === tag.id)) return;
+    if (tags.length >= VALIDATION.postTags.max) return;
+    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
     setTags([...tags, tag]);
     setTagSearch("");
     setTagSuggestions([]);
@@ -246,6 +258,7 @@ function WritePageContent() {
       return;
     }
     setTagCreating(true);
+    await new Promise(r => setTimeout(r, 1000));
     try {
       const res = await fetch("/api/tags", {
         method: "POST",
@@ -265,7 +278,7 @@ function WritePageContent() {
     }
   };
 
-  const removeTag = (tagId: number) => {
+  const removeTag = (tagId: number | string) => {
     setTags(tags.filter(t => t.id !== tagId));
   };
 
@@ -324,11 +337,17 @@ function WritePageContent() {
         setCropSrc(dataUrl);
       });
 
-      // Store in localStorage
-      const key = `fdm-img-${Date.now()}`;
-      try { localStorage.setItem(key, croppedUrl); } catch {}
+      // Upload cropped image to R2 immediately (data: URLs are stripped by sanitizer)
+      const blob = await fetch(croppedUrl).then(r => r.blob());
+      const uploadFile = new File([blob], `inline-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('fileName', uploadFile.name);
+      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || 'Görsel yüklenemedi');
 
-      return croppedUrl;
+      return uploadData.url;
     } finally {
       setImageUploading(false);
     }
@@ -447,7 +466,7 @@ function WritePageContent() {
       }
     }
 
-    setSaving(true);
+    setSavingAs(status);
     try {
       const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
       const method = draftId ? "PUT" : "POST";
@@ -459,10 +478,11 @@ function WritePageContent() {
           title: title.trim(),
           content: cleanedContent,
           status,
-          tags: tags.map(t => t.id),
+          tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           featured_image: featuredImage || null,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          copyright_protected: copyrightProtected && cleanedContent.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length >= 50,
           meta_title: metaTitle.trim() || null,
           meta_description: metaDescription.trim() || null,
           meta_keywords: metaKeywords.trim() || null,
@@ -473,9 +493,12 @@ function WritePageContent() {
       if (res.ok) {
         setHasUnsavedChanges(false);
         if (status === "published" && data.post?.slug) {
+          emitNavigationStart();
           router.push(`/post/${data.post.slug}`);
         } else {
           sessionStorage.setItem("fdm-open-create-modal", "1");
+          sessionStorage.setItem("fdm-create-view", "drafts");
+          emitNavigationStart();
           router.push("/dashboard");
         }
       } else {
@@ -484,7 +507,7 @@ function WritePageContent() {
     } catch {
       feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {
-      setSaving(false);
+      setSavingAs(null);
     }
   };
 
@@ -552,17 +575,18 @@ function WritePageContent() {
         <>
           <button
             onClick={() => savePost("draft")}
-            disabled={saving || !title.trim()}
+            disabled={savingAs !== null || !title.trim()}
             className="t-btn cancel !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
           >
-            Kaydet
+            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
           </button>
           <button
             onClick={() => savePost("published")}
-            disabled={saving || !title.trim() || !content.trim()}
+            disabled={savingAs !== null || !title.trim() || !content.trim()}
             className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
+            aria-label="Yayınla"
           >
-            {saving ? <span className="loader" style={{ width: 16, height: 16, borderTopColor: "var(--bg-primary)" }} /> : "Yayınla"}
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Yayınla"}
           </button>
         </>
       )}
@@ -691,13 +715,13 @@ function WritePageContent() {
                     )}
                     {/* Create new tag button */}
                     {tagSearch.trim() && tagSuggestions.length === 0 && (
-                      <button
-                        onClick={createAndAddTag}
-                        disabled={tagCreating}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50"
-                      >
+                    <button
+                      onClick={createAndAddTag}
+                      disabled={tagCreating}
+                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                    >
                         {tagCreating ? (
-                          <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} />
+                          <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
                         ) : (
                           <><Plus className="h-3.5 w-3.5" /> Oluştur</>
                         )}
@@ -772,6 +796,7 @@ function WritePageContent() {
                     />
                   </label>
                 )}
+              <p className="text-[0.68rem] text-text-muted/70 mt-1.5 italic">Görseller telif hakkına tabi olabilir.</p>
               </div>
             </div>
 
@@ -820,48 +845,40 @@ function WritePageContent() {
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
                   </div>
                 </button>
+                <div>
+                <button
+                  onClick={() => {
+                    if (!user?.copyrightEligible) return;
+                    if (isEditMode && copyrightProtected) return;
+                    if (content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length < 50) return;
+                    setCopyrightProtected(!copyrightProtected);
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition text-left ${!user?.copyrightEligible || (isEditMode && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div>
+                      <p className="text-sm font-medium">Telif hakkı koruması</p>
+                      <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? "Telif hakkı koruması etkin içeriklerde kapatılamaz." : !user?.copyrightEligible ? "Düzenli özgün içerik üretiminde sistem tarafından otomatik olarak etkinleşir." : "Açıldığında içeriğiniz telif hakkıyla korunur."}</p>
+                    </div>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                {!user?.copyrightEligible && (
+                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">Otomatik etkinleştirme hakkında daha fazla bilgi &rarr;</a>
+                )}
+                </div>
               </div>
             </div>
 
-            {/* SEO / Gönderi bilgileri */}
-            <div>
-              <button type="button" onClick={() => setMetaExpanded(v => !v)}
-                className="flex items-center justify-between w-full text-left">
-                <label className="block text-sm font-semibold">Gönderi bilgileri</label>
-                <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${metaExpanded ? "rotate-180" : ""}`} />
-              </button>
-              {metaExpanded && (
-                <div className="mt-3 space-y-4">
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Ana konu başlığı</label>
-                    <input type="text" value={metaTitle}
-                      onChange={e => setMetaTitle(e.target.value)}
-                      placeholder="Gönderi ana konusu..." maxLength={60}
-                      className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaTitle.length}/60</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Açıklama</label>
-                    <textarea value={metaDescription}
-                      onChange={e => setMetaDescription(e.target.value)}
-                      placeholder="Gönderi açıklaması..." maxLength={155} rows={3}
-                      className="input-modern w-full resize-none" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaDescription.length}/155</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Anahtar kelime</label>
-                    <input type="text" value={metaKeywords}
-                      onChange={e => setMetaKeywords(e.target.value)}
-                      placeholder="Anahtar kelime..." maxLength={200}
-                      className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaKeywords.length}/200</span>
-                  </div>
-                  <p className="text-[0.7rem] text-text-muted/60 leading-relaxed">
-                    Bu alandaki metinler içeriğinizin görünürlüğünü ve sıralamasını belirleyen etkenlerdir. Arama motorları için de kullanılır. Manuel girilmezse Feedim AI tarafından otomatik oluşturulur.
-                  </p>
-                </div>
-              )}
-            </div>
+            <PostMetaFields
+              metaTitle={metaTitle} setMetaTitle={setMetaTitle}
+              metaDescription={metaDescription} setMetaDescription={setMetaDescription}
+              metaKeywords={metaKeywords} setMetaKeywords={setMetaKeywords}
+              expanded={metaExpanded} setExpanded={setMetaExpanded}
+              contentType="post"
+            />
 
           </div>
         )}

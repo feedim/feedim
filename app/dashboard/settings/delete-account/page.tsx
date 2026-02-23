@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import { Trash2, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -20,6 +21,7 @@ const REASONS = [
 ];
 
 export default function DeleteAccountPage() {
+  useSearchParams();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [otherText, setOtherText] = useState("");
   const [password, setPassword] = useState("");
@@ -78,6 +80,7 @@ export default function DeleteAccountPage() {
       }
 
       await supabase.auth.signOut();
+      emitNavigationStart();
       router.push("/");
     } catch (error: any) {
       feedimAlert("error", error.message || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
@@ -186,6 +189,7 @@ export default function DeleteAccountPage() {
             onClick={handleDelete}
             disabled={!selectedReason || !password || confirmText !== "DELETE" || deleting}
             className="t-btn accept w-full disabled:opacity-50"
+            aria-label="Hesabı Sil"
           >
             {deleting ? <span className="loader" /> : "Hesabı Sil"}
           </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import {
   User, Mail, LogOut, Clock, Calendar, Wallet, Bookmark,
@@ -9,6 +10,7 @@ import {
   ArrowLeft, Check, Trash2
 } from "lucide-react";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import Modal from "./Modal";
@@ -55,9 +57,13 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     }
   };
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleSignOut = async () => {
+    setSigningOut(true);
     await supabase.auth.signOut();
     onClose();
+    emitNavigationStart();
     router.push("/");
   };
 
@@ -76,6 +82,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
       await supabase.auth.signOut();
       feedimAlert("success", "Hesabınız kalıcı olarak silindi");
       onClose();
+      emitNavigationStart();
       router.push("/");
     } catch (error: any) {
       feedimAlert("error",error.message);
@@ -91,7 +98,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     <Modal open={open} onClose={onClose} title="Ayarlar" size="md" infoText="Hesap ve uygulama ayarlarını buradan yönetebilirsin.">
       <div className="px-4 py-4 space-y-4">
         {loading ? (
-          <SettingsItemSkeleton />
+          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
         ) : (
           <>
             {/* Profile Header */}
@@ -239,8 +246,8 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             </div>
 
             {/* Çıkış */}
-            <button onClick={handleSignOut} className="t-btn cancel w-full">
-              <LogOut className="h-5 w-5" /> Çıkış Yap
+            <button onClick={handleSignOut} disabled={signingOut} className="t-btn cancel w-full">
+              {signingOut ? <span className="loader" style={{ width: 16, height: 16 }} /> : <><LogOut className="h-5 w-5" /> Çıkış Yap</>}
             </button>
 
             {/* Hesap Silme */}
@@ -261,7 +268,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                     placeholder="DELETE"
                   />
                   <div className="flex gap-2">
-                    <button onClick={handleDeleteAccount} className="flex-1 t-btn accept relative !bg-error !text-white" disabled={confirmDeleteText !== "DELETE" || deleting}>
+                    <button onClick={handleDeleteAccount} className="flex-1 t-btn accept relative !bg-error !text-white" disabled={confirmDeleteText !== "DELETE" || deleting} aria-label="Hesabı Sil">
                       {deleting ? <span className="loader" /> : "Evet, Sil"}
                     </button>
                     <button onClick={() => { setShowDeleteConfirm(false); setConfirmDeleteText(""); }} className="flex-1 t-btn cancel">İptal</button>

@@ -19,6 +19,16 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Access restriction check
+    const { data: myProfile } = await admin
+      .from('profiles')
+      .select('restricted_like')
+      .eq('user_id', user.id)
+      .single();
+    if (myProfile?.restricted_like) {
+      return NextResponse.json({ error: 'Beğeni özelliğiniz kısıtlanmıştır' }, { status: 403 });
+    }
+
     // Check if already liked
     const { data: existing } = await admin
       .from('likes')

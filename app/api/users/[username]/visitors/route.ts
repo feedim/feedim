@@ -64,7 +64,7 @@ export async function GET(
 
   const { data: visitors } = await supabase
     .from("profiles")
-    .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio")
+    .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio")
     .in("user_id", uniqueVisitorIds)
     .eq("status", "active");
 

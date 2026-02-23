@@ -1,11 +1,15 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect } from "react";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 
 export default function NotificationSettingsPage() {
+  useSearchParams();
   const [notifSettings, setNotifSettings] = useState<Record<string, boolean>>({});
   const [notifPaused, setNotifPaused] = useState(false);
   const [pausedUntil, setPausedUntil] = useState<string | null>(null);
@@ -94,7 +98,7 @@ export default function NotificationSettingsPage() {
     <AppLayout headerTitle="Bildirim Ayarları" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <SettingsItemSkeleton />
+          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
         ) : (
           <>
             {/* Pause toggle */}

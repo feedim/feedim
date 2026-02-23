@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Bookmark, Gift } from "lucide-react";
 import ShareIcon from "@/components/ShareIcon";
 import { decodeId } from "@/lib/hashId";
 import { useAuthModal } from "@/components/AuthModal";
+import { useUser } from "@/components/UserContext";
 import { cn, formatCount } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -72,6 +73,7 @@ export default function PostInteractionBar({
   const [likedByUsers, setLikedByUsers] = useState<{ username: string; full_name?: string; avatar_url?: string }[]>([]);
   const [targetCommentId, setTargetCommentId] = useState<number | null>(null);
   const { requireAuth } = useAuthModal();
+  const { user: currentUser } = useUser();
   const searchParams = useSearchParams();
 
   // Auto-open comments modal from ?comment= URL param (obfuscated ID)
@@ -107,16 +109,15 @@ export default function PostInteractionBar({
     }
   }, [postId, initialLikeCount]);
 
-  const likingRef = useRef(false);
-  const savingRef = useRef(false);
+  // Refs to track latest state for rapid clicks
+  const likedRef = useRef(initialLiked);
+  const savedRef = useRef(initialSaved);
 
   const handleLike = async () => {
-    if (likingRef.current) return;
-    const user = await requireAuth();
-    if (!user) return;
+    if (!currentUser) { const user = await requireAuth(); if (!user) return; }
 
-    likingRef.current = true;
-    const newLiked = !liked;
+    const newLiked = !likedRef.current;
+    likedRef.current = newLiked;
     setLiked(newLiked);
     setLikeCount(c => Math.max(0, c + (newLiked ? 1 : -1)));
     if (newLiked) {
@@ -124,44 +125,36 @@ export default function PostInteractionBar({
       setTimeout(() => setLikeAnimating(false), 400);
     }
 
-    try {
-      const res = await fetch(`/api/posts/${postId}/like`, { method: "POST" });
+    fetch(`/api/posts/${postId}/like`, { method: "POST", keepalive: true }).then(res => {
       if (!res.ok) {
+        likedRef.current = !newLiked;
         setLiked(!newLiked);
         setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
         if (res.status === 429) {
-          const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın");
+          res.json().then(data => feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın")).catch(() => {});
         }
       }
-    } finally {
-      likingRef.current = false;
-    }
+    }).catch(() => {});
   };
 
   const handleSave = async () => {
-    if (savingRef.current) return;
-    const user = await requireAuth();
-    if (!user) return;
+    if (!currentUser) { const user = await requireAuth(); if (!user) return; }
 
-    savingRef.current = true;
-    const newSaved = !saved;
+    const newSaved = !savedRef.current;
+    savedRef.current = newSaved;
     setSaved(newSaved);
     setSaveCount(c => Math.max(0, c + (newSaved ? 1 : -1)));
 
-    try {
-      const res = await fetch(`/api/posts/${postId}/save`, { method: "POST" });
+    fetch(`/api/posts/${postId}/save`, { method: "POST", keepalive: true }).then(res => {
       if (!res.ok) {
+        savedRef.current = !newSaved;
         setSaved(!newSaved);
         setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
         if (res.status === 429) {
-          const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın");
+          res.json().then(data => feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın")).catch(() => {});
         }
       }
-    } finally {
-      savingRef.current = false;
-    }
+    }).catch(() => {});
   };
 
   const openComments = () => {
@@ -177,7 +170,7 @@ export default function PostInteractionBar({
       {!likedByBottom && likeCount > 0 && likedByUsers.length > 0 && (
         <button
           onClick={() => setLikesOpen(true)}
-          className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
+          className="flex items-center gap-1.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
           aria-label="Beğenen kişileri gör"
         >
           <div className="flex -space-x-2 shrink-0">
@@ -216,8 +209,8 @@ export default function PostInteractionBar({
               ? `Ort. Süre ${avgDuration > 60 ? `${Math.round(avgDuration / 60)}dk` : `${avgDuration}sn`}`
               : "Ort. Süre —"
             }
-            {engagementRate !== null ? ` · %${Math.min(engagementRate, 99)} etkileşim` : ""}
-            {` · ${formatCount(commentCount)} yorum`}
+            {engagementRate !== null ? ` %${Math.min(engagementRate, 99)} etkileşim` : ""}
+            {` ${formatCount(commentCount)} yorum`}
           </span>
         </button>
       ) : (
@@ -236,6 +229,7 @@ export default function PostInteractionBar({
         {/* Like */}
         <button
           onClick={handleLike}
+          data-hotkey="like"
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition",
             liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error"
@@ -248,6 +242,7 @@ export default function PostInteractionBar({
         {/* Comments */}
         <button
           onClick={openComments}
+          data-hotkey="comments"
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <MessageCircle className="h-[18px] w-[18px]" />
@@ -257,6 +252,7 @@ export default function PostInteractionBar({
         {/* Save */}
         <button
           onClick={handleSave}
+          data-hotkey="save"
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition",
             saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main"
@@ -269,6 +265,7 @@ export default function PostInteractionBar({
         {/* Share */}
         <button
           onClick={() => setShareOpen(true)}
+          data-hotkey="share"
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <ShareIcon className="h-[18px] w-[18px]" />

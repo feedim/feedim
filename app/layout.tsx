@@ -1,16 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
 import { AuthModalProvider } from "@/components/AuthModal";
 import FeedimAlertProvider from "@/components/FeedimAlert";
 import ScrollToTop from "@/components/ScrollToTop";
+import GlobalHotkeys from "@/components/GlobalHotkeys";
+import TopProgressBar from "@/components/TopProgressBar";
+import ModalsPreload from "@/components/ModalsPreload";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "latin-ext"],
-  display: "optional",
-});
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",
@@ -44,19 +42,24 @@ export const metadata: Metadata = {
   },
 };
 
+import AdsScriptLoader from "@/components/AdsScriptLoader";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning data-ads-enabled="0">
       <head>
         <meta charSet="utf-8" />
-        {/* Dark mode flash prevention + theme-color sync */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        {/* Dark mode flash prevention + theme-color sync + skeleton gate */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem('fdm-theme');var c={light:'#ffffff',dark:'#090909',dim:'#0e1520'};var r=m;if(m==='system')r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(r==='dark'||r==='dim'){document.documentElement.setAttribute('data-theme',r)}var t=document.querySelector('meta[name="theme-color"]');if(t&&c[r])t.setAttribute('content',c[r])}catch(e){}})()`,
+            __html: `(function(){try{var m=localStorage.getItem('fdm-theme');var c={light:'#ffffff',dark:'#090909',dim:'#0e1520'};var r=m;if(m==='system')r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(r==='dark'||r==='dim'){document.documentElement.setAttribute('data-theme',r)}var t=document.querySelector('meta[name="theme-color"]');if(t&&c[r])t.setAttribute('content',c[r])}catch(e){}try{var hasAuth=false;for(var k in localStorage){if(k.indexOf('sb-')===0&&k.indexOf('-auth-token')>0){if(localStorage.getItem(k)){hasAuth=true;break}}}if(!hasAuth){document.documentElement.setAttribute('data-skeletons-off','1')}}catch(e){}})()`,
           }}
         />
         <script
@@ -91,17 +94,22 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         <AuthModalProvider>
+          <Suspense fallback={null}>
+            <TopProgressBar />
+          </Suspense>
           <ScrollToTop />
+          <GlobalHotkeys />
+          <ModalsPreload />
           {children}
         </AuthModalProvider>
         <FeedimAlertProvider />
-        {/* Google AdSense */}
-        <Script src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1411343179923275" strategy="afterInteractive" crossOrigin="anonymous" />
+        {/* Google AdSense (loaded conditionally) */}
+        <AdsScriptLoader />
         {/* Google Analytics */}
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-H0J8RKSJ59" strategy="afterInteractive" />
-        <Script id="gtag-init" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-H0J8RKSJ59');` }} />
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-H0J8RKSJ59" strategy="lazyOnload" />
+        <Script id="gtag-init" strategy="lazyOnload" dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-H0J8RKSJ59');` }} />
       </body>
     </html>
   );

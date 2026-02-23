@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { Briefcase, ChevronRight, Check, Lock, Mail, Phone } from "lucide-react";
 import Modal from "./Modal";
 import { PROFESSIONAL_CATEGORIES } from "@/lib/constants";
@@ -135,6 +136,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 onClick={handleMakePublic}
                 disabled={makingPublic}
                 className="w-full t-btn accept disabled:opacity-50"
+                aria-label="Hesabı Herkese Aç"
               >
                 {makingPublic ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Hesabı Herkese Aç"}
               </button>
@@ -157,7 +159,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
               </p>
               <div className="space-y-2 pt-2">
                 <button
-                  onClick={() => { onClose(); router.push("/premium"); }}
+                  onClick={() => { onClose(); emitNavigationStart(); router.push("/premium"); }}
                   className="w-full t-btn accept"
                 >
                   Premium'a Göz At
@@ -249,6 +251,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 }}
                 disabled={!category || saving}
                 className="w-full t-btn accept disabled:opacity-40"
+                aria-label="Devam Et"
               >
                 {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : accountType === "creator" ? "Tamamla" : "Devam"}
               </button>
@@ -297,6 +300,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 onClick={handleComplete}
                 disabled={saving}
                 className="w-full t-btn accept disabled:opacity-40"
+                aria-label="Tamamla"
               >
                 {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Tamamla"}
               </button>
@@ -314,7 +318,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
             <p className="text-xs text-text-muted leading-relaxed">
               Hesabınız başarıyla profesyonel hesaba dönüştürüldü. Artık istatistiklerinize erişebilir ve profilinizde kategorinizi gösterebilirsiniz.
             </p>
-            <button onClick={() => { handleDone(); router.push("/dashboard/profile"); }} className="w-full t-btn accept">
+            <button onClick={() => { handleDone(); emitNavigationStart(); router.push("/dashboard/profile"); }} className="w-full t-btn accept">
               Profile Git
             </button>
           </div>

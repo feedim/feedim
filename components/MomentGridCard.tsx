@@ -2,7 +2,6 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Eye } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 
 interface MomentGridCardProps {
@@ -44,16 +43,8 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
 
       {/* View count — bottom left */}
       {moment.view_count !== undefined && moment.view_count > 0 && (
-        <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 text-white text-[0.6rem] font-medium">
-          <Eye className="h-3 w-3" />
-          {formatCount(moment.view_count)}
-        </div>
-      )}
-
-      {/* Duration badge — bottom right */}
-      {moment.video_duration && moment.video_duration > 0 && (
-        <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
-          {fmtDuration(moment.video_duration)}
+        <div className="absolute bottom-1.5 left-1.5 text-white text-[0.66rem] font-medium" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+          {formatCount(moment.view_count)} görüntülenme
         </div>
       )}
     </Link>

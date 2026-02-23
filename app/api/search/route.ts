@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     if (type === "all" || type === "users") {
       const { data: users } = await admin
         .from("profiles")
-        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio, follower_count")
+        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count")
         .eq("status", "active")
         .order("follower_count", { ascending: false })
         .limit(50);
@@ -68,8 +68,8 @@ export async function GET(req: NextRequest) {
         .from("posts")
         .select(`
           id, title, slug, excerpt, featured_image, reading_time,
-          like_count, comment_count, view_count, published_at, author_id, content_type, video_duration, video_thumbnail,
-          profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
+          like_count, comment_count, view_count, published_at, author_id, content_type, video_duration, video_thumbnail, video_url,
+          profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
         `)
         .eq("status", "published")
         .order("published_at", { ascending: false })
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
   if (searchType === "all" || searchType === "users") {
     const { data: users } = await supabase
       .from("profiles")
-      .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, bio, follower_count")
+      .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count")
       .eq("status", "active")
       .or(`username.ilike.%${q}%,full_name.ilike.%${q}%,name.ilike.%${q}%,surname.ilike.%${q}%`)
       .limit(50);
@@ -148,8 +148,8 @@ export async function GET(req: NextRequest) {
       .from("posts")
       .select(`
         id, title, slug, excerpt, featured_image, reading_time,
-        like_count, comment_count, published_at, author_id, content_type, video_duration, video_thumbnail,
-        profiles:user_id (user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, status, account_private)
+        like_count, comment_count, published_at, author_id, content_type, video_duration, video_thumbnail, video_url,
+        profiles:user_id (user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
       `)
       .eq("status", "published")
       .or(`title.ilike.%${q}%,excerpt.ilike.%${q}%`)

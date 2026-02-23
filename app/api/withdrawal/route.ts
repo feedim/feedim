@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Get profile with MFA and IBAN info
     const { data: profile } = await admin
       .from('profiles')
-      .select('coin_balance, spam_score, mfa_enabled, withdrawal_iban, withdrawal_holder_name')
+      .select('coin_balance, profile_score, mfa_enabled, withdrawal_iban, withdrawal_holder_name')
       .eq('user_id', user.id)
       .single();
 
@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Yetersiz bakiye' }, { status: 400 });
     }
 
-    // Block withdrawal for spammy accounts
-    if ((profile.spam_score || 0) >= 50) {
+    // Block withdrawal for low-score accounts
+    if ((profile.profile_score ?? 100) < 20) {
       return NextResponse.json(
         { error: 'Hesabınız inceleme altındadır. Çekim yapılamaz.' },
         { status: 403 }

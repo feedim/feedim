@@ -138,6 +138,7 @@ export default function VerifyMfaPage() {
           type="submit"
           className="t-btn accept w-full relative"
           disabled={loading || code.length < 6}
+          aria-label="MFA Kodunu Doğrula"
         >
           {loading ? <span className="loader" /> : "Doğrula"}
         </button>

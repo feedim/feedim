@@ -60,7 +60,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
     setFollowing(newFollowing);
 
     try {
-      const res = await fetch(`/api/users/${username}/follow`, { method: "POST" });
+      const res = await fetch(`/api/users/${username}/follow`, { method: "POST", keepalive: true });
       if (!res.ok) {
         const reverted = new Set(following);
         if (wasFollowing) reverted.add(userId);
@@ -95,7 +95,10 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
   if (dismissed || !loaded || users.length === 0) return null;
 
   return (
-    <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px]">
+    <div
+      className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px]"
+      style={{ ["--bg-tertiary" as any]: "var(--bg-secondary)" }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">Tanıyor olabileceğin kişiler</span>

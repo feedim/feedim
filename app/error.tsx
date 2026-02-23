@@ -26,7 +26,7 @@ export default function Error({
       </header>
 
       {/* Content */}
-      <main className="flex-1 flex items-start justify-center px-4 pt-16 pb-24">
+      <main className="flex-1 flex items-start justify-center px-4 pb-24">
         <div className="text-center max-w-sm">
           <h1 className="text-xl font-semibold mb-2">Bir şeyler yanlış gitti</h1>
           <p className="text-sm text-text-muted mb-8 leading-relaxed">

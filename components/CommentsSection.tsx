@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, memo } from "react";
-import { Send, Heart, MessageCircle } from "lucide-react";
+import { Send, Heart, MessageCircle, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthModal } from "@/components/AuthModal";
 import { useUser } from "@/components/UserContext";
@@ -93,8 +93,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
     e.preventDefault();
     if (!newComment.trim() || submitting) return;
 
-    const user = await requireAuth();
-    if (!user) return;
+    if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
 
     const content = newComment.trim();
     const parentId = replyTo?.id || null;
@@ -185,8 +184,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   };
 
   const handleLikeComment = useCallback(async (commentId: number) => {
-    const user = await requireAuth();
-    if (!user) return;
+    if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
 
     const isLiked = likedComments.has(commentId);
 
@@ -208,11 +206,14 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 
     updateCount(isLiked ? -1 : 1);
 
+    const userId = ctxUser?.id;
+    if (!userId) return;
+
     try {
       if (isLiked) {
-        await supabase.from("comment_likes").delete().eq("user_id", user.id).eq("comment_id", commentId);
+        await supabase.from("comment_likes").delete().eq("user_id", userId).eq("comment_id", commentId);
       } else {
-        await supabase.from("comment_likes").insert({ user_id: user.id, comment_id: commentId });
+        await supabase.from("comment_likes").insert({ user_id: userId, comment_id: commentId });
       }
     } catch {
       updateCount(isLiked ? 1 : -1);
@@ -222,7 +223,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
         return next;
       });
     }
-  }, [likedComments, requireAuth, supabase]);
+  }, [likedComments, ctxUser, requireAuth, supabase]);
 
   const getAuthorName = (comment: Comment) => {
     const p = comment.profiles;
@@ -243,14 +244,38 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
           </div>
         )}
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            maxLength={maxCommentLength}
-            placeholder="Yorumunuzu yazın..."
-            className="input-modern flex-1"
-          />
+          <div className="relative flex-1">
+            <textarea
+              data-hotkey="comment-input"
+              value={newComment}
+              onChange={(e) => {
+                setNewComment(e.target.value);
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
+                }
+              }}
+              maxLength={maxCommentLength}
+              placeholder="Yorumunuzu yazın..."
+              rows={1}
+              className="input-modern comment-textarea w-full pr-14 resize-none overflow-hidden"
+            />
+            {newComment.length >= 100 && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[0.66rem] tabular-nums text-text-muted/60 pointer-events-none">
+                {newComment.length}/{maxCommentLength}
+              </span>
+            )}
+          </div>
           <button
             type="submit"
             disabled={!newComment.trim() || submitting}
@@ -259,7 +284,6 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-xs text-text-muted mt-1 text-right">{newComment.length}/{maxCommentLength}</p>
       </form>
 
       {/* Comments list */}
@@ -312,11 +336,13 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-semibold">{getAuthorName(comment)}</span>
-          <span className="text-xs text-text-muted">{formatRelativeDate(comment.created_at)}</span>
+          <span className="text-[0.7rem] text-text-muted">{formatRelativeDate(comment.created_at)}</span>
         </div>
         <p className="text-sm text-text-secondary mt-0.5 break-words">{comment.content}</p>
         {comment.is_nsfw && (
-          <span className="inline-block text-xs text-amber-600 dark:text-amber-400 mt-0.5">İncelemede</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold bg-accent-main/10 text-accent-main mt-0.5">
+            <AlertTriangle className="h-3 w-3" /> Yorumunuz denetleniyor
+          </span>
         )}
         <div className="flex items-center gap-3 mt-1.5">
           <button

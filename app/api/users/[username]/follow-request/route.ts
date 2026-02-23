@@ -112,7 +112,7 @@ export async function GET(
   const requesterIds = requests.map(r => r.requester_id);
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("user_id, username, full_name, avatar_url, is_verified, premium_plan")
+    .select("user_id, username, full_name, avatar_url, is_verified, premium_plan, role")
     .in("user_id", requesterIds);
 
   const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));

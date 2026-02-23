@@ -3,11 +3,15 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
 import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
+import { getProfileSignals } from '@/lib/modSignals';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION, MOMENT_MAX_DURATION } from '@/lib/constants';
 import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
 import { moderateContent } from '@/lib/moderation';
+import { checkCopyrightUnified, computeContentHash, stripHtmlToText, normalizeForComparison, computeImageHashFromUrl, COPYRIGHT_THRESHOLDS } from '@/lib/copyright';
+import { sendEmail, getEmailIfEnabled, moderationReviewEmail } from '@/lib/email';
 import { revalidateTag } from 'next/cache';
+import { after } from 'next/server';
 import sanitizeHtml from 'sanitize-html';
 
 export async function POST(request: NextRequest) {
@@ -20,10 +24,14 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Check if user is admin (immune to moderation, copyright, rate limits)
+    const { data: userProfile } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
+    const isAdmin = userProfile?.role === 'admin';
+
     // Hourly post rate limit
     const plan = await getUserPlan(admin, user.id);
     const { allowed: postAllowed, limit: postLimit } = await checkHourlyPostLimit(admin, user.id, plan);
-    if (!postAllowed) {
+    if (!postAllowed && !isAdmin) {
       logRateLimitHit(admin, user.id, 'post', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
       return NextResponse.json(
         { error: `Saatlik gönderi limitine ulaştın (${postLimit}). Lütfen biraz bekle.` },
@@ -32,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash } = body;
+    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash, image_hash: clientImageHash, copyright_protected, sound_id, frame_hashes: clientFrameHashes, audio_hashes: clientAudioHashes } = body;
     const isVideo = content_type === 'video' || content_type === 'moment';
     const isMoment = content_type === 'moment';
 
@@ -114,20 +122,104 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Content moderation (only for published posts)
-    let moderationAction: 'allow' | 'moderation' | 'block' = 'allow';
-    let isNsfw = false;
-    if (status === 'published') {
-      const modResult = await moderateContent(trimmedTitle, sanitizedContent);
-      if (modResult.action === 'block') {
-        return NextResponse.json(
-          { error: modResult.reason || 'İçerik politikamıza aykırı içerik tespit edildi' },
-          { status: 400 }
-        );
+    // Server-side copyright_protected eligibility check
+    let copyrightProtectedFinal = copyright_protected === true;
+    if (copyrightProtectedFinal && !isAdmin) {
+      const { data: cpProfile } = await admin
+        .from('profiles')
+        .select('copyright_eligible')
+        .eq('user_id', user.id)
+        .single();
+      if (!cpProfile?.copyright_eligible) {
+        copyrightProtectedFinal = false;
       }
-      moderationAction = modResult.action;
-      if (moderationAction === 'moderation') {
-        isNsfw = true;
+    }
+
+    // Copyright check (only for published posts — fast, runs before AI moderation)
+    let copyrightFlagged = false;
+    let copyrightMatchId: number | null = null;
+    let copyrightSimilarity: number | null = null;
+    let copyrightMatchAuthorId: string | null = null;
+    let contentHash: string | null = null;
+    let imageHash: string | null = typeof clientImageHash === 'string' && clientImageHash.length === 16 ? clientImageHash : null;
+    let copyrightClaimStatus: string | null = null;
+
+    // Validate frame_hashes
+    const frameHashes: { frameIndex: number; hash: string }[] = Array.isArray(clientFrameHashes)
+      ? clientFrameHashes.filter((fh: any) => typeof fh.frameIndex === 'number' && typeof fh.hash === 'string' && fh.hash.length === 16).slice(0, 600)
+      : [];
+
+    // Validate audio_hashes
+    const audioHashes: { chunkIndex: number; hash: string }[] = Array.isArray(clientAudioHashes)
+      ? clientAudioHashes.filter((ah: any) => typeof ah.chunkIndex === 'number' && typeof ah.hash === 'string' && ah.hash.length === 16).slice(0, 600)
+      : [];
+
+    // Content moderation (only for published posts)
+    let moderationAction: 'allow' | 'moderation' = 'allow';
+    let isNsfw = false;
+    let modReason: string | null = null;
+    let modCategory: string | null = null;
+    if (status === 'published' && !isAdmin) {
+      // Unified copyright check with content-type routing (admin bypass)
+      try {
+        const { wordCount: wc } = calculateReadingTime(sanitizedContent);
+        const contentTypeVal = isMoment ? 'moment' : (isVideo ? 'video' : 'post');
+        const imgUrl = featured_image || (isVideo ? video_thumbnail : null);
+        if (!imageHash && imgUrl) imageHash = await computeImageHashFromUrl(imgUrl);
+
+        // Compute content hash for storage (body-only for posts and videos, title+body for moments)
+        const plainText = stripHtmlToText(sanitizedContent);
+        const normalizedForHash = contentTypeVal === 'moment'
+          ? normalizeForComparison(`${trimmedTitle} ${plainText}`)
+          : normalizeForComparison(plainText);
+        contentHash = normalizedForHash.split(/\s+/).filter(Boolean).length >= 8 ? computeContentHash(normalizedForHash) : null;
+
+        const copyrightResult = await checkCopyrightUnified(
+          admin, trimmedTitle, sanitizedContent, user.id, contentTypeVal, wc, {
+            featuredImage: featured_image || null,
+            videoUrl: isVideo ? (video_url || null) : null,
+            videoDuration: isVideo ? (video_duration || null) : null,
+            videoThumbnail: isVideo ? (video_thumbnail || null) : null,
+            imageHash,
+            frameHashes: frameHashes.length > 0 ? frameHashes : undefined,
+            audioHashes: audioHashes.length > 0 ? audioHashes : undefined,
+          },
+        );
+
+        if (copyrightResult.flagged) {
+          copyrightFlagged = true;
+          copyrightMatchId = copyrightResult.matchedPostId;
+          copyrightSimilarity = copyrightResult.similarity;
+          copyrightMatchAuthorId = copyrightResult.matchedAuthorId;
+          modReason = copyrightResult.reason;
+          modCategory = copyrightResult.category || 'copyright';
+          if (copyrightResult.matchType === 'exact') {
+            isNsfw = true;
+            moderationAction = 'moderation';
+          }
+        }
+      } catch (err) {
+        console.error('[Copyright] POST check error:', err);
+      }
+
+      // AI moderation — skip if already flagged by copyright (save cost)
+      if (!copyrightFlagged) {
+        let profileMeta: { profileScore?: number; spamScore?: number } = {};
+        try { profileMeta = await getProfileSignals(user.id); } catch {}
+        // Include featured image + video thumbnail in NSFW scan
+        let moderationHtml = sanitizedContent;
+        if (featured_image && typeof featured_image === 'string') moderationHtml += `<img src="${featured_image.replace(/"/g, '&quot;')}" />`;
+        if (isVideo && video_thumbnail && typeof video_thumbnail === 'string') moderationHtml += `<img src="${video_thumbnail.replace(/"/g, '&quot;')}" />`;
+        const modResult = await moderateContent(trimmedTitle, moderationHtml, {
+          contentType: isMoment ? 'moment' : (isVideo ? 'video' : 'post'),
+          ...profileMeta,
+        });
+        moderationAction = modResult.action;
+        if (moderationAction === 'moderation') {
+          isNsfw = true;
+          modReason = modResult.reason || null;
+          modCategory = modResult.category || null;
+        }
       }
     }
 
@@ -137,8 +229,10 @@ export async function POST(request: NextRequest) {
     // Generate excerpt
     const excerpt = generateExcerpt(sanitizedContent);
 
-    // Determine status — NSFW content is published but flagged, not held in moderation queue
-    const postStatus = status === 'published' ? 'published' : 'draft';
+    // Determine status — copyright stays published+nsfw, AI moderation holds in queue
+    const postStatus = status === 'published'
+      ? (moderationAction === 'moderation' && !copyrightFlagged ? 'moderation' : 'published')
+      : 'draft';
 
     // Server-side SEO
     const finalMetaTitle = (typeof meta_title === 'string' && meta_title.trim()) ? meta_title.trim() : generateMetaTitle(trimmedTitle, sanitizedContent);
@@ -169,6 +263,40 @@ export async function POST(request: NextRequest) {
       finalMetaKeywords = cands.split(', ')[0] || trimmedTitle;
     }
 
+    // Sound handling for moments
+    let resolvedSoundId: number | null = null;
+    if (isMoment) {
+      if (sound_id) {
+        // User selected an existing sound — verify it's active and increment usage
+        const { data: snd } = await admin.from('sounds').select('id, status').eq('id', sound_id).single();
+        if (snd && snd.status === 'active') {
+          resolvedSoundId = snd.id;
+          await admin.rpc('increment_field', { table_name: 'sounds', row_id: snd.id, field_name: 'usage_count', amount: 1 }).then(() => {}, () => {
+            // Fallback: direct update if rpc not available
+            admin.from('sounds').update({ usage_count: (snd as any).usage_count + 1 }).eq('id', snd.id).then(() => {}, () => {});
+          });
+        }
+      } else if (video_url && video_duration && video_duration > 0) {
+        // No sound selected — auto-create "original sound" (skip if no duration = likely no audio)
+        try {
+          const { data: profile } = await admin.from('profiles').select('username').eq('user_id', user.id).single();
+          const username = profile?.username || 'user';
+          const soundTitle = trimmedTitle
+            ? `${trimmedTitle.slice(0, 50)} - @${username}`
+            : `Orijinal ses - @${username}`;
+          const { data: origSound } = await admin.from('sounds').insert({
+            title: soundTitle,
+            audio_url: video_url,
+            duration: video_duration || null,
+            is_original: true,
+            created_by: user.id,
+            usage_count: 1,
+          }).select('id').single();
+          if (origSound) resolvedSoundId = origSound.id;
+        } catch {}
+      }
+    }
+
     // Insert post
     const { data: post, error: postError } = await admin
       .from('posts')
@@ -184,13 +312,17 @@ export async function POST(request: NextRequest) {
         video_duration: isVideo ? (video_duration || null) : null,
         video_thumbnail: isVideo ? (video_thumbnail || null) : null,
         blurhash: typeof blurhash === 'string' && blurhash.length > 0 ? blurhash : null,
+        sound_id: resolvedSoundId,
         status: postStatus,
         reading_time: isVideo ? null : readingTime,
-        word_count: isVideo ? 0 : wordCount,
+        word_count: wordCount,
         allow_comments: allow_comments !== false,
         is_for_kids: is_for_kids === true,
         is_nsfw: isNsfw,
-        moderation_due_at: isNsfw ? new Date(Date.now() + 2 * 60 * 1000).toISOString() : null,
+        copyright_protected: copyrightProtectedFinal,
+        moderation_reason: modReason,
+        moderation_category: modCategory,
+        moderation_due_at: (isNsfw || postStatus === 'moderation') ? new Date().toISOString() : null,
         published_at: postStatus === 'published' ? new Date().toISOString() : null,
         meta_title: finalMetaTitle,
         meta_description: finalMetaDescription,
@@ -201,6 +333,126 @@ export async function POST(request: NextRequest) {
 
     if (postError) {
       return NextResponse.json({ error: postError.message }, { status: 500 });
+    }
+
+    // AI moderation decision record
+    if (postStatus === 'moderation' && moderationAction === 'moderation') {
+      try {
+        const aiCode = String(Math.floor(100000 + Math.random() * 900000));
+        await admin.from('moderation_decisions').insert({
+          target_type: 'post', target_id: String(post.id), decision: 'flagged', reason: modReason || 'Feedim AI tarafından işaretlendi', moderator_id: 'system', decision_code: aiCode,
+        });
+      } catch {}
+    }
+
+    // Store copyright data separately (columns may not exist yet)
+    if (contentHash || copyrightMatchId || imageHash) {
+      try {
+        const copyrightData: Record<string, unknown> = {};
+        if (contentHash) copyrightData.content_hash = contentHash;
+        if (imageHash) copyrightData.image_hash = imageHash;
+        if (copyrightMatchId) copyrightData.copyright_match_id = copyrightMatchId;
+        if (copyrightSimilarity) copyrightData.copyright_similarity = copyrightSimilarity;
+        await admin.from('posts').update(copyrightData).eq('id', post.id);
+      } catch (err) {
+        console.error('[Copyright] Failed to store copyright data:', err);
+      }
+    }
+
+    // Store video frame hashes
+    if (frameHashes.length > 0 && (isVideo || isMoment)) {
+      try {
+        await admin.from('video_frame_hashes').insert(
+          frameHashes.map(fh => ({
+            post_id: post.id,
+            frame_index: fh.frameIndex,
+            frame_hash: fh.hash,
+          }))
+        );
+      } catch (err) {
+        console.error('[Copyright] Failed to store frame hashes:', err);
+      }
+    }
+
+    // Store audio fingerprints
+    if (audioHashes.length > 0 && (isVideo || isMoment)) {
+      try {
+        await admin.from('audio_fingerprints').insert(
+          audioHashes.map(ah => ({
+            post_id: post.id,
+            chunk_index: ah.chunkIndex,
+            chunk_hash: ah.hash,
+          }))
+        );
+      } catch (err) {
+        console.error('[Copyright] Failed to store audio fingerprints:', err);
+      }
+    }
+
+    // Copyright claim + verification handling
+    if (copyrightProtectedFinal && status === 'published') {
+      if (copyrightFlagged && copyrightMatchId && copyrightMatchAuthorId) {
+        // Eşleşme VAR → copyright_claim oluştur, post'u pending_verification yap
+        copyrightClaimStatus = 'pending_verification';
+        try {
+          await admin.from('copyright_claims').insert({
+            post_id: post.id,
+            claimant_id: user.id,
+            matched_post_id: copyrightMatchId,
+            matched_author_id: copyrightMatchAuthorId,
+            status: 'pending',
+            claim_type: 'ownership',
+            similarity_percent: copyrightSimilarity,
+            content_type: isMoment ? 'moment' : (isVideo ? 'video' : 'post'),
+          });
+          await admin.from('posts').update({
+            copyright_claim_status: 'pending_verification',
+          }).eq('id', post.id);
+        } catch (err) {
+          console.error('[Copyright] Failed to create copyright claim:', err);
+        }
+      } else {
+        // Eşleşme YOK → otomatik Feedim Telif Hakkı
+        try {
+          const { data: profile } = await admin.from('profiles').select('username').eq('user_id', user.id).single();
+          await admin.from('copyright_verifications').upsert({
+            post_id: post.id,
+            verified_by: user.id,
+            owner_name: profile?.username || 'Feedim Kullanıcısı',
+          }, { onConflict: 'post_id' });
+          await admin.from('posts').update({
+            copyright_claim_status: 'verified',
+          }).eq('id', post.id);
+        } catch (err) {
+          console.error('[Copyright] Failed to auto-verify:', err);
+        }
+      }
+    }
+
+    // Copyright strike counter — increment on any copyright flag (≥60%) — admin immune
+    if (copyrightFlagged && !isAdmin) {
+      try {
+        const { data: profile } = await admin
+          .from('profiles')
+          .select('copyright_strike_count')
+          .eq('user_id', user.id)
+          .single();
+        const newCount = (profile?.copyright_strike_count || 0) + 1;
+        const strikeUpdate: Record<string, unknown> = { copyright_strike_count: newCount };
+        // 10 strikes → copyright revoked + account goes to moderation
+        if (newCount >= 10) {
+          strikeUpdate.status = 'moderation';
+          try {
+            const strikeCode = String(Math.floor(100000 + Math.random() * 900000));
+            await admin.from('moderation_decisions').insert({
+              target_type: 'user', target_id: user.id, decision: 'moderation', reason: `Telif hakkı ihlali: ${newCount} strike`, moderator_id: 'system', decision_code: strikeCode,
+            });
+          } catch {}
+        }
+        await admin.from('profiles').update(strikeUpdate).eq('user_id', user.id);
+      } catch (err) {
+        console.error('[Copyright] Strike increment failed:', err);
+      }
     }
 
     // Handle tags
@@ -295,9 +547,85 @@ export async function POST(request: NextRequest) {
 
     const response: Record<string, unknown> = { post };
     if (isNsfw) {
+      // System notification: post is under review
+      try {
+        await createNotification({
+          admin,
+          user_id: user.id,
+          actor_id: user.id,
+          type: 'moderation_review',
+          object_type: 'post',
+          object_id: post.id,
+          content: 'İçeriğiniz inceleniyor. Detayları görmek için tıklayın.',
+        });
+        // Send moderation review email
+        const email = await getEmailIfEnabled(user.id, 'moderation_review');
+        if (email) {
+          const tpl = moderationReviewEmail(trimmedTitle, slug);
+          await sendEmail({ to: email, ...tpl, template: 'moderation_review', userId: user.id });
+        }
+      } catch {}
       response.moderation = true;
-      response.message = 'Gönderiniz yayınlandı ancak incelemeye alındı. Moderatörler incelediğinde herkese açılacak.';
+      response.message = 'Gönderiniz yayınlandı, inceleme: ' + (modReason || 'riskli içerik');
     }
+    // Notify original content author about copyright match (both NSFW and badge-only)
+    if (copyrightFlagged && copyrightMatchAuthorId && copyrightMatchId) {
+      try {
+        await createNotification({
+          admin,
+          user_id: copyrightMatchAuthorId,
+          actor_id: copyrightMatchAuthorId,
+          type: 'copyright_similar_detected',
+          object_type: 'post',
+          object_id: post.id,
+          content: `Telif hakkı korumalı içeriğinize benzer bir içerik tespit edildi (%${copyrightSimilarity || 0}). İçerik engellendi. Görüntülemek için tıkla.`,
+        });
+      } catch {}
+    }
+    // Notify the poster if verification is needed
+    if (copyrightClaimStatus === 'pending_verification') {
+      try {
+        await createNotification({
+          admin,
+          user_id: user.id,
+          actor_id: user.id,
+          type: 'copyright_verification_needed',
+          object_type: 'post',
+          object_id: post.id,
+          content: 'İçeriğiniz mevcut bir telif hakkı korumalı içerikle eşleşti. Doğrulama formu doldurmanız gerekmektedir.',
+        });
+      } catch {}
+    }
+    // Trigger HLS transcode for video posts (runs after response is sent)
+    if (isVideo && postStatus === 'published' && video_url && post.id) {
+      const transcodeWorkerUrl = process.env.TRANSCODE_WORKER_URL;
+      const transcodeSecret = process.env.TRANSCODE_CALLBACK_SECRET;
+      if (transcodeWorkerUrl && transcodeSecret) {
+        // Mark video as processing
+        await admin.from('posts').update({ video_status: 'processing' }).eq('id', post.id);
+        after(async () => {
+          try {
+            await fetch(transcodeWorkerUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${transcodeSecret}`,
+              },
+              body: JSON.stringify({
+                postId: post.id,
+                videoUrl: video_url,
+                userId: user.id,
+                callbackUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/api/posts/${post.id}/transcode-complete`,
+              }),
+            });
+          } catch (err) {
+            console.error('[Transcode] Failed to trigger worker:', err);
+            await admin.from('posts').update({ video_status: 'error' }).eq('id', post.id);
+          }
+        });
+      }
+    }
+
     return NextResponse.json(response, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Sunucu hatasi' }, { status: 500 });

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Camera, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import EditableAvatar from "@/components/EditableAvatar";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import Modal from "./Modal";
@@ -13,17 +14,22 @@ import { normalizeUsername, filterNameInput } from "@/lib/utils";
 import { isProfessional, getCategoryLabel } from "@/lib/professional";
 import { Briefcase, ChevronRight, Mail, Phone } from "lucide-react";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 
 interface EditProfileModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
+  openAvatarPicker?: boolean;
 }
 
-export default function EditProfileModal({ open, onClose, onSave }: EditProfileModalProps) {
+export default function EditProfileModal({ open, onClose, onSave, openAvatarPicker }: EditProfileModalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const avatarLoaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const avatarLoadStartRef = useRef<number>(0);
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [username, setUsername] = useState("");
@@ -33,10 +39,14 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
   const [gender, setGender] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string | null>(null);
+  const [pendingAvatarRemove, setPendingAvatarRemove] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [originalUsername, setOriginalUsername] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [premiumPlan, setPremiumPlan] = useState<string | null>(null);
+  const [role, setRole] = useState<string | undefined>(undefined);
   const [accountType, setAccountType] = useState("personal");
   const [professionalCategory, setProfessionalCategory] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -47,11 +57,39 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarPickQueuedRef = useRef(false);
   const supabase = createClient();
 
   useEffect(() => {
     if (open) loadProfile();
   }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingAvatarPreview) URL.revokeObjectURL(pendingAvatarPreview);
+    };
+  }, [pendingAvatarPreview]);
+
+  useEffect(() => {
+    if (!open) {
+      avatarPickQueuedRef.current = false;
+      return;
+    }
+    if (openAvatarPicker) {
+      avatarPickQueuedRef.current = true;
+    }
+  }, [open, openAvatarPicker]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!avatarPickQueuedRef.current) return;
+    if (loading || avatarUploading || avatarLoading) return;
+    const t = setTimeout(() => {
+      fileInputRef.current?.click();
+      avatarPickQueuedRef.current = false;
+    }, 0);
+    return () => clearTimeout(t);
+  }, [open, loading, avatarUploading, avatarLoading]);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -72,6 +110,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
         setAvatarUrl(p.avatar_url);
         setIsVerified(p.is_verified || false);
         setPremiumPlan(p.premium_plan || null);
+        setRole(p.role || undefined);
         setAccountType(p.account_type || "personal");
         setProfessionalCategory(p.professional_category || "");
         setContactEmail(p.contact_email || "");
@@ -123,34 +162,53 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
   };
 
   const handleCroppedUpload = async (croppedFile: File) => {
-    setAvatarUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", croppedFile);
-      const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok) {
-        setAvatarUrl(data.url);
-      } else {
-        feedimAlert("error", data.error || "Yükleme hatası");
-      }
-    } catch {
-      feedimAlert("error", "Bir hata oluştu");
-    } finally {
-      setAvatarUploading(false);
-    }
+    if (pendingAvatarPreview) URL.revokeObjectURL(pendingAvatarPreview);
+    setPendingAvatarFile(croppedFile);
+    setPendingAvatarPreview(URL.createObjectURL(croppedFile));
+    setPendingAvatarRemove(false);
   };
 
   const handleRemoveAvatar = async () => {
-    const res = await fetch("/api/profile/avatar", { method: "DELETE" });
-    if (res.ok) {
-      setAvatarUrl(null);
-    }
+    if (pendingAvatarPreview) URL.revokeObjectURL(pendingAvatarPreview);
+    setPendingAvatarFile(null);
+    setPendingAvatarPreview(null);
+    setPendingAvatarRemove(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      let newAvatarUrl = avatarUrl;
+      if (pendingAvatarRemove) {
+        const res = await fetch("/api/profile/avatar", { method: "DELETE" });
+        if (res.ok) newAvatarUrl = null;
+      }
+      if (pendingAvatarFile) {
+        setAvatarUploading(true);
+        setAvatarLoading(true);
+        avatarLoadStartRef.current = Date.now();
+        try {
+          const formData = new FormData();
+          formData.append("file", pendingAvatarFile);
+          const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
+          const data = await res.json();
+          if (res.ok) {
+            newAvatarUrl = data.url;
+          } else {
+            feedimAlert("error", data.error || "Yükleme hatası");
+          }
+        } catch {
+          feedimAlert("error", "Bir hata oluştu");
+        } finally {
+          const elapsed = Date.now() - avatarLoadStartRef.current;
+          const remain = Math.max(0, 2000 - elapsed);
+          if (avatarLoaderTimerRef.current) clearTimeout(avatarLoaderTimerRef.current);
+          await new Promise(r => setTimeout(r, remain));
+          setAvatarLoading(false);
+          setAvatarUploading(false);
+        }
+      }
+
       const [res] = await Promise.all([
         fetch("/api/profile", {
           method: "PUT",
@@ -170,7 +228,12 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
       ]);
       const data = await res.json();
       if (res.ok) {
-        onSave({ ...data.profile, avatar_url: avatarUrl });
+        setAvatarUrl(newAvatarUrl);
+        setPendingAvatarFile(null);
+        setPendingAvatarRemove(false);
+        if (pendingAvatarPreview) URL.revokeObjectURL(pendingAvatarPreview);
+        setPendingAvatarPreview(null);
+        onSave({ ...data.profile, avatar_url: newAvatarUrl });
       } else {
         feedimAlert("error", data.error || "Güncelleme hatası");
       }
@@ -196,6 +259,7 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
           onClick={handleSave}
           disabled={saving || loading}
           className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
+          aria-label="Profili Kaydet"
         >
           {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
         </button>
@@ -203,36 +267,32 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
     >
       <div className="px-4 py-4 space-y-5">
         {loading ? (
-          <SettingsItemSkeleton count={4} />
+          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
         ) : (
           <>
             {/* Avatar */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-20 h-20 rounded-full overflow-hidden cursor-pointer hover:opacity-80 transition"
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <img className="default-avatar-auto w-full h-full object-cover" alt="" />
-                  )}
-                </button>
-                <div className="absolute bottom-0 right-0 w-7 h-7 bg-accent-main text-white rounded-full flex items-center justify-center shadow-lg pointer-events-none">
-                  {avatarUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-                </div>
+                <EditableAvatar
+                  src={pendingAvatarRemove ? null : (pendingAvatarPreview || avatarUrl)}
+                  alt=""
+                  sizeClass="w-20 h-20"
+                  editable={!avatarUploading && !avatarLoading}
+                  loading={avatarLoading}
+                  onClick={() => { if (!avatarUploading && !avatarLoading) fileInputRef.current?.click(); }}
+                  onLoad={() => setAvatarLoading(false)}
+                  onError={() => setAvatarLoading(false)}
+                />
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1">
-                  <p className="text-[1rem] font-bold">{username || "kullanıcı"}</p>
-                  {isVerified && <VerifiedBadge variant={getBadgeVariant(premiumPlan)} />}
+                  <p className="text-[1.1rem] font-bold">{username || "kullanıcı"}</p>
+                  {isVerified && <VerifiedBadge variant={getBadgeVariant(premiumPlan)} role={role} />}
                 </div>
                 {avatarUrl && (
-                  <button onClick={handleRemoveAvatar} className="text-xs text-error flex items-center gap-1 mt-1 hover:underline">
-                    <Trash2 className="h-3 w-3" /> Avatarı kaldır
+                  <button onClick={handleRemoveAvatar} className="text-xs text-error font-semibold flex items-center gap-1 mt-1 hover:underline">
+                    Avatarı kaldır
                   </button>
                 )}
               </div>
@@ -266,9 +326,9 @@ export default function EditProfileModal({ open, onClose, onSave }: EditProfileM
                 {!usernameLockedUntil && usernameAvailable !== null && username !== originalUsername && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2">
                     {usernameAvailable ? (
-                      <svg className="h-5 w-5 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      <svg className="h-4 w-4 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                     ) : (
-                      <svg className="h-5 w-5 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      <svg className="h-4 w-4 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     )}
                   </span>
                 )}

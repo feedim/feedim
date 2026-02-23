@@ -24,7 +24,7 @@ function calculateCoinEarning(opts: {
   hasSaved: boolean;
   hasShared: boolean;
   authorVerified: boolean;
-  authorTrustLevel: number;
+  authorProfileScore: number;
 }): number {
   let coins = COIN_BASE_EARNING;
 
@@ -41,7 +41,7 @@ function calculateCoinEarning(opts: {
 
   // Author multipliers
   if (opts.authorVerified) coins *= 1.2;
-  else if (opts.authorTrustLevel >= 2) coins *= 1.1;
+  else if (opts.authorProfileScore >= 40) coins *= 1.1;
 
   return Math.round(coins);
 }
@@ -137,7 +137,7 @@ export async function POST(
             admin.from('coin_transactions').select('amount')
               .eq('user_id', post.author_id).eq('type', 'read_earning')
               .gte('created_at', todayStart.toISOString()),
-            admin.from('profiles').select('coin_balance, total_earned, is_verified, trust_level, spam_score')
+            admin.from('profiles').select('coin_balance, total_earned, is_verified, profile_score')
               .eq('user_id', post.author_id).single(),
             admin.from('likes').select('id', { count: 'exact', head: true })
               .eq('post_id', postId).eq('user_id', user.id),
@@ -151,8 +151,8 @@ export async function POST(
 
           const dailyTotal = (todayEarnings || []).reduce((sum, t) => sum + t.amount, 0);
 
-          // Block earning if author spam score is too high
-          if ((authorProfile?.spam_score || 0) >= SPAM_THRESHOLDS.earningStop) {
+          // Block earning if author profile score is too low
+          if ((authorProfile?.profile_score ?? 100) < 15) {
             // Author flagged — no earning
           } else if (dailyTotal < COIN_DAILY_LIMIT && authorProfile) {
             coinsEarned = calculateCoinEarning({
@@ -162,7 +162,7 @@ export async function POST(
               hasSaved: (saveCount || 0) > 0,
               hasShared: (shareCount || 0) > 0,
               authorVerified: authorProfile.is_verified || false,
-              authorTrustLevel: authorProfile.trust_level || 0,
+              authorProfileScore: authorProfile.profile_score || 0,
             });
 
             // Cap to not exceed daily limit

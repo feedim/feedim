@@ -7,6 +7,7 @@ import { VALIDATION } from '@/lib/constants';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const admin = createAdminClient();
     const q = request.nextUrl.searchParams.get('q') || '';
     const followed = request.nextUrl.searchParams.get('followed');
 
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
 
     const limit = Math.min(Number(request.nextUrl.searchParams.get('limit')) || 20, 100);
 
+    // Best-effort cleanup: remove tags with 0 posts
+    void admin.from('tags').delete().eq('post_count', 0).then(() => {});
+
     let query = supabase
       .from('tags')
       .select('id, name, slug, post_count')
@@ -37,7 +41,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data, error } = await query;
+    // Only return tags that have at least 1 post
+    const { data, error } = await query.gt('post_count', 0);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -100,7 +105,7 @@ export async function POST(request: NextRequest) {
     // Name and slug are now identical (social media style)
     const slug = sanitizedName;
 
-    // Use admin client to bypass RLS for tag creation
+    // Use admin client to bypass RLS for lookup only
     const admin = createAdminClient();
 
     // Check if exists
@@ -113,18 +118,8 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return NextResponse.json({ tag: existing });
     }
-
-    const { data: newTag, error } = await admin
-      .from('tags')
-      .insert({ name: sanitizedName, slug })
-      .select('id, name, slug')
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ tag: newTag }, { status: 201 });
+    // Do not create tags here; they will be created when a post is published
+    return NextResponse.json({ tag: { id: slug, name: sanitizedName, slug, post_count: 0, virtual: true } }, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }

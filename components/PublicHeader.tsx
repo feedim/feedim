@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { ArrowLeft } from "lucide-react";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +47,7 @@ export default function PublicHeader({ variant = "back", backLabel = "Geri" }: P
             <button
               onClick={() => {
                 if (window.history.length > 2) router.back();
-                else router.push("/");
+                else { emitNavigationStart(); router.push("/"); }
               }}
               className="flex items-center gap-2 text-text-muted hover:text-text-primary transition"
             >

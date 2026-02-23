@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {useParams, useRouter, useSearchParams } from "next/navigation";
 import { Search, X, Hash, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
@@ -11,6 +11,8 @@ import { PostGridSkeleton, UserListSkeleton } from "@/components/Skeletons";
 import { cn } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
+import { useUser } from "@/components/UserContext";
+import { feedimAlert } from "@/components/FeedimAlert";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowButton from "@/components/FollowButton";
 
@@ -30,6 +32,7 @@ interface TagPost {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 
@@ -42,12 +45,14 @@ interface TagUser {
   avatar_url?: string;
   is_verified?: boolean;
   premium_plan?: string | null;
+  role?: string;
   bio?: string;
 }
 
 type TagTab = "popular" | "latest" | "posts" | "users";
 
 export default function TagPage() {
+  useSearchParams();
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
 
@@ -71,6 +76,7 @@ export default function TagPage() {
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { requireAuth } = useAuthModal();
+  const { user: currentUser } = useUser();
 
   const tabs: { key: TagTab; label: string }[] = [
     { key: "popular", label: "Popüler" },
@@ -177,17 +183,28 @@ export default function TagPage() {
     setLoadingMore(false);
   };
 
-  const handleFollow = async () => {
+  const doTagFollow = async () => {
     if (!tagInfo) return;
-    const user = await requireAuth();
-    if (!user) return;
     const wasFollowing = isFollowing;
     setIsFollowing(!wasFollowing);
 
-    const res = await fetch(`/api/tags/${tagInfo.id}/follow`, { method: "POST" });
-    if (!res.ok) {
-      setIsFollowing(wasFollowing);
+    fetch(`/api/tags/${tagInfo.id}/follow`, { method: "POST", keepalive: true }).then(res => {
+      if (!res.ok) setIsFollowing(wasFollowing);
+    }).catch(() => setIsFollowing(wasFollowing));
+  };
+
+  const handleFollow = async () => {
+    if (!tagInfo) return;
+    if (!currentUser) { const user = await requireAuth(); if (!user) return; }
+
+    if (isFollowing) {
+      feedimAlert("question", `#${tagInfo.name} takibinden çıkmak istiyor musunuz?`, {
+        showYesNo: true,
+        onYes: doTagFollow,
+      });
+      return;
     }
+    doTagFollow();
   };
 
   // Search within tag
@@ -228,6 +245,7 @@ export default function TagPage() {
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-text-muted pointer-events-none" />
           <input
+            data-hotkey="search"
             ref={inputRef}
             type="text"
             value={searchQuery}
@@ -309,7 +327,7 @@ export default function TagPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
                         <p className="text-[0.9rem] font-semibold truncate group-hover:underline">{displayName}</p>
-                        {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} />}
+                        {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} role={u.role} />}
                       </div>
                       <p className="text-xs text-text-muted truncate">@{u.username}</p>
                       {u.bio && <p className="text-[0.72rem] text-text-muted mt-0.5 line-clamp-1">{u.bio}</p>}

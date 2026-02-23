@@ -40,7 +40,7 @@ export default async function ProfileLayout({ children }: { children: React.Reac
         <AmbientLight />
         <Sidebar />
         <main className="md:ml-[240px] min-h-screen pb-20 md:pb-0">
-          <div className="flex-1 min-w-0 max-w-[600px] mx-auto min-h-screen">
+          <div className="flex-1 min-w-0 max-w-[565px] mx-auto min-h-screen">
             {children}
           </div>
         </main>

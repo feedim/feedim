@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   calculateProfileScore,
   calculateSpamScore,
-  calculateTrustLevel,
+  checkCopyrightEligibility,
   type ProfileData,
   type ScoreInputs,
   type PostStat,
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-    const cols = "user_id, avatar_url, bio, email_verified, phone_verified, website, birth_date, gender, full_name, account_type, is_verified, is_premium, follower_count, following_count, post_count, status, created_at, shadow_banned, total_earned, total_views_received, last_active_at";
+    const cols = "user_id, role, avatar_url, bio, email_verified, phone_verified, website, birth_date, gender, full_name, account_type, is_verified, is_premium, follower_count, following_count, post_count, status, created_at, shadow_banned, total_earned, total_views_received, last_active_at, copyright_strike_count, copyright_eligible, copyright_revoked_by";
     const { data: users, error: usersError } = await admin
       .from("profiles")
       .select(cols)
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ updated: 0 });
     }
 
-    const scoreResults: { userId: string; profileScore: number; spamScore: number; trustLevel: number }[] = [];
+    const scoreResults: { userId: string; profileScore: number; spamScore: number; copyrightEligible?: boolean; copyrightEligibleSince?: string }[] = [];
 
     for (let i = 0; i < targetUsers.length; i += 100) {
       const batch = targetUsers.slice(i, i + 100);
@@ -55,6 +55,12 @@ export async function GET(request: NextRequest) {
       const batchResults = await Promise.all(
         batch.map(async (user) => {
           const userId = user.user_id;
+
+          // Admin always gets max score, zero spam
+          if (user.role === 'admin') {
+            return { userId, profileScore: 100, spamScore: 0 };
+          }
+
           const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
           const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
           const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -86,8 +92,10 @@ export async function GET(request: NextRequest) {
             withdrawalData,         // 23
             followerIdsData,        // 24
             followingIdsData,       // 25
-            unfollowCycleData,      // 26
-            nsfwPostCountData,      // 27
+            rejectedNsfwData,       // 26
+            likedOtherPostData,     // 31
+            savedOtherPostData,     // 32
+            commentedOnOtherData,   // 33
             profileVisitData,       // 28
             postAndDeleteData,      // 29
           ] = await Promise.all([
@@ -125,14 +133,13 @@ export async function GET(request: NextRequest) {
             admin.from("posts").select("word_count")
               .eq("author_id", userId).eq("status", "published")
               .order("created_at", { ascending: false }).limit(20),
-            // 11. Post stats (with id + mentions + title + featured_image)
+            // 11. Post stats (with id + mentions + title + featured_image + content_type + video_thumbnail)
             admin.from("posts")
-              .select("id, like_count, comment_count, save_count, share_count, unique_view_count, trending_score, word_count, mentions, title, featured_image")
+              .select("id, like_count, comment_count, save_count, share_count, unique_view_count, trending_score, word_count, mentions, title, featured_image, content_type, video_thumbnail")
               .eq("author_id", userId).eq("status", "published")
               .order("created_at", { ascending: false }).limit(50),
-            // 12. Qualified reads
-            admin.from("post_views").select("id", { count: "exact", head: true })
-              .in("post_id", [userId]).eq("is_qualified_read", true),
+            // 12. PLACEHOLDER — qualified reads moved to Phase 2 (needs postIds)
+            Promise.resolve({ count: 0 } as any),
             // 13. Comment likes total
             admin.from("comments").select("like_count")
               .eq("author_id", userId).eq("status", "approved"),
@@ -178,12 +185,17 @@ export async function GET(request: NextRequest) {
             // 25. Following IDs (sample for mutual)
             admin.from("follows").select("following_id")
               .eq("follower_id", userId).limit(200),
-            // 26. Follow/unfollow cycle (unfollow < 48h after follow, last 7 days)
-            admin.from("follows").select("id", { count: "exact", head: true })
-              .eq("follower_id", userId).gte("unfollowed_at", sevenDaysAgo),
-            // 27. NSFW post count (sürekli NSFW içerik paylaşımı tespiti)
+            // 26. Rejected NSFW posts — moderatör tarafından reddedilen NSFW postlar
             admin.from("posts").select("id", { count: "exact", head: true })
-              .eq("author_id", userId).eq("status", "published").eq("is_nsfw", true),
+              .eq("author_id", userId).eq("status", "removed").eq("is_nsfw", true),
+            // 31. Consumer: liked other posts
+            admin.from("likes").select("id", { count: "exact", head: true })
+              .eq("user_id", userId),
+            // 32. Consumer: saved other posts (bookmarks tablosu)
+            admin.from("bookmarks").select("id", { count: "exact", head: true })
+              .eq("user_id", userId),
+            // 33. PLACEHOLDER — commented on other posts calculated from existing data
+            Promise.resolve({ count: 0 } as any),
             // 28. Profile visits (son 30 gün — farklı ziyaretçiler)
             admin.from("profile_visits").select("visitor_id")
               .eq("visited_id", userId).gte("created_at", thirtyDaysAgo).limit(500),
@@ -223,6 +235,8 @@ export async function GET(request: NextRequest) {
             trending_score: p.trending_score || 0,
             word_count: p.word_count || 0,
             mention_count: Array.isArray(p.mentions) ? p.mentions.length : 0,
+            content_type: p.content_type || 'post',
+            has_media: !!(p.featured_image || p.video_thumbnail),
           }));
           const postIds = postStats.map(p => p.id).filter(Boolean);
 
@@ -268,17 +282,24 @@ export async function GET(request: NextRequest) {
           }
           const activeDaysLast30 = loginDays.size;
 
-          // Login streak (consecutive days ending today)
+          // Login streak (consecutive days ending today — 1 gün toleranslı)
           const today = now.toISOString().slice(0, 10);
-          const sortedDays = Array.from(loginDays).sort().reverse();
+          const loginDaySet = new Set(loginDays);
           let loginStreak = 0;
+          let graceDaysUsed = 0;
+          const maxGrace = 1; // 1 gün atlama toleransı
           const todayDate = new Date(today);
-          for (let d = 0; d < 60; d++) {
+          for (let d = 0; d < 90; d++) {
             const expected = new Date(todayDate);
             expected.setDate(expected.getDate() - d);
             const exp = expected.toISOString().slice(0, 10);
-            if (sortedDays.includes(exp)) loginStreak++;
-            else break;
+            if (loginDaySet.has(exp)) {
+              loginStreak++;
+            } else {
+              graceDaysUsed++;
+              if (graceDaysUsed > maxGrace) break;
+              // Tolerans günü — streak kırılmaz ama sayılmaz
+            }
           }
 
           // Follower loss
@@ -319,9 +340,14 @@ export async function GET(request: NextRequest) {
           const avgMentionPerPost = postStats.length > 0
             ? postStats.reduce((a, p) => a + p.mention_count, 0) / postStats.length : 0;
 
-          // NSFW post ratio
-          const nsfwPostCount = nsfwPostCountData.count ?? 0;
-          const nsfwPostRatio = publishedPostCount > 0 ? nsfwPostCount / publishedPostCount : 0;
+          // Rejected NSFW posts — moderatör tarafından reddedilen NSFW postlar
+          const rejectedNsfwPostCount = rejectedNsfwData.count ?? 0;
+
+          // Consumer (reader) signals
+          const likedOtherPostCount = likedOtherPostData.count ?? 0;
+          const savedOtherPostCount = savedOtherPostData.count ?? 0;
+          // commentedOnOtherPostCount Phase 2'de postComments'tan hesaplanacak
+          let commentedOnOtherPostCount = 0;
 
           // Profile visits (son 30 gün)
           const profileVisits = profileVisitData.data || [];
@@ -333,9 +359,10 @@ export async function GET(request: NextRequest) {
           // ═══ v4: Content Quality Penalty Signals ═══
           const postAndDeleteCount = postAndDeleteData.count ?? 0;
 
-          // Low-effort: word_count < 10
-          const lowEffortPosts = postStats.filter(p => p.word_count < 10).length;
-          const lowEffortPostRatio = publishedPostCount > 0 ? lowEffortPosts / publishedPostCount : 0;
+          // Low-effort: word_count < 10 — video/moment hariç (kısa kelime doğal)
+          const textOnlyPosts = postStats.filter(p => p.content_type === 'post' || !p.content_type);
+          const lowEffortPosts = textOnlyPosts.filter(p => p.word_count < 10).length;
+          const lowEffortPostRatio = textOnlyPosts.length > 0 ? lowEffortPosts / textOnlyPosts.length : 0;
 
           // Duplicate content: posts with identical titles
           const rawPosts = postStatsData.data || [];
@@ -347,11 +374,13 @@ export async function GET(request: NextRequest) {
           }
           const duplicateContentCount = Array.from(titleMap.values()).filter(c => c >= 2).reduce((a, c) => a + c, 0);
 
-          // One-line no-media posts: word_count < 30, no featured_image
+          // One-line no-media posts: word_count < 30, no featured_image/video_thumbnail
+          // Video/moment postlar doğası gereği kısa metin + medya olduğundan hariç tutulur
           const oneLineNoMediaPosts = rawPosts.filter(
-            (p: any) => (p.word_count || 0) < 30 && !p.featured_image
+            (p: any) => (p.content_type === 'post' || !p.content_type) &&
+              (p.word_count || 0) < 30 && !p.featured_image && !p.video_thumbnail
           ).length;
-          const oneLineNoMediaPostRatio = publishedPostCount > 0 ? oneLineNoMediaPosts / publishedPostCount : 0;
+          const oneLineNoMediaPostRatio = textOnlyPosts.length > 0 ? oneLineNoMediaPosts / textOnlyPosts.length : 0;
 
           // Weird character detection (zalgo, excessive emoji, unicode spam)
           const weirdCharRegex = /[\u0300-\u036f]{3,}|[\u2000-\u200f]|[\u2028-\u202f]|[\u0e00-\u0e7f]{5,}|(.)\1{5,}/;
@@ -359,13 +388,13 @@ export async function GET(request: NextRequest) {
             const title = (p as any).title || "";
             return weirdCharRegex.test(title);
           }).length;
-          const weirdCharPostRatio = publishedPostCount > 0 ? weirdCharPosts / publishedPostCount : 0;
+          const weirdCharPostRatio = textOnlyPosts.length > 0 ? weirdCharPosts / textOnlyPosts.length : 0;
 
-          // ═══ PHASE 2: Queries depending on Phase 1 (3 parallel) ═══
-          const [followerTrustData, readDurationData, postCommentsData] = await Promise.all([
+          // ═══ PHASE 2: Queries depending on Phase 1 (4 parallel) ═══
+          const [followerTrustData, readDurationData, postCommentsData, qualifiedReadsPhase2] = await Promise.all([
             // Follower trust avg
             followerIds.length > 0
-              ? admin.from("profiles").select("trust_level")
+              ? admin.from("profiles").select("profile_score")
                   .in("user_id", followerIds.slice(0, 100))
               : Promise.resolve({ data: [] as any[] }),
             // Avg read duration on user's posts
@@ -380,12 +409,22 @@ export async function GET(request: NextRequest) {
                   .in("post_id", postIds.slice(0, 50))
                   .eq("status", "approved").limit(1000)
               : Promise.resolve({ data: [] as any[] }),
+            // Qualified reads (BUG FIX: was using userId as post_id, now uses postIds)
+            postIds.length > 0
+              ? admin.from("post_views").select("id", { count: "exact", head: true })
+                  .in("post_id", postIds.slice(0, 50))
+                  .eq("is_qualified_read", true)
+              : Promise.resolve({ count: 0 } as any),
           ]);
 
-          // Network trust avg
-          const trustValues = (followerTrustData.data || []).map((p: any) => p.trust_level || 0);
-          const networkTrustAvg = trustValues.length > 0
-            ? trustValues.reduce((a: number, b: number) => a + b, 0) / trustValues.length : 0;
+          // Qualified reads (Phase 2 — doğru postIds ile)
+          const qualifiedReadCount = qualifiedReadsPhase2.count ?? 0;
+
+          // Network trust avg (based on follower profile scores, normalized to 0-5 scale)
+          const followerScores = (followerTrustData.data || []).map((p: any) => p.profile_score || 0);
+          const avgFollowerScore = followerScores.length > 0
+            ? followerScores.reduce((a: number, b: number) => a + b, 0) / followerScores.length : 0;
+          const networkTrustAvg = avgFollowerScore / 20; // 0-100 → 0-5 scale
 
           // Avg read duration
           const durations = (readDurationData.data || []).map((v: any) => v.read_duration || 0);
@@ -397,6 +436,9 @@ export async function GET(request: NextRequest) {
           const totalPostComments = postComments.length;
           const selfComments = postComments.filter((c: any) => c.author_id === userId).length;
           const selfCommentRatio = totalPostComments > 0 ? selfComments / totalPostComments : 0;
+
+          // Consumer: commented on other posts = total comments - self comments on own posts
+          commentedOnOtherPostCount = Math.max(0, totalUserCommentCount - selfComments);
           const organicCommentRatio = totalPostComments > 0 ? 1 - selfCommentRatio : 0;
           const commentAuthors = new Set(
             postComments.filter((c: any) => c.author_id !== userId).map((c: any) => c.author_id)
@@ -463,7 +505,7 @@ export async function GET(request: NextRequest) {
             avgWordCount: avgWc,
             lastModerationDate: lastModeration.data?.[0]?.created_at ?? null,
             postStats,
-            qualifiedReadCount: qualifiedReads.count ?? 0,
+            qualifiedReadCount,
             commentLikesTotal,
             giftsReceivedCoins,
             giftsSentCoins,
@@ -488,7 +530,13 @@ export async function GET(request: NextRequest) {
             socialSharesByUser,
             organicCommentRatio,
             discussionPostCount,
-            nsfwPostRatio,
+            rejectedNsfwPostCount,
+            // v5: Consumer (reader) profile
+            savedOtherPostCount,
+            likedOtherPostCount,
+            commentedOnOtherPostCount,
+            // v5: Penalty decay
+            lastPenaltyDate: lastModeration.data?.[0]?.created_at ?? null,
             profileVisitsLast30,
             uniqueProfileVisitors,
             // v4 content quality penalties
@@ -497,13 +545,28 @@ export async function GET(request: NextRequest) {
             duplicateContentCount,
             oneLineNoMediaPostRatio,
             weirdCharPostRatio,
+            // v6 copyright strikes
+            copyrightStrikeCount: user.copyright_strike_count ?? 0,
           };
 
           const profileScore = calculateProfileScore(inputs);
           const spamScore = calculateSpamScore(inputs);
-          const trustLevel = calculateTrustLevel(profileScore, spamScore, profile);
 
-          return { userId, profileScore, spamScore, trustLevel };
+          // Copyright eligibility: only grant, never revoke (admin-only revoke)
+          let copyrightEligible: boolean | undefined;
+          let copyrightEligibleSince: string | undefined;
+          if (!user.copyright_eligible && !user.copyright_revoked_by) {
+            const eligible = checkCopyrightEligibility(profileScore, {
+              ...profile,
+              copyrightStrikeCount: user.copyright_strike_count ?? 0,
+            });
+            if (eligible) {
+              copyrightEligible = true;
+              copyrightEligibleSince = new Date().toISOString();
+            }
+          }
+
+          return { userId, profileScore, spamScore, copyrightEligible, copyrightEligibleSince };
         })
       );
 
@@ -514,13 +577,17 @@ export async function GET(request: NextRequest) {
     let updatedCount = 0;
     for (let i = 0; i < scoreResults.length; i += 100) {
       const batch = scoreResults.slice(i, i + 100);
-      const promises = batch.map((r) =>
-        admin.from("profiles").update({
+      const promises = batch.map((r) => {
+        const updates: Record<string, unknown> = {
           profile_score: r.profileScore,
           spam_score: r.spamScore,
-          trust_level: r.trustLevel,
-        }).eq("user_id", r.userId)
-      );
+        };
+        if (r.copyrightEligible) {
+          updates.copyright_eligible = true;
+          updates.copyright_eligible_since = r.copyrightEligibleSince;
+        }
+        return admin.from("profiles").update(updates).eq("user_id", r.userId);
+      });
       await Promise.all(promises);
       updatedCount += batch.length;
     }

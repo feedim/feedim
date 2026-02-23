@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { UserListSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import UserListItem from "@/components/UserListItem";
 
 interface FollowRequest {
@@ -27,7 +28,6 @@ interface FollowRequestsModalProps {
 export default function FollowRequestsModal({ open, onClose }: FollowRequestsModalProps) {
   const [requests, setRequests] = useState<FollowRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (open) loadRequests();
@@ -52,20 +52,24 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
   };
 
   const handleAction = async (requestId: number, username: string, action: "accept" | "reject") => {
-    setProcessing(prev => new Set(prev).add(requestId));
+    // Optimistic: remove from list immediately
+    const removed = requests.find(r => r.id === requestId);
+    setRequests(prev => prev.filter(r => r.id !== requestId));
+
     try {
       const res = await fetch(`/api/users/${username}/follow-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
+        keepalive: true,
       });
-      if (res.ok) {
-        setRequests(prev => prev.filter(r => r.id !== requestId));
+      if (!res.ok && removed) {
+        // Rollback on failure
+        setRequests(prev => [...prev, removed]);
       }
     } catch {
-      // Silent
-    } finally {
-      setProcessing(prev => { const s = new Set(prev); s.delete(requestId); return s; });
+      // Rollback on error
+      if (removed) setRequests(prev => [...prev, removed]);
     }
   };
 
@@ -73,7 +77,7 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
     <Modal open={open} onClose={onClose} title="Takip İstekleri" size="md" infoText="Gelen takip isteklerini buradan kabul edebilir veya reddedebilirsin.">
       <div className="px-4 py-3">
         {loading ? (
-          <UserListSkeleton count={5} />
+          <LoadingShell><UserListSkeleton count={5} /></LoadingShell>
         ) : requests.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-8">Bekleyen takip isteği yok</p>
         ) : (
@@ -81,7 +85,6 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
             {requests.map(r => {
               const p = r.profile;
               if (!p) return null;
-              const isProcessing = processing.has(r.id);
 
               return (
                 <UserListItem
@@ -92,14 +95,13 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleAction(r.id, p.username, "accept")}
-                        disabled={isProcessing}
                         className="t-btn bg-accent-main text-white"
+                        aria-label="Takip İsteğini Kabul Et"
                       >
-                        {isProcessing ? <span className="loader" style={{ width: 14, height: 14 }} /> : "Kabul et"}
+                        Kabul et
                       </button>
                       <button
                         onClick={() => handleAction(r.id, p.username, "reject")}
-                        disabled={isProcessing}
                         className="t-btn bg-bg-tertiary text-text-muted hover:bg-error/10 hover:text-error"
                       >
                         Sil

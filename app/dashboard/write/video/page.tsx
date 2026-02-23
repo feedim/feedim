@@ -2,8 +2,11 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, Upload, ChevronDown, Film } from "lucide-react";
+import { X, Plus, Upload, Film } from "lucide-react";
+import PostMetaFields from "@/components/PostMetaFields";
+import VideoPlayer from "@/components/VideoPlayer";
 import { createClient } from "@/lib/supabase/client";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
 import {
   VALIDATION,
@@ -15,13 +18,14 @@ import { formatCount } from "@/lib/utils";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import CropModal from "@/components/modals/CropModal";
-import VideoPlayer from "@/components/VideoPlayer";
+
 
 interface Tag {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   post_count?: number;
+  virtual?: boolean;
 }
 
 export default function VideoWritePage() {
@@ -74,6 +78,9 @@ function VideoWriteContent() {
   const [thumbnail, setThumbnail] = useState("");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [copyrightProtected, setCopyrightProtected] = useState(false);
+  const [frameHashes, setFrameHashes] = useState<{ frameIndex: number; hash: string }[]>([]);
+  const [audioHashes, setAudioHashes] = useState<{ chunkIndex: number; hash: string }[]>([]);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   // SEO meta
@@ -83,7 +90,7 @@ function VideoWriteContent() {
   const [metaExpanded, setMetaExpanded] = useState(false);
 
   // State
-  const [saving, setSaving] = useState(false);
+  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
 
@@ -125,6 +132,7 @@ function VideoWriteContent() {
         setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setCopyrightProtected(data.post.copyright_protected === true);
         if (data.post.meta_title) setMetaTitle(data.post.meta_title);
         if (data.post.meta_description) setMetaDescription(data.post.meta_description);
         if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
@@ -269,6 +277,9 @@ function VideoWriteContent() {
     setVideoFile(file);
     setVideoDuration(dur);
     setVideoPreviewUrl(URL.createObjectURL(file));
+    // Start upload state immediately — overlay shows from the start, video stays muted & disabled
+    setUploading(true);
+    setUploadProgress(0);
 
     // Generate thumbnail
     try {
@@ -276,8 +287,26 @@ function VideoWriteContent() {
       setThumbnail(thumb);
     } catch { /* user can add manually */ }
 
-    // Upload directly to Supabase Storage
-    uploadVideo(file);
+    // Extract video frame hashes for copyright check (non-blocking)
+    import("@/lib/videoFrameHash")
+      .then(({ extractVideoFrameHashes }) => extractVideoFrameHashes(file))
+      .then(hashes => setFrameHashes(hashes.map(fh => ({ frameIndex: fh.frameIndex, hash: fh.hash }))))
+      .catch(() => { /* frame hash extraction failed, continue without */ });
+
+    // Extract audio fingerprint for copyright check (non-blocking)
+    import("@/lib/audioFingerprint")
+      .then(({ extractAudioFingerprint }) => extractAudioFingerprint(file))
+      .then(hashes => setAudioHashes(hashes.map(ah => ({ chunkIndex: ah.chunkIndex, hash: ah.hash }))))
+      .catch(() => { /* audio fingerprint extraction failed, continue without */ });
+
+    // Optimize MP4 for instant playback (defragment fMP4 or move moov atom)
+    let uploadFile = file;
+    try {
+      const { optimizeVideo } = await import("@/lib/videoOptimize");
+      uploadFile = await optimizeVideo(file);
+    } catch { /* optimization failed, upload original */ }
+
+    uploadVideo(uploadFile);
   };
 
   const uploadVideo = async (file: File) => {
@@ -305,9 +334,10 @@ function VideoWriteContent() {
 
       // 2. Direct PUT to R2 via presigned URL with progress tracking
       await new Promise<void>((resolve, reject) => {
+        const ct = file.type || "video/mp4";
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", uploadUrl);
-        xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+        xhr.setRequestHeader("Content-Type", ct);
 
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
@@ -385,7 +415,7 @@ function VideoWriteContent() {
     try {
       const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setTagSuggestions((data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id)));
+      setTagSuggestions((data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug)));
       setTagHighlight(-1);
     } catch { setTagSuggestions([]); }
   }, [tags]);
@@ -396,7 +426,8 @@ function VideoWriteContent() {
   }, [tagSearch, searchTagsFn]);
 
   const addTag = (tag: Tag) => {
-    if (tags.length >= VALIDATION.postTags.max || tags.some(t => t.id === tag.id)) return;
+    if (tags.length >= VALIDATION.postTags.max) return;
+    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
     setTags([...tags, tag]);
     setTagSearch("");
     setTagSuggestions([]);
@@ -409,6 +440,7 @@ function VideoWriteContent() {
     if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", `Etiket en az ${VALIDATION.tagName.min} karakter olmalı`); return; }
     if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", `Etiket en fazla ${VALIDATION.tagName.max} karakter olabilir`); return; }
     setTagCreating(true);
+    await new Promise(r => setTimeout(r, 1000));
     try {
       const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
       const data = await res.json();
@@ -417,7 +449,7 @@ function VideoWriteContent() {
     } catch { feedimAlert("error", "Etiket oluşturulamadı, lütfen daha sonra tekrar deneyin"); } finally { setTagCreating(false); }
   };
 
-  const removeTag = (tagId: number) => setTags(tags.filter(t => t.id !== tagId));
+  const removeTag = (tagId: number | string) => setTags(tags.filter(t => t.id !== tagId));
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
     if (tagSuggestions.length > 0) {
@@ -455,7 +487,7 @@ function VideoWriteContent() {
     if (status === "published" && !videoUrl) { feedimAlert("error", "Video yüklenmeden yayınlanamaz"); return; }
     if (status === "published" && uploading) { feedimAlert("error", "Video hala yükleniyor, lütfen bekleyin"); return; }
 
-    setSaving(true);
+    setSavingAs(status);
     try {
       // Upload thumbnail image if it's a data URL
       let thumbUrl = thumbnail;
@@ -487,7 +519,7 @@ function VideoWriteContent() {
           content: description.trim(),
           content_type: "video",
           status,
-          tags: tags.map(t => t.id),
+          tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           featured_image: thumbUrl || null,
           video_url: videoUrl || null,
           video_duration: videoDuration || null,
@@ -495,6 +527,9 @@ function VideoWriteContent() {
           blurhash: thumbBlurhash,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          copyright_protected: copyrightProtected,
+          frame_hashes: frameHashes,
+          audio_hashes: audioHashes,
           meta_title: metaTitle.trim() || null,
           meta_description: metaDescription.trim() || null,
           meta_keywords: metaKeywords.trim() || null,
@@ -504,12 +539,12 @@ function VideoWriteContent() {
       const data = await res.json();
       if (res.ok) {
         setHasUnsavedChanges(false);
-        if (status === "published" && data.post?.slug) router.push(`/post/${data.post.slug}`);
-        else { sessionStorage.setItem("fdm-open-create-modal", "1"); router.push("/dashboard"); }
+        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(`/post/${data.post.slug}`); }
+        else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/dashboard"); }
       } else {
         feedimAlert("error", data.error || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
       }
-    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setSaving(false); }
+    } catch { feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin"); } finally { setSavingAs(null); }
   };
 
   const goToStep2 = () => {
@@ -544,17 +579,18 @@ function VideoWriteContent() {
         <>
           <button
             onClick={() => savePost("draft")}
-            disabled={saving || !title.trim()}
-            className="t-btn cancel !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
+            disabled={savingAs !== null || !title.trim()}
+            className="t-btn cancel relative !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
           >
-            Kaydet
+            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
           </button>
           <button
             onClick={() => savePost("published")}
-            disabled={saving || !title.trim() || !videoUrl || uploading}
+            disabled={savingAs !== null || !title.trim() || !videoUrl || uploading}
             className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
+            aria-label="Yayınla"
           >
-            {saving ? <span className="loader" style={{ width: 16, height: 16, borderTopColor: "var(--bg-primary)" }} /> : "Yayinla"}
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Yayınla"}
           </button>
         </>
       )}
@@ -607,40 +643,41 @@ function VideoWriteContent() {
               /* Video preview */
               <div className="space-y-3">
                 <div className="relative rounded-xl overflow-hidden">
-                  {videoPreviewUrl ? (
-                    <VideoPlayer src={videoPreviewUrl} poster={thumbnail} />
-                  ) : videoUrl ? (
-                    <VideoPlayer src={videoUrl} poster={thumbnail} />
-                  ) : null}
+                  {(videoPreviewUrl || videoUrl) && (
+                    <VideoPlayer
+                      src={videoPreviewUrl || videoUrl}
+                      poster={thumbnail || undefined}
+                      disabled={uploading}
+                    />
+                  )}
 
                   {/* Upload progress overlay */}
                   {uploading && (
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
                       <span className="loader mb-3" style={{ width: 28, height: 28, borderTopColor: "var(--accent-color)" }} />
-                      <p className="text-white/80 text-[0.82rem] font-medium">%{uploadProgress}</p>
+                      <p className="text-white/80 text-[0.82rem] font-medium">{uploadProgress > 0 ? `%${uploadProgress}` : "İşleniyor..."}</p>
                       <div className="w-48 h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, backgroundColor: "var(--accent-color)" }} />
                       </div>
+                      <button onClick={removeVideo} className="text-xs text-error hover:underline mt-3">
+                        İptal Et
+                      </button>
                     </div>
                   )}
 
                 </div>
 
                 {/* Video info */}
-                <div className="flex items-center justify-between px-1">
+                <div className="flex items-center justify-center px-1">
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <Film className="h-3.5 w-3.5" />
                     <span>{fmtDuration(videoDuration)}</span>
                     {videoFile && (
                       <>
-                        <span>&middot;</span>
                         <span>{fmtSize(videoFile.size)}</span>
                       </>
                     )}
                   </div>
-                  <button onClick={removeVideo} className="text-xs text-error hover:underline">
-                    İptal Et
-                  </button>
                 </div>
               </div>
             )}
@@ -676,7 +713,7 @@ function VideoWriteContent() {
                 maxLength={maxDescLength}
                 placeholder="Video açıklaması (isteğe bağlı)..."
                 rows={4}
-                className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[100px]"
+                className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[100px] pt-3"
               />
               <div className="flex justify-end mt-1">
                 <span className={`text-[0.66rem] tabular-nums ${description.length >= maxDescLength - 50 ? "text-error" : "text-text-muted/60"}`}>
@@ -766,10 +803,10 @@ function VideoWriteContent() {
                     <button
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50"
+                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                       {tagCreating ? (
-                        <span className="loader" style={{ width: 12, height: 12, borderTopColor: "var(--accent-color)" }} />
+                        <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
                       ) : (
                         <><Plus className="h-3.5 w-3.5" /> Oluştur</>
                       )}
@@ -821,39 +858,37 @@ function VideoWriteContent() {
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
                   </div>
                 </button>
+                <div>
+                <button
+                  onClick={() => {
+                    if (!user?.copyrightEligible) return;
+                    if (isEditMode && copyrightProtected) return;
+                    setCopyrightProtected(!copyrightProtected);
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition text-left ${!user?.copyrightEligible || (isEditMode && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-medium">Telif hakkı koruması</p>
+                    <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? "Telif hakkı koruması etkin içeriklerde kapatılamaz." : !user?.copyrightEligible ? "Düzenli özgün içerik üretiminde sistem tarafından otomatik olarak etkinleşir." : "Açıldığında içeriğiniz telif hakkıyla korunur."}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                {!user?.copyrightEligible && (
+                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">Otomatik etkinleştirme hakkında daha fazla bilgi &rarr;</a>
+                )}
+                </div>
               </div>
             </div>
 
-            {/* SEO / Gönderi bilgileri */}
-            <div>
-              <button type="button" onClick={() => setMetaExpanded(v => !v)}
-                className="flex items-center justify-between w-full text-left">
-                <label className="block text-sm font-semibold">Gönderi bilgileri</label>
-                <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${metaExpanded ? "rotate-180" : ""}`} />
-              </button>
-              {metaExpanded && (
-                <div className="mt-3 space-y-4">
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Ana konu başlığı</label>
-                    <input type="text" value={metaTitle} onChange={e => setMetaTitle(e.target.value)} placeholder="Video ana konusu..." maxLength={60} className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaTitle.length}/60</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Açıklama</label>
-                    <textarea value={metaDescription} onChange={e => setMetaDescription(e.target.value)} placeholder="Video açıklaması..." maxLength={155} rows={3} className="input-modern w-full resize-none" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaDescription.length}/155</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1.5">Anahtar kelime</label>
-                    <input type="text" value={metaKeywords} onChange={e => setMetaKeywords(e.target.value)} placeholder="Anahtar kelime..." maxLength={200} className="input-modern w-full" />
-                    <span className="text-[0.65rem] text-text-muted/60 mt-1 block">{metaKeywords.length}/200</span>
-                  </div>
-                  <p className="text-[0.7rem] text-text-muted/60 leading-relaxed">
-                    Bu alandaki metinler içeriğinizin görünürlüğünü ve sıralamasını belirleyen etkenlerdir. Arama motorları için de kullanılır. Manuel girilmezse Feedim AI tarafından otomatik oluşturulur.
-                  </p>
-                </div>
-              )}
-            </div>
+            <PostMetaFields
+              metaTitle={metaTitle} setMetaTitle={setMetaTitle}
+              metaDescription={metaDescription} setMetaDescription={setMetaDescription}
+              metaKeywords={metaKeywords} setMetaKeywords={setMetaKeywords}
+              expanded={metaExpanded} setExpanded={setMetaExpanded}
+              contentType="video"
+            />
           </div>
         )}
       </div>

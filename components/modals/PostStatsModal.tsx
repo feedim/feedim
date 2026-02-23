@@ -9,6 +9,7 @@ import ShareIcon from "@/components/ShareIcon";
 import Modal from "./Modal";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
 import { StatsSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 
 interface PostStatsModalProps {
   open: boolean;
@@ -73,7 +74,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
   }, [open, loadStats]);
 
   return (
-    <Modal open={open} onClose={onClose} size="md" title="İstatistikler">
+    <Modal open={open} onClose={onClose} size="md" title="İstatistikler" infoText="Gönderinin görüntülenme, beğeni, yorum ve paylaşım istatistiklerini buradan görebilirsin.">
       <div className="px-4 pb-6">
         {/* Post title */}
         {postTitle && (
@@ -81,7 +82,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
         )}
 
         {loading ? (
-          <StatsSkeleton />
+          <LoadingShell><StatsSkeleton /></LoadingShell>
         ) : (
           <>
             {/* Views — big hero */}
@@ -239,7 +240,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-[0.72rem] font-semibold">{c.author?.full_name || c.author?.username}</span>
-                          <span className="text-[0.62rem] text-text-muted">{formatRelativeDate(c.created_at)}</span>
+                          <span className="text-[0.56rem] text-text-muted">{formatRelativeDate(c.created_at)}</span>
                         </div>
                         <p className="text-[0.72rem] text-text-secondary line-clamp-2 mt-0.5">{c.content?.replace(/<[^>]*>/g, "")}</p>
                       </div>

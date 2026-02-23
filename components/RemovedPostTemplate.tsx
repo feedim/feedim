@@ -32,7 +32,7 @@ export default function RemovedPostTemplate({ reason, decisionNumber }: RemovedP
           href="/help"
           className="inline-block text-sm font-medium text-red-700 dark:text-red-400 underline hover:no-underline"
         >
-          Itiraz etmek icin iletisime gecin
+          Karar numarası ile itiraz etmek için iletişime geçin
         </Link>
       </div>
     </div>

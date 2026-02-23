@@ -1,11 +1,14 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 
 export default function BlockedWordsPage() {
+  useSearchParams();
   const [blockedWords, setBlockedWords] = useState<string[]>([]);
   const [newBlockedWord, setNewBlockedWord] = useState("");
 

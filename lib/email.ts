@@ -166,6 +166,21 @@ export function withdrawalStatusEmail(status: 'completed' | 'rejected', amount: 
   };
 }
 
+export function moderationReviewEmail(postTitle: string, postSlug: string): { subject: string; html: string } {
+  return {
+    subject: 'İçeriğiniz inceleniyor',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">İçeriğiniz inceleniyor</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
+        "<em>${postTitle}</em>" başlıklı içeriğiniz moderasyon incelemesine alındı. İnceleme tamamlanana kadar sadece siz görebilirsiniz.
+      </p>
+      <a href="${SITE_URL}/post/${postSlug}/moderation" style="display:inline-block;background:#FF3E00;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        Durumu Görüntüle
+      </a>
+    `),
+  };
+}
+
 export function moderationApprovedEmail(postTitle: string, postSlug: string): { subject: string; html: string } {
   return {
     subject: 'Gönderiniz onaylandı',
@@ -181,7 +196,7 @@ export function moderationApprovedEmail(postTitle: string, postSlug: string): { 
   };
 }
 
-export function moderationRejectedEmail(postTitle: string, reason: string, decisionNumber: number): { subject: string; html: string } {
+export function moderationRejectedEmail(postTitle: string, reason: string, decisionCode: string): { subject: string; html: string } {
   return {
     subject: 'Gönderiniz kaldırıldı',
     html: baseLayout(`
@@ -190,9 +205,10 @@ export function moderationRejectedEmail(postTitle: string, reason: string, decis
         "<em>${postTitle}</em>" başlıklı gönderiniz moderatörler tarafından incelendi ve kaldırıldı.
       </p>
       <div style="background:#f5f5f5;border-radius:8px;padding:12px 16px;margin:0 0 20px;color:#333;font-size:14px;line-height:1.5">
-        <strong>Karar No:</strong> #${decisionNumber}<br/>
+        <strong>Karar No:</strong> #${decisionCode}<br/>
         <strong>Sebep:</strong> ${reason || 'Belirtilmedi'}
       </div>
+      <p style="color:#777;font-size:13px;margin:0 0 20px">Karar numarası ile itiraz etmek için iletişime geçin.</p>
       <a href="${SITE_URL}/help" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         İtiraz Et
       </a>
@@ -231,6 +247,60 @@ export function milestoneEmail(postTitle: string, viewCount: string, postSlug: s
   };
 }
 
+export function copyrightVerificationEmail(postTitle: string, matchedTitle: string): { subject: string; html: string } {
+  return {
+    subject: 'Telif hakkı doğrulaması gerekli',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Telif Hakkı Doğrulaması</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 12px">
+        "<em>${postTitle}</em>" başlıklı içeriğiniz, mevcut bir telif hakkı korumalı içerikle eşleşti:
+      </p>
+      <div style="background:#f5f5f5;border-radius:8px;padding:12px 16px;margin:0 0 20px;color:#333;font-size:14px;line-height:1.5">
+        Eşleşen içerik: <strong>${matchedTitle}</strong>
+      </div>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
+        İçeriğinizin size ait olduğunu doğrulamak için lütfen doğrulama formunu doldurun.
+      </p>
+      <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        Doğrulama Formunu Doldur
+      </a>
+    `),
+  };
+}
+
+export function copyrightClaimVerifiedEmail(postTitle: string): { subject: string; html: string } {
+  return {
+    subject: 'Telif hakkı doğrulamanız onaylandı',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Doğrulama Onaylandı!</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
+        "<em>${postTitle}</em>" başlıklı içeriğiniz için telif hakkı doğrulamanız onaylandı. İçeriğiniz yayınlandı.
+      </p>
+      <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        İçeriği Gör
+      </a>
+    `),
+  };
+}
+
+export function copyrightClaimRejectedEmail(postTitle: string, reason: string): { subject: string; html: string } {
+  return {
+    subject: 'Telif hakkı doğrulamanız reddedildi',
+    html: baseLayout(`
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:#111">Doğrulama Reddedildi</h2>
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 12px">
+        "<em>${postTitle}</em>" başlıklı içeriğiniz için telif hakkı doğrulamanız reddedildi.
+      </p>
+      ${reason ? `<div style="background:#f5f5f5;border-radius:8px;padding:12px 16px;margin:0 0 20px;color:#333;font-size:14px;line-height:1.5">
+        <strong>Sebep:</strong> ${reason}
+      </div>` : ''}
+      <a href="${SITE_URL}/help" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+        İtiraz Et
+      </a>
+    `),
+  };
+}
+
 /**
  * Check if user has email notifications enabled for this type.
  * Returns the user's email if enabled, null if disabled.
@@ -264,9 +334,16 @@ export async function getEmailIfEnabled(
     like: 'email_like',
     gift_received: 'email_gift',
     milestone: 'email_milestone',
+    moderation_review: 'email_moderation',
     moderation_approved: 'email_moderation',
     moderation_rejected: 'email_moderation',
     account_moderation: 'email_moderation',
+    copyright_verification_needed: 'email_moderation',
+    copyright_claim_submitted: 'email_moderation',
+    copyright_verified: 'email_moderation',
+    copyright_rejected: 'email_moderation',
+    copyright_similar_detected: 'email_moderation',
+    copyright_detected: 'email_moderation',
   };
 
   const field = emailFieldMap[notificationType];

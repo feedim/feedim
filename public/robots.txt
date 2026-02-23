@@ -15,6 +15,17 @@ Allow: /help/distance-sales-contract
 Allow: /help/pre-information-form
 Allow: /help/payment-security
 Allow: /help/refund-policy
+Allow: /help/copyright
+Allow: /help/moderation
+Allow: /help/ai
+Allow: /help/content-types
+Allow: /help/analytics
+Allow: /help/coins
+Allow: /help/earning
+Allow: /help/access-restrictions
+Allow: /help/data-sharing
+Allow: /help/community-guidelines
+Allow: /help/accessibility
 
 # Auth
 Disallow: /login

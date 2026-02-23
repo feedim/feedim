@@ -39,7 +39,7 @@ export default function ImageViewer({ images, initialIndex, open, onClose }: Ima
       setClosing(false);
       lockScroll();
     }
-    return () => { if (open) unlockScroll(); };
+    return () => unlockScroll();
   }, [open, initialIndex]);
 
   // Scroll to current image

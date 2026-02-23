@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Info } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -41,21 +41,36 @@ const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 const ANIMATION_CONFIG = {
   1: {
-    in: `slideInBottom_0.4s_${EASING}`,
-    out: `slideOutBottom_0.28s_${EASING}_forwards`,
-    closeDelay: 280,
-  },
-  2: {
-    in: `slideInRight_0.4s_${EASING}`,
-    out: `slideOutRight_0.28s_${EASING}_forwards`,
-    closeDelay: 280,
-  },
-  3: {
-    in: `modalScaleIn_0.3s_${EASING}`,
-    out: `modalScaleOut_0.25s_${EASING}_forwards`,
+    in: `slideInBottom_0.28s_${EASING}`,
+    out: `slideOutBottom_0.25s_${EASING}_forwards`,
     closeDelay: 250,
   },
+  2: {
+    in: `slideInRight_0.28s_${EASING}`,
+    out: `slideOutRight_0.25s_${EASING}_forwards`,
+    closeDelay: 250,
+  },
+  3: {
+    in: `slideIn_0.22s_${EASING}`,
+    out: `slideOut_0.2s_${EASING}_forwards`,
+    closeDelay: 200,
+  },
 } as const;
+
+/** Walk up from target to find the first scrollable parent inside popup */
+function getScrollParent(target: EventTarget | null, popup: HTMLElement): HTMLElement | null {
+  let el = target as HTMLElement | null;
+  while (el && el !== popup) {
+    if (el.nodeType === 1) {
+      const style = window.getComputedStyle(el);
+      if ((style.overflowY === "scroll" || style.overflowY === "auto") && el.scrollHeight > el.clientHeight) {
+        return el;
+      }
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
 
 export default function Modal({
   open,
@@ -76,14 +91,22 @@ export default function Modal({
   const [closing, setClosing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [rendered, setRendered] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Drag state refs
   const dragStartY = useRef<number | null>(null);
+  const dragStartX = useRef<number | null>(null);
   const dragStartTime = useRef(0);
   const dragCurrentY = useRef(0);
   const isDragging = useRef(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-
+  const hasMoved = useRef(false);
+  const canDrag = useRef(false);
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  const scrollDisabled = useRef(false);
+  const minDragDistance = 30;
 
   useEffect(() => {
     setMounted(true);
@@ -106,13 +129,67 @@ export default function Modal({
   const showDragHandle = isBottomSheet;
   const enableHeaderDrag = isBottomSheet;
 
+  const clearInlineStyles = useCallback(() => {
+    if (sheetRef.current) {
+      sheetRef.current.style.transform = "";
+      sheetRef.current.style.transition = "";
+    }
+    if (backdropRef.current) {
+      backdropRef.current.style.opacity = "";
+      backdropRef.current.style.transition = "";
+    }
+  }, []);
+
+  const hasLockRef = useRef(false);
+
   useEffect(() => {
     if (open) {
       lockScroll();
+      hasLockRef.current = true;
+      setRendered(true);
       setClosing(false);
+      // Clear any drag inline styles so CSS animations can run
+      requestAnimationFrame(() => clearInlineStyles());
+      return;
     }
-    return () => { if (open) unlockScroll(); };
-  }, [open]);
+    if (rendered) {
+      setClosing(true);
+      const t = setTimeout(() => {
+        setClosing(false);
+        setRendered(false);
+        if (hasLockRef.current) {
+          unlockScroll();
+          hasLockRef.current = false;
+        }
+      }, anim.closeDelay);
+      return () => {
+        clearTimeout(t);
+        // Timeout iptal edildi — kilidi hemen bırak
+        if (hasLockRef.current) {
+          unlockScroll();
+          hasLockRef.current = false;
+        }
+      };
+    }
+    if (hasLockRef.current) {
+      unlockScroll();
+      hasLockRef.current = false;
+    }
+  }, [open, rendered, anim.closeDelay, clearInlineStyles]);
+
+  // Unmount güvenliği: bileşen yok edilirse kilidi bırak
+  useEffect(() => {
+    return () => {
+      if (hasLockRef.current) {
+        unlockScroll();
+        hasLockRef.current = false;
+      }
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) clearInlineStyles();
+  }, [open, clearInlineStyles]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,101 +199,163 @@ export default function Modal({
   }, [open]);
 
   const handleClose = useCallback(() => {
-    setClosing(true);
-    setTimeout(() => { setClosing(false); onClose(); }, anim.closeDelay);
-  }, [onClose, anim.closeDelay]);
+    if (closing) return;
+    clearInlineStyles();
+    onClose();
+  }, [onClose, closing, clearInlineStyles]);
 
-  // --- Drag ---
-  const startDrag = useCallback((clientY: number) => {
-    if (sheetRef.current) { sheetRef.current.style.transform = ""; }
-    if (backdropRef.current) { backdropRef.current.style.opacity = ""; }
+  // --- Drag (WordPress-style: handle, header, AND content area when scrolled to top) ---
+  const resetDragState = useCallback(() => {
+    dragStartY.current = null;
+    dragStartX.current = null;
+    dragCurrentY.current = 0;
+    isDragging.current = false;
+    hasMoved.current = false;
+    canDrag.current = false;
+    scrollDisabled.current = false;
+    scrollParentRef.current = null;
+  }, []);
+
+  const startDrag = useCallback((clientY: number, clientX: number, target: EventTarget | null) => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    // Find scrollable parent from touch target
+    const sp = getScrollParent(target, sheet);
+    scrollParentRef.current = sp;
+
+    // Can only drag if no scroll parent or scroll parent is at top
+    canDrag.current = !sp || sp.scrollTop === 0;
 
     dragStartY.current = clientY;
+    dragStartX.current = clientX;
     dragStartTime.current = Date.now();
     dragCurrentY.current = 0;
     isDragging.current = false;
+    hasMoved.current = false;
+    scrollDisabled.current = false;
 
-    if (sheetRef.current) sheetRef.current.style.transition = "none";
+    if (sheet) sheet.style.transition = "none";
     if (backdropRef.current) backdropRef.current.style.transition = "none";
   }, []);
 
-  const moveDrag = useCallback((clientY: number) => {
-    if (dragStartY.current === null) return;
-    const delta = clientY - dragStartY.current;
-    dragCurrentY.current = delta;
-    if (Math.abs(delta) > 8) isDragging.current = true;
+  const moveDrag = useCallback((clientY: number, clientX: number) => {
+    if (dragStartY.current === null || dragStartX.current === null) return;
+
+    let deltaY = clientY - dragStartY.current;
+    const deltaX = clientX - dragStartX.current;
+    const totalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Minimum distance before deciding gesture direction
+    if (!hasMoved.current && totalDistance < minDragDistance) return;
+
+    if (!hasMoved.current && totalDistance >= minDragDistance) {
+      hasMoved.current = true;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      // Must be a downward vertical gesture
+      const isDragGesture = canDrag.current && absY > absX * 1.5 && deltaY > 10;
+
+      if (isDragGesture) {
+        isDragging.current = true;
+        // Disable scroll parent to prevent scroll interference
+        if (scrollParentRef.current) {
+          scrollParentRef.current.style.overflow = "hidden";
+          scrollDisabled.current = true;
+        }
+      } else {
+        // Not a drag gesture — cleanup
+        resetDragState();
+        return;
+      }
+    }
+
     if (!isDragging.current) return;
 
-    if (delta > 0) {
-      const h = sheetRef.current?.offsetHeight || 400;
-      const ratio = delta / h;
-      const dampened = delta * (1 - ratio * 0.4);
-      if (sheetRef.current) sheetRef.current.style.transform = `translateY(${dampened}px)`;
-      if (backdropRef.current) backdropRef.current.style.opacity = `${Math.max(0, 1 - ratio * 1.2)}`;
-    }
-  }, []);
+    // Only allow downward movement
+    const translateY = Math.max(deltaY, 0);
+    const h = sheetRef.current?.offsetHeight || 400;
+    const threshold = h * 0.5;
 
-  const resetDragState = useCallback(() => {
-    dragStartY.current = null;
-    dragCurrentY.current = 0;
-    isDragging.current = false;
-  }, []);
+    // Rubber-band effect past threshold
+    const dampened = translateY > threshold
+      ? threshold + (translateY - threshold) * 0.25
+      : translateY;
+
+    if (sheetRef.current) {
+      sheetRef.current.style.transform = `translateY(${dampened}px)`;
+    }
+
+    // Fade backdrop proportionally
+    const opacityRatio = Math.min(translateY / h, 1);
+    if (backdropRef.current) {
+      backdropRef.current.style.opacity = `${Math.max(0, 1 - opacityRatio * 1.2)}`;
+    }
+
+    dragCurrentY.current = translateY;
+  }, [resetDragState]);
 
   const endDrag = useCallback(() => {
     const sheet = sheetRef.current;
     const backdrop = backdropRef.current;
     const dy = dragCurrentY.current;
     const dt = Date.now() - dragStartTime.current;
-    const velocity = Math.abs(dy) / Math.max(dt, 1) * 1000;
+    const velocity = dy / Math.max(dt, 1) * 1000;
     const h = sheet?.offsetHeight || 400;
 
-    if (!isDragging.current || Math.abs(dy) < 4) {
+    // Restore scroll parent
+    if (scrollParentRef.current && scrollDisabled.current) {
+      scrollParentRef.current.style.overflow = "";
+    }
+
+    if (!isDragging.current || dy < 4) {
       if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; }
       if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
       resetDragState();
       return;
     }
 
-    const spring = `0.36s ${SPRING}`;
+    const spring = `0.28s ${SPRING}`;
     if (sheet) sheet.style.transition = `transform ${spring}`;
     if (backdrop) backdrop.style.transition = `opacity ${spring}`;
 
-    if (dy > 0) {
-      const shouldClose = dy > h * 0.3 || velocity > 800;
-      if (shouldClose) {
-        if (sheet) sheet.style.transform = `translateY(${h + 50}px)`;
-        if (backdrop) backdrop.style.opacity = "0";
-        resetDragState();
-        setTimeout(() => {
-          if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; }
-          if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
-          onClose();
-        }, 360);
-        return;
-      } else {
-        if (sheet) sheet.style.transform = "";
-        if (backdrop) backdrop.style.opacity = "";
-      }
+    const shouldClose = dy > h * 0.3 || velocity > 950;
+
+    if (shouldClose) {
+      if (sheet) { sheet.style.animation = "none"; sheet.style.transform = `translateY(${h + 50}px)`; }
+      if (backdrop) backdrop.style.opacity = "0";
+      resetDragState();
+      setTimeout(() => {
+        if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; sheet.style.animation = ""; }
+        if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
+        onClose();
+      }, 300);
+    } else {
+      if (sheet) sheet.style.transform = "";
+      if (backdrop) backdrop.style.opacity = "";
+      resetDragState();
+      setTimeout(() => {
+        if (sheet) sheet.style.transition = "";
+        if (backdrop) backdrop.style.transition = "";
+      }, 300);
     }
-
-    resetDragState();
-
-    setTimeout(() => {
-      if (sheet) sheet.style.transition = "";
-      if (backdrop) backdrop.style.transition = "";
-    }, 380);
   }, [onClose, resetDragState]);
 
-  // --- Touch: Handle/header ---
-  const handleDragStart = useCallback((e: React.TouchEvent) => { startDrag(e.touches[0].clientY); }, [startDrag]);
-  const handleDragMove = useCallback((e: React.TouchEvent) => {
+  // --- Touch handlers ---
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    startDrag(e.touches[0].clientY, e.touches[0].clientX, e.target);
+  }, [startDrag]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
     if (isDragging.current) e.preventDefault();
-    moveDrag(e.touches[0].clientY);
+    moveDrag(e.touches[0].clientY, e.touches[0].clientX);
   }, [moveDrag]);
-  const handleDragEnd = useCallback(() => { endDrag(); }, [endDrag]);
 
-  // --- Mouse: Handle/header (desktop) ---
+  const handleTouchEnd = useCallback(() => { endDrag(); }, [endDrag]);
+
+  // --- Mouse handlers ---
   const mouseMoveCb = useRef<((e: MouseEvent) => void) | null>(null);
   const mouseUpCb = useRef<((e: MouseEvent) => void) | null>(null);
 
@@ -227,19 +366,19 @@ export default function Modal({
     mouseUpCb.current = null;
   }, []);
 
-  // Cleanup on unmount / close
   useEffect(() => {
     if (!open) cleanupMouseListeners();
     return () => cleanupMouseListeners();
   }, [open, cleanupMouseListeners]);
 
-  const handleMouseDragStart = useCallback((e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
     e.preventDefault();
-    startDrag(e.clientY);
+    startDrag(e.clientY, e.clientX, e.target);
 
     const onMove = (ev: MouseEvent) => {
       ev.preventDefault();
-      moveDrag(ev.clientY);
+      moveDrag(ev.clientY, ev.clientX);
     };
     const onUp = () => {
       endDrag();
@@ -252,9 +391,39 @@ export default function Modal({
     window.addEventListener("mouseup", onUp);
   }, [startDrag, moveDrag, endDrag, cleanupMouseListeners]);
 
-  // Content alanında drag yok — sadece handle ve header'dan sürüklenebilir
+  // --- Content area drag: only when scrolled to top ---
+  const handleContentTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isBottomSheet) return;
+    startDrag(e.touches[0].clientY, e.touches[0].clientX, e.target);
+  }, [isBottomSheet, startDrag]);
 
-  if (!open || !mounted) return null;
+  const handleContentTouchMove = useCallback((e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    if (isDragging.current) e.preventDefault();
+    moveDrag(e.touches[0].clientY, e.touches[0].clientX);
+  }, [moveDrag]);
+
+  const handleContentTouchEnd = useCallback(() => { endDrag(); }, [endDrag]);
+
+  const handleContentMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isBottomSheet || e.button !== 0) return;
+    startDrag(e.clientY, e.clientX, e.target);
+
+    const onMove = (ev: MouseEvent) => {
+      moveDrag(ev.clientY, ev.clientX);
+    };
+    const onUp = () => {
+      endDrag();
+      cleanupMouseListeners();
+    };
+
+    mouseMoveCb.current = onMove;
+    mouseUpCb.current = onUp;
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [isBottomSheet, startDrag, moveDrag, endDrag, cleanupMouseListeners]);
+
+  if (!mounted || (!open && !rendered)) return null;
 
   // Sheet layout classes based on animation type
   const sheetLayoutClasses = resolvedType === 2
@@ -265,39 +434,48 @@ export default function Modal({
     ? `fixed inset-0 ${zIndex} flex items-stretch justify-end`
     : `fixed inset-0 ${zIndex} flex items-end ${centerOnDesktop ? "sm:items-center" : ""} justify-center`;
 
-  // Drag props — only for bottom sheet types
+  // Drag props — for handle and header
   const dragHandleProps = showDragHandle ? {
-    onTouchStart: handleDragStart,
-    onTouchMove: handleDragMove,
-    onTouchEnd: handleDragEnd,
-    onMouseDown: handleMouseDragStart,
+    onTouchStart: handleTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
+    onMouseDown: handleMouseDown,
   } : {};
 
   const headerDragProps = enableHeaderDrag ? {
-    onTouchStart: handleDragStart,
-    onTouchMove: handleDragMove,
-    onTouchEnd: handleDragEnd,
-    onMouseDown: handleMouseDragStart,
+    onTouchStart: handleTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
+    onMouseDown: handleMouseDown,
   } : {};
+
+  const animClass =
+    resolvedType === 1
+      ? (closing
+          ? "animate-[slideOutBottom_0.25s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+          : "animate-[slideInBottom_0.28s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+      : resolvedType === 2
+        ? (closing
+            ? "animate-[slideOutRight_0.25s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+            : "animate-[slideInRight_0.28s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+        : (closing
+            ? "animate-[slideOut_0.2s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+            : "animate-[slideIn_0.22s_cubic-bezier(0.25,0.1,0.25,1)_both]");
 
   return createPortal(
     <div
-      className={containerAlignClasses}
+      className={`x32flP4rs ${closing ? "" : "show"} ${containerAlignClasses}`}
     >
       <div
         ref={backdropRef}
-        className={`absolute inset-0 bg-black/50 transition-opacity ${closing ? "duration-[280ms] opacity-0" : "duration-300 opacity-100"}`}
+        className={`absolute inset-0 bg-black/50 transition-opacity ${closing ? "duration-200 opacity-0" : "duration-200 opacity-100"}`}
         onClick={handleClose}
       />
 
       <div
         ref={sheetRef}
         data-modal
-        className={`${sheetLayoutClasses} ${
-          closing
-            ? `animate-[${anim.out}]`
-            : `animate-[${anim.in}]`
-        }`}
+        className={`${sheetLayoutClasses} pop-modal-content type${resolvedType} sm-type${resolvedType} ${animClass}`}
       >
         {/* Handle — sadece bottom sheet tiplerinde göster */}
         {showDragHandle && (
@@ -336,6 +514,10 @@ export default function Modal({
         <div
           ref={contentRef}
           className="overflow-y-auto overscroll-contain modal-scroll-content flex-1"
+          onTouchStart={handleContentTouchStart}
+          onTouchMove={handleContentTouchMove}
+          onTouchEnd={handleContentTouchEnd}
+          onMouseDown={handleContentMouseDown}
         >
           {children}
         </div>

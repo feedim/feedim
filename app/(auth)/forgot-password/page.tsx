@@ -117,6 +117,7 @@ export default function ForgotPasswordPage() {
             type="submit"
             className="t-btn accept w-full relative"
             disabled={loading}
+            aria-label="Doğrulama Kodu Gönder"
           >
             {loading ? <span className="loader" /> : "Kod Gönder"}
           </button>
@@ -152,6 +153,7 @@ export default function ForgotPasswordPage() {
             type="submit"
             className="t-btn accept w-full relative"
             disabled={loading || code.length < 6}
+            aria-label="Kodu Doğrula"
           >
             {loading ? <span className="loader" /> : "Doğrula"}
           </button>

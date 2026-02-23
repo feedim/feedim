@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkImageBuffer } from "@/lib/moderation";
 import { uploadToR2 } from "@/lib/r2";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -12,46 +13,102 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File;
   if (!file) return NextResponse.json({ error: "Dosya gerekli" }, { status: 400 });
 
+  if (!(file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/gif')) {
+    return NextResponse.json({ error: 'Sadece JPEG, PNG, WebP ve GIF profil fotoğrafları kabul edilir' }, { status: 400 });
+  }
+
   const ext = file.name.split(".").pop() || "jpg";
   const fileName = `avatars/${user.id}/avatar-${Date.now()}.${ext}`;
-
   const arrayBuffer = await file.arrayBuffer();
   const imageBuffer = Buffer.from(arrayBuffer);
 
-  // NSFW check on avatar image — block AND flag both rejected for profile photos
-  const nsfwMime = file.type === "image/jpeg" || file.type === "image/jpg" ? "image/jpeg"
-    : file.type === "image/png" ? "image/png"
-    : file.type === "image/webp" ? "image/jpeg" // webp → treat as jpeg for decode
-    : null;
+  const adminClient = createAdminClient();
 
-  if (nsfwMime) {
+  // Check if user is admin (immune to moderation)
+  const { data: userProfile } = await adminClient.from('profiles').select('role').eq('user_id', user.id).single();
+  const isAdmin = userProfile?.role === 'admin';
+
+  // NSFW check
+  let isNsfwAvatar = false;
+  let nsfwScores: Record<string, number> = {};
+
+  if (!isAdmin) {
     try {
-      const nsfwResult = await checkImageBuffer(imageBuffer, nsfwMime);
-      console.log("[AVATAR NSFW]", nsfwResult.action, JSON.stringify(nsfwResult.scores));
-      if (nsfwResult.action !== "allow") {
-        return NextResponse.json(
-          { error: "Uygunsuz görsel tespit edildi. Bu görseli profil fotoğrafı olarak kullanamazsınız." },
-          { status: 400 }
-        );
+      const nsfwPromise = checkImageBuffer(imageBuffer, file.type);
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
+      const nsfwResult = await Promise.race([nsfwPromise, timeout]);
+
+      if (!nsfwResult) {
+        console.warn("[AVATAR NSFW] Check timed out after 15s, allowing upload");
+      } else {
+        nsfwScores = nsfwResult.scores || {};
+        console.log("[AVATAR NSFW]", user.id, nsfwResult.action, JSON.stringify(nsfwScores));
+
+        const porn = nsfwScores["Porn"] || 0;
+        const hentai = nsfwScores["Hentai"] || 0;
+        const sexy = nsfwScores["Sexy"] || 0;
+        const neutral = nsfwScores["Neutral"] || 0;
+
+        isNsfwAvatar =
+          (porn >= 0.55) || (hentai >= 0.55) ||
+          (sexy >= 0.75) ||
+          (porn + hentai >= 0.65) ||
+          (porn + hentai + sexy >= 0.85 && neutral < 0.3);
+
+        console.log("[AVATAR NSFW] shouldFlag:", isNsfwAvatar);
       }
     } catch (err) {
-      console.error("[AVATAR NSFW] Check failed:", err);
+      console.error("[AVATAR NSFW] Check failed, treating as NSFW:", err);
+      isNsfwAvatar = true;
     }
   }
 
+  // Upload to R2
   const key = `images/${fileName}`;
   const url = await uploadToR2(key, imageBuffer, file.type);
 
-  const { error: updateError } = await supabase
+  // Single atomic update via adminClient — avatar + moderation status together
+  const profileUpdate: Record<string, unknown> = {
+    avatar_url: url,
+    updated_at: new Date().toISOString(),
+  };
+  if (isNsfwAvatar) {
+    profileUpdate.status = 'moderation';
+  }
+
+  const { error: updateError } = await adminClient
     .from("profiles")
-    .update({ avatar_url: url, updated_at: new Date().toISOString() })
+    .update(profileUpdate)
     .eq("user_id", user.id);
 
   if (updateError) {
+    console.error("[AVATAR] Profile update failed:", updateError);
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ url });
+  // Log NSFW event + moderation decision
+  if (isNsfwAvatar) {
+    console.log("[AVATAR NSFW] Profile sent to moderation:", user.id);
+    try {
+      await adminClient.from('security_events').insert({
+        user_id: user.id,
+        event_type: 'avatar_nsfw_flagged',
+        metadata: { url, scores: nsfwScores },
+      });
+    } catch (e) { console.error("[AVATAR] security_events insert failed:", e); }
+    try {
+      await adminClient.from('moderation_decisions').insert({
+        target_type: 'user',
+        target_id: user.id,
+        decision: 'moderation',
+        reason: 'Profil fotoğrafında uygunsuz içerik tespit edildi',
+        moderator_id: 'system',
+        decision_code: String(Math.floor(100000 + Math.random() * 900000)),
+      });
+    } catch (e) { console.error("[AVATAR] moderation_decisions insert failed:", e); }
+  }
+
+  return NextResponse.json({ url, nsfw: isNsfwAvatar });
 }
 
 export async function DELETE() {

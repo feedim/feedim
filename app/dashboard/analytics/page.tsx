@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -16,6 +18,7 @@ import { isProfessional } from "@/lib/professional";
 import { Lock } from "lucide-react";
 import { useUser } from "@/components/UserContext";
 import { AnalyticsSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 
 /* ─── Types ─── */
 interface OverviewData {
@@ -62,6 +65,7 @@ function smartChange(current: number, previous: number): { text: string; isUp: b
    Main Page
 ───────────────────────────────────── */
 export default function AnalyticsPage() {
+  useSearchParams();
   const { user: ctxUser, isLoggedIn } = useUser();
   const authorized = isLoggedIn ? (ctxUser?.isPremium ?? false) : false;
   const isPro = isProfessional(ctxUser?.accountType);
@@ -130,7 +134,7 @@ export default function AnalyticsPage() {
         </div>
 
         {loading ? (
-          <AnalyticsSkeleton />
+          <LoadingShell><AnalyticsSkeleton /></LoadingShell>
         ) : !hasData ? (
           <div className="px-4 py-20 text-center">
             <TrendingUp className="h-14 w-14 text-text-muted mx-auto mb-4" />
@@ -425,7 +429,6 @@ function ChartSection({ chartMetric, setChartMetric, viewsByDay, likesByDay, com
         <div className="flex items-end gap-3 mt-2 mb-4">
           <span className="text-2xl font-bold">{formatCount(total)}</span>
           <span className="text-[0.72rem] text-text-muted mb-0.5">toplam</span>
-          <span className="text-[0.72rem] text-text-muted mb-0.5">·</span>
           <span className="text-[0.72rem] text-text-muted mb-0.5">{avg}/gün ort.</span>
         </div>
 
@@ -698,7 +701,6 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
                       <p className="text-[0.78rem] font-medium truncate group-hover:text-accent-main transition">{video.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[0.62rem] text-text-muted">{formatCount(video.views)} görüntülenme</span>
-                        <span className="text-[0.62rem] text-text-muted">·</span>
                         <span className="text-[0.62rem] text-text-muted">{video.watchHours}sa izlenme</span>
                       </div>
                     </div>

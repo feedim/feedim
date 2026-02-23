@@ -23,13 +23,6 @@ export default function PostContentClient({ html, className, featuredImage }: Po
       img.loading = 'lazy';
       img.decoding = 'async';
     });
-    // Hide the first content image if it matches the featured image (thumbnail)
-    if (featuredImage && imgs.length > 0) {
-      const first = imgs[0];
-      if (first.src === featuredImage.src || first.src.includes(featuredImage.src.split('/').pop() || '___')) {
-        first.style.display = 'none';
-      }
-    }
     // Add nofollow to all external links
     contentRef.current.querySelectorAll('a[href]').forEach(link => {
       const a = link as HTMLAnchorElement;

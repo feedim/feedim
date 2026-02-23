@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import { Search, X, Hash, TrendingUp, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
@@ -9,6 +10,7 @@ import PostCard from "@/components/PostCard";
 import MomentGridCard from "@/components/MomentGridCard";
 import MomentsCarousel from "@/components/MomentsCarousel";
 import { PostGridSkeleton, MomentGridSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import { cn, formatCount } from "@/lib/utils";
 import UserListItem from "@/components/UserListItem";
 import { useAuthModal } from "@/components/AuthModal";
@@ -200,6 +202,16 @@ function ExploreContent() {
     init();
   }, [searchParams]);
 
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("fdm-focus-search")) {
+        sessionStorage.removeItem("fdm-focus-search");
+        setFocused(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+      }
+    } catch {}
+  }, []);
+
   const loadMore = async () => {
     setLoadingMore(true);
     await loadExplore(page + 1, activeTag?.slug);
@@ -319,6 +331,7 @@ function ExploreContent() {
   ];
 
   const handleTagClick = (tag: SearchTag) => {
+    emitNavigationStart();
     router.push(`/dashboard/explore/tag/${tag.slug}`);
   };
 
@@ -454,11 +467,11 @@ function ExploreContent() {
       }
     }
 
-    // Searching spinner
+    // Searching
     if (isSearchActive && searching) {
       return (
-        <div className="py-16 text-center">
-          <span className="loader mx-auto" style={{ width: 24, height: 24 }} />
+        <div className="flex items-center justify-center py-32">
+          <span className="loader" style={{ width: 22, height: 22 }} />
         </div>
       );
     }
@@ -470,7 +483,7 @@ function ExploreContent() {
 
     // Default explore content per tab
     if (loading) {
-      return <div className="mt-4"><PostGridSkeleton count={4} /></div>;
+      return <LoadingShell><div className="mt-4"><PostGridSkeleton count={4} /></div></LoadingShell>;
     }
 
     // Tag filter mode
@@ -500,7 +513,7 @@ function ExploreContent() {
             </button>
           </div>
           {loading ? (
-            <div className="mt-4"><PostGridSkeleton count={4} /></div>
+            <LoadingShell><div className="mt-4"><PostGridSkeleton count={4} /></div></LoadingShell>
           ) : trendingPosts.length > 0 ? (
             <>
               {trendingPosts.map((post, index) => (
@@ -623,6 +636,7 @@ function ExploreContent() {
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-text-muted pointer-events-none" />
           <input
+            data-hotkey="search"
             ref={inputRef}
             type="text"
             value={query}

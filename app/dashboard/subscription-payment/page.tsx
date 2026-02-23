@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Lock, AlertCircle, Check, Tag, Shield, Sparkles, BarChart3, Eye } from "lucide-react";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -69,6 +70,7 @@ const planNames: Record<string, string> = {
 };
 
 export default function SubscriptionPaymentPage() {
+  useSearchParams();
   const [data, setData] = useState<PremiumPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -94,6 +96,7 @@ export default function SubscriptionPaymentPage() {
         }
       } catch {}
     }
+    emitNavigationStart();
     router.push("/premium");
   }, [router]);
 
@@ -176,7 +179,7 @@ export default function SubscriptionPaymentPage() {
       <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient border-b border-border-primary/50">
         <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
           <button
-            onClick={() => { if (window.history.length > 1) router.back(); else router.push("/premium"); }}
+            onClick={() => { if (window.history.length > 1) router.back(); else { emitNavigationStart(); router.push("/premium"); } }}
             className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -336,7 +339,7 @@ export default function SubscriptionPaymentPage() {
         )}
 
         <p className="text-center text-[0.72rem] text-text-muted mt-2.5">
-          İstediğin zaman iptal et · Taahhüt yok
+          İstediğin zaman iptal et Taahhüt yok
         </p>
 
         {/* Footer */}

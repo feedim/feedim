@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import { Coins, Sparkles, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
+import LoadingShell from "@/components/LoadingShell";
 import { COIN_COMMISSION_RATE, COIN_TO_TRY_RATE } from "@/lib/constants";
 
 interface CoinPackage {
@@ -20,6 +22,7 @@ interface CoinPackage {
 }
 
 export default function CoinsBuyPage() {
+  useSearchParams();
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -72,6 +75,7 @@ export default function CoinsBuyPage() {
     }));
 
     try { (window as any).ttq?.track('InitiateCheckout', { content_type: 'product', value: selectedPkg.price_try, currency: 'TRY' }); } catch {}
+    emitNavigationStart();
     router.push('/dashboard/payment');
   };
 
@@ -79,12 +83,14 @@ export default function CoinsBuyPage() {
     <AppLayout headerTitle="Jeton Satın Al" hideRightSidebar>
       <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto">
         {loading ? (
-          <div className="space-y-4">
-            <div className="skeleton h-20 rounded-2xl" />
-            <div className="skeleton h-24 rounded-2xl" />
-            <div className="skeleton h-24 rounded-2xl" />
-            <div className="skeleton h-24 rounded-2xl" />
-          </div>
+          <LoadingShell>
+            <div className="space-y-4">
+              <div className="skeleton h-20 rounded-2xl" />
+              <div className="skeleton h-24 rounded-2xl" />
+              <div className="skeleton h-24 rounded-2xl" />
+              <div className="skeleton h-24 rounded-2xl" />
+            </div>
+          </LoadingShell>
         ) : packages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-20 h-20 rounded-2xl bg-accent-main/10 flex items-center justify-center mb-5">
@@ -144,7 +150,7 @@ export default function CoinsBuyPage() {
                               <span className="text-xs text-accent-main font-semibold">+{(pkg.bonus_coins || 0).toLocaleString()} bonus</span>
                             )}
                           </div>
-                          <p className="text-xs text-text-muted mt-0.5">{pkg.name}{pricePerCoin ? ` · ₺${pricePerCoin}/jeton` : ""}</p>
+                          <p className="text-xs text-text-muted mt-0.5">{pkg.name}{pricePerCoin ? ` ₺${pricePerCoin}/jeton` : ""}</p>
                         </div>
                       </div>
                       <span className="text-xl font-bold shrink-0">{pkg.price_try}₺</span>
@@ -159,6 +165,7 @@ export default function CoinsBuyPage() {
               onClick={purchaseCoins}
               disabled={!selectedPkg || purchasing}
               className="t-btn accept w-full"
+              aria-label="Jeton Satın Al"
             >
               {purchasing ? <span className="loader" /> : selectedPkg ? `${((selectedPkg.coins || 0) + (selectedPkg.bonus_coins || 0)).toLocaleString()} Jeton — ${selectedPkg.price_try}₺` : "Paket Seçin"}
             </button>

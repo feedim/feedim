@@ -83,16 +83,6 @@ export const SPAM_THRESHOLDS = {
   autoBlock: 90,
 };
 
-// Trust level tanımları (0-5)
-export const TRUST_LEVELS = {
-  0: { name: 'Tehlikeli', minProfile: 0, maxSpam: 100, description: 'Yüksek spam riski' },
-  1: { name: 'Yeni', minProfile: 0, maxSpam: 70, description: 'Yeni veya riskli hesap' },
-  2: { name: 'Temel', minProfile: 20, maxSpam: 40, description: 'Normal kullanıcı' },
-  3: { name: 'Güvenilir', minProfile: 40, maxSpam: 20, description: 'Aktif ve güvenilir' },
-  4: { name: 'Yüksek Güven', minProfile: 60, maxSpam: 10, description: 'Doğrulanmış güvenilir' },
-  5: { name: 'Elit', minProfile: 80, maxSpam: 5, description: 'En güvenilir kullanıcılar' },
-} as const;
-
 // Rate limiting
 export const RATE_LIMITS = {
   api: { limit: 60, window: 60_000 },           // 60 req/dakika
@@ -142,6 +132,12 @@ export const ALLOWED_EMAIL_DOMAINS = [
   'live.com', 'msn.com', 'yandex.com', 'mail.com', 'protonmail.com',
 ];
 
+// Reklam (YouTube-style ad breaks)
+export const AD_SKIP_DELAY = 8;            // saniye — skip butonu gecikmesi
+export const AD_MOMENTS_INTERVAL = 20;     // her 20 moment'ta 1 reklam kartı
+export const AD_NO_MIDROLL_MAX = 180;      // < 3:00 = mid-roll yok (sadece post-roll)
+export const AD_ONE_MIDROLL_MAX = 600;     // 3:00–10:00 = 1 mid-roll; > 10:00 = 2 mid-roll
+
 // Video
 export const VIDEO_MAX_DURATION = 600; // 10 dakika (saniye)
 export const VIDEO_MAX_SIZE_MB = 200; // MB (R2 storage)
@@ -152,6 +148,11 @@ export const VIDEO_PAGE_SIZE = 12;
 export const MOMENT_MAX_DURATION = 60; // saniye
 export const MOMENT_MAX_SIZE_MB = 100; // MB
 export const MOMENT_PAGE_SIZE = 10;
+
+// Audio (Moment ses sistemi)
+export const AUDIO_MAX_SIZE_MB = 10;
+export const AUDIO_MAX_DURATION = 60;
+export const AUDIO_ALLOWED_TYPES = ['audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/wav','audio/webm'] as const;
 
 // İçerik tipleri
 export const CONTENT_TYPES = {

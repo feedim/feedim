@@ -1,13 +1,19 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect, useCallback } from "react";
 import { Bookmark } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
-import PostListSection from "@/components/PostListSection";
+import PostCard from "@/components/PostCard";
+import { PostGridSkeleton } from "@/components/Skeletons";
+import EmptyState from "@/components/EmptyState";
+import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { FEED_PAGE_SIZE } from "@/lib/constants";
 
 export default function BookmarksPage() {
+  useSearchParams();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -78,16 +84,28 @@ export default function BookmarksPage() {
   return (
     <AppLayout headerTitle="Kaydedilenler" hideRightSidebar>
       <div className="px-2.5 sm:px-3">
-        <PostListSection
-          posts={posts}
-          loading={loading}
-          hasMore={hasMore}
-          onLoadMore={() => { const next = page + 1; setPage(next); loadBookmarks(next); }}
-          emptyTitle="Henüz gönderi yok"
-          emptyDescription="Beğendiğiniz gönderileri kaydedin, burada görüntülensin."
-          emptyIcon={<Bookmark className="h-12 w-12" />}
-          skeletonCount={4}
-        />
+        {loading && posts.length === 0 ? (
+          <div className="py-2">
+            <PostGridSkeleton count={6} />
+          </div>
+        ) : posts.length > 0 ? (
+          <>
+            {posts.map((post: any) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+            <LoadMoreTrigger
+              onLoadMore={() => { const next = page + 1; setPage(next); loadBookmarks(next); }}
+              loading={loading}
+              hasMore={hasMore}
+            />
+          </>
+        ) : (
+          <EmptyState
+            title="Henüz gönderi yok"
+            description="Beğendiğiniz gönderileri kaydedin, burada görüntülensin."
+            icon={<Bookmark className="h-12 w-12" />}
+          />
+        )}
       </div>
     </AppLayout>
   );

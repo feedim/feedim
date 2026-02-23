@@ -33,15 +33,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Check onboarding status
+  // Check onboarding status + auto-unfreeze on login
   let needsOnboarding = false;
   if (data.user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("onboarding_completed")
+      .select("onboarding_completed, status")
       .eq("user_id", data.user.id)
       .single();
     needsOnboarding = !profile?.onboarding_completed;
+
+    // Frozen accounts auto-activate on re-login
+    if (profile?.status === "frozen") {
+      await supabase
+        .from("profiles")
+        .update({ status: "active", frozen_at: null, moderation_reason: null })
+        .eq("user_id", data.user.id);
+    }
   }
 
   // Popup mode — send postMessage to opener and close

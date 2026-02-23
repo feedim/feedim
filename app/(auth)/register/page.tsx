@@ -239,9 +239,9 @@ function RegisterForm() {
                 {usernameChecking ? (
                   <span className="text-xs text-text-muted">...</span>
                 ) : usernameAvailable ? (
-                  <svg className="h-5 w-5 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  <svg className="h-4 w-4 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                 ) : (
-                  <svg className="h-5 w-5 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  <svg className="h-4 w-4 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 )}
               </span>
             )}
@@ -273,9 +273,9 @@ function RegisterForm() {
               {emailChecking ? (
                 <span className="text-xs text-text-muted">...</span>
               ) : emailAvailable === true ? (
-                <svg className="h-5 w-5 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                <svg className="h-4 w-4 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
               ) : emailAvailable === false ? (
-                <svg className="h-5 w-5 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                <svg className="h-4 w-4 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               ) : null}
             </span>
           )}
@@ -294,7 +294,7 @@ function RegisterForm() {
           </span>
         </label>
         <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} className="flex justify-center" />
-        <button type="submit" className="t-btn accept w-full relative" disabled={loading || !termsAccepted || (password !== confirmPassword)}>
+        <button type="submit" className="t-btn accept w-full relative" disabled={loading || !termsAccepted || (password !== confirmPassword)} aria-label="Kayıt Ol">
           {loading ? <span className="loader" /> : "Kayıt Ol"}
         </button>
       </form>

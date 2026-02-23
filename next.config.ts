@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@tensorflow/tfjs', 'nsfwjs', 'jpeg-js', 'pngjs', '@anthropic-ai/sdk'],
+  serverExternalPackages: ['@tensorflow/tfjs', 'jpeg-js', 'pngjs', '@anthropic-ai/sdk', 'sharp'],
   // Prepare for next/image optimization (Supabase Storage domain)
   images: {
     remotePatterns: [
@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
   // Enable experimental optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', '@emoji-mart/react', 'emoji-mart'],
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
   },
   // Security headers to protect against common web vulnerabilities
   async headers() {

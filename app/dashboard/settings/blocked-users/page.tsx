@@ -1,16 +1,20 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { SettingsItemSkeleton } from "@/components/Skeletons";
+import LoadingShell from "@/components/LoadingShell";
 import Link from "next/link";
 
 const PAGE_SIZE = 20;
 
 export default function BlockedUsersPage() {
+  useSearchParams();
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -89,7 +93,7 @@ export default function BlockedUsersPage() {
     <AppLayout headerTitle="Engellenen Kullanıcılar" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <SettingsItemSkeleton />
+          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
         ) : blockedUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <p className="text-sm text-text-muted">Engellenen kullanıcı yok</p>
@@ -118,6 +122,7 @@ export default function BlockedUsersPage() {
                     onClick={() => handleUnblock(b.profile?.username, b.id)}
                     disabled={unblockingId === b.id}
                     className="t-btn cancel !h-[32px] !text-xs !px-3 shrink-0 min-w-[90px]"
+                    aria-label="Engeli Kaldır"
                   >
                     {unblockingId === b.id ? <span className="loader" style={{ width: 14, height: 14 }} /> : "Engeli Kaldır"}
                   </button>

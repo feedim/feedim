@@ -70,6 +70,7 @@ function restoreThemeColor() {
 }
 
 const GLOW_FILTER = "blur(150px) saturate(1.5)";
+const TARGET_OPACITY = 0.12;
 
 export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -129,6 +130,10 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
     ctx.fillStyle = "#d44800";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     syncThemeColor();
+    // Smooth fade-in on first paint
+    requestAnimationFrame(() => {
+      canvas.style.opacity = String(TARGET_OPACITY);
+    });
   }, [mounted, syncThemeColor]);
 
   // ── Auto-detect: scan page for first large image when no explicit src ──
@@ -178,22 +183,24 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const drawToCanvas = (source: HTMLImageElement) => {
+    const drawToCanvas = (source: HTMLImageElement, skipTheme?: boolean) => {
       try {
         const ctx = canvas.getContext("2d", { willReadFrequently: false });
         if (!ctx) return;
 
-        // Crossfade: dim out, draw, dim in
-        if (prevSrcRef.current && prevSrcRef.current !== effectiveSrc) {
+        const shouldFade = !prevSrcRef.current || prevSrcRef.current !== effectiveSrc;
+        if (shouldFade) {
           canvas.style.opacity = "0";
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-            canvas.style.opacity = "0.12";
-            syncThemeColor();
-          }, 400);
+            if (!skipTheme) syncThemeColor();
+            requestAnimationFrame(() => {
+              canvas.style.opacity = String(TARGET_OPACITY);
+            });
+          });
         } else {
           ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-          syncThemeColor();
+          if (!skipTheme) syncThemeColor();
         }
         prevSrcRef.current = effectiveSrc;
       } catch {
@@ -201,14 +208,37 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
       }
     };
 
+    let corsSafe = false;
+    const isCorsCandidate = (() => {
+      try {
+        const u = new URL(effectiveSrc, window.location.href);
+        const isSameOrigin = u.origin === window.location.origin;
+        // Only attempt CORS if same-origin or known CORS-enabled hosts
+        const allowCorsHosts = new Set([
+          window.location.host,
+          "jggeqrvbdzjfomwfaoms.supabase.co",
+        ]);
+        return isSameOrigin || allowCorsHosts.has(u.host);
+      } catch {
+        return false;
+      }
+    })();
+
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => drawToCanvas(img);
+    if (isCorsCandidate) {
+      img.crossOrigin = "anonymous";
+      corsSafe = true;
+    }
+    img.onload = () => {
+      drawToCanvas(img, !corsSafe);
+    };
     img.onerror = () => {
-      // If CORS fails on auto-detected image, try without crossOrigin
+      // If CORS fails, retry without crossOrigin to at least show glow (no sampling)
       if (img.crossOrigin) {
         const retry = new Image();
-        retry.onload = () => drawToCanvas(retry);
+        retry.onload = () => {
+          drawToCanvas(retry, true);
+        };
         retry.src = effectiveSrc;
       }
     };
@@ -217,6 +247,8 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
 
   // ── Video frame sampling ──
   const videoThemeRef = useRef(0);
+
+  const lastVideoSrcRef = useRef<string | null>(null);
 
   const drawVideoFrame = useCallback(() => {
     if (failedRef.current) return;
@@ -232,9 +264,24 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
     if (!video || video.readyState < 2) return;
     try {
       const ctx = canvas.getContext("2d", { willReadFrequently: false });
-      if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (!ctx) return;
+      const currentSrc = video.currentSrc || video.src;
+      const shouldFade = currentSrc && currentSrc !== lastVideoSrcRef.current;
+      if (shouldFade) {
+        canvas.style.opacity = "0";
+        requestAnimationFrame(() => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          if (++videoThemeRef.current % 5 === 0) syncThemeColor();
+          requestAnimationFrame(() => {
+            canvas.style.opacity = String(TARGET_OPACITY);
+          });
+        });
+      } else {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (++videoThemeRef.current % 5 === 0) syncThemeColor();
+      }
+      lastVideoSrcRef.current = currentSrc;
       // Sync theme-color every ~5 seconds during video (every 150 frames at 30fps sample rate)
-      if (++videoThemeRef.current % 5 === 0) syncThemeColor();
     } catch {
       failedRef.current = true;
     }
@@ -300,7 +347,7 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
       width={16}
       height={9}
       className="fixed inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 0, filter: GLOW_FILTER, opacity: 0.12, transition: "opacity 0.8s ease" }}
+      style={{ zIndex: 0, filter: GLOW_FILTER, opacity: 0, transition: "opacity 2s ease" }}
       aria-hidden="true"
     />,
     document.body

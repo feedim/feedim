@@ -365,6 +365,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
               onClick={handleSend}
               disabled={!selected || sending || !canAffordSelected}
               className="t-btn accept w-full !py-3.5 !text-[0.88rem] disabled:opacity-40"
+              aria-label="Hediye Gönder"
             >
               {sending
                 ? <span className="loader" style={{ width: 18, height: 18 }} />
@@ -399,7 +400,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   key={key}
                   onClick={() => { setSelected(key); setCount(1); }}
                   disabled={!canAfford}
-                  className={`relative flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all duration-200 ${
+                  className={`relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 ${
                     isSelected
                       ? "bg-accent-main/10 ring-2 ring-accent-main"
                       : canAfford

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { X, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
 
@@ -22,23 +22,17 @@ interface MomentItem {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 
-const DISMISS_KEY = "fdm-moments-carousel-dismissed";
-
-export default function MomentsCarousel({ maxItems = 4, noBg = false }: { maxItems?: number; noBg?: boolean }) {
-  const [moments, setMoments] = useState<MomentItem[]>([]);
-  const [dismissed, setDismissed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMoments = [] }: { maxItems?: number; noBg?: boolean; initialMoments?: MomentItem[] }) {
+  const [moments, setMoments] = useState<MomentItem[]>(initialMoments || []);
+  const [loaded, setLoaded] = useState((initialMoments || []).length > 0);
 
   useEffect(() => {
-    if (sessionStorage.getItem(DISMISS_KEY)) {
-      setDismissed(true);
-      return;
-    }
-    loadMoments();
-  }, []);
+    if (!loaded) loadMoments();
+  }, [loaded]);
 
   const loadMoments = useCallback(async () => {
     try {
@@ -53,18 +47,12 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false }: { maxIte
     }
   }, [maxItems]);
 
-  const handleDismiss = useCallback(() => {
-    setDismissed(true);
-    sessionStorage.setItem(DISMISS_KEY, "1");
-  }, []);
 
   const fmtDuration = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
-
-  if (dismissed) return null;
 
   // Loading skeleton
   if (!loaded) {
@@ -89,12 +77,6 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false }: { maxIte
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">Moments</span>
-        <button
-          onClick={handleDismiss}
-          className="i-btn !w-7 !h-7 text-text-muted hover:text-text-primary"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
 
       {/* Horizontal scroll */}
@@ -139,10 +121,10 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false }: { maxIte
                   )}
                   <span className="text-[0.65rem] text-white font-medium truncate flex items-center gap-0.5">
                     @{author?.username}
-                    {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} />}
+                    {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
                   </span>
                 </div>
-                <p className="text-[0.68rem] text-white font-medium leading-tight line-clamp-2">{m.title}</p>
+                <p className="text-[0.6rem] text-white font-medium line-clamp-2" style={{ lineHeight: 1.35 }}>{m.title}</p>
               </div>
             </Link>
           );

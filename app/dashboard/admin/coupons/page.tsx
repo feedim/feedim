@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Ticket, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import LoadingShell from "@/components/LoadingShell";
 
 const ITEMS_PER_PAGE = 10;
 
 export default function AdminCouponsPage() {
+  useSearchParams();
   const [loading, setLoading] = useState(true);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [couponForm, setCouponForm] = useState({ code: '', discountPercent: 15, maxUses: 100, expiryHours: 720, isFree: false });
@@ -117,9 +119,11 @@ export default function AdminCouponsPage() {
 
       <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-2xl">
         {loading ? (
-          <div className="space-y-4">
-            <div className="skeleton rounded-2xl h-60" />
-          </div>
+          <LoadingShell>
+            <div className="space-y-4">
+              <div className="skeleton rounded-2xl h-60" />
+            </div>
+          </LoadingShell>
         ) : (
           <div className="rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -212,7 +216,7 @@ export default function AdminCouponsPage() {
                       </div>
                       <p className="text-xs text-text-muted mt-1">
                         {coupon.current_uses}/{coupon.max_uses || '∞'} kullanım
-                        {coupon.expires_at && ` · ${new Date(coupon.expires_at) > new Date() ? `${Math.ceil((new Date(coupon.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldı` : 'süresi dolmuş'}`}
+                        {coupon.expires_at && ` ${new Date(coupon.expires_at) > new Date() ? `${Math.ceil((new Date(coupon.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))}s kaldı` : 'süresi dolmuş'}`}
                       </p>
                     </div>
                     <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-text-muted hover:text-error transition shrink-0" title="Sil">
