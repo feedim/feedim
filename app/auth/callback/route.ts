@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Check onboarding status + auto-unfreeze on login
+  // Check onboarding status + auto-unfreeze on login + auto-create profile for OAuth
   let needsOnboarding = false;
   if (data.user) {
     const { data: profile } = await supabase
@@ -41,14 +41,57 @@ export async function GET(request: NextRequest) {
       .select("onboarding_completed, status")
       .eq("user_id", data.user.id)
       .single();
-    needsOnboarding = !profile?.onboarding_completed;
 
-    // Frozen accounts auto-activate on re-login
-    if (profile?.status === "frozen") {
-      await supabase
-        .from("profiles")
-        .update({ status: "active", frozen_at: null, moderation_reason: null })
-        .eq("user_id", data.user.id);
+    // New OAuth user — no profile exists yet, create one
+    if (!profile) {
+      const meta = data.user.user_metadata || {};
+      const email = data.user.email || "";
+      const fullName = meta.full_name || meta.name || "";
+      const nameParts = fullName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      const avatarUrl = meta.avatar_url || meta.picture || "";
+
+      // Generate unique username from email prefix
+      const emailPrefix = email.split("@")[0].replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 16);
+      const baseUsername = emailPrefix || "user";
+      let username = baseUsername;
+      let attempts = 0;
+      while (attempts < 10) {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("username", username)
+          .single();
+        if (!existing) break;
+        username = `${baseUsername}${Math.floor(Math.random() * 9000) + 1000}`;
+        attempts++;
+      }
+
+      await supabase.from("profiles").insert({
+        user_id: data.user.id,
+        email,
+        username,
+        name: firstName,
+        surname: lastName,
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        onboarding_completed: false,
+        onboarding_step: 1,
+        status: "active",
+      });
+
+      needsOnboarding = true;
+    } else {
+      needsOnboarding = !profile.onboarding_completed;
+
+      // Frozen accounts auto-activate on re-login
+      if (profile.status === "frozen") {
+        await supabase
+          .from("profiles")
+          .update({ status: "active", frozen_at: null, moderation_reason: null })
+          .eq("user_id", data.user.id);
+      }
     }
   }
 
