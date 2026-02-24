@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       author_url: author?.username ? `${baseUrl}/u/${author.username}` : baseUrl,
       provider_name: "Feedim",
       provider_url: baseUrl,
-      html: `<iframe width="560" height="315" src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`,
+      html: `<div style="position:relative;width:100%;padding-top:56.25%;overflow:hidden;"><iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe></div>`,
       width: 560,
       height: 315,
       ...(thumbnail ? {
@@ -70,15 +70,19 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Regular post — rich link
+  // Regular post — rich embed
+  const embedUrl = `${baseUrl}/embed/${encodeURIComponent(post.slug)}`;
   const response = {
-    type: "link",
+    type: "rich",
     version: "1.0",
     title: post.title,
     author_name: authorName,
     author_url: author?.username ? `${baseUrl}/u/${author.username}` : baseUrl,
     provider_name: "Feedim",
     provider_url: baseUrl,
+    html: `<iframe src="${embedUrl}" style="width:100%;border:none;overflow:hidden;" height="180" allowfullscreen></iframe>`,
+    width: 560,
+    height: 180,
     ...(thumbnail ? {
       thumbnail_url: thumbnail,
       thumbnail_width: 1200,

@@ -4,6 +4,7 @@ import { checkImageBuffer } from '@/lib/moderation';
 import { uploadToR2 } from '@/lib/r2';
 import { encode as encodeBlurhash } from 'blurhash';
 import { computeImageHash } from '@/lib/copyright';
+import { validateMagicBytes, stripMetadataAndOptimize } from '@/lib/imageSecurityUtils';
 import * as jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 
@@ -54,29 +55,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dosya çok büyük. Maksimum 5MB.' }, { status: 400 });
     }
 
-    // NSFW pre-check — don't block upload, just tag it. Final check at publish time.
     const imageBuffer = Buffer.from(await file.arrayBuffer());
+
+    // Magic bytes validation
+    if (!validateMagicBytes(imageBuffer, file.type)) {
+      return NextResponse.json({ error: 'Geçersiz dosya içeriği' }, { status: 400 });
+    }
+
+    // Metadata strip + optimize
+    const { buffer: cleanBuffer, mimeType: cleanType } = await stripMetadataAndOptimize(imageBuffer, file.type);
+
+    // NSFW pre-check — don't block upload, just tag it. Final check at publish time.
     let nsfwFlag = false;
     try {
-      const nsfwResult = await checkImageBuffer(imageBuffer, file.type);
+      const nsfwResult = await checkImageBuffer(cleanBuffer, cleanType);
       if (nsfwResult.action === 'flag') nsfwFlag = true;
     } catch {}
 
     const safeName = (fileName || file.name).replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 100);
-    const ext = file.type === 'image/jpeg' ? '.jpg' : file.type === 'image/png' ? '.png' : file.type === 'image/gif' ? '.gif' : '.webp';
+    const ext = cleanType === 'image/jpeg' ? '.jpg' : cleanType === 'image/png' ? '.png' : cleanType === 'image/gif' ? '.gif' : '.webp';
     const path = `${user.id}/${Date.now()}_${safeName}${safeName.includes('.') ? '' : ext}`;
 
     const key = `images/${path}`;
-    const url = await uploadToR2(key, imageBuffer, file.type);
+    const url = await uploadToR2(key, cleanBuffer, cleanType);
 
     // Generate blurhash for JPEG/PNG
     let blurhash: string | null = null;
     try {
-      if (file.type === 'image/jpeg') {
-        const decoded = jpeg.decode(imageBuffer, { useTArray: true, maxMemoryUsageInMB: 64 });
+      if (cleanType === 'image/jpeg') {
+        const decoded = jpeg.decode(cleanBuffer, { useTArray: true, maxMemoryUsageInMB: 64 });
         blurhash = encodeBlurhash(new Uint8ClampedArray(decoded.data), decoded.width, decoded.height, 4, 3);
-      } else if (file.type === 'image/png') {
-        const decoded = PNG.sync.read(imageBuffer);
+      } else if (cleanType === 'image/png') {
+        const decoded = PNG.sync.read(cleanBuffer);
         blurhash = encodeBlurhash(new Uint8ClampedArray(decoded.data), decoded.width, decoded.height, 4, 3);
       }
     } catch {
@@ -86,7 +96,7 @@ export async function POST(request: NextRequest) {
     // Compute perceptual image hash (dHash) for copyright detection
     let imageHash: string | null = null;
     try {
-      imageHash = await computeImageHash(imageBuffer);
+      imageHash = await computeImageHash(cleanBuffer);
     } catch {
       // Hash generation failed — return without it
     }

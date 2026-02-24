@@ -31,7 +31,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
   const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${url}` : url;
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://feedim.com";
   const embedCode = postSlug
-    ? `<iframe width="560" height="315" src="${baseUrl}/embed/${postSlug}" frameborder="0" allowfullscreen></iframe>`
+    ? `<iframe src="${baseUrl}/embed/${postSlug}" style="width:100%;aspect-ratio:16/9;border:none;" allowfullscreen></iframe>`
     : "";
 
   const trackShare = async (platform: string) => {

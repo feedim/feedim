@@ -193,7 +193,7 @@ export default function VideoPlayerClient({
   const adActive = adBreakActive || postRollActive;
 
   return (
-    <div className="relative sm:rounded-lg overflow-hidden">
+    <div className="relative sm:rounded-lg sm:overflow-hidden">
       <div className={adActive ? "pointer-events-none" : ""}>
         <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
       </div>
@@ -224,50 +224,41 @@ export default function VideoPlayerClient({
 
       {/* End screen — autoplay ON with countdown (compact & responsive) */}
       {ended && countdown !== null && countdown > 0 && (
-        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-20 overflow-hidden">
-          <div className="text-center w-full max-w-[220px] sm:max-w-[260px] px-3">
-            {/* Circular countdown with thumbnail */}
-            <div className="relative w-36 sm:w-44 mx-auto mb-3">
-              {nextVideoThumbnail && (
-                <div className="rounded-lg overflow-hidden shadow-lg">
-                  <img src={nextVideoThumbnail} alt="" className="w-full aspect-video object-cover" />
-                </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-11 h-11 sm:w-12 sm:h-12">
-                  <svg className="w-11 h-11 sm:w-12 sm:h-12 -rotate-90" viewBox="0 0 48 48">
-                    <circle cx="24" cy="24" r={circleR} fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
-                    <circle
-                      cx="24" cy="24" r={circleR}
-                      fill="none"
-                      stroke="var(--accent-color)"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeDasharray={circleC}
-                      strokeDashoffset={circleC * (1 - countdown / countdownMax)}
-                      style={{ transition: "stroke-dashoffset 1s linear" }}
-                    />
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-white text-base font-bold tabular-nums">
-                    {countdown}
-                  </span>
-                </div>
-              </div>
+        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-20 overflow-hidden pb-2">
+          <div className="text-center w-full max-w-[220px] px-3">
+            {/* Countdown circle */}
+            <div className="relative w-12 h-12 mx-auto mb-2">
+              <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                <circle cx="24" cy="24" r={circleR} fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+                <circle
+                  cx="24" cy="24" r={circleR}
+                  fill="none"
+                  stroke="var(--accent-color)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={circleC}
+                  strokeDashoffset={circleC * (1 - countdown / countdownMax)}
+                  style={{ transition: "stroke-dashoffset 1s linear" }}
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold tabular-nums">
+                {countdown}
+              </span>
             </div>
-            <p className="text-white/50 text-[0.72rem] mb-0.5">Sonraki video</p>
+            <p className="text-white/50 text-[0.7rem] mb-0.5">Sonraki video</p>
             {nextVideoTitle && (
-              <p className="text-white font-semibold text-[0.85rem] sm:text-[0.9rem] mb-3 line-clamp-2">{nextVideoTitle}</p>
+              <p className="text-white font-semibold text-xs mb-3 line-clamp-2">{nextVideoTitle}</p>
             )}
-            <div className="flex items-center justify-center gap-2.5">
+            <div className="flex items-center justify-center gap-2">
               <button
                 onClick={cancelAutoplay}
-                className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-[0.78rem] font-medium transition"
+                className="px-3.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[0.72rem] font-medium transition"
               >
                 İptal
               </button>
               <button
                 onClick={playNow}
-                className="px-4 py-1.5 rounded-full text-white text-[0.78rem] font-medium transition hover:opacity-90"
+                className="px-3.5 py-1 rounded-full text-white text-[0.72rem] font-medium transition hover:opacity-90"
                 style={{ backgroundColor: "var(--accent-color)" }}
               >
                 Şimdi Oynat
@@ -279,18 +270,18 @@ export default function VideoPlayerClient({
 
       {/* End screen — autoplay OFF or no next video */}
       {ended && countdown === null && (
-        <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center z-20 px-4">
+        <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-20 px-4 pb-2">
           {/* Replay button */}
           <button
             onClick={replay}
-            className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center mb-4 transition"
+            className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center mb-2.5 transition"
             aria-label="Tekrar oynat"
           >
-            <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 1 9 9M3 12V3m0 9h9" />
             </svg>
           </button>
-          <p className="text-white/50 text-[0.78rem] mb-4">Tekrar oynat</p>
+          <p className="text-white/50 text-[0.72rem]">Tekrar oynat</p>
         </div>
       )}
     </div>

@@ -67,6 +67,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const seekingRef = useRef(false);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsOpenRef = useRef(false);
   const rafRef = useRef<number>(0);
   const waitingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const actionTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -80,6 +81,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   const miniTimeRef = useRef<HTMLSpanElement>(null);
   const doubleTapTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const tapCountRef = useRef(0);
+  const touchPreviewRef = useRef<HTMLDivElement>(null);
 
   const [playing, setPlaying] = useState(false);
   const [controls, setControls] = useState(true);
@@ -94,6 +96,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   const [muted, setMuted] = useState(true);
   const [cinemaMode, setCinemaMode] = useState(false);
   const [miniPlayer, setMiniPlayer] = useState(false);
+  const [fakeFullscreen, setFakeFullscreen] = useState(false);
   const [seekAnim, setSeekAnim] = useState<{ side: "left" | "right"; key: number } | null>(null);
   const seekAnimKey = useRef(0);
   const [touchSeeking, setTouchSeeking] = useState(false);
@@ -161,8 +164,11 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         setControls(true);
       }
       if (hideTimer.current) clearTimeout(hideTimer.current);
-      if (!force && playingRef.current) {
+      // Don't auto-hide while settings menu is open
+      if (force || settingsOpenRef.current) return;
+      if (playingRef.current) {
         hideTimer.current = setTimeout(() => {
+          if (settingsOpenRef.current) return;
           controlsVisibleRef.current = false;
           setControls(false);
         }, 3000);
@@ -235,6 +241,9 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       e.preventDefault();
       seekingRef.current = true;
       durationRef.current = v.duration;
+      const wasPlaying = !v.paused;
+      v.pause();
+      stopRAF();
       setTouchSeeking(true);
 
       const updateSeekVisual = (clientX: number) => {
@@ -246,6 +255,14 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         const tText = `${fmt(t)} / ${fmt(durationRef.current)}`;
         if (timeRef.current) timeRef.current.textContent = tText;
         if (miniTimeRef.current) miniTimeRef.current.textContent = tText;
+        // Touch time tooltip
+        const tp = touchPreviewRef.current;
+        if (tp) {
+          tp.style.display = "block";
+          tp.textContent = fmt(t);
+          const left = Math.max(24, Math.min(pct * r.width, r.width - 24));
+          tp.style.left = `${left}px`;
+        }
       };
 
       updateSeekVisual(e.touches[0].clientX);
@@ -259,15 +276,18 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           const p = Math.max(0, Math.min(1, (touch.clientX - r.left) / r.width));
           vid.currentTime = p * vid.duration;
         }
+        // Hide touch tooltip
+        if (touchPreviewRef.current) touchPreviewRef.current.style.display = "none";
         seekingRef.current = false;
         setTouchSeeking(false);
+        if (wasPlaying && vid) vid.play().catch(() => {});
         window.removeEventListener("touchmove", onMove);
         window.removeEventListener("touchend", onEnd);
       };
       window.addEventListener("touchmove", onMove, { passive: false });
       window.addEventListener("touchend", onEnd);
     },
-    []
+    [stopRAF]
   );
 
   // Seek preview — show thumbnail at hovered time
@@ -307,17 +327,40 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   const toggleFullscreen = useCallback(async () => {
     const c = containerRef.current;
     if (!c) return;
-    try {
-      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
-      } else if (c.requestFullscreen) {
-        await c.requestFullscreen();
-      } else if ((c as any).webkitRequestFullscreen) {
-        (c as any).webkitRequestFullscreen();
-      }
-    } catch {}
-  }, []);
+
+    // Exit real fullscreen if active
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+      return;
+    }
+
+    // Exit fake fullscreen if active
+    if (fakeFullscreen) {
+      setFakeFullscreen(false);
+      return;
+    }
+
+    // Check if the browser actually supports fullscreen on arbitrary elements
+    // iOS Safari has webkitRequestFullscreen on elements but it silently does nothing
+    const fsEnabled = document.fullscreenEnabled || (document as any).webkitFullscreenEnabled;
+
+    if (fsEnabled) {
+      try {
+        if (c.requestFullscreen) {
+          await c.requestFullscreen();
+          return;
+        }
+        if ((c as any).webkitRequestFullscreen) {
+          (c as any).webkitRequestFullscreen();
+          return;
+        }
+      } catch {}
+    }
+
+    // Fallback: CSS fullscreen (iOS Safari etc.)
+    setFakeFullscreen(true);
+  }, [fakeFullscreen]);
 
   const changeSpeed = useCallback((rate: number) => {
     const v = videoRef.current;
@@ -393,10 +436,15 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     };
   }, [stopRAF]);
 
+  // Sync fakeFullscreen with fullscreen state
+  useEffect(() => {
+    setFullscreen(fakeFullscreen || !!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
+  }, [fakeFullscreen]);
+
   useEffect(() => {
     if (!settingsMenu) return;
     const handleClick = (e: MouseEvent) => {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) { setSettingsMenu(false); setSettingsTab("main"); }
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) { setSettingsMenu(false); settingsOpenRef.current = false; setSettingsTab("main"); }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -426,7 +474,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     const onCanPlay = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onLoadedData = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onError = () => setError(true);
-    const onFsChange = () => setFullscreen(!!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
+    const onFsChange = () => setFullscreen(fakeFullscreen || !!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
     const onVideoEnded = () => { stopRAF(); onEndedRef.current?.(); };
 
     v.addEventListener("play", onPlay);
@@ -487,7 +535,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       document.removeEventListener("webkitfullscreenchange", onFsChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer, disabled]);
+  }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer, disabled, fakeFullscreen]);
 
   // Restore user's mute preference from localStorage
   useEffect(() => {
@@ -602,6 +650,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       if (!c.offsetParent) return;
       const v = videoRef.current;
       if (!v) return;
+      // Escape exits fake fullscreen
+      if (e.key === "Escape" && fakeFullscreen) { setFakeFullscreen(false); e.preventDefault(); return; }
       // Block save / view-source shortcuts inside player
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "u")) { e.preventDefault(); return; }
       const dur = v.duration || 0;
@@ -629,7 +679,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     window.addEventListener("keydown", handle, { capture: true });
     return () => window.removeEventListener("keydown", handle, { capture: true } as AddEventListenerOptions);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [togglePlay, toggleMute, toggleFullscreen, changeVolume, showControls, toggleCinema, updateProgress, changeSpeed]);
+  }, [togglePlay, toggleMute, toggleFullscreen, changeVolume, showControls, toggleCinema, updateProgress, changeSpeed, fakeFullscreen]);
 
   // ── Moment mode: external play/pause control ──
   useEffect(() => {
@@ -769,15 +819,15 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
       <div
         ref={containerRef}
-        className={`relative overflow-hidden select-none group/vp ${
+        className={`relative overflow-visible select-none group/vp ${
           miniPlayer
             ? "vp-mini fixed bottom-4 right-4 w-[360px] max-w-[45vw] rounded-lg shadow-2xl z-[9999] bg-black"
             : "sm:rounded-lg z-10"
-        }`}
-        style={!miniPlayer ? cinemaStyle : undefined}
+        } ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-[100dvh] !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
+        style={!miniPlayer && !fakeFullscreen ? cinemaStyle : fakeFullscreen ? { paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" } : undefined}
         tabIndex={0}
         onMouseMove={disabled ? undefined : handleMouseMove}
-        onMouseLeave={disabled ? undefined : () => { if (playingRef.current) { controlsVisibleRef.current = false; setControls(false); } }}
+        onMouseLeave={disabled ? undefined : () => { if (playingRef.current && !settingsOpenRef.current) { controlsVisibleRef.current = false; setControls(false); } }}
         onClick={disabled ? undefined : handleVideoAreaClick}
         onContextMenu={(e) => e.preventDefault()}
       >
@@ -795,7 +845,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           suppressHydrationWarning
           controlsList="nodownload noremoteplayback"
           draggable={false}
-          className={`w-full pointer-events-none select-none ${cinemaMode && !miniPlayer ? "h-full object-contain" : "aspect-video"}`}
+          className={`w-full pointer-events-none select-none overflow-hidden ${fakeFullscreen ? "!rounded-none" : "sm:rounded-lg"} ${(cinemaMode && !miniPlayer) || fakeFullscreen ? "h-full object-contain" : "aspect-video"}`}
           style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
@@ -892,7 +942,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
               }}
               onMouseLeave={() => { if (!seekingRef.current) hideSeekPreview(); }}
             >
-              {/* Seek preview tooltip — desktop only (touch devices skip to save bandwidth) */}
+              {/* Seek preview tooltip — video thumbnail on desktop, time label on touch */}
               {!miniPlayer && !isTouchDevice && (
                 <div ref={previewWrapRef} className="absolute bottom-full mb-4 pointer-events-none z-30 w-[160px]" style={{ display: "none", transform: "translateX(-50%)" }}>
                   <div className="rounded-lg overflow-hidden shadow-xl border border-white/20 bg-black w-[160px]">
@@ -900,6 +950,10 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                   </div>
                   <div ref={previewTimeRef} className="text-white text-[0.75rem] text-center mt-1.5 font-medium tabular-nums bg-black/80 rounded px-2 py-0.5 mx-auto w-fit" />
                 </div>
+              )}
+              {/* Touch seek time tooltip — mobile only */}
+              {!miniPlayer && isTouchDevice && (
+                <div ref={touchPreviewRef} className="absolute bottom-full mb-3 pointer-events-none z-30 text-white text-[0.8rem] font-semibold tabular-nums bg-black/80 rounded-md px-2.5 py-1 -translate-x-1/2 shadow-lg" style={{ display: "none" }} />
               )}
 
               <div ref={bufferRef} className="absolute h-full rounded-full top-0 left-0" style={{ width: "0%", backgroundColor: "rgba(255,255,255,0.3)" }} />
@@ -973,7 +1027,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
                 {/* Settings (speed + cinema mode) */}
                 <div className="relative" ref={settingsMenuRef}>
-                  <button onClick={() => { setSettingsMenu(!settingsMenu); setSettingsTab("main"); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Ayarlar">
+                  <button onClick={() => { const next = !settingsMenu; setSettingsMenu(next); settingsOpenRef.current = next; setSettingsTab("main"); if (next) showControls(true); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Ayarlar">
                     {speed !== 1 ? (
                       <span className="text-[0.8rem] font-semibold min-w-[36px]">{speed}x</span>
                     ) : (
@@ -981,7 +1035,10 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                     )}
                   </button>
                   {settingsMenu && (
-                    <div className="absolute bottom-full right-0 sm:right-0 mb-2 bg-neutral-900/95 backdrop-blur-md rounded-xl min-w-[200px] max-w-[min(280px,calc(100vw-32px))] shadow-xl border border-white/10 overflow-hidden z-50">
+                    <>
+                    {/* Backdrop — dismiss on tap outside */}
+                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setSettingsMenu(false); settingsOpenRef.current = false; setSettingsTab("main"); }} />
+                    <div className="absolute right-0 top-full mt-1 sm:top-auto sm:bottom-full sm:mt-0 sm:mb-2 rounded-xl max-h-[50vh] overflow-y-auto z-50 bg-neutral-900/95 backdrop-blur-md min-w-[200px] max-w-[min(280px,calc(100vw-32px))] shadow-xl border border-white/10">
                       {settingsTab === "main" ? (
                         <>
                           {/* Cinema mode toggle — hidden on mobile */}
@@ -1013,8 +1070,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                               </span>
                             </button>
                           )}
-                          {/* Shortcuts — navigate to sub-tab */}
-                          <button onClick={() => setSettingsTab("shortcuts")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors">
+                          {/* Shortcuts — navigate to sub-tab (hidden on mobile) */}
+                          <button onClick={() => setSettingsTab("shortcuts")} className="hidden sm:flex w-full px-3.5 py-2.5 items-center justify-between hover:bg-white/10 transition-colors">
                             <span className="text-[0.82rem] text-white font-medium">Kısayollar</span>
                             <svg className="h-3.5 w-3.5 text-white/50" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
                           </button>
@@ -1085,6 +1142,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                         </>
                       )}
                     </div>
+                    </>
                   )}
                 </div>
 

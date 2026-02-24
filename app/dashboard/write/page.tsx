@@ -470,7 +470,16 @@ function WritePageContent() {
     try {
       const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
       const method = draftId ? "PUT" : "POST";
-      const cleanedContent = editorRef.current?.cleanContentForSave() || content;
+      let cleanedContent = editorRef.current?.cleanContentForSave() || content;
+
+      // Re-upload external images to CDN on publish
+      if (status === "published") {
+        try {
+          const { reuploadExternalImages } = await import("@/lib/reuploadExternalImages");
+          cleanedContent = await reuploadExternalImages(cleanedContent);
+        } catch {}
+      }
+
       const res = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -784,7 +793,8 @@ function WritePageContent() {
                     />
                   </label>
                 )}
-              <p className="text-[0.68rem] text-text-muted/70 mt-1.5 italic">Görseller telif hakkına tabi olabilir.</p>
+              <p className="text-[0.68rem] text-text-muted/70 mt-1.5">Önerilen: 1280×720px (16:9), maks 5MB</p>
+              <p className="text-[0.68rem] text-text-muted/70 mt-0.5 italic">Görseller telif hakkına tabi olabilir.</p>
               </div>
             </div>
 

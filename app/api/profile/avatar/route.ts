@@ -3,11 +3,32 @@ import { createClient } from "@/lib/supabase/server";
 import { checkImageBuffer } from "@/lib/moderation";
 import { uploadToR2 } from "@/lib/r2";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateMagicBytes, stripMetadataAndOptimize } from "@/lib/imageSecurityUtils";
+
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Rate limiter: 5 requests per 5 minutes
+const avatarLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkAvatarLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = avatarLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    avatarLimitMap.set(userId, { count: 1, resetAt: now + 300_000 });
+    return true;
+  }
+  if (entry.count >= 5) return false;
+  entry.count++;
+  return true;
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!checkAvatarLimit(user.id)) {
+    return NextResponse.json({ error: "Çok fazla yükleme. Lütfen bekleyin." }, { status: 429 });
+  }
 
   const formData = await req.formData();
   const file = formData.get("file") as File;
@@ -17,10 +38,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sadece JPEG, PNG, WebP ve GIF profil fotoğrafları kabul edilir' }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop() || "jpg";
-  const fileName = `avatars/${user.id}/avatar-${Date.now()}.${ext}`;
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: "Dosya çok büyük. Maksimum 5MB." }, { status: 400 });
+  }
+
   const arrayBuffer = await file.arrayBuffer();
   const imageBuffer = Buffer.from(arrayBuffer);
+
+  // Magic bytes validation
+  if (!validateMagicBytes(imageBuffer, file.type)) {
+    return NextResponse.json({ error: "Geçersiz dosya içeriği" }, { status: 400 });
+  }
+
+  // Metadata strip + optimize
+  const { buffer: cleanBuffer, mimeType: cleanType } = await stripMetadataAndOptimize(imageBuffer, file.type);
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const fileName = `avatars/${user.id}/avatar-${Date.now()}.${ext}`;
 
   const adminClient = createAdminClient();
 
@@ -34,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   if (!isAdmin) {
     try {
-      const nsfwPromise = checkImageBuffer(imageBuffer, file.type);
+      const nsfwPromise = checkImageBuffer(cleanBuffer, cleanType);
       const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
       const nsfwResult = await Promise.race([nsfwPromise, timeout]);
 
@@ -65,7 +99,7 @@ export async function POST(req: NextRequest) {
 
   // Upload to R2
   const key = `images/${fileName}`;
-  const url = await uploadToR2(key, imageBuffer, file.type);
+  const url = await uploadToR2(key, cleanBuffer, cleanType);
 
   // Single atomic update via adminClient — avatar + moderation status together
   const profileUpdate: Record<string, unknown> = {

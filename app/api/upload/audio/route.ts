@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getPresignedUploadUrl } from "@/lib/r2";
-import { AUDIO_MAX_SIZE_MB } from "@/lib/constants";
+import { AUDIO_MAX_SIZE_MB, AUDIO_ALLOWED_TYPES } from "@/lib/constants";
 
 const MAX_FILE_SIZE = AUDIO_MAX_SIZE_MB * 1024 * 1024;
+
+// Rate limiter: 10 requests per 10 minutes
+const audioLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkAudioLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = audioLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    audioLimitMap.set(userId, { count: 1, resetAt: now + 600_000 });
+    return true;
+  }
+  if (entry.count >= 10) return false;
+  entry.count++;
+  return true;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,13 +25,17 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 });
 
+    if (!checkAudioLimit(user.id)) {
+      return NextResponse.json({ error: "Çok fazla yükleme. Lütfen bekleyin." }, { status: 429 });
+    }
+
     const { filename, contentType, fileSize } = await request.json();
 
     if (!filename || !contentType || !fileSize) {
       return NextResponse.json({ error: "Dosya bilgisi gerekli" }, { status: 400 });
     }
 
-    if (!contentType.startsWith("audio/")) {
+    if (!(AUDIO_ALLOWED_TYPES as readonly string[]).includes(contentType)) {
       return NextResponse.json({ error: "Desteklenmeyen format" }, { status: 400 });
     }
 

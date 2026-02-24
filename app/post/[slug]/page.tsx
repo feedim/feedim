@@ -233,11 +233,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     alternates: {
       canonical: url,
-      ...(isVideo ? {
-        types: {
-          'application/json+oembed': `${baseUrl}/api/oembed?url=${encodeURIComponent(url)}&format=json`,
-        },
-      } : {}),
+      types: {
+        'application/json+oembed': `${baseUrl}/api/oembed?url=${encodeURIComponent(url)}&format=json`,
+      },
     },
   };
 }
