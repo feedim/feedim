@@ -308,9 +308,7 @@ textarea {
 }
 
 .comment-textarea {
-  height: auto !important;
-  max-height: none !important;
-  overflow: hidden !important;
+  max-height: none;
 }
 
 /* ── Modern Select ── */
