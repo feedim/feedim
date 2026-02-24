@@ -69,15 +69,13 @@ export default async function EmbedPage({ params }: PageProps) {
   if (isVideo) {
     return (
       <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full">
-              <VideoPlayer
-                src={post.video_url}
-                poster={post.video_thumbnail || post.featured_image || undefined}
-                autoStart
-              />
-            </div>
+        <div className="flex-1 min-h-0 flex items-center">
+          <div className="w-full max-h-full [&_video]:!max-h-[calc(100dvh-36px)]">
+            <VideoPlayer
+              src={post.video_url}
+              poster={post.video_thumbnail || post.featured_image || undefined}
+              autoStart
+            />
           </div>
         </div>
         <a
