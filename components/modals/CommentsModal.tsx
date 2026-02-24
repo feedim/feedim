@@ -866,7 +866,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
   const profileUsername = comment.profiles?.username || "anonim";
   return (
     <div className={cn(
-      "flex flex-row w-full py-[9px] px-[11px]",
+      "flex flex-row w-full py-[6px] px-[11px]",
       isReply && "pl-[11px] ml-[13px] border-l-2 border-border-primary"
     )}>
       {/* Avatar */}
@@ -914,17 +914,17 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           </div>
         )}
         {comment.content_type === "gif" && comment.gif_url ? (
-          <img src={comment.gif_url} className="mt-1 max-w-[200px] rounded-xl cursor-pointer" loading="lazy" alt="GIF" />
+          <img src={comment.gif_url} className="mt-0.5 max-w-[200px] rounded-xl cursor-pointer" loading="lazy" alt="GIF" />
         ) : (
           <div
-            className="w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none mt-1 break-words pr-[26px]"
+            className="w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none mt-0.5 break-words pr-[26px]"
             dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}
           />
         )}
 
         {/* Bottom action bar */}
         {!comment.is_nsfw && (
-          <div className="flex items-center w-full h-[30px] justify-between pr-3 mt-[5px]">
+          <div className="flex items-center w-full h-[28px] justify-between pr-3 mt-[2px]">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => onLike(comment.id)}
