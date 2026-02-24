@@ -132,6 +132,60 @@ async function getAuthorPosts(authorId: string, currentPostId: number) {
   }));
 }
 
+async function getAuthorNotes(authorId: string, currentPostId: number) {
+  const admin = createAdminClient();
+
+  const { data: posts } = await admin
+    .from("posts")
+    .select(`
+      id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at, content_type, view_count, blurhash,
+      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status)
+    `)
+    .eq("author_id", authorId)
+    .eq("status", "published")
+    .eq("content_type", "note")
+    .eq("is_nsfw", false)
+    .neq("id", currentPostId)
+    .order("published_at", { ascending: false })
+    .limit(4);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (posts || []).filter((p: any) => {
+    const a = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+    return !a?.status || a.status === 'active';
+  }).slice(0, 3).map((p: any) => ({
+    ...p,
+    profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
+  }));
+}
+
+async function getPopularNotes(currentPostId: number, authorId: string) {
+  const admin = createAdminClient();
+
+  const { data: posts } = await admin
+    .from("posts")
+    .select(`
+      id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at, content_type, view_count, blurhash,
+      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status)
+    `)
+    .eq("status", "published")
+    .eq("content_type", "note")
+    .eq("is_nsfw", false)
+    .neq("id", currentPostId)
+    .neq("author_id", authorId)
+    .order("trending_score", { ascending: false })
+    .limit(6);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (posts || []).filter((p: any) => {
+    const a = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+    return !a?.status || a.status === 'active';
+  }).slice(0, 3).map((p: any) => ({
+    ...p,
+    profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
+  }));
+}
+
 async function getNextVideos(currentPostId: number, authorId: string): Promise<VideoItem[]> {
   const admin = createAdminClient();
 
@@ -186,6 +240,8 @@ const getCachedPost = unstable_cache(getPost, ["post-by-slug"], { revalidate: 60
 const getCachedRelatedPosts = unstable_cache(getRelatedPosts, ["related-posts"], { revalidate: 600, tags: ["posts"] });
 const getCachedAuthorPosts = unstable_cache(getAuthorPosts, ["author-posts"], { revalidate: 600, tags: ["posts"] });
 const getCachedNextVideos = unstable_cache(getNextVideos, ["next-videos"], { revalidate: 300, tags: ["posts"] });
+const getCachedAuthorNotes = unstable_cache(getAuthorNotes, ["author-notes"], { revalidate: 300, tags: ["posts"] });
+const getCachedPopularNotes = unstable_cache(getPopularNotes, ["popular-notes"], { revalidate: 300, tags: ["posts"] });
 
 async function getUserInteractions(postId: number) {
   const userId = await getAuthUserId();
@@ -333,11 +389,13 @@ export default async function PostPage({ params }: PageProps) {
   const isVideo = post.content_type === "video" || post.content_type === "moment";
   const isNote = post.content_type === "note";
   const categoryIds = (post.post_categories || []).map((pc: { category_id: number }) => pc.category_id);
-  const [relatedPosts, authorPosts, interactions, nextVideos] = await Promise.all([
+  const [relatedPosts, authorPosts, interactions, nextVideos, authorNotes, popularNotes] = await Promise.all([
     getCachedRelatedPosts(post.id, categoryIds),
     getCachedAuthorPosts(post.author_id, post.id),
     getUserInteractions(post.id),
     isVideo ? getCachedNextVideos(post.id, post.author_id) : Promise.resolve([]),
+    isNote ? getCachedAuthorNotes(post.author_id, post.id) : Promise.resolve([]),
+    isNote ? getCachedPopularNotes(post.id, post.author_id) : Promise.resolve([]),
   ]);
 
   const author = post.profiles;
@@ -586,16 +644,20 @@ export default async function PostPage({ params }: PageProps) {
               </div>
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
                 {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
-                {(post.view_count || 0) > 0 && <span>{formatCount(post.view_count || 0)} görüntülenme</span>}
               </div>
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
           </div>
 
           {/* Note content — large font, plain text */}
-          <p className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-5">
+          <p className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3">
             {noteText}
           </p>
+
+          {/* View count — below content */}
+          {(post.view_count || 0) > 0 && (
+            <p className="text-[0.75rem] text-text-muted mb-5">{formatCount(post.view_count || 0)} görüntülenme</p>
+          )}
 
           {/* Interaction bar + tags */}
           <PostInteractionBar
@@ -626,6 +688,22 @@ export default async function PostPage({ params }: PageProps) {
               </div>
             )}
           </PostInteractionBar>
+
+          {/* More notes from this author */}
+          {authorNotes.length > 0 && (
+            <RelatedPosts
+              posts={authorNotes}
+              title={`@${author?.username} adlı kişiden daha fazla`}
+            />
+          )}
+
+          {/* Popular notes (fallback or additional) */}
+          {popularNotes.length > 0 && (
+            <RelatedPosts
+              posts={popularNotes}
+              title={authorNotes.length > 0 ? "Popüler Notlar" : "Popüler Notlar"}
+            />
+          )}
 
         </article>
       </div>

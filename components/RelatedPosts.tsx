@@ -9,6 +9,14 @@ interface RelatedPostsProps {
     featured_image?: string;
     reading_time?: number;
     like_count?: number;
+    comment_count?: number;
+    save_count?: number;
+    view_count?: number;
+    content_type?: string;
+    video_duration?: number;
+    video_thumbnail?: string;
+    video_url?: string;
+    blurhash?: string | null;
     published_at?: string;
     profiles?: {
       user_id: string;
@@ -19,6 +27,7 @@ interface RelatedPostsProps {
       avatar_url?: string;
       is_verified?: boolean;
       premium_plan?: string | null;
+      role?: string;
     };
   }>;
   title?: string;

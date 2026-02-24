@@ -875,7 +875,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
       isReply && "pl-[11px] ml-[13px] border-l-2 border-border-primary"
     )}>
       {/* Avatar */}
-      <div className="shrink-0 mt-[13px]">
+      <div className="shrink-0 mt-[17px]">
         <a href={`/u/${profileUsername}`}>
           {comment.profiles?.avatar_url ? (
             <img src={comment.profiles.avatar_url} alt="" className="h-[34px] w-[34px] rounded-full object-cover" />
