@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unstable_cache } from "next/cache";
-import VideoPlayer from "@/components/VideoPlayer";
+import EmbedVideoPlayer from "@/components/EmbedVideoPlayer";
+import EmbedMomentPlayer from "@/components/EmbedMomentPlayer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -62,19 +63,61 @@ export default async function EmbedPage({ params }: PageProps) {
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
   const postUrl = `${baseUrl}/post/${post.slug}`;
-  const isVideo = (post.content_type === "video" || post.content_type === "moment") && post.video_url;
+  const isVideo = post.content_type === "video" && post.video_url;
+  const isMoment = post.content_type === "moment" && post.video_url;
   const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
   const authorName = author?.full_name || [author?.name, author?.surname].filter(Boolean).join(" ") || author?.username || "";
 
+  // Moment embed — portrait 9:16
+  if (isMoment) {
+    return (
+      <div className="w-full h-full bg-black flex items-center justify-center overflow-hidden">
+        <div className="relative flex flex-col h-full" style={{ aspectRatio: "9/16", maxWidth: "100%", maxHeight: "100%" }}>
+        <div className="flex-1 min-h-0 relative">
+          <EmbedMomentPlayer
+            src={post.video_url}
+            poster={post.video_thumbnail || post.featured_image || undefined}
+          />
+          {/* Author overlay — bottom left */}
+          <div className="absolute bottom-10 left-3 right-12 z-[7] pointer-events-none">
+            <div className="flex items-center gap-2 mb-1">
+              {author?.avatar_url ? (
+                <img src={author.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="h-7 w-7 rounded-full bg-white/20 shrink-0" />
+              )}
+              <span className="text-white text-[0.8rem] font-semibold truncate">{author?.username || "Anonim"}</span>
+              {author?.is_verified && (
+                <svg className="h-[12px] w-[12px] min-w-[12px] shrink-0" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent-color, #ff3e00)" }}><path d="M10.4521 1.31159C11.2522 0.334228 12.7469 0.334225 13.5471 1.31159L14.5389 2.52304L16.0036 1.96981C17.1853 1.52349 18.4796 2.2708 18.6839 3.51732L18.9372 5.06239L20.4823 5.31562C21.7288 5.51992 22.4761 6.81431 22.0298 7.99598L21.4765 9.46066L22.688 10.4525C23.6653 11.2527 23.6653 12.7473 22.688 13.5475L21.4765 14.5394L22.0298 16.004C22.4761 17.1857 21.7288 18.4801 20.4823 18.6844L18.9372 18.9376L18.684 20.4827C18.4796 21.7292 17.1853 22.4765 16.0036 22.0302L14.5389 21.477L13.5471 22.6884C12.7469 23.6658 11.2522 23.6658 10.4521 22.6884L9.46022 21.477L7.99553 22.0302C6.81386 22.4765 5.51948 21.7292 5.31518 20.4827L5.06194 18.9376L3.51687 18.6844C2.27035 18.4801 1.52305 17.1857 1.96937 16.004L2.5226 14.5394L1.31115 13.5475C0.333786 12.7473 0.333782 11.2527 1.31115 10.4525L2.5226 9.46066L1.96937 7.99598C1.52304 6.81431 2.27036 5.51992 3.51688 5.31562L5.06194 5.06239L5.31518 3.51732C5.51948 2.2708 6.81387 1.52349 7.99553 1.96981L9.46022 2.52304L10.4521 1.31159Z" fill="currentColor"/><path d="M11.2071 16.2071L18.2071 9.20712L16.7929 7.79291L10.5 14.0858L7.20711 10.7929L5.79289 12.2071L9.79289 16.2071C9.98043 16.3947 10.2348 16.5 10.5 16.5C10.7652 16.5 11.0196 16.3947 11.2071 16.2071Z" fill="white"/></svg>
+              )}
+            </div>
+            <p className="text-white/90 text-[0.75rem] line-clamp-2">{post.title}</p>
+          </div>
+        </div>
+        <a
+          href={postUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2.5 px-3 py-1.5 bg-[#0a0a0a] hover:bg-[#151515] transition-colors shrink-0"
+        >
+          <img src="/imgs/feedim-mobile-dark.svg" alt="Feedim" className="h-5 w-5" draggable={false} />
+          <span className="text-white/90 text-[0.78rem] font-semibold truncate">Moment</span>
+          <span className="ml-auto text-white/40 text-[0.7rem] font-medium shrink-0">Feedim&apos;da izle</span>
+        </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Video embed — landscape 16:9
   if (isVideo) {
     return (
-      <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden">
+      <div className="w-full h-full bg-black flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0 flex items-center">
           <div className="w-full max-h-full [&_video]:!max-h-[calc(100dvh-36px)]">
-            <VideoPlayer
+            <EmbedVideoPlayer
               src={post.video_url}
               poster={post.video_thumbnail || post.featured_image || undefined}
-              autoStart
             />
           </div>
         </div>
@@ -92,92 +135,115 @@ export default async function EmbedPage({ params }: PageProps) {
     );
   }
 
-  // Article embed — PostCard style
+  // Article embed — birebir PostCard tasarımı
   const thumbnail = post.featured_image || post.video_thumbnail;
+  const hasThumbnail = !!thumbnail;
 
   return (
-    <div
-      className="w-full h-[100dvh] flex flex-col overflow-hidden"
-      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", background: "#fff" }}
-    >
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", background: "#fff", maxWidth: 420, margin: "0 auto" }}>
       <a
         href={postUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex-1 min-h-0 flex flex-col no-underline overflow-hidden"
+        className="flex-1 min-h-0 no-underline overflow-hidden"
         style={{ color: "inherit", textDecoration: "none" }}
       >
-        {/* Author row */}
-        <div className="flex items-center gap-2 px-3 pt-3 pb-1.5">
-          {author?.avatar_url ? (
-            <img src={author.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
-          ) : (
-            <div className="h-9 w-9 rounded-full bg-neutral-200 shrink-0" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1">
-              <span style={{ fontSize: "0.84rem", fontWeight: 600, color: "#111" }}>{author?.username || "Anonim"}</span>
-              {author?.is_verified && (
-                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="#1d9bf0"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67 2.63 13.43 1.75 12 1.75s-2.67.88-3.34 2.19c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 9.33 1.75 10.57 1.75 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.29 4.71-4.17-4.17 1.41-1.41 2.76 2.75 6.17-6.17 1.41 1.42-7.58 7.58z" /></svg>
+        <article className="pt-[4px] pb-[9px] pl-3 pr-3.5">
+          <div className="flex gap-2 items-stretch">
+            {/* Avatar — fixed left column with timeline line */}
+            <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
+              {author?.avatar_url ? (
+                <img src={author.avatar_url} alt={author?.username || ""} className="h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full object-cover relative z-[1]" />
+              ) : (
+                <div className="h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full relative z-[1]" style={{ background: "#e5e7eb" }} />
               )}
-              {post.published_at && (
-                <>
-                  <span style={{ color: "#999", fontSize: "0.72rem" }}>·</span>
-                  <span style={{ fontSize: "0.68rem", color: "#999" }}>{formatRelative(post.published_at)}</span>
-                </>
+              <div className="flex-1 w-px mt-1" style={{ background: "#e5e7eb" }} />
+            </div>
+
+            {/* Content — right side */}
+            <div className="flex-1 min-w-0 flex flex-col gap-0 p-[5px]">
+              {/* Name row */}
+              <div className="flex items-center gap-1 min-w-0">
+                <span style={{ fontSize: "0.84rem", fontWeight: 600, color: "#111" }} className="truncate">{author?.username || "Anonim"}</span>
+                {author?.is_verified && (
+                  <svg className="h-[12px] w-[12px] min-w-[12px] shrink-0" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent-color, #ff3e00)" }}><path d="M10.4521 1.31159C11.2522 0.334228 12.7469 0.334225 13.5471 1.31159L14.5389 2.52304L16.0036 1.96981C17.1853 1.52349 18.4796 2.2708 18.6839 3.51732L18.9372 5.06239L20.4823 5.31562C21.7288 5.51992 22.4761 6.81431 22.0298 7.99598L21.4765 9.46066L22.688 10.4525C23.6653 11.2527 23.6653 12.7473 22.688 13.5475L21.4765 14.5394L22.0298 16.004C22.4761 17.1857 21.7288 18.4801 20.4823 18.6844L18.9372 18.9376L18.684 20.4827C18.4796 21.7292 17.1853 22.4765 16.0036 22.0302L14.5389 21.477L13.5471 22.6884C12.7469 23.6658 11.2522 23.6658 10.4521 22.6884L9.46022 21.477L7.99553 22.0302C6.81386 22.4765 5.51948 21.7292 5.31518 20.4827L5.06194 18.9376L3.51687 18.6844C2.27035 18.4801 1.52305 17.1857 1.96937 16.004L2.5226 14.5394L1.31115 13.5475C0.333786 12.7473 0.333782 11.2527 1.31115 10.4525L2.5226 9.46066L1.96937 7.99598C1.52304 6.81431 2.27036 5.51992 3.51688 5.31562L5.06194 5.06239L5.31518 3.51732C5.51948 2.2708 6.81387 1.52349 7.99553 1.96981L9.46022 2.52304L10.4521 1.31159Z" fill="currentColor"/><path d="M11.2071 16.2071L18.2071 9.20712L16.7929 7.79291L10.5 14.0858L7.20711 10.7929L5.79289 12.2071L9.79289 16.2071C9.98043 16.3947 10.2348 16.5 10.5 16.5C10.7652 16.5 11.0196 16.3947 11.2071 16.2071Z" fill="white"/></svg>
+                )}
+                {post.published_at && (
+                  <>
+                    <span style={{ color: "#9ca3af80", fontSize: "0.75rem" }}>·</span>
+                    <span style={{ fontSize: "0.62rem", color: "#6b7280" }} className="shrink-0">{formatRelative(post.published_at)}</span>
+                  </>
+                )}
+                <span style={{ color: "#9ca3af80", fontSize: "0.75rem" }}>·</span>
+                <span style={{ fontSize: "0.62rem", color: "#6b7280" }} className="shrink-0">Gönderi</span>
+              </div>
+
+              {/* Title */}
+              <h3 style={{ fontSize: "1.12rem", fontWeight: 600, lineHeight: 1.4, color: "#111", margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {post.title}
+              </h3>
+
+              {/* Excerpt */}
+              {post.excerpt && (
+                <p style={{ fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.35, margin: "2px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {post.excerpt}
+                </p>
+              )}
+
+              {/* Thumbnail */}
+              {hasThumbnail && (
+                <div className="mt-2 overflow-hidden" style={{ borderRadius: 12, background: "#f3f4f6" }}>
+                  <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
+                    <img
+                      src={thumbnail}
+                      alt={post.title}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* View count */}
+              {(post.view_count ?? 0) > 0 && (
+                <span style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: 4 }}>{post.view_count} görüntülenme</span>
               )}
             </div>
-            {authorName && authorName !== author?.username && (
-              <div style={{ fontSize: "0.72rem", color: "#777", marginTop: 1 }}>{authorName}</div>
-            )}
           </div>
-        </div>
+        </article>
 
-        {/* Title */}
-        <div className="px-3">
-          <h2 style={{ fontSize: "1.08rem", fontWeight: 600, lineHeight: 1.35, color: "#111", margin: "2px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {post.title}
-          </h2>
-        </div>
-
-        {/* Excerpt */}
-        {post.excerpt && (
-          <p className="px-3" style={{ fontSize: "0.8rem", lineHeight: 1.55, color: "#666", margin: "4px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {post.excerpt}
-          </p>
-        )}
-
-        {/* Thumbnail */}
-        {thumbnail && (
-          <div className="mx-3 mt-2 flex-1 min-h-0 rounded-xl overflow-hidden" style={{ background: "#f3f3f3" }}>
-            <img
-              src={thumbnail}
-              alt=""
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
+        {/* Stats bar — like PostInteractionBar */}
+        <div className="flex items-center gap-2 px-3 mt-3">
+          <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5" style={{ borderRadius: 12, background: "#f3f4f6", fontSize: "0.82rem", fontWeight: 500, color: "#111" }}>
+            <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>Devamı</span>
           </div>
-        )}
-
-        {/* Stats */}
-        <div className="flex items-center gap-3 px-3 py-1.5" style={{ fontSize: "0.72rem", color: "#999" }}>
-          {(post.view_count ?? 0) > 0 && <span>{post.view_count} görüntülenme</span>}
-          {(post.like_count ?? 0) > 0 && <span>{post.like_count} beğeni</span>}
-          {(post.comment_count ?? 0) > 0 && <span>{post.comment_count} yorum</span>}
+          {(post.comment_count ?? 0) > 0 && (
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5" style={{ borderRadius: 12, background: "#f3f4f6", fontSize: "0.82rem", fontWeight: 500, color: "#6b7280" }}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>{post.comment_count}</span>
+            </div>
+          )}
+          {(post.like_count ?? 0) > 0 && (
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5" style={{ borderRadius: 12, background: "#f3f4f6", fontSize: "0.82rem", fontWeight: 500, color: "#6b7280" }}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+              <span>{post.like_count}</span>
+            </div>
+          )}
         </div>
       </a>
 
-      {/* Feedim branding bar */}
+      {/* Feedim branding bar — same as video/moment embeds */}
       <a
         href={postUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 px-3 py-2 shrink-0 no-underline"
-        style={{ background: "#fafafa", borderTop: "1px solid #eee", textDecoration: "none" }}
+        className="flex items-center gap-2.5 px-3 py-1.5 shrink-0 no-underline"
+        style={{ background: "#0a0a0a", textDecoration: "none", marginTop: "auto" }}
       >
-        <img src="/imgs/feedim-mobile-light.svg" alt="Feedim" className="h-5 w-5" draggable={false} />
-        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#111" }}>Feedim</span>
-        <span className="ml-auto" style={{ fontSize: "0.72rem", fontWeight: 500, color: "#1d9bf0" }}>Feedim&apos;da gör</span>
+        <img src="/imgs/feedim-mobile-dark.svg" alt="Feedim" className="h-5 w-5" draggable={false} />
+        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "rgba(255,255,255,0.9)" }} className="truncate">{post.title}</span>
+        <span className="ml-auto shrink-0" style={{ fontSize: "0.7rem", fontWeight: 500, color: "rgba(255,255,255,0.4)" }}>Feedim&apos;da gör</span>
       </a>
     </div>
   );

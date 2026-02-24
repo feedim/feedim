@@ -44,9 +44,11 @@ export default function PostListSection({
 
   return (
     <>
+      <div className="flex flex-col gap-[40px]">
       {posts.map((post: any) => (
         <PostCard key={post.id} post={post} />
       ))}
+      </div>
       {onLoadMore && <LoadMoreTrigger onLoadMore={onLoadMore} loading={loading} hasMore={hasMore} />}
     </>
   );

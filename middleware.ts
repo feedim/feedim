@@ -214,7 +214,7 @@ export async function middleware(request: NextRequest) {
 
   // ─── 4. Route protection ───
   const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
-  const publicDashboardPaths = ['/dashboard', '/dashboard/explore', '/dashboard/moments']
+  const publicDashboardPaths = ['/dashboard', '/dashboard/explore', '/dashboard/moments', '/dashboard/video']
   const isPublicDashboard = publicDashboardPaths.includes(pathname) || pathname.startsWith('/dashboard/explore/')
 
   // Helper: redirect that preserves refreshed auth cookies

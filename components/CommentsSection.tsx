@@ -92,8 +92,9 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || submitting) return;
+    setSubmitting(true);
 
-    if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
+    if (!ctxUser) { const user = await requireAuth(); if (!user) { setSubmitting(false); return; } }
 
     const content = newComment.trim();
     const parentId = replyTo?.id || null;
@@ -156,16 +157,22 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
         return;
       }
 
-      // Replace temp with real comment
+      // Replace temp ID with real — keep optimistic profile to avoid avatar flash
+      const mergeComment = (temp: Comment): Comment => ({
+        ...temp,
+        id: data.comment.id,
+        is_nsfw: data.comment.is_nsfw,
+      });
+
       if (parentId) {
         setComments(prev => prev.map(c => {
           if (c.id === parentId) {
-            return { ...c, replies: (c.replies || []).map(r => r.id === tempId ? data.comment : r) };
+            return { ...c, replies: (c.replies || []).map(r => r.id === tempId ? mergeComment(r) : r) };
           }
           return c;
         }));
       } else {
-        setComments(prev => prev.map(c => c.id === tempId ? data.comment : c));
+        setComments(prev => prev.map(c => c.id === tempId ? mergeComment(c) : c));
       }
     } catch {
       if (parentId) {
@@ -180,6 +187,8 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       }
       setTotalCount(c => Math.max(0, c - 1));
       feedimAlert("error", "Yorum gönderilemedi");
+    } finally {
+      setSubmitting(false);
     }
   };
 

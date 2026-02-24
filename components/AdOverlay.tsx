@@ -3,8 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useUser } from "@/components/UserContext";
 import { AD_SKIP_DELAY } from "@/lib/constants";
-
-const AD_CLIENT = "ca-pub-1411343179923275";
+import { getProviderForSlot, type AdProviderConfig } from "@/lib/adProviders";
 
 interface AdOverlayProps {
   active: boolean;
@@ -21,6 +20,7 @@ declare global {
 
 export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOverlayProps) {
   const { user } = useUser();
+  const provider = getProviderForSlot("overlay");
   const [countdown, setCountdown] = useState(AD_SKIP_DELAY);
   const [adLoaded, setAdLoaded] = useState(false);
   const [adKey, setAdKey] = useState(0);
@@ -152,37 +152,44 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
     };
   }, [active, user?.isPremium]);
 
-  // Push AdSense ad + MutationObserver
+  // Push ad based on active provider + MutationObserver
   useEffect(() => {
     if (!active || user?.isPremium) return;
 
-    const pushTimer = setTimeout(() => {
-      const ins = insRef.current;
-      if (!ins) return;
+    if (provider.id === "adsense") {
+      const pushTimer = setTimeout(() => {
+        const ins = insRef.current;
+        if (!ins) return;
 
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch {}
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch {}
 
-      observerRef.current = new MutationObserver((mutations) => {
-        for (const m of mutations) {
-          if (m.attributeName === "data-ad-status") {
-            const status = ins.getAttribute("data-ad-status");
-            if (status === "filled") {
-              setAdLoaded(true);
-              observerRef.current?.disconnect();
+        observerRef.current = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.attributeName === "data-ad-status") {
+              const status = ins.getAttribute("data-ad-status");
+              if (status === "filled") {
+                setAdLoaded(true);
+                observerRef.current?.disconnect();
+              }
             }
           }
-        }
-      });
-      observerRef.current.observe(ins, { attributes: true });
-    }, 100);
+        });
+        observerRef.current.observe(ins, { attributes: true });
+      }, 100);
 
-    return () => {
-      clearTimeout(pushTimer);
-      observerRef.current?.disconnect();
-    };
-  }, [active, adKey, user?.isPremium]);
+      return () => {
+        clearTimeout(pushTimer);
+        observerRef.current?.disconnect();
+      };
+    }
+
+    // GAM / Custom — ad yüklenmiş kabul et (kendi entegrasyonlarında kontrol edilir)
+    if (provider.id === "gam" || provider.id === "custom") {
+      setAdLoaded(true);
+    }
+  }, [active, adKey, user?.isPremium, provider.id]);
 
   const handleSkip = useCallback(() => {
     if (skipCalledRef.current) return;
@@ -190,6 +197,24 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
     skipCalledRef.current = true;
     onSkip();
   }, [onSkip]);
+
+  // Auto-skip after 60 seconds if user doesn't manually skip
+  const autoSkipRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!active || user?.isPremium) return;
+    if (countdown > 0) return; // wait until skip button appears
+
+    autoSkipRef.current = setTimeout(() => {
+      if (!skipCalledRef.current) {
+        skipCalledRef.current = true;
+        onSkip();
+      }
+    }, 60_000);
+
+    return () => {
+      if (autoSkipRef.current) clearTimeout(autoSkipRef.current);
+    };
+  }, [active, countdown <= 0, user?.isPremium, onSkip]);
 
   if (!active || user?.isPremium) return null;
 
@@ -221,7 +246,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
       </span>
 
       {/* Center: Loader or ad */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-[400px] px-4">
+      <div className="flex-1 flex items-center justify-center w-full max-w-[400px] px-3 sm:px-4 overflow-hidden max-h-[60%]">
         {!adLoaded && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
@@ -231,20 +256,28 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
           </div>
         )}
         <div className={`w-full transition-opacity duration-300 ${adLoaded ? "opacity-100" : "opacity-0"}`}>
-          <ins
-            key={adKey}
-            ref={insRef}
-            className="adsbygoogle"
-            style={{ display: "block", textAlign: "center" }}
-            data-ad-client={AD_CLIENT}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
+          {provider.id === "adsense" && (
+            <ins
+              key={adKey}
+              ref={insRef}
+              className="adsbygoogle"
+              style={{ display: "block", textAlign: "center" }}
+              data-ad-client={provider.clientId}
+              data-ad-format="auto"
+              data-full-width-responsive="true"
+            />
+          )}
+          {provider.id === "gam" && (
+            <div key={adKey} ref={insRef as any} data-gam-overlay style={{ minHeight: 250, textAlign: "center" }} />
+          )}
+          {provider.id === "custom" && (
+            <div key={adKey} ref={insRef as any} data-feedim-ad-slot="overlay" style={{ minHeight: 250, textAlign: "center" }} />
+          )}
         </div>
       </div>
 
       {/* Bottom-right: Countdown circle + skip button */}
-      <div className="absolute bottom-4 right-4 flex items-center gap-3">
+      <div className="absolute bottom-4 right-4 flex items-center gap-3 z-[60]">
         {!canSkip && (
           <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-sm rounded-full pl-3 pr-3.5 py-1.5">
             <div className="relative w-9 h-9">

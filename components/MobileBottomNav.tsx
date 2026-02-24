@@ -41,7 +41,7 @@ export default memo(function MobileBottomNav() {
     { href: "/dashboard/profile", icon: User, label: "Profil", active: pathname === "/dashboard/profile" },
   ];
 
-  const publicPaths = ["/dashboard", "/dashboard/explore"];
+  const publicPaths = ["/dashboard", "/dashboard/explore", "/dashboard/moments", "/dashboard/video"];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid-primary border-t border-border-primary/30 md:hidden">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import NoImage from "@/components/NoImage";
 import BlurImage from "@/components/BlurImage";
+import WatchProgressBar from "@/components/WatchProgressBar";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
@@ -70,6 +71,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                   {formatDuration(video.video_duration)}
                 </span>
               )}
+              <WatchProgressBar slug={video.slug} />
             </div>
 
             {/* Info */}

@@ -3,7 +3,7 @@
 import { useState, useEffect, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, ShieldCheck, Clock, Users, FileText, Flag, AlertTriangle, EyeOff, Clapperboard } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, Clock, Users, FileText, Flag, AlertTriangle, EyeOff, Clapperboard } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 import EditableAvatar from "@/components/EditableAvatar";
 import PostListSection from "@/components/PostListSection";
@@ -101,7 +101,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [followRequestsOpen, setFollowRequestsOpen] = useState(false);
   const [mutualFollowersOpen, setMutualFollowersOpen] = useState(false);
   const [totalViews, setTotalViews] = useState<number | null>(null);
-  const [scores, setScores] = useState<{ profile: number } | null>(null);
 
   // Admin panel
   const [adminTab, setAdminTab] = useState<"recent_users" | "recent_posts" | "reports">("recent_users");
@@ -136,15 +135,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       fetch("/api/analytics?period=30d")
         .then(r => r.json())
         .then(d => setTotalViews(d.overview?.totalViews || 0))
-        .catch(() => {});
-      // Load profile scores
-      fetch("/api/profile")
-        .then(r => r.json())
-        .then(d => {
-          if (d.profile?.profile_score !== undefined) {
-            setScores({ profile: d.profile.profile_score || 0 });
-          }
-        })
         .catch(() => {});
     }
   }, []);
@@ -527,31 +517,19 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </Link>
         )}
 
-        {/* Profile Score — own profile only */}
-        {currentUser?.role === "admin" && scores && (
-          <div className="mb-3 px-4 py-2.5 rounded-[13px] bg-accent-main/10 border border-accent-main/20">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-accent-main" />
-              <span className="text-xs font-semibold text-text-primary">Profil Puanı</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-mono">
-              <span className="font-bold text-accent-main">%{Math.round(scores.profile * 10) / 10}</span>
-            </div>
-          </div>
-        )}
 
         {/* Action buttons */}
         <div className="flex gap-2 mb-3">
           {profile.is_own ? (
             <>
-              <button onClick={() => setEditOpen(true)} data-hotkey="edit-profile" className="flex-1 t-btn cancel">
+              <button onClick={() => setEditOpen(true)} data-hotkey="edit-profile" className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                 </svg>
                 Profili Düzenle
               </button>
-              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
+              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
                 <ShareIcon className="h-4 w-4" /> Profili Paylaş
               </button>
             </>

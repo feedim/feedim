@@ -40,7 +40,36 @@ export async function GET(req: NextRequest) {
   const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
   const authorName = author?.full_name || [author?.name, author?.surname].filter(Boolean).join(" ") || author?.username || "Feedim";
   const isVideo = post.content_type === "video" && post.video_url;
+  const isMoment = post.content_type === "moment" && post.video_url;
   const thumbnail = post.video_thumbnail || post.featured_image;
+
+  if (isMoment) {
+    const embedUrl = `${baseUrl}/embed/${encodeURIComponent(post.slug)}`;
+    const response = {
+      type: "video",
+      version: "1.0",
+      title: post.title,
+      author_name: authorName,
+      author_url: author?.username ? `${baseUrl}/u/${author.username}` : baseUrl,
+      provider_name: "Feedim",
+      provider_url: baseUrl,
+      html: `<iframe src="${embedUrl}" style="width:100%;max-width:400px;min-height:600px;aspect-ratio:9/16;border:none;border-radius:12px;" allowfullscreen></iframe>`,
+      width: 400,
+      height: 711,
+      ...(thumbnail ? {
+        thumbnail_url: thumbnail,
+        thumbnail_width: 720,
+        thumbnail_height: 1280,
+      } : {}),
+    };
+
+    return NextResponse.json(response, {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
+  }
 
   if (isVideo) {
     const embedUrl = `${baseUrl}/embed/${encodeURIComponent(post.slug)}`;

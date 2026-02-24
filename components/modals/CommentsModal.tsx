@@ -186,7 +186,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       setMentionPos(cursorPos - query.length - 1);
       setMentionQuery(query);
       if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current);
-      mentionTimerRef.current = setTimeout(() => searchMentionUsers(query), 350);
+      mentionTimerRef.current = setTimeout(() => searchMentionUsers(query), 200);
     } else {
       setMentionUsers([]);
       setMentionQuery("");
@@ -265,8 +265,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     const hasText = !isGif && !!newComment.trim();
     if (!isGif && !hasText) return;
     if (submitting) return;
+    setSubmitting(true);
 
-    if (!ctxUser) { const u = await requireAuth(); if (!u) return; }
+    if (!ctxUser) { const u = await requireAuth(); if (!u) { setSubmitting(false); return; } }
 
     const content = hasText ? newComment.trim() : "";
     const parentId = replyTo?.id || null;
@@ -296,7 +297,11 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       created_at: new Date().toISOString(),
       profiles: {
         username: ctxUser?.username || "",
+        full_name: ctxUser?.fullName || undefined,
         avatar_url: ctxUser?.avatarUrl || undefined,
+        is_verified: ctxUser?.isVerified || false,
+        premium_plan: ctxUser?.premiumPlan || null,
+        role: ctxUser?.role || undefined,
       },
     };
 
@@ -316,6 +321,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     setNewComment("");
     setPendingGif(null);
     setReplyTo(null);
+    setNewCommentId(tempId);
+    setTimeout(() => setNewCommentId(null), 400);
 
     // Background API call
     try {
@@ -343,24 +350,27 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         return;
       }
 
-      // Animate + replace temp
-      setNewCommentId(data.comment.id);
-      setTimeout(() => setNewCommentId(null), 400);
-
       if (data?.debug) {
         // eslint-disable-next-line no-console
         console.log("[COMMENT][DEBUG][CLIENT]", data.debug);
       }
 
+      // Replace temp ID with real — keep optimistic profile to avoid avatar flash/bounce
+      const mergeComment = (temp: Comment): Comment => ({
+        ...temp,
+        id: data.comment.id,
+        is_nsfw: data.comment.is_nsfw,
+      });
+
       if (parentId) {
         setComments(prev => prev.map(c => {
           if (c.id === parentId) {
-            return { ...c, replies: (c.replies || []).map(r => r.id === tempId ? data.comment : r) };
+            return { ...c, replies: (c.replies || []).map(r => r.id === tempId ? mergeComment(r) : r) };
           }
           return c;
         }));
       } else {
-        setComments(prev => prev.map(c => c.id === tempId ? data.comment : c));
+        setComments(prev => prev.map(c => c.id === tempId ? mergeComment(c) : c));
       }
     } catch {
       if (parentId) {
@@ -375,6 +385,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       }
       setTotalCount(c => Math.max(0, c - 1));
       feedimAlert("error", "Yorum gönderilemedi");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -865,8 +877,8 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           {(!comment.is_nsfw || currentUserId === comment.author_id) && (
             <div className="shrink-0">
               <button
-                onClick={() => onToggleMenu(openMenuId === comment.id ? null : comment.id)}
-                className="flex items-center justify-center h-[30px] w-[30px] rounded-full text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition"
+                onClick={(e) => { e.stopPropagation(); onToggleMenu(openMenuId === comment.id ? null : comment.id); }}
+                className="flex items-center justify-center h-[34px] w-[34px] rounded-full text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition active:bg-bg-tertiary"
               >
                 <MoreHorizontal className="h-[18px] w-[18px]" />
               </button>

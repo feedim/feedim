@@ -131,15 +131,15 @@ export function formatRelativeDate(dateStr: string): string {
 
   if (diff < 60) return 'az önce';
   const mins = Math.floor(diff / 60);
-  if (diff < 3600) return `${mins} dakika önce`;
+  if (diff < 3600) return `${mins}dk`;
   const hours = Math.floor(diff / 3600);
-  if (diff < 86400) return `${hours} saat önce`;
+  if (diff < 86400) return `${hours}sa`;
   const days = Math.floor(diff / 86400);
-  if (days < 7) return `${days} gün önce`;
+  if (days < 7) return `${days}g`;
   const weeks = Math.floor(days / 7);
-  if (days < 30) return `${weeks} hafta önce`;
+  if (days < 30) return `${weeks}h`;
   const months = Math.floor(days / 30);
-  if (days < 365) return `${months} ay önce`;
+  if (days < 365) return `${months}ay`;
   const years = Math.floor(days / 365);
-  return `${years} yıl önce`;
+  return `${years}y`;
 }

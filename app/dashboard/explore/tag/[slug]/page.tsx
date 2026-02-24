@@ -292,7 +292,7 @@ export default function TagPage() {
             <span className="loader mx-auto" style={{ width: 24, height: 24 }} />
           </div>
         ) : searchResults && searchResults.length > 0 ? (
-          <div className="mt-1">
+          <div className="mt-1 flex flex-col gap-[40px]">
             {searchResults.map(post => <PostCard key={post.id} post={post} />)}
           </div>
         ) : searchResults ? (
@@ -364,7 +364,9 @@ export default function TagPage() {
           )}
           {posts.length > 0 ? (
             <>
+              <div className="flex flex-col gap-[40px]">
               {posts.map(post => <PostCard key={post.id} post={post} />)}
+              </div>
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
           ) : tagMoments.length === 0 ? (

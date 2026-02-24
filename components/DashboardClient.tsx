@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, lazy, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { Bookmark, PenLine, Search, Smile } from "lucide-react";
@@ -60,6 +60,8 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
   const supabase = createClient();
   const { user: ctxUser, isLoggedIn } = useUser();
   const [deletedPostIds, setDeletedPostIds] = useState<Set<number>>(new Set());
+  const [interactions, setInteractions] = useState<Record<number, { liked: boolean; saved: boolean }>>({});
+  const fetchedInteractionIds = useRef(new Set<number>());
 
   // Check sessionStorage for optimistically deleted posts
   useEffect(() => {
@@ -79,6 +81,22 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
   }, []);
 
   const visiblePosts = posts.filter(p => !deletedPostIds.has(p.id));
+
+  // Batch-fetch liked/saved status for new posts
+  useEffect(() => {
+    if (!isLoggedIn || posts.length === 0) return;
+    const newIds = posts.map(p => p.id).filter(id => !fetchedInteractionIds.current.has(id));
+    if (newIds.length === 0) return;
+    newIds.forEach(id => fetchedInteractionIds.current.add(id));
+    fetch(`/api/posts/batch-interactions?ids=${newIds.join(",")}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.interactions) {
+          setInteractions(prev => ({ ...prev, ...data.interactions }));
+        }
+      })
+      .catch(() => {});
+  }, [posts, isLoggedIn]);
 
   // Premium hoşgeldin modalı
   useEffect(() => {
@@ -151,7 +169,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
             const { data: bookmarkedPosts } = await supabase
               .from("posts")
               .select(`
-                id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at,
+                id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash,
                 profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
               `)
               .in("id", bookmarks.map(b => b.post_id))
@@ -203,6 +221,8 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
     setActiveTab(tab);
     setPosts([]);
     setPage(1);
+    setInteractions({});
+    fetchedInteractionIds.current.clear();
     loadFeed(tab, 1);
   }, [loadFeed]);
 
@@ -250,10 +270,10 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
         <div className="py-2"><PostGridSkeleton count={4} /></div>
       ) : visiblePosts.length > 0 ? (
         <>
-          <div className="divide-y-0">
+          <div className="flex flex-col gap-[40px]">
             {visiblePosts.map((post, index) => (
               <div key={post.id}>
-                <PostCard post={post} />
+                <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />
                 {index === 4 && isLoggedIn && <SuggestionCarousel />}
                 <FeedAdSlot index={index} />
               </div>

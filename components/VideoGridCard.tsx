@@ -1,6 +1,7 @@
 import Link from "next/link";
 import NoImage from "@/components/NoImage";
 import BlurImage from "@/components/BlurImage";
+import WatchProgressBar from "@/components/WatchProgressBar";
 import { formatRelativeDate, formatCount } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
@@ -35,7 +36,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
 
   return (
     <Link href={`/post/${video.slug}`} className="group block">
-      <div className="relative aspect-video rounded-xl overflow-hidden bg-bg-tertiary mb-3">
+      <div className="relative aspect-video min-h-[120px] rounded-xl overflow-hidden bg-bg-tertiary mb-3">
         {(video.video_thumbnail || video.featured_image) ? (
           <BlurImage
             src={(video.video_thumbnail || video.featured_image)!}
@@ -52,6 +53,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
           </span>
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+        <WatchProgressBar slug={video.slug} />
       </div>
       <div className="flex gap-3 px-0.5">
         <div className="shrink-0 pt-0.5">

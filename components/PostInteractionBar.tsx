@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Heart, MessageCircle, Bookmark, Gift } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Gift, BookOpen } from "lucide-react";
+import Link from "next/link";
 import ShareIcon from "@/components/ShareIcon";
 import { decodeId } from "@/lib/hashId";
 import { useAuthModal } from "@/components/AuthModal";
@@ -35,6 +36,9 @@ interface PostInteractionBarProps {
   children?: React.ReactNode;
   likedByBottom?: boolean;
   isVideo?: boolean;
+  contentType?: string;
+  /** Feed/card mode — "full" = 4 buttons (like,comment,save,share), "no-like" = 3 buttons (comment,save,share) + "Oku" link */
+  compact?: "full" | "no-like" | boolean;
 }
 
 export default function PostInteractionBar({
@@ -55,6 +59,8 @@ export default function PostInteractionBar({
   children,
   likedByBottom,
   isVideo,
+  contentType,
+  compact,
 }: PostInteractionBarProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
@@ -63,11 +69,15 @@ export default function PostInteractionBar({
   const [shareCount, setShareCount] = useState(initialShareCount);
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentsMounted, setCommentsMounted] = useState(false);
   const [likesOpen, setLikesOpen] = useState(false);
+  const [likesMounted, setLikesMounted] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareMounted, setShareMounted] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [giftMounted, setGiftMounted] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [statsMounted, setStatsMounted] = useState(false);
   const [avgDuration, setAvgDuration] = useState<number | null>(null);
   const [engagementRate, setEngagementRate] = useState<number | null>(null);
   const [likedByUsers, setLikedByUsers] = useState<{ username: string; full_name?: string; avatar_url?: string }[]>([]);
@@ -76,21 +86,38 @@ export default function PostInteractionBar({
   const { user: currentUser } = useUser();
   const searchParams = useSearchParams();
 
+  // Preload most common modals after idle — eliminates first-open delay
+  useEffect(() => {
+    const preload = () => {
+      import("@/components/modals/CommentsModal");
+      import("@/components/modals/ShareModal");
+    };
+    if ("requestIdleCallback" in window) {
+      const id = (window as any).requestIdleCallback(preload, { timeout: 3000 });
+      return () => (window as any).cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(preload, 3000);
+      return () => clearTimeout(id);
+    }
+  }, []);
+
   // Auto-open comments modal from ?comment= URL param (obfuscated ID)
   useEffect(() => {
+    if (compact) return;
     const commentParam = searchParams.get("comment");
     if (commentParam) {
       const commentId = decodeId(commentParam);
       if (commentId !== null && commentId > 0) {
+        setCommentsMounted(true);
         setTargetCommentId(commentId);
         setCommentsOpen(true);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, compact]);
 
   // Fetch stats for own post (avg reading time + engagement)
   useEffect(() => {
-    if (!isOwnPost) return;
+    if (compact || !isOwnPost) return;
     fetch(`/api/posts/${postId}/stats`)
       .then(r => r.json())
       .then(data => {
@@ -98,20 +125,29 @@ export default function PostInteractionBar({
         if (data.engagementRate !== undefined) setEngagementRate(data.engagementRate || 0);
       })
       .catch(() => {});
-  }, [postId, isOwnPost]);
+  }, [postId, isOwnPost, compact]);
 
   useEffect(() => {
+    if (compact) return;
     if (initialLikeCount > 0) {
       fetch(`/api/posts/${postId}/likes?page=1`)
         .then(r => r.json())
         .then(data => setLikedByUsers((data.users || []).slice(0, 3)))
         .catch(() => {});
     }
-  }, [postId, initialLikeCount]);
+  }, [postId, initialLikeCount, compact]);
 
   // Refs to track latest state for rapid clicks
   const likedRef = useRef(initialLiked);
   const savedRef = useRef(initialSaved);
+
+  // Sync when batch interaction data arrives (compact/feed mode)
+  const interactionSynced = useRef(false);
+  useEffect(() => {
+    if (!compact || interactionSynced.current) return;
+    if (initialLiked) { setLiked(true); likedRef.current = true; interactionSynced.current = true; }
+    if (initialSaved) { setSaved(true); savedRef.current = true; interactionSynced.current = true; }
+  }, [initialLiked, initialSaved, compact]);
 
   const handleLike = async () => {
     if (!currentUser) { const user = await requireAuth(); if (!user) return; }
@@ -158,8 +194,53 @@ export default function PostInteractionBar({
   };
 
   const openComments = () => {
+    setCommentsMounted(true);
     setCommentsOpen(true);
   };
+
+  // Compact: feed action buttons + modals
+  if (compact) {
+    const noLike = compact === "no-like";
+    return (
+      <>
+        <div className="flex items-center gap-2">
+          {noLike ? (
+            <Link href={postUrl} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
+              <BookOpen className="h-[18px] w-[18px]" />
+              <span>Devamı</span>
+            </Link>
+          ) : (
+            <button onClick={handleLike} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error")}>
+              <Heart className={cn("h-[18px] w-[18px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
+              <span>{formatCount(likeCount)}</span>
+            </button>
+          )}
+          <button onClick={openComments} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
+            <MessageCircle className="h-[18px] w-[18px]" />
+            <span>{formatCount(commentCount)}</span>
+          </button>
+          <button onClick={handleSave} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main")}>
+            <Bookmark className={cn("h-[18px] w-[18px]", saved && "fill-current")} />
+            <span>{formatCount(saveCount)}</span>
+          </button>
+          <button onClick={() => { setShareMounted(true); setShareOpen(true); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
+            <ShareIcon className="h-[18px] w-[18px]" />
+            <span>{formatCount(shareCount)}</span>
+          </button>
+        </div>
+        {commentsMounted && (
+          <Suspense fallback={null}>
+            <CommentsModal open={commentsOpen} onClose={() => setCommentsOpen(false)} postId={postId} commentCount={commentCount} postSlug={postSlug} />
+          </Suspense>
+        )}
+        {shareMounted && (
+          <Suspense fallback={null}>
+            <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} url={postUrl} title={postTitle} postId={postId} isVideo={isVideo} postSlug={postSlug} contentType={contentType} />
+          </Suspense>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -169,7 +250,7 @@ export default function PostInteractionBar({
       {/* Liked by — top position (default for regular posts) */}
       {!likedByBottom && likeCount > 0 && likedByUsers.length > 0 && (
         <button
-          onClick={() => setLikesOpen(true)}
+          onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
           className="flex items-center gap-1.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
           aria-label="Beğenen kişileri gör"
         >
@@ -199,7 +280,7 @@ export default function PostInteractionBar({
       {/* Gift or Stats — full width above interaction bar */}
       {isOwnPost ? (
         <button
-          onClick={() => setStatsOpen(true)}
+          onClick={() => { setStatsMounted(true); setStatsOpen(true); }}
           className="flex flex-col w-full mt-4 py-3 px-4 rounded-[15px] bg-bg-secondary hover:opacity-90 transition text-left"
         >
           <span className="text-[0.88rem] font-bold">İstatistikler</span>
@@ -264,7 +345,7 @@ export default function PostInteractionBar({
 
         {/* Share */}
         <button
-          onClick={() => setShareOpen(true)}
+          onClick={() => { setShareMounted(true); setShareOpen(true); }}
           data-hotkey="share"
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
@@ -280,7 +361,7 @@ export default function PostInteractionBar({
       {/* Liked by — bottom position (for video pages) */}
       {likedByBottom && likeCount > 0 && likedByUsers.length > 0 && (
         <button
-          onClick={() => setLikesOpen(true)}
+          onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
           className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
           aria-label="Beğenen kişileri gör"
         >
@@ -304,7 +385,7 @@ export default function PostInteractionBar({
         </button>
       )}
 
-      {commentsOpen && (
+      {commentsMounted && (
         <Suspense fallback={null}>
           <CommentsModal
             open={commentsOpen}
@@ -317,7 +398,7 @@ export default function PostInteractionBar({
         </Suspense>
       )}
 
-      {likesOpen && (
+      {likesMounted && (
         <Suspense fallback={null}>
           <LikesModal
             open={likesOpen}
@@ -327,7 +408,7 @@ export default function PostInteractionBar({
         </Suspense>
       )}
 
-      {shareOpen && (
+      {shareMounted && (
         <Suspense fallback={null}>
           <ShareModal
             open={shareOpen}
@@ -337,6 +418,7 @@ export default function PostInteractionBar({
             postId={postId}
             isVideo={isVideo}
             postSlug={postSlug}
+            contentType={contentType}
           />
         </Suspense>
       )}
@@ -351,7 +433,7 @@ export default function PostInteractionBar({
         </Suspense>
       )}
 
-      {isOwnPost && statsOpen && (
+      {isOwnPost && statsMounted && (
         <Suspense fallback={null}>
           <PostStatsModal
             open={statsOpen}

@@ -13,6 +13,7 @@ interface ShareModalProps {
   postId?: number;
   isVideo?: boolean;
   postSlug?: string;
+  contentType?: string;
 }
 
 const platforms = [
@@ -23,17 +24,20 @@ const platforms = [
   { id: "native", name: "Diğer", icon: "share" },
 ];
 
-export default function ShareModal({ open, onClose, url, title, postId, isVideo, postSlug }: ShareModalProps) {
+export default function ShareModal({ open, onClose, url, title, postId, isVideo, postSlug, contentType }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
 
   const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${url}` : url;
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://feedim.com";
+  const isMoment = contentType === "moment";
   const embedCode = postSlug
-    ? isVideo
-      ? `<iframe src="${baseUrl}/embed/${postSlug}" style="width:100%;aspect-ratio:16/9;border:none;" allowfullscreen></iframe>`
-      : `<iframe src="${baseUrl}/embed/${postSlug}" style="width:100%;height:420px;border:none;border-radius:12px;overflow:hidden;" allowfullscreen></iframe>`
+    ? isMoment
+      ? `<iframe src="${baseUrl}/embed/${postSlug}" style="width:100%;max-width:400px;min-height:600px;aspect-ratio:9/16;border:none;border-radius:12px;" allowfullscreen></iframe>`
+      : isVideo
+        ? `<iframe src="${baseUrl}/embed/${postSlug}" style="width:100%;aspect-ratio:16/9;border:none;" allowfullscreen></iframe>`
+        : `<iframe src="${baseUrl}/embed/${postSlug}" style="width:100%;height:420px;border:none;border-radius:12px;overflow:hidden;" allowfullscreen></iframe>`
     : "";
 
   const trackShare = async (platform: string) => {
@@ -148,7 +152,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
           ))}
 
           {/* Embed code button — opens separate modal */}
-          {isVideo && postSlug && (
+          {postSlug && (
             <button
               onClick={() => setShowEmbed(true)}
               className="flex items-center gap-3 w-full px-4 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2"
@@ -184,7 +188,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
       {/* Embed Code Modal */}
       <Modal open={showEmbed} onClose={() => setShowEmbed(false)} title="Yerleşik Kod" size="sm" infoText="Bu kodu web sitenize yapıştırarak içeriği gömebilirsiniz.">
         <div className="p-4 space-y-3">
-          <p className="text-[0.82rem] text-text-muted">Bu kodu web sitenize yapıştırarak videoyu gömebilirsiniz.</p>
+          <p className="text-[0.82rem] text-text-muted">Bu kodu web sitenize yapıştırarak içeriği gömebilirsiniz.</p>
           <div className="bg-bg-primary rounded-xl p-3 text-[0.72rem] text-text-muted font-mono break-all leading-relaxed select-all border border-border-primary">
             {embedCode}
           </div>

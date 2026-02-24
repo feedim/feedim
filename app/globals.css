@@ -611,20 +611,6 @@ a .loader {
   right: 0;
 }
 
-/* Mini player floating style — position: fixed !important for stacking context safety */
-.vp-mini {
-  position: fixed !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-@media (max-width: 640px) {
-  .vp-mini {
-    width: 55vw !important;
-    max-width: 55vw !important;
-    bottom: 70px !important;
-    right: 8px !important;
-  }
-}
 
 .vp-volume-slider {
   -webkit-appearance: none;

@@ -30,7 +30,7 @@ export default function RelatedPosts({ posts, title = "Benzer Yazılar" }: Relat
   return (
     <section className="mt-6 pt-6">
       <h3 className="text-lg font-bold mb-6">{title}</h3>
-      <div className="-mx-4">
+      <div className="-mx-4 flex flex-col gap-[40px]">
         {posts.map(post => (
           <PostCard key={post.id} post={post} />
         ))}

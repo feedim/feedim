@@ -78,10 +78,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   const previewRef = useRef<HTMLVideoElement>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const previewTimeRef = useRef<HTMLDivElement>(null);
-  const miniTimeRef = useRef<HTMLSpanElement>(null);
   const doubleTapTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const tapCountRef = useRef(0);
-  const touchPreviewRef = useRef<HTMLDivElement>(null);
 
   const [playing, setPlaying] = useState(false);
   const [controls, setControls] = useState(true);
@@ -95,12 +93,13 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(true);
   const [cinemaMode, setCinemaMode] = useState(false);
-  const [miniPlayer, setMiniPlayer] = useState(false);
   const [fakeFullscreen, setFakeFullscreen] = useState(false);
+  const fakeFullscreenRef = useRef(false);
   const [seekAnim, setSeekAnim] = useState<{ side: "left" | "right"; key: number } | null>(null);
   const seekAnimKey = useRef(0);
   const [touchSeeking, setTouchSeeking] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [pipActive, setPipActive] = useState(false);
 
   // Detect touch device — skip preview video on mobile to save bandwidth
   useEffect(() => {
@@ -130,7 +129,6 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     if (thumbRef.current) thumbRef.current.style.left = `${pct}%`;
     const timeText = `${fmt(v.currentTime)} / ${fmt(dur)}`;
     if (timeRef.current) timeRef.current.textContent = timeText;
-    if (miniTimeRef.current) miniTimeRef.current.textContent = timeText;
   }, []);
 
   const updateBuffer = useCallback(() => {
@@ -208,7 +206,6 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         if (thumbRef.current) thumbRef.current.style.left = `${pct * 100}%`;
         const tText = `${fmt(t)} / ${fmt(durationRef.current)}`;
         if (timeRef.current) timeRef.current.textContent = tText;
-        if (miniTimeRef.current) miniTimeRef.current.textContent = tText;
         showSeekPreview(clientX - r.left, r.width, t);
       };
 
@@ -254,15 +251,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         if (thumbRef.current) thumbRef.current.style.left = `${pct * 100}%`;
         const tText = `${fmt(t)} / ${fmt(durationRef.current)}`;
         if (timeRef.current) timeRef.current.textContent = tText;
-        if (miniTimeRef.current) miniTimeRef.current.textContent = tText;
-        // Touch time tooltip
-        const tp = touchPreviewRef.current;
-        if (tp) {
-          tp.style.display = "block";
-          tp.textContent = fmt(t);
-          const left = Math.max(24, Math.min(pct * r.width, r.width - 24));
-          tp.style.left = `${left}px`;
-        }
+        // Video frame preview
+        showSeekPreview(clientX - r.left, r.width, t);
       };
 
       updateSeekVisual(e.touches[0].clientX);
@@ -276,8 +266,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           const p = Math.max(0, Math.min(1, (touch.clientX - r.left) / r.width));
           vid.currentTime = p * vid.duration;
         }
-        // Hide touch tooltip
-        if (touchPreviewRef.current) touchPreviewRef.current.style.display = "none";
+        hideSeekPreview();
         seekingRef.current = false;
         setTouchSeeking(false);
         if (wasPlaying && vid) vid.play().catch(() => {});
@@ -397,11 +386,6 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     });
   }, []);
 
-  // Mini player toggle
-  const toggleMini = useCallback(() => {
-    setMiniPlayer(prev => !prev);
-  }, []);
-
   // Picture-in-Picture — floats above all windows/tabs
   const togglePiP = useCallback(async () => {
     const v = videoRef.current;
@@ -419,6 +403,10 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
   useEffect(() => {
     return () => {
       stopRAF();
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (waitingTimer.current) clearTimeout(waitingTimer.current);
+      if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
+      if (doubleTapTimer.current) clearTimeout(doubleTapTimer.current);
       // Clear video source to prevent residual access
       const v = videoRef.current;
       if (v) { v.pause(); }
@@ -436,8 +424,9 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     };
   }, [stopRAF]);
 
-  // Sync fakeFullscreen with fullscreen state
+  // Sync fakeFullscreen ref + fullscreen state
   useEffect(() => {
+    fakeFullscreenRef.current = fakeFullscreen;
     setFullscreen(fakeFullscreen || !!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
   }, [fakeFullscreen]);
 
@@ -467,15 +456,17 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     const onPlay = () => { playingRef.current = true; setPlaying(true); startRAF(); showControls(); };
     const onPause = () => { playingRef.current = false; setPlaying(false); stopRAF(); updateProgress(); controlsVisibleRef.current = true; setControls(true); if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onPlaying = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
-    const onDurationChange = () => { durationRef.current = v.duration; const t = `${fmt(v.currentTime)} / ${fmt(v.duration)}`; if (timeRef.current) timeRef.current.textContent = t; if (miniTimeRef.current) miniTimeRef.current.textContent = t; };
+    const onDurationChange = () => { durationRef.current = v.duration; const t = `${fmt(v.currentTime)} / ${fmt(v.duration)}`; if (timeRef.current) timeRef.current.textContent = t; };
     const onProgress = () => updateBuffer();
     // Debounce waiting — Safari fires it aggressively causing spinner flicker
     const onWaiting = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); waitingTimer.current = setTimeout(() => setLoading(true), 300); };
     const onCanPlay = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onLoadedData = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onError = () => setError(true);
-    const onFsChange = () => setFullscreen(fakeFullscreen || !!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
+    const onFsChange = () => setFullscreen(fakeFullscreenRef.current || !!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
     const onVideoEnded = () => { stopRAF(); onEndedRef.current?.(); };
+    const onPipEnter = () => setPipActive(true);
+    const onPipLeave = () => setPipActive(false);
 
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
@@ -487,13 +478,22 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     v.addEventListener("loadeddata", onLoadedData);
     v.addEventListener("error", onError);
     v.addEventListener("ended", onVideoEnded);
+    v.addEventListener("enterpictureinpicture", onPipEnter);
+    v.addEventListener("leavepictureinpicture", onPipLeave);
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
 
     // Optimistic play: try immediately, on loadeddata (first frame), and on canplay
     // Skip when disabled — upload preview mode should not auto-play
     if (!disabled) {
-      const tryPlay = () => v.play().catch(() => {});
+      const tryPlay = () => v.play().catch(() => {
+        // Browser blocked unmuted autoplay — retry muted
+        if (!v.muted) {
+          v.muted = true;
+          setMuted(true);
+          v.play().catch(() => {});
+        }
+      });
       tryPlay();
       const onLoadedDataStart = () => tryPlay();
       const onCanPlayStart = () => tryPlay();
@@ -514,6 +514,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         v.removeEventListener("loadeddata", onLoadedData);
         v.removeEventListener("error", onError);
         v.removeEventListener("ended", onVideoEnded);
+        v.removeEventListener("enterpictureinpicture", onPipEnter);
+        v.removeEventListener("leavepictureinpicture", onPipLeave);
         document.removeEventListener("fullscreenchange", onFsChange);
         document.removeEventListener("webkitfullscreenchange", onFsChange);
       };
@@ -531,11 +533,13 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       v.removeEventListener("loadeddata", onLoadedData);
       v.removeEventListener("error", onError);
       v.removeEventListener("ended", onVideoEnded);
+      v.removeEventListener("enterpictureinpicture", onPipEnter);
+      v.removeEventListener("leavepictureinpicture", onPipLeave);
       document.removeEventListener("fullscreenchange", onFsChange);
       document.removeEventListener("webkitfullscreenchange", onFsChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer, disabled, fakeFullscreen]);
+  }, [showControls, startRAF, stopRAF, updateProgress, updateBuffer, disabled]);
 
   // Restore user's mute preference from localStorage
   useEffect(() => {
@@ -549,7 +553,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         setMuted(false);
       }
     } catch {}
-  }, [disabled]);
+  }, [disabled, moment]);
 
   // Auto-start from countdown — unmute since user already interacted
   useEffect(() => {
@@ -605,36 +609,17 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
     const interval = setInterval(save, 3000);
     const onBeforeUnload = () => save();
+    const onVisChange = () => { if (document.hidden) save(); };
     window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisChange);
 
     return () => {
       save();
       clearInterval(interval);
       window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisChange);
     };
   }, [src, isHls]);
-
-  // Auto mini player on scroll away — only when playing, not in fullscreen/cinema
-  useEffect(() => {
-    if (disabled || moment) return;
-    const w = wrapperRef.current;
-    if (!w) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (fullscreen || cinemaMode) return;
-        if (!entry.isIntersecting && playingRef.current) {
-          setMiniPlayer(true);
-        } else if (entry.isIntersecting) {
-          setMiniPlayer(false);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    observer.observe(w);
-    return () => observer.disconnect();
-  }, [fullscreen, cinemaMode]);
 
   // Keyboard shortcuts (full player mode only)
   useEffect(() => {
@@ -701,23 +686,34 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     v.muted = !!externalMuted;
   }, [moment, externalMuted]);
 
-  // ── Moment mode: loading spinner ──
+  // ── Moment mode: loading spinner + error handling ──
   useEffect(() => {
     if (!moment) return;
     const v = videoRef.current;
     if (!v) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // Timeout: if video doesn't start within 15s, show error
+    let loadTimeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+      if (loading) setError(true);
+    }, 15000);
     const onWaiting = () => { timer = setTimeout(() => setLoading(true), 300); };
-    const onPlaying = () => { clearTimeout(timer); setLoading(false); };
-    const onCanPlay = () => { clearTimeout(timer); setLoading(false); };
+    const onPlaying = () => { clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false); setError(false); };
+    const onCanPlay = () => { clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false); };
+    const onError = () => { clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false); setError(true); };
+    const onEnded = () => { onEndedRef.current?.(); };
     v.addEventListener("waiting", onWaiting);
     v.addEventListener("playing", onPlaying);
     v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("error", onError);
+    v.addEventListener("ended", onEnded);
     return () => {
       clearTimeout(timer);
+      clearTimeout(loadTimeout);
       v.removeEventListener("waiting", onWaiting);
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("error", onError);
+      v.removeEventListener("ended", onEnded);
     };
   }, [moment]);
 
@@ -729,17 +725,9 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     showControls();
   }, [showControls]);
 
-  // Double-tap to seek (mobile) / Mini player click to expand
+  // Double-tap to seek (mobile)
   const handleVideoAreaClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest(".vp-bar")) return;
-    if ((e.target as HTMLElement).closest(".vp-mini-close")) return;
-
-    // Mini player: click anywhere to scroll back to full view
-    if (miniPlayer) {
-      setMiniPlayer(false);
-      wrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
 
     const container = containerRef.current;
     if (!container) return;
@@ -748,9 +736,15 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     const isLeftHalf = x < rect.width / 2;
 
     tapCountRef.current += 1;
+    const isMobile = window.matchMedia("(pointer: coarse)").matches;
     if (tapCountRef.current === 1) {
       doubleTapTimer.current = setTimeout(() => {
-        if (tapCountRef.current === 1) { togglePlay(); showControls(); }
+        if (tapCountRef.current === 1) {
+          if (isMobile) {
+            // Controls hidden → show them; controls visible → toggle play
+            if (!controlsVisibleRef.current) { showControls(); } else { togglePlay(); showControls(); }
+          } else { togglePlay(); showControls(); }
+        }
         tapCountRef.current = 0;
       }, 300);
     } else if (tapCountRef.current === 2) {
@@ -771,7 +765,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       updateProgress(); showControls();
       setTimeout(() => setSeekAnim(null), 600);
     }
-  }, [miniPlayer, togglePlay, showControls, updateProgress]);
+  }, [togglePlay, showControls, updateProgress]);
 
   // Cinema mode: set video height to fill viewport
   const cinemaStyle = cinemaMode ? { height: "calc(100vh - 8px)" } : undefined;
@@ -799,7 +793,15 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
         />
-        {loading && !externalPaused && (
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60">
+            <div className="text-center">
+              <svg className="h-8 w-8 mx-auto mb-2 text-white/50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+              <p className="text-white/60 text-xs">Yüklenemedi</p>
+            </div>
+          </div>
+        )}
+        {loading && !externalPaused && !error && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
             <div className="w-10 h-10 rounded-full border-[3px] border-white/20 animate-spin" style={{ borderTopColor: "#fff" }} />
           </div>
@@ -814,21 +816,14 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         <link rel="preconnect" href={videoOrigin} crossOrigin="anonymous" />
       )}
     <div ref={wrapperRef} className="relative overflow-visible">
-      {/* Placeholder to keep layout space when mini player is active */}
-      {miniPlayer && <div className="w-full aspect-video bg-black/20 rounded-xl" />}
-
       <div
         ref={containerRef}
-        className={`relative overflow-visible select-none group/vp ${
-          miniPlayer
-            ? "vp-mini fixed bottom-4 right-4 w-[360px] max-w-[45vw] rounded-lg shadow-2xl z-[9999] bg-black"
-            : "sm:rounded-lg z-10"
-        } ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-[100dvh] !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
-        style={!miniPlayer && !fakeFullscreen ? cinemaStyle : fakeFullscreen ? { paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" } : undefined}
+        className={`relative overflow-visible select-none group/vp sm:rounded-lg z-10 ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-[100dvh] !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
+        style={!fakeFullscreen ? cinemaStyle : { paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" }}
         tabIndex={0}
-        onMouseMove={disabled ? undefined : handleMouseMove}
-        onMouseLeave={disabled ? undefined : () => { if (playingRef.current && !settingsOpenRef.current) { controlsVisibleRef.current = false; setControls(false); } }}
-        onClick={disabled ? undefined : handleVideoAreaClick}
+        onMouseMove={disabled || pipActive ? undefined : handleMouseMove}
+        onMouseLeave={disabled || pipActive ? undefined : () => { if (playingRef.current && !settingsOpenRef.current) { controlsVisibleRef.current = false; setControls(false); } }}
+        onClick={disabled || pipActive ? undefined : handleVideoAreaClick}
         onContextMenu={(e) => e.preventDefault()}
       >
         {/* Video — pointer-events disabled; all interaction via container */}
@@ -845,26 +840,29 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           suppressHydrationWarning
           controlsList="nodownload noremoteplayback"
           draggable={false}
-          className={`w-full pointer-events-none select-none overflow-hidden ${fakeFullscreen ? "!rounded-none" : "sm:rounded-lg"} ${(cinemaMode && !miniPlayer) || fakeFullscreen ? "h-full object-contain" : "aspect-video"}`}
+          className={`w-full pointer-events-none select-none overflow-hidden ${fakeFullscreen ? "!rounded-none" : "sm:rounded-lg"} ${cinemaMode || fakeFullscreen ? "h-full object-contain" : "aspect-video"}`}
           style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
         />
 
-        {/* Mini player close button — pauses and closes */}
-        {miniPlayer && !disabled && (
-          <button
-            className="vp-mini-close absolute top-2 right-2 z-30 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition"
-            onClick={(e) => { e.stopPropagation(); setMiniPlayer(false); const v = videoRef.current; if (v) v.pause(); }}
-          >
-            <svg className="h-4 w-4" fill="white" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
-          </button>
+        {/* PiP active overlay — hides browser's "Playing in Picture-in-Picture" text */}
+        {pipActive && (
+          <div className="absolute inset-0 bg-black flex items-center justify-center z-[5]">
+            <button onClick={togglePiP} className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+              <svg className="h-5 w-5" fill="none" stroke="white" strokeWidth={1.8} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="7" y="7" width="10" height="10" rx="1.5" />
+                <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
+              </svg>
+              <span className="text-white/80 text-sm font-medium">Pencerede oynatılıyor</span>
+            </button>
+          </div>
         )}
 
         {/* Loading spinner — only while playing */}
         {loading && playing && !error && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className={`rounded-full border-[3px] border-white/20 animate-spin ${miniPlayer ? "w-8 h-8" : "w-12 h-12"}`} style={{ borderTopColor: "var(--accent-color)" }} />
+            <div className="rounded-full border-[3px] border-white/20 animate-spin w-12 h-12" style={{ borderTopColor: "var(--accent-color)" }} />
           </div>
         )}
 
@@ -879,7 +877,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         )}
 
         {/* Unmute overlay — shows when video is auto-playing muted */}
-        {playing && muted && !miniPlayer && !error && !disabled && (
+        {playing && muted && !error && !disabled && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -894,7 +892,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         )}
 
         {/* Action indicator */}
-        {actionIcon && !miniPlayer && !disabled && (
+        {actionIcon && !disabled && (
           <div key={actionCountRef.current} className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
             <div className="w-14 h-14 rounded-full bg-black/50 flex items-center justify-center" style={{ animation: "vpActionFade 800ms ease forwards" }}>
               {actionIcon === "play" ? (
@@ -907,7 +905,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
         )}
 
         {/* Double-tap seek animation */}
-        {seekAnim && !miniPlayer && !disabled && (
+        {seekAnim && !disabled && (
           <div key={seekAnim.key} className={`absolute top-0 bottom-0 flex items-center justify-center pointer-events-none z-20 ${seekAnim.side === "left" ? "left-0 w-1/3" : "right-0 w-1/3"}`}>
             <div className="flex flex-col items-center" style={{ animation: "vpSeekAnim 600ms ease forwards" }}>
               <svg className="h-8 w-8 text-white" fill="white" viewBox="0 0 24 24">
@@ -920,21 +918,21 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
         {/* Controls overlay — simplified in mini mode */}
         <div
-          className={`vp-bar absolute bottom-0 left-0 right-0 transition-opacity duration-300 ${disabled ? "!hidden" : controls || !playing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`vp-bar absolute bottom-0 left-0 right-0 transition-opacity duration-300 ${disabled || pipActive ? "!hidden" : controls || !playing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
 
-          <div className={`relative mx-auto ${miniPlayer ? "px-2 pb-1.5 pt-6" : "max-w-[calc(100%-32px)] pb-2.5 pt-10"}`}>
+          <div className="relative mx-auto max-w-[calc(100%-32px)] pb-2.5 pt-10">
             {/* Progress bar */}
             <div
               ref={progressRef}
-              className={`vp-progress-touch w-full transition-[height] rounded-full cursor-pointer relative ${miniPlayer ? "h-[3px] mb-1.5" : touchSeeking ? "h-[12px] mb-2.5" : "h-[4px] group-hover/vp:h-[6px] mb-2.5"}`}
+              className={`vp-progress-touch w-full transition-[height] rounded-full cursor-pointer relative ${touchSeeking ? "h-[12px] mb-2.5" : "h-[5px] group-hover/vp:h-[7px] mb-2.5"}`}
               style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
               onMouseDown={startSeek}
               onTouchStart={startTouchSeek}
               onMouseMove={(e) => {
-                if (seekingRef.current || miniPlayer) return;
+                if (seekingRef.current) return;
                 const rect = progressRef.current?.getBoundingClientRect();
                 if (!rect || !durationRef.current) return;
                 const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -942,62 +940,20 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
               }}
               onMouseLeave={() => { if (!seekingRef.current) hideSeekPreview(); }}
             >
-              {/* Seek preview tooltip — video thumbnail on desktop, time label on touch */}
-              {!miniPlayer && !isTouchDevice && (
-                <div ref={previewWrapRef} className="absolute bottom-full mb-4 pointer-events-none z-30 w-[160px]" style={{ display: "none", transform: "translateX(-50%)" }}>
-                  <div className="rounded-lg overflow-hidden shadow-xl border border-white/20 bg-black w-[160px]">
-                    <video ref={previewRef} preload="none" muted controlsList="nodownload" disablePictureInPicture className="w-[160px] h-[90px] object-cover pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
-                  </div>
-                  <div ref={previewTimeRef} className="text-white text-[0.75rem] text-center mt-1.5 font-medium tabular-nums bg-black/80 rounded px-2 py-0.5 mx-auto w-fit" />
+              {/* Seek preview tooltip — video thumbnail */}
+              <div ref={previewWrapRef} className="absolute bottom-full mb-4 pointer-events-none z-30 w-[120px] sm:w-[160px]" style={{ display: "none", transform: "translateX(-50%)" }}>
+                <div className="rounded-lg overflow-hidden shadow-xl border border-white/20 bg-black w-[120px] sm:w-[160px]">
+                  <video ref={previewRef} preload="none" muted controlsList="nodownload" disablePictureInPicture className="w-[120px] h-[68px] sm:w-[160px] sm:h-[90px] object-cover pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
                 </div>
-              )}
-              {/* Touch seek time tooltip — mobile only */}
-              {!miniPlayer && isTouchDevice && (
-                <div ref={touchPreviewRef} className="absolute bottom-full mb-3 pointer-events-none z-30 text-white text-[0.8rem] font-semibold tabular-nums bg-black/80 rounded-md px-2.5 py-1 -translate-x-1/2 shadow-lg" style={{ display: "none" }} />
-              )}
+                <div ref={previewTimeRef} className="text-white text-[0.7rem] sm:text-[0.75rem] text-center mt-1 sm:mt-1.5 font-medium tabular-nums bg-black/80 rounded px-2 py-0.5 mx-auto w-fit" />
+              </div>
 
               <div ref={bufferRef} className="absolute h-full rounded-full top-0 left-0" style={{ width: "0%", backgroundColor: "rgba(255,255,255,0.3)" }} />
               <div ref={fillRef} className="absolute h-full rounded-full top-0 left-0" style={{ width: "0%", backgroundColor: "var(--accent-color)" }} />
-              {!miniPlayer && (
-                <div ref={thumbRef} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[13px] h-[13px] rounded-full scale-0 group-hover/vp:scale-100 transition-transform z-10" style={{ left: "0%", backgroundColor: "var(--accent-color)", boxShadow: "0 0 2px rgba(0,0,0,0.2)" }} />
-              )}
+              <div ref={thumbRef} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[13px] h-[13px] rounded-full scale-0 group-hover/vp:scale-100 transition-transform z-10" style={{ left: "0%", backgroundColor: "var(--accent-color)", boxShadow: "0 0 2px rgba(0,0,0,0.2)" }} />
             </div>
 
-            {/* Buttons row — mini mode: play/pause + time + mute + expand */}
-            {miniPlayer ? (
-              <div className="flex items-center gap-1 text-white">
-                <button onClick={togglePlay} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-                  {playing ? (
-                    <svg className="h-4 w-4" fill="white" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
-                  ) : (
-                    <svg className="h-4 w-4" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  )}
-                </button>
-                <span ref={miniTimeRef} className="text-[0.6rem] tabular-nums text-white/70 font-medium" />
-                <div className="flex-1" />
-                <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-                  {muted ? (
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0z" /></svg>
-                  ) : (
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
-                  )}
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); togglePiP(); }}
-                  className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                  title="Pencerede oynat"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" /><rect x="11" y="9" width="9" height="6" rx="1" fill="white" fillOpacity={0.3} /></svg>
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setMiniPlayer(false); wrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
-                  className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                  title="Genişlet"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" /></svg>
-                </button>
-              </div>
-            ) : (
+            {/* Buttons row */}
               <div className="flex items-center gap-2 text-white">
                 {/* Play/Pause */}
                 <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={playing ? "Duraklat (k)" : "Oynat (k)"} title={playing ? "Duraklat (k)" : "Oynat (k)"}>
@@ -1147,10 +1103,10 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 </div>
 
                 {/* PiP — float above all windows */}
-                <button onClick={togglePiP} className="hidden sm:flex p-2 hover:bg-white/10 rounded-full transition-colors items-center justify-center" title="Pencerede oynat (p)">
-                  <svg className="h-5 w-5" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24">
-                    <rect x="2" y="3" width="20" height="14" rx="2" />
-                    <rect x="11" y="9" width="9" height="6" rx="1" fill="white" fillOpacity={0.2} />
+                <button onClick={togglePiP} className="flex p-2 hover:bg-white/10 rounded-full transition-colors items-center justify-center" title="Pencerede oynat (p)">
+                  <svg className="h-[21px] w-[21px]" fill="none" stroke="white" strokeWidth={1.8} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="7" y="7" width="10" height="10" rx="1.5" />
+                    <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
                   </svg>
                 </button>
 
@@ -1163,7 +1119,6 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                   )}
                 </button>
               </div>
-            )}
           </div>
         </div>
       </div>

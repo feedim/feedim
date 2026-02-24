@@ -6,11 +6,13 @@ import VideoPlayer from "@/components/VideoPlayer";
 import AdOverlay from "@/components/AdOverlay";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { AD_NO_MIDROLL_MAX, AD_ONE_MIDROLL_MAX } from "@/lib/constants";
+import { saveWatchProgress, getWatchProgress, removeWatchProgress } from "@/lib/watchProgress";
 
 interface VideoPlayerClientProps {
   src: string;
   hlsUrl?: string;
   poster?: string;
+  slug?: string;
   nextVideoSlug?: string;
   nextVideoTitle?: string;
   nextVideoThumbnail?: string;
@@ -26,7 +28,7 @@ function computeAdBreaks(duration?: number): number[] {
 }
 
 export default function VideoPlayerClient({
-  src, hlsUrl, poster, nextVideoSlug, nextVideoTitle, nextVideoThumbnail,
+  src, hlsUrl, poster, slug, nextVideoSlug, nextVideoTitle, nextVideoThumbnail,
   videoDuration,
 }: VideoPlayerClientProps) {
   const router = useRouter();
@@ -54,6 +56,62 @@ export default function VideoPlayerClient({
       if (stored !== null) setAutoplay(stored === "true");
     } catch {}
   }, []);
+
+  // Restore saved watch position on mount
+  useEffect(() => {
+    if (!slug) return;
+    const entry = getWatchProgress(slug);
+    if (!entry) return;
+    const v = videoRef.current;
+    if (v) {
+      const restore = () => {
+        if (v.duration && entry.time < v.duration * 0.95) {
+          v.currentTime = entry.time;
+        }
+        v.removeEventListener("loadedmetadata", restore);
+      };
+      if (v.readyState >= 1) {
+        restore();
+      } else {
+        v.addEventListener("loadedmetadata", restore);
+      }
+    }
+  }, [slug]);
+
+  // Save watch progress every 5 seconds during playback
+  useEffect(() => {
+    if (!slug) return;
+    const v = videoRef.current;
+    if (!v) return;
+
+    let lastSave = 0;
+    const onTimeUpdate = () => {
+      if (adBreakActive || postRollActive) return;
+      const now = Date.now();
+      if (now - lastSave < 5000) return;
+      lastSave = now;
+      saveWatchProgress(slug, v.currentTime, v.duration || videoDuration || 0);
+    };
+
+    v.addEventListener("timeupdate", onTimeUpdate);
+
+    // Sayfa kapatılırken de kaydet
+    const onBeforeUnload = () => {
+      if (v.currentTime > 3) {
+        saveWatchProgress(slug, v.currentTime, v.duration || videoDuration || 0);
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => {
+      v.removeEventListener("timeupdate", onTimeUpdate);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      // Component unmount olurken de kaydet
+      if (v.currentTime > 3) {
+        saveWatchProgress(slug, v.currentTime, v.duration || videoDuration || 0);
+      }
+    };
+  }, [slug, adBreakActive, postRollActive, videoDuration]);
 
   const toggleAutoplay = useCallback(() => {
     setAutoplay(prev => {
@@ -132,8 +190,10 @@ export default function VideoPlayerClient({
   const handleEnded = useCallback(() => {
     const v = videoRef.current;
     if (v) adPausedAtRef.current = v.currentTime;
+    // Video bitti — ilerleme kaydını sil
+    if (slug) removeWatchProgress(slug);
     setPostRollActive(true);
-  }, []);
+  }, [slug]);
 
   const handleAdSkip = useCallback(() => {
     if (adBreakActive) {
@@ -277,8 +337,9 @@ export default function VideoPlayerClient({
             className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center mb-2.5 transition"
             aria-label="Tekrar oynat"
           >
-            <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 1 9 9M3 12V3m0 9h9" />
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
           </button>
           <p className="text-white/50 text-[0.72rem]">Tekrar oynat</p>

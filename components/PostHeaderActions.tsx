@@ -66,6 +66,7 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
         postId={postId}
         isVideo={isVideo}
         postSlug={postSlug}
+        contentType={contentType}
       />
     </>
   );

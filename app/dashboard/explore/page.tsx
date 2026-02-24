@@ -423,7 +423,9 @@ function ExploreContent() {
             {searchResults.posts.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-text-muted mb-2">Gönderiler</h3>
+                <div className="flex flex-col gap-[40px]">
                 {searchResults.posts.map(post => <PostCard key={post.id} post={post} />)}
+                </div>
               </div>
             )}
           </div>
@@ -456,7 +458,7 @@ function ExploreContent() {
 
       if (activeTab === "posts") {
         return (
-          <div className="mt-1">
+          <div className="mt-1 flex flex-col gap-[40px]">
             {searchResults.posts.length > 0 ? (
               searchResults.posts.map(post => <PostCard key={post.id} post={post} />)
             ) : (
@@ -516,12 +518,14 @@ function ExploreContent() {
             <LoadingShell><div className="mt-4"><PostGridSkeleton count={4} /></div></LoadingShell>
           ) : trendingPosts.length > 0 ? (
             <>
+              <div className="flex flex-col gap-[40px]">
               {trendingPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                   <FeedAdSlot index={index} />
                 </div>
               ))}
+              </div>
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
           ) : (
@@ -538,12 +542,14 @@ function ExploreContent() {
           <MomentsCarousel />
           {trendingPosts.length > 0 ? (
             <>
+              <div className="flex flex-col gap-[40px]">
               {trendingPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                   <FeedAdSlot index={index} />
                 </div>
               ))}
+              </div>
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
           ) : (
@@ -582,12 +588,14 @@ function ExploreContent() {
         <div className="mt-1">
           {trendingPosts.length > 0 ? (
             <>
+              <div className="flex flex-col gap-[40px]">
               {trendingPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                   <FeedAdSlot index={index} />
                 </div>
               ))}
+              </div>
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
           ) : (

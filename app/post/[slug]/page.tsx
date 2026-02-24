@@ -70,7 +70,7 @@ async function getRelatedPosts(postId: number, categoryIds: number[]) {
   const { data: posts } = await admin
     .from("posts")
     .select(`
-      id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at,
+      id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash,
       profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role)
     `)
     .in("id", catPostIds.map(cp => cp.post_id))
@@ -111,7 +111,7 @@ async function getAuthorPosts(authorId: string, currentPostId: number) {
   const { data: posts } = await admin
     .from("posts")
     .select(`
-      id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at, word_count,
+      id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, save_count, published_at, word_count, content_type, video_duration, video_thumbnail, video_url, blurhash,
       profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role)
     `)
     .eq("author_id", authorId)
@@ -413,6 +413,7 @@ export default async function PostPage({ params }: PageProps) {
                 src={post.video_url}
                 hlsUrl={post.hls_url || undefined}
                 poster={post.video_thumbnail || post.featured_image || undefined}
+                slug={post.slug}
                 nextVideoSlug={nextVideo?.slug}
                 nextVideoTitle={nextVideo?.title}
                 nextVideoThumbnail={nextVideo?.video_thumbnail || nextVideo?.featured_image}
@@ -490,6 +491,7 @@ export default async function PostPage({ params }: PageProps) {
             authorUsername={author?.username}
             likedByBottom
             isVideo
+            contentType={post.content_type}
           >
             {/* Tags */}
             {tags.length > 0 && (
@@ -668,6 +670,7 @@ export default async function PostPage({ params }: PageProps) {
             postTitle={post.title}
             postSlug={post.slug}
             authorUsername={author?.username}
+            contentType={post.content_type}
           >
             {/* Tags — liked-by ile interaction bar arasında */}
             {tags.length > 0 && (

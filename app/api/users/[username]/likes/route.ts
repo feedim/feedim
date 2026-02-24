@@ -36,7 +36,7 @@ export async function GET(
       id,
       posts!inner(
         id, title, slug, excerpt, featured_image, reading_time,
-        like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail,
+        like_count, comment_count, save_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role)
       )
     `)

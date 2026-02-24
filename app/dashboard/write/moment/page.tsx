@@ -856,7 +856,8 @@ function MomentWriteContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Thumbnail */}
             <div className="md:order-2">
-              <label className="block text-sm font-semibold mb-2">Küçük Resim</label>
+              <label className="block text-sm font-semibold mb-1">Küçük Resim</label>
+              <p className="text-[0.68rem] text-text-muted/70 mb-2">Önerilen: 1080×1920px (9:16), maks 5MB</p>
               {thumbnail ? (
                 <div className="relative rounded-xl overflow-hidden max-w-[200px]">
                   <img src={thumbnail} alt="Küçük resim" className="w-full aspect-[9/16] object-cover" />

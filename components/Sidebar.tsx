@@ -90,7 +90,7 @@ export default memo(function Sidebar() {
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
-          const publicPaths = ["/dashboard", "/dashboard/explore"];
+          const publicPaths = ["/dashboard", "/dashboard/explore", "/dashboard/moments", "/dashboard/video"];
           const resolvedHref = !isLoggedIn && !publicPaths.includes(item.href) ? "/login" : item.href;
           return (
             <Link

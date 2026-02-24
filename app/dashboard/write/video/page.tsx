@@ -726,7 +726,8 @@ function VideoWriteContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Thumbnail */}
             <div className="md:order-2">
-              <label className="block text-sm font-semibold mb-2">Küçük Resim</label>
+              <label className="block text-sm font-semibold mb-1">Küçük Resim</label>
+              <p className="text-[0.68rem] text-text-muted/70 mb-2">Önerilen: 1280×720px (16:9), maks 5MB</p>
               {thumbnail ? (
                 <div className="relative rounded-xl overflow-hidden">
                   <img src={thumbnail} alt="Küçük resim" className="w-full h-48 object-cover" />
