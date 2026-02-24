@@ -16,7 +16,7 @@ import { getCategoryLabel, isProfessional } from "@/lib/professional";
 import SuggestionCarousel from "@/components/SuggestionCarousel";
 import ShareIcon from "@/components/ShareIcon";
 import MomentGridCard from "@/components/MomentGridCard";
-import { MomentGridSkeleton } from "@/components/Skeletons";
+
 
 const EditProfileModal = lazy(() => import("@/components/modals/EditProfileModal"));
 const FollowersModal = lazy(() => import("@/components/modals/FollowersModal"));
@@ -780,7 +780,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             {activeTab === "moments" && (
               <div className="-mx-4 sm:mx-0">
                 {momentsLoading && !momentsLoaded ? (
-                  <MomentGridSkeleton />
+                  <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
                 ) : momentPosts.length === 0 ? (
                   <div className="text-center py-12 sm:py-20">
                     <h2 className="text-lg sm:text-xl font-bold mb-2">Henüz moment yok</h2>

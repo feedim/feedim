@@ -6,8 +6,6 @@ import { useState, useEffect } from "react";
 import { Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 
 export default function ConnectedAccountsPage() {
   useSearchParams();
@@ -35,7 +33,7 @@ export default function ConnectedAccountsPage() {
     <AppLayout headerTitle="Bağlı Hesaplar" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={2} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             <div className="flex items-center justify-between px-4 py-3.5">

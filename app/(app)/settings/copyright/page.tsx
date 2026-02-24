@@ -5,8 +5,6 @@ import {useRouter, useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import CopyrightApplicationForm from "@/components/CopyrightApplicationForm";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import { createClient } from "@/lib/supabase/client";
 
 export default function CopyrightSettingsPage() {
@@ -52,7 +50,7 @@ export default function CopyrightSettingsPage() {
     <AppLayout headerTitle="Telif Hakkı" hideRightSidebar>
       <div className="px-4 py-4">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={3} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : copyrightEligible ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-accent-main font-bold">

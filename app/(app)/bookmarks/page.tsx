@@ -7,7 +7,6 @@ import { Bookmark } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
-import { PostGridSkeleton } from "@/components/Skeletons";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { FEED_PAGE_SIZE } from "@/lib/constants";
@@ -129,9 +128,7 @@ export default function BookmarksPage() {
 
       <div className="px-2.5 sm:px-3">
         {loading && posts.length === 0 ? (
-          <div className="py-2">
-            <PostGridSkeleton count={6} />
-          </div>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : posts.length > 0 ? (
           <>
             <div className="flex flex-col gap-[40px]">

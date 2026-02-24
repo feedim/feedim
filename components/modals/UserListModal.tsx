@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Modal from "./Modal";
-import { UserListSkeleton } from "@/components/Skeletons";
+
 import { cn } from "@/lib/utils";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowButton from "@/components/FollowButton";
@@ -168,7 +168,7 @@ export default function UserListModal({
 
       <div className="px-2 py-2 min-h-[300px]">
         {(loading && users.length === 0) || tabSwitching ? (
-          <UserListSkeleton count={5} />
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : users.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-8">{emptyText}</p>
         ) : filteredUsers.length === 0 ? (

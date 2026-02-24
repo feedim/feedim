@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
-import { UserListSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
+
+
 import UserListItem from "@/components/UserListItem";
 
 interface FollowRequest {
@@ -77,7 +77,7 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
     <Modal open={open} onClose={onClose} title="Takip İstekleri" size="md" infoText="Gelen takip isteklerini buradan kabul edebilir veya reddedebilirsin.">
       <div className="px-4 py-3">
         {loading ? (
-          <LoadingShell><UserListSkeleton count={5} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : requests.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-8">Bekleyen takip isteği yok</p>
         ) : (

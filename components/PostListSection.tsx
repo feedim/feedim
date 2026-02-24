@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import PostCard from "@/components/PostCard";
-import { PostGridSkeleton } from "@/components/Skeletons";
+
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 
@@ -28,7 +28,7 @@ export default function PostListSection({
   skeletonCount = 3,
 }: PostListSectionProps) {
   if (loading && posts.length === 0) {
-    return <PostGridSkeleton count={skeletonCount} />;
+    return <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>;
   }
 
   if (posts.length === 0) {

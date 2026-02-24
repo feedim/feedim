@@ -6,8 +6,6 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, Trash2, ShieldOff } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { formatRelativeDate } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -321,7 +319,7 @@ export default function AdminPage() {
         </div>
 
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : tab === "panel" ? (
           <div className="px-4 space-y-3 py-2">
             <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px] bg-bg-secondary">
@@ -749,7 +747,7 @@ export default function AdminPage() {
             ) : subTab === 'copyright' ? (
           <div className="px-4 space-y-2 py-2">
             {copyrightClaimsLoading ? (
-              <SettingsItemSkeleton count={3} />
+              <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : copyrightClaims.length === 0 ? (
               <div className="py-16 text-center text-text-muted text-sm">Bekleyen telif hakkı talebi yok</div>
             ) : copyrightClaims.map((claim: any) => {
@@ -884,7 +882,7 @@ export default function AdminPage() {
             ) : subTab === 'applications' ? (
           <div className="px-4 space-y-2 py-2">
             {copyrightAppsLoading ? (
-              <SettingsItemSkeleton count={3} />
+              <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : copyrightApps.length === 0 ? (
               <div className="py-16 text-center text-text-muted text-sm">Bekleyen basvuru yok</div>
             ) : copyrightApps.map((app: any) => {

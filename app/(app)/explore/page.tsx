@@ -9,8 +9,6 @@ import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import MomentGridCard from "@/components/MomentGridCard";
 import MomentsCarousel from "@/components/MomentsCarousel";
-import { PostGridSkeleton, MomentGridSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import { cn, formatCount } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import UserListItem from "@/components/UserListItem";
@@ -93,7 +91,7 @@ function SearchPrompt() {
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<AppLayout hideRightSidebar><PostGridSkeleton count={4} /></AppLayout>}>
+    <Suspense fallback={<AppLayout hideRightSidebar><div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div></AppLayout>}>
       <ExploreContent />
     </Suspense>
   );
@@ -660,7 +658,7 @@ function ExploreContent() {
 
     // Default explore content per tab
     if (loading) {
-      return <LoadingShell><div className="mt-4"><PostGridSkeleton count={4} /></div></LoadingShell>;
+      return <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>;
     }
 
     // Tag filter mode
@@ -752,7 +750,7 @@ function ExploreContent() {
 
     if (activeTab === "moments") {
       if (momentTabLoading && momentTabPosts.length === 0) {
-        return <div className="mt-2"><MomentGridSkeleton count={9} /></div>;
+        return <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>;
       }
       return (
         <div className="mt-2">

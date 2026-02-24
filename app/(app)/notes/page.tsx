@@ -6,7 +6,6 @@ import { emitNavigationStart } from "@/lib/navigationProgress";
 import { PenLine, Users } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
-import { PostGridSkeleton } from "@/components/Skeletons";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { useUser } from "@/components/UserContext";
@@ -46,7 +45,7 @@ interface NotePost {
 }
 
 export default function CommunityNotesPage() {
-  const [activeTab, setActiveTab] = useState<"for-you" | "following" | "popular">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "following">("for-you");
   const [posts, setPosts] = useState<NotePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -63,8 +62,6 @@ export default function CommunityNotesPage() {
     try {
       const endpoint = tab === "following"
         ? `/api/posts/feed?content_type=note&page=${pageNum}`
-        : tab === "popular"
-        ? `/api/posts/explore?content_type=note&sort=trending&page=${pageNum}`
         : `/api/posts/explore?content_type=note&page=${pageNum}`;
       const data = await fetchWithCache(endpoint, { ttlSeconds: 30, forceRefresh: true }) as any;
       const items = data.posts || [];
@@ -102,7 +99,7 @@ export default function CommunityNotesPage() {
       .catch(() => {});
   }, [posts, isLoggedIn]);
 
-  const handleTabChange = useCallback((tab: "for-you" | "following" | "popular") => {
+  const handleTabChange = useCallback((tab: "for-you" | "following") => {
     setActiveTab(tab);
     setPosts([]);
     setPage(1);
@@ -131,15 +128,6 @@ export default function CommunityNotesPage() {
         >
           Senin İçin
           {activeTab === "for-you" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
-        </button>
-        <button
-          onClick={() => handleTabChange("popular")}
-          className={`flex-1 py-3.5 text-[0.88rem] font-semibold transition relative ${
-            activeTab === "popular" ? "text-text-primary" : "text-text-muted"
-          }`}
-        >
-          Popüler
-          {activeTab === "popular" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
         </button>
         <button
           onClick={() => handleTabChange("following")}
@@ -171,7 +159,7 @@ export default function CommunityNotesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="py-2"><PostGridSkeleton count={4} /></div>
+        <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
       ) : posts.length > 0 ? (
         <>
           <div className="flex flex-col gap-[40px]">

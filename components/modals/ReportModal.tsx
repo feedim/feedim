@@ -103,7 +103,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
         {submitted ? (
           <div className="text-center py-8">
             <p className="text-lg font-semibold mb-2">Şikayetiniz alındı</p>
-            <p className="text-sm text-text-muted">Ekibimiz en kısa sürede inceleyecektir.</p>
+            <p className="text-sm text-text-muted">Moderatör ekibimiz en kısa süre içerisinde inceleyecektir.</p>
             <button onClick={handleClose} className="t-btn accept mt-6 px-8">Tamam</button>
           </div>
         ) : (

@@ -17,8 +17,6 @@ import { formatCount, formatRelativeDate } from "@/lib/utils";
 import { isProfessional } from "@/lib/professional";
 import { Lock } from "lucide-react";
 import { useUser } from "@/components/UserContext";
-import { AnalyticsSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 
 /* ─── Types ─── */
 interface OverviewData {
@@ -134,7 +132,7 @@ export default function AnalyticsPage() {
         </div>
 
         {loading ? (
-          <LoadingShell><AnalyticsSkeleton /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : !hasData ? (
           <div className="px-4 py-20 text-center">
             <TrendingUp className="h-14 w-14 text-text-muted mx-auto mb-4" />

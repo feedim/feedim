@@ -31,7 +31,7 @@ interface ModalProps {
 
 const sizeClasses: Record<ModalSize, string> = {
   sm: "max-w-[400px]",
-  md: "max-w-[500px]",
+  md: "max-w-[450px]",
   lg: "max-w-[640px]",
   full: "max-w-full",
 };

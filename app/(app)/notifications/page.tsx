@@ -8,8 +8,6 @@ import { encodeId } from "@/lib/hashId";
 import AppLayout from "@/components/AppLayout";
 import EmptyState from "@/components/EmptyState";
 import Link from "next/link";
-import { NotificationListSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowRequestsModal from "@/components/modals/FollowRequestsModal";
 import UserListModal from "@/components/modals/UserListModal";
@@ -370,9 +368,7 @@ export default function NotificationsPage() {
         )}
 
         {loading && notifications.length === 0 ? (
-          <LoadingShell>
-            <NotificationListSkeleton count={5} />
-          </LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : notifications.length === 0 ? (
           <EmptyState
             title="Bildirim yok"

@@ -6,8 +6,6 @@ import { Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import UserListItem from "@/components/UserListItem";
-import { UserListSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import FollowButton from "@/components/FollowButton";
 import { feedimAlert } from "@/components/FeedimAlert";
 
@@ -177,7 +175,7 @@ export default function SuggestionsPage() {
     <AppLayout hideRightSidebar headerTitle="Kişileri Bul" headerRightAction={refreshButton}>
       <div className="px-3 sm:px-4 py-4">
         {loading ? (
-          <LoadingShell><UserListSkeleton count={8} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : users.length === 0 ? (
           <div className="text-center py-16">
             <Users className="h-12 w-12 text-text-muted mx-auto mb-3" />

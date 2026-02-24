@@ -9,8 +9,8 @@ import {
   Shield, HelpCircle, FileText, MessageCircle, ScrollText,
   ArrowLeft, Check, Trash2
 } from "lucide-react";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
+
+
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import Modal from "./Modal";
@@ -108,7 +108,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     <Modal open={open} onClose={onClose} title="Ayarlar" size="md" infoText="Hesap ve uygulama ayarlarını buradan yönetebilirsin.">
       <div className="px-4 py-4 space-y-4">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Profile Header */}

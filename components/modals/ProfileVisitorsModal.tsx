@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Modal from "./Modal";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
-import { UserListSkeleton } from "@/components/Skeletons";
+
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 
 interface Visitor {
@@ -64,7 +64,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
         <p className="text-xs text-text-muted mb-3">Son 30 gün</p>
 
         {loading && visitors.length === 0 ? (
-          <UserListSkeleton count={5} />
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : visitors.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-8">Henüz ziyaretçi yok</p>
         ) : (

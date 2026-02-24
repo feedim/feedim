@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AccountHealthPage() {
@@ -71,7 +69,7 @@ export default function AccountHealthPage() {
     <AppLayout headerTitle="Hesap Sağlığı" hideRightSidebar>
       <div className="px-4 py-4 space-y-5">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Güven Puanı */}

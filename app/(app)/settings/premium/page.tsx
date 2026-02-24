@@ -7,8 +7,6 @@ import { ArrowUpRight, Calendar, CreditCard, RefreshCw, XCircle, Check, ChevronR
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 interface Subscription {
@@ -132,7 +130,7 @@ export default function PremiumSettingsPage() {
     <AppLayout headerTitle="Abonelik" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : isPremium && subscription ? (
           <>
             {/* Plan Banner */}

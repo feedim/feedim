@@ -18,8 +18,6 @@ import ShareIcon from "@/components/ShareIcon";
 import ProfessionalAccountModal from "@/components/modals/ProfessionalAccountModal";
 import DarkModeModal from "@/components/modals/DarkModeModal";
 import { isProfessional, getCategoryLabel } from "@/lib/professional";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 const minDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -179,7 +177,7 @@ export default function SettingsPage() {
     <AppLayout headerTitle="Ayarlar" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Profile Header */}

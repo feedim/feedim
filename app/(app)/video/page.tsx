@@ -7,7 +7,6 @@ import Link from "next/link";
 import { Film } from "lucide-react";
 import ColumnHeader from "@/components/ColumnHeader";
 import MomentsCarousel from "@/components/MomentsCarousel";
-import { VideoGridSkeleton } from "@/components/Skeletons";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import VideoGridCard from "@/components/VideoGridCard";
@@ -79,9 +78,7 @@ export default function VideoPage() {
 
       <div className="pb-8">
         {loading ? (
-          <div className="pt-4">
-            <VideoGridSkeleton count={8} />
-          </div>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : videos.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-7 p-4 sm:p-6">

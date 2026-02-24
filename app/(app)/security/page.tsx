@@ -9,8 +9,6 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import PasswordInput from "@/components/PasswordInput";
 import AppLayout from "@/components/AppLayout";
 import { useUser } from "@/components/UserContext";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 
 const minDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -226,7 +224,7 @@ export default function SecurityPage() {
     <AppLayout hideRightSidebar>
       <div className="px-4 py-4 space-y-4">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Email Verification */}

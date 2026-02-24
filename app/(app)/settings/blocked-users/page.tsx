@@ -7,8 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import Link from "next/link";
 
 const PAGE_SIZE = 20;
@@ -93,7 +91,7 @@ export default function BlockedUsersPage() {
     <AppLayout headerTitle="Engellenen Kullanıcılar" hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : blockedUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <p className="text-sm text-text-muted">Engellenen kullanıcı yok</p>

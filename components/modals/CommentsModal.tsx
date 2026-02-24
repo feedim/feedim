@@ -15,7 +15,7 @@ import EmojiPickerPanel from "./EmojiPickerPanel";
 import GifPickerPanel from "./GifPickerPanel";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { isBlockedContent } from "@/lib/blockedWords";
-import { CommentDetailListSkeleton } from "@/components/Skeletons";
+
 
 interface Comment {
   id: number;
@@ -583,7 +583,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
               {newComment.length}/{maxCommentLength}
             </span>
           )}
-          <div className="flex items-center shrink-0 my-[9px] mr-[7px] gap-[2px]">
+          <div className="flex items-center shrink-0 mb-[9px] mt-auto mr-[7px] gap-[2px]">
             <button
               type="button"
               onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
@@ -665,7 +665,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         )}
 
           {loading && comments.length === 0 ? (
-            <CommentDetailListSkeleton />
+            <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
           ) : comments.length === 0 ? (
             /* Empty state */
             <div className="flex items-center justify-center min-h-[50vh]">
@@ -875,7 +875,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
       isReply && "pl-[11px] ml-[13px] border-l-2 border-border-primary"
     )}>
       {/* Avatar */}
-      <div className="shrink-0 mt-[17px]">
+      <div className="shrink-0 mt-[9px]">
         <a href={`/u/${profileUsername}`}>
           {comment.profiles?.avatar_url ? (
             <img src={comment.profiles.avatar_url} alt="" className="h-[34px] w-[34px] rounded-full object-cover" />
@@ -904,7 +904,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
             <div className="shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); onToggleMenu(openMenuId === comment.id ? null : comment.id); }}
-                className="flex items-center justify-center h-[34px] w-[34px] rounded-full text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition active:bg-bg-tertiary"
+                className="flex items-center justify-center h-[26px] w-[26px] rounded-full text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition active:bg-bg-tertiary"
               >
                 <MoreHorizontal className="h-[18px] w-[18px]" />
               </button>
@@ -924,7 +924,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           <>
             <div
               className={cn(
-                "w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px]",
+                "w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px] mt-[2px] mx-[1px]",
                 !expanded && isLong && "line-clamp-6"
               )}
               dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}

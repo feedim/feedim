@@ -10,7 +10,7 @@ import { formatRelativeDate, cn, formatCount } from "@/lib/utils";
 import { VALIDATION } from "@/lib/constants";
 import { feedimAlert } from "@/components/FeedimAlert";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
-import { CommentListSkeleton } from "@/components/Skeletons";
+
 
 interface Comment {
   id: number;
@@ -297,7 +297,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 
       {/* Comments list */}
       {loading && comments.length === 0 ? (
-        <CommentListSkeleton />
+        <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
       ) : (
         <div className="space-y-5">
           {comments

@@ -250,12 +250,12 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
               <span className="text-[0.62rem] text-text-muted shrink-0">{post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : post.content_type === "note" ? "Not" : "Gönderi"}</span>
             </div>
             <div className="pointer-events-auto shrink-0 flex items-center gap-1 -mr-2">
-              {!isSelf && isFollowing !== undefined && isFollowing !== ("loading" as any) && (
+              {!isSelf && isFollowing !== undefined && isFollowing !== ("loading" as any) && !isFollowing && (
                 <button
-                  onClick={isFollowing ? undefined : handleFollow}
-                  className={`follow-btn !h-[22px] !px-[10px] !text-[0.68rem] !gap-1 ${isFollowing ? "cursor-default" : ""}`}
+                  onClick={handleFollow}
+                  className="text-[0.75rem] font-semibold text-accent-main hover:text-accent-main/80 transition"
                 >
-                  {isFollowing ? "Takip" : "Takip Et"}
+                  Takip Et
                 </button>
               )}
               <div className="[&_button]:!w-7 [&_button]:!h-7 [&_svg]:!h-4 [&_svg]:!w-4">

@@ -7,7 +7,6 @@ import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import MomentGridCard from "@/components/MomentGridCard";
-import { PostGridSkeleton, UserListSkeleton, MomentGridSkeleton } from "@/components/Skeletons";
 import { cn } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
@@ -407,13 +406,7 @@ export default function TagPage() {
           </div>
         ) : null
       ) : loading ? (
-        activeTab === "users" ? (
-          <div className="px-3 sm:px-4 pt-4"><UserListSkeleton count={6} /></div>
-        ) : activeTab === "moments" ? (
-          <MomentGridSkeleton />
-        ) : (
-          <div className="mt-4"><PostGridSkeleton count={4} /></div>
-        )
+        <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
       ) : activeTab === "users" ? (
         // Users tab
         <div className="mt-2 px-3 sm:px-4">

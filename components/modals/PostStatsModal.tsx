@@ -8,8 +8,8 @@ import {
 import ShareIcon from "@/components/ShareIcon";
 import Modal from "./Modal";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
-import { StatsSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
+
+
 
 interface PostStatsModalProps {
   open: boolean;
@@ -82,7 +82,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
         )}
 
         {loading ? (
-          <LoadingShell><StatsSkeleton /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Views — big hero */}

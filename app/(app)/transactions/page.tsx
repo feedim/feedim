@@ -6,8 +6,6 @@ import Link from "next/link";
 import { Coins } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import TransactionCard from "@/components/TransactionCard";
-import { TransactionListSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
 import AppLayout from "@/components/AppLayout";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 
@@ -106,7 +104,7 @@ export default function TransactionsPage() {
     <AppLayout headerRightAction={headerRight} hideRightSidebar>
       <div className="px-4 py-4">
         {loading ? (
-          <LoadingShell><TransactionListSkeleton count={6} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : transactions.length === 0 ? (
           <div className="text-center py-16">
             <Coins className="h-12 w-12 text-accent-main/40 mx-auto mb-3" />

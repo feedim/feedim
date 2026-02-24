@@ -13,8 +13,8 @@ import { VALIDATION } from "@/lib/constants";
 import { normalizeUsername, filterNameInput } from "@/lib/utils";
 import { isProfessional, getCategoryLabel } from "@/lib/professional";
 import { Briefcase, ChevronRight, Mail, Phone } from "lucide-react";
-import { SettingsItemSkeleton } from "@/components/Skeletons";
-import LoadingShell from "@/components/LoadingShell";
+
+
 
 interface EditProfileModalProps {
   open: boolean;
@@ -267,7 +267,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
     >
       <div className="px-4 py-4 space-y-5">
         {loading ? (
-          <LoadingShell><SettingsItemSkeleton count={4} /></LoadingShell>
+          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Avatar */}
