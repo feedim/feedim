@@ -193,7 +193,7 @@ export default function PremiumPage() {
       billing,
     }));
     emitNavigationStart();
-    router.push("/dashboard/subscription-payment");
+    router.push("/subscription-payment");
   };
 
   const getFeaturesForPlan = (tier: "basic" | "pro" | "max" | "business") => {

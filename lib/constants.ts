@@ -112,6 +112,7 @@ export const VALIDATION = {
   gender: ['male', 'female', 'other'] as const,
   postTitle: { min: 3, max: 200 },
   postContent: { minChars: 50, maxWords: 5000, maxWordsMax: 15000, maxListItems: 300 },
+  noteContent: { min: 1, max: 280 },
   postTags: { max: 5 },
   tagName: { min: 2, max: 50, pattern: /^[a-zA-ZçÇğĞıİöÖşŞüÜâÂêÊîÎôÔûÛäÄëËïÏ0-9\s\-_.&#+]+$/ },
   imageCaption: { max: 200 },
@@ -157,6 +158,7 @@ export const AUDIO_ALLOWED_TYPES = ['audio/mpeg','audio/mp4','audio/aac','audio/
 // İçerik tipleri
 export const CONTENT_TYPES = {
   post: { label: 'Gönderi', icon: '📝' },
+  note: { label: 'Not', icon: '📌' },
   video: { label: 'Video', icon: '🎥' },
   moment: { label: 'Moment', icon: '🎬' },
 } as const;
@@ -164,9 +166,32 @@ export const CONTENT_TYPES = {
 // Bildirim tipleri
 export const NOTIFICATION_TYPES = [
   'like', 'comment', 'reply', 'mention', 'follow',
-  'follow_request', 'follow_accepted',
+  'follow_request', 'follow_accepted', 'comment_like',
   'first_post', 'comeback_post', 'milestone',
   'coin_earned', 'gift_received', 'premium_expired', 'system',
+  'view_milestone', 'device_login',
+  'moderation_review', 'moderation_approved', 'moderation_rejected',
+  'account_moderation',
+  'copyright_detected', 'copyright_claim_submitted', 'copyright_verified',
+  'copyright_rejected', 'copyright_verification_needed', 'copyright_similar_detected',
+  'copyright_application_approved', 'copyright_application_rejected', 'copyright_revoked',
+] as const;
+
+// Bildirim türü grupları — tab filtreleme için
+export const NOTIFICATION_SOCIAL_TYPES = [
+  'like', 'comment', 'reply', 'mention', 'follow',
+  'follow_request', 'follow_accepted', 'comment_like',
+  'first_post', 'comeback_post', 'gift_received',
+] as const;
+
+export const NOTIFICATION_SYSTEM_TYPES = [
+  'milestone', 'system', 'coin_earned', 'premium_expired',
+  'view_milestone', 'device_login',
+  'moderation_review', 'moderation_approved', 'moderation_rejected',
+  'account_moderation',
+  'copyright_detected', 'copyright_claim_submitted', 'copyright_verified',
+  'copyright_rejected', 'copyright_verification_needed', 'copyright_similar_detected',
+  'copyright_application_approved', 'copyright_application_rejected', 'copyright_revoked',
 ] as const;
 
 // Paylaşım platformları

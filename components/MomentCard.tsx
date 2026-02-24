@@ -412,7 +412,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
             {tags.map(tag => (
               <Link
                 key={tag.id}
-                href={`/dashboard/explore/tag/${tag.slug}`}
+                href={`/explore/tag/${tag.slug}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-[0.72rem] font-semibold text-white/80 bg-white/15 backdrop-blur-sm px-2 py-0.5 rounded-full hover:bg-white/25 transition"
               >
@@ -425,7 +425,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         {/* Sound marquee — TikTok/Reels style */}
         {moment.sounds && moment.sounds.status !== "muted" && (
           <Link
-            href={`/dashboard/sounds/${encodeId(moment.sounds.id)}`}
+            href={`/sounds/${encodeId(moment.sounds.id)}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2"
           >

@@ -127,15 +127,21 @@ export default function PostInteractionBar({
       .catch(() => {});
   }, [postId, isOwnPost, compact]);
 
+  const isNote = contentType === "note";
   useEffect(() => {
-    if (compact) return;
     if (initialLikeCount > 0) {
       fetch(`/api/posts/${postId}/likes?page=1`)
         .then(r => r.json())
-        .then(data => setLikedByUsers((data.users || []).slice(0, 3)))
+        .then(data => {
+          const all = (data.users || []) as { username: string; full_name?: string; avatar_url?: string; is_following?: boolean; is_own?: boolean }[];
+          // Kendimi çıkar, takip ettiklerimi öne al
+          const filtered = all.filter((u: any) => !u.is_own);
+          filtered.sort((a: any, b: any) => (b.is_following ? 1 : 0) - (a.is_following ? 1 : 0));
+          setLikedByUsers(filtered.slice(0, 3));
+        })
         .catch(() => {});
     }
-  }, [postId, initialLikeCount, compact]);
+  }, [postId, initialLikeCount]);
 
   // Refs to track latest state for rapid clicks
   const likedRef = useRef(initialLiked);
@@ -203,6 +209,31 @@ export default function PostInteractionBar({
     const noLike = compact === "no-like";
     return (
       <>
+        {/* Liked by */}
+        {likeCount > 0 && likedByUsers.length > 0 && (
+          <button
+            onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
+            className="flex items-center gap-1.5 pb-2 text-[0.8rem] text-text-muted transition w-full text-left hover:underline"
+          >
+            <div className="flex -space-x-2 shrink-0">
+              {likedByUsers.map((u) => (
+                u.avatar_url ? (
+                  <img key={u.username} src={u.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover border-2 border-bg-primary" />
+                ) : (
+                  <img key={u.username} className="default-avatar-auto h-6 w-6 rounded-full object-cover border-2 border-bg-primary" alt="" />
+                )
+              ))}
+            </div>
+            <span>
+              {likeCount === 1
+                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> beğendi</>
+                : likeCount === 2 && likedByUsers.length >= 2
+                  ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> beğendi</>
+                  : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1)} kişi</strong> beğendi</>
+              }
+            </span>
+          </button>
+        )}
         <div className="flex items-center gap-2">
           {noLike ? (
             <Link href={postUrl} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
@@ -236,6 +267,11 @@ export default function PostInteractionBar({
         {shareMounted && (
           <Suspense fallback={null}>
             <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} url={postUrl} title={postTitle} postId={postId} isVideo={isVideo} postSlug={postSlug} contentType={contentType} />
+          </Suspense>
+        )}
+        {likesMounted && (
+          <Suspense fallback={null}>
+            <LikesModal open={likesOpen} onClose={() => setLikesOpen(false)} postId={postId} />
           </Suspense>
         )}
       </>
@@ -294,7 +330,7 @@ export default function PostInteractionBar({
             {` ${formatCount(commentCount)} yorum`}
           </span>
         </button>
-      ) : (
+      ) : contentType !== "note" ? (
         <button
           onClick={() => { setGiftOpen(true); setGiftMounted(true); }}
           className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
@@ -302,7 +338,7 @@ export default function PostInteractionBar({
           <Gift className="h-[18px] w-[18px]" />
           <span>Hediye Gonder</span>
         </button>
-      )}
+      ) : null}
 
       {/* Interaction bar — sticky on mobile */}
       <div className={`sticky bottom-0 z-40 bg-bg-primary sticky-ambient ${likedByBottom ? "mt-2" : "mt-2 mb-4"}`}>

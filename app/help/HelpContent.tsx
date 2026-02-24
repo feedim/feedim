@@ -108,13 +108,13 @@ const articles: Article[] = [
     section: "hesap",
     question: "Giriş yapmadan platformu kullanabilir miyim?",
     searchText: "Evet, giriş yapmadan ana sayfa ve keşfet bölümünü gezebilir, gönderileri okuyabilirsiniz. Gönderi oluşturma, beğenme, yorum yapma ve takip etme için hesap gerekir.",
-    answer: <>Evet, giriş yapmadan ana sayfa ve <Link href="/dashboard/explore" className={lnk}>keşfet</Link> bölümünü gezebilir, gönderileri okuyabilirsiniz. Ancak gönderi oluşturma, beğenme, yorum yapma ve takip etme gibi etkileşimler için hesap oluşturmanız gerekir.</>,
+    answer: <>Evet, giriş yapmadan ana sayfa ve <Link href="/explore" className={lnk}>keşfet</Link> bölümünü gezebilir, gönderileri okuyabilirsiniz. Ancak gönderi oluşturma, beğenme, yorum yapma ve takip etme gibi etkileşimler için hesap oluşturmanız gerekir.</>,
   },
   {
     section: "hesap",
     question: "Kayıtlı hesaplar özelliği nedir?",
-    searchText: "Giriş yaptığınızda hesabınız cihazınıza kaydedilir. Sonraki girişte tek tıkla seçebilirsiniz. En fazla 5 hesap kaydedilir.",
-    answer: "Giriş yaptığınızda hesabınız otomatik olarak cihazınıza kaydedilir. Bir sonraki girişinizde tek tıkla hesabınızı seçerek hızlıca erişebilirsiniz. En fazla 5 hesap kaydedilir. İstediğiniz hesabı listeden kaldırabilirsiniz. Kayıtlı hesap verisi yalnızca cihazınızda saklanır.",
+    searchText: "Giriş yaptığınızda hesabınız cihazınıza kaydedilir. Sonraki girişte tek tıkla seçebilirsiniz. En son kullanılan 1 hesap kaydedilir.",
+    answer: "Giriş yaptığınızda hesabınız otomatik olarak cihazınıza kaydedilir. Bir sonraki girişinizde tek tıkla hesabınızı seçerek hızlıca erişebilirsiniz. En son kullanılan 1 hesap kaydedilir. İstediğiniz hesabı listeden kaldırabilirsiniz. Kayıtlı hesap verisi yalnızca cihazınızda saklanır.",
   },
   {
     section: "hesap",
@@ -228,7 +228,7 @@ const articles: Article[] = [
     section: "icerik",
     question: "Gönderi nedir?",
     searchText: "Gönderi, Feedim'de paylaştığınız içeriktir. Metin, görsel ve zengin metin formatlarını destekler. Gönderileriniz profilinizde ve akışta görünür.",
-    answer: <>Gönderi, Feedim&apos;de oluşturup paylaştığınız içeriktir. Metin, görsel, bağlantı ve zengin metin formatlarını destekler. Gönderileriniz profilinizde listelenir, takipçilerinizin ana sayfasında ve <Link href="/dashboard/explore" className={lnk}>keşfet</Link> bölümünde görünür. Her gönderiye etiket ekleyebilir, beğeni ve yorum alabilirsiniz.</>,
+    answer: <>Gönderi, Feedim&apos;de oluşturup paylaştığınız içeriktir. Metin, görsel, bağlantı ve zengin metin formatlarını destekler. Gönderileriniz profilinizde listelenir, takipçilerinizin ana sayfasında ve <Link href="/explore" className={lnk}>keşfet</Link> bölümünde görünür. Her gönderiye etiket ekleyebilir, beğeni ve yorum alabilirsiniz.</>,
   },
   {
     section: "icerik",
@@ -240,7 +240,7 @@ const articles: Article[] = [
     section: "icerik",
     question: "Etiket nedir ve nasıl eklenir?",
     searchText: "Etiketler gönderinizin konusunu belirler. En fazla 5 etiket ekleyebilirsiniz. Etiketler keşfet bölümünde kategorize edilmenizi sağlar.",
-    answer: <>Etiketler, gönderinizin konusunu ve kategorisini belirler. Gönderi oluştururken en fazla 5 etiket ekleyebilirsiniz. Etiketler, gönderinizin <Link href="/dashboard/explore" className={lnk}>keşfet</Link> bölümünde doğru kategoride görünmesini ve diğer kullanıcıların içeriğinizi kolayca bulmasını sağlar. Popüler etiketler trend listesinde yer alır.</>,
+    answer: <>Etiketler, gönderinizin konusunu ve kategorisini belirler. Gönderi oluştururken en fazla 5 etiket ekleyebilirsiniz. Etiketler, gönderinizin <Link href="/explore" className={lnk}>keşfet</Link> bölümünde doğru kategoride görünmesini ve diğer kullanıcıların içeriğinizi kolayca bulmasını sağlar. Popüler etiketler trend listesinde yer alır.</>,
   },
   {
     section: "icerik",
@@ -372,7 +372,7 @@ const articles: Article[] = [
     section: "etkilesim",
     question: "Kaydetme nedir?",
     searchText: "Kaydetme, beğendiğiniz gönderileri yer imlerine eklemenizi sağlar. Kaydet simgesine tıklayın. Kaydedilenler bölümünden ulaşabilirsiniz.",
-    answer: <>Kaydetme, ilginizi çeken gönderileri yer imlerine eklemenizi sağlar. Gönderi altındaki <Bookmark className={ico} /> kaydet simgesine tıklayın. Kaydettiğiniz gönderilere sol menüdeki <Bookmark className={ico} /> <Link href="/dashboard/bookmarks" className={lnk}>Kaydedilenler</Link> bölümünden ulaşabilirsiniz. Kaydetme işlemi gizlidir — gönderi sahibi göremez.</>,
+    answer: <>Kaydetme, ilginizi çeken gönderileri yer imlerine eklemenizi sağlar. Gönderi altındaki <Bookmark className={ico} /> kaydet simgesine tıklayın. Kaydettiğiniz gönderilere sol menüdeki <Bookmark className={ico} /> <Link href="/bookmarks" className={lnk}>Kaydedilenler</Link> bölümünden ulaşabilirsiniz. Kaydetme işlemi gizlidir — gönderi sahibi göremez.</>,
   },
   {
     section: "etkilesim",
@@ -404,7 +404,7 @@ const articles: Article[] = [
     section: "bildirim",
     question: "Bildirimler nasıl çalışır?",
     searchText: "Beğeni, yorum, yanıt, bahsetme, takip ve Jeton kazanımı gibi etkileşimlerde bildirim alırsınız. Bildirimler bölümünden görebilirsiniz.",
-    answer: <><Heart className={ico} /> Beğeni, <MessageCircle className={ico} /> yorum, yanıt, bahsetme, takip ve Jeton kazanımı gibi etkileşimlerde <Bell className={ico} /> bildirim alırsınız. Sol menüdeki <Bell className={ico} /> <Link href="/dashboard/notifications" className={lnk}>Bildirimler</Link> bölümünden tüm bildirimlerinizi görebilirsiniz. Okunmamış bildirimler mavi nokta ile işaretlenir. Tümünü okundu olarak işaretleyebilirsiniz.</>,
+    answer: <><Heart className={ico} /> Beğeni, <MessageCircle className={ico} /> yorum, yanıt, bahsetme, takip ve Jeton kazanımı gibi etkileşimlerde <Bell className={ico} /> bildirim alırsınız. Sol menüdeki <Bell className={ico} /> <Link href="/notifications" className={lnk}>Bildirimler</Link> bölümünden tüm bildirimlerinizi görebilirsiniz. Okunmamış bildirimler mavi nokta ile işaretlenir. Tümünü okundu olarak işaretleyebilirsiniz.</>,
   },
   {
     section: "bildirim",
@@ -430,7 +430,7 @@ const articles: Article[] = [
     section: "jeton",
     question: "Jeton nedir?",
     searchText: "Jeton, Feedim'in sanal para birimidir. İçerik okuma ve satın alma yoluyla kazanılır veya harcanır. Jetonlar TL'ye çevrilebilir.",
-    answer: <>Jeton, Feedim&apos;in sanal para birimidir. Kullanıcılar gönderi okuma ve satın alma yoluyla Jeton kazanır veya harcar. Biriktirdiğiniz Jetonları TL&apos;ye çevirebilirsiniz. Jeton bakiyenizi profilinizden ve <Link href="/dashboard/coins" className={lnk}>Jeton sayfasından</Link> takip edebilirsiniz.</>,
+    answer: <>Jeton, Feedim&apos;in sanal para birimidir. Kullanıcılar gönderi okuma ve satın alma yoluyla Jeton kazanır veya harcar. Biriktirdiğiniz Jetonları TL&apos;ye çevirebilirsiniz. Jeton bakiyenizi profilinizden ve <Link href="/coins" className={lnk}>Jeton sayfasından</Link> takip edebilirsiniz.</>,
   },
   {
     section: "jeton",
@@ -448,7 +448,7 @@ const articles: Article[] = [
     section: "jeton",
     question: "Jeton satın alma nasıl yapılır?",
     searchText: "Jeton sayfasından paket seçerek satın alabilirsiniz. Bonus Jetonlu paketler mevcuttur. Ödeme güvenli şekilde işlenir.",
-    answer: <><Link href="/dashboard/coins" className={lnk}>Jeton sayfasından</Link> istediğiniz paketi seçerek satın alabilirsiniz. Farklı miktarlarda paketler mevcuttur ve bazılarında bonus Jetonlar bulunur.</>,
+    answer: <><Link href="/coins" className={lnk}>Jeton sayfasından</Link> istediğiniz paketi seçerek satın alabilirsiniz. Farklı miktarlarda paketler mevcuttur ve bazılarında bonus Jetonlar bulunur.</>,
   },
   {
     section: "jeton",
@@ -500,7 +500,7 @@ const articles: Article[] = [
     section: "kesfet",
     question: "Keşfet sayfası nedir?",
     searchText: "Keşfet, farklı kullanıcıların gönderilerini keşfetmenizi sağlar. Trend etiketler, popüler içerikler ve kategoriler bulunur.",
-    answer: <><Link href="/dashboard/explore" className={lnk}>Keşfet</Link> sayfası, farklı kullanıcıların gönderilerini keşfetmenizi sağlar. Trend etiketler, popüler içerikler ve kategorilere göre gönderiler listelenir. Takip etmediğiniz kullanıcıların da kaliteli içeriklerini burada bulabilirsiniz.</>,
+    answer: <><Link href="/explore" className={lnk}>Keşfet</Link> sayfası, farklı kullanıcıların gönderilerini keşfetmenizi sağlar. Trend etiketler, popüler içerikler ve kategorilere göre gönderiler listelenir. Takip etmediğiniz kullanıcıların da kaliteli içeriklerini burada bulabilirsiniz.</>,
   },
   {
     section: "kesfet",

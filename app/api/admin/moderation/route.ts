@@ -461,8 +461,12 @@ export async function POST(request: NextRequest) {
           .select('id').single();
 
         if (target_type === 'post') {
+          // Ensure published_at is set when approving (may be null if content was cleared then re-submitted)
+          const { data: preApprove } = await admin.from('posts').select('published_at').eq('id', Number(target_id)).single();
+          const approveUpdates: Record<string, any> = { status: 'published', is_nsfw: false, moderation_due_at: null, moderation_reason: null, moderation_category: null };
+          if (!preApprove?.published_at) approveUpdates.published_at = new Date().toISOString();
           const { data: approvedPost } = await admin.from('posts')
-            .update({ status: 'published', is_nsfw: false, moderation_due_at: null, moderation_reason: null, moderation_category: null })
+            .update(approveUpdates)
             .eq('id', Number(target_id))
             .select('author_id, title, slug').single();
 
@@ -625,7 +629,10 @@ export async function POST(request: NextRequest) {
 
       case 'approve_post': {
         const appPostCode = await generateDecisionCode(admin);
-        await admin.from('posts').update({ status: 'published' }).eq('id', Number(target_id));
+        const { data: preApp } = await admin.from('posts').select('published_at').eq('id', Number(target_id)).single();
+        const appUpdates: Record<string, any> = { status: 'published' };
+        if (!preApp?.published_at) appUpdates.published_at = new Date().toISOString();
+        await admin.from('posts').update(appUpdates).eq('id', Number(target_id));
         try {
           await admin.from('moderation_decisions').insert({
             target_type: 'post', target_id: String(target_id), decision: 'approved', reason: reason || 'Gönderi onaylandı', moderator_id: user.id, decision_code: appPostCode,

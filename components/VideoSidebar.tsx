@@ -52,7 +52,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
         {videos.map(video => (
           <Link
             key={video.id}
-            href={`/post/${video.slug}`}
+            href={`/${video.slug}`}
             className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
           >
             {/* Thumbnail */}

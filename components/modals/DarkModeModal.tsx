@@ -30,7 +30,7 @@ export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
 
   useEffect(() => {
     if (open) {
-      setCurrent(localStorage.getItem("fdm-theme") || "system");
+      setCurrent(localStorage.getItem("fdm-theme") || "dark");
     }
   }, [open]);
 

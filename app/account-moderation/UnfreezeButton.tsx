@@ -13,7 +13,7 @@ export default function UnfreezeButton() {
       const res = await fetch("/api/account/unfreeze", { method: "POST" });
       if (res.ok) {
         document.cookie = "fdm-status=; Max-Age=0; Path=/;";
-        router.replace("/dashboard");
+        router.replace("/");
       }
     } catch {
       // silent

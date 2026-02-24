@@ -72,7 +72,9 @@ function LoginPageContent() {
   const [rememberMe, setRememberMe] = useState(false);
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>(() => getSavedAccounts());
   const [selectedAccount, setSelectedAccount] = useState<SavedAccount | null>(null);
-  const [showNormalForm, setShowNormalForm] = useState(false);
+  const [showNormalForm, setShowNormalForm] = useState(() => {
+    try { return sessionStorage.getItem("fdm_switch_account") === "1"; } catch { return false; }
+  });
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -83,7 +85,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) { router.replace(nextUrl || "/dashboard"); return; }
+      if (user) { window.location.replace(nextUrl || "/"); return; }
       setAuthChecked(true);
     });
   }, [supabase, router, nextUrl]);
@@ -179,7 +181,7 @@ function LoginPageContent() {
           // Frozen account — auto-reactivate and redirect
           if (profile?.status === "frozen") {
             await fetch("/api/account/freeze", { method: "DELETE" });
-            router.replace(nextUrl || "/dashboard");
+            window.location.href = nextUrl || "/";
             return;
           }
 
@@ -187,7 +189,7 @@ function LoginPageContent() {
           if (profile?.status === "deleted") {
             const res = await fetch("/api/account/delete", { method: "PUT" });
             if (res.ok) {
-              router.replace(nextUrl || "/dashboard");
+              window.location.href = nextUrl || "/";
             } else {
               document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
               await supabase.auth.signOut();
@@ -237,8 +239,9 @@ function LoginPageContent() {
         }
       }
 
+      try { sessionStorage.removeItem("fdm_switch_account"); } catch {}
       await waitMin();
-      router.replace(nextUrl || "/dashboard");
+      window.location.href = nextUrl || "/";
     } catch {
       await waitMin();
       feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
@@ -272,12 +275,14 @@ function LoginPageContent() {
     setSelectedAccount(null);
     setPassword("");
     setIdentifier("");
+    try { sessionStorage.setItem("fdm_switch_account", "1"); } catch {}
   };
 
   const handleBackToSavedAccounts = () => {
     setShowNormalForm(false);
     setSelectedAccount(null);
     setPassword("");
+    try { sessionStorage.removeItem("fdm_switch_account"); } catch {}
   };
 
   // Durum A: Kayıtlı hesap yok veya normal form göster

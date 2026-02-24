@@ -76,7 +76,7 @@ function baseLayout(content: string): string {
     </div>
     <div style="text-align:center;margin-top:24px;color:#999;font-size:12px">
       <p>Bu e-posta Feedim tarafından gönderilmiştir.</p>
-      <p><a href="${SITE_URL}/dashboard/settings/notifications" style="color:#999">Bildirim ayarları</a></p>
+      <p><a href="${SITE_URL}/settings/notifications" style="color:#999">Bildirim ayarları</a></p>
     </div>
   </div>
 </body>
@@ -91,7 +91,7 @@ export function welcomeEmail(name: string): { subject: string; html: string } {
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px">
         Feedim ailesine katıldığınız için mutluyuz. İçeriklerinizi yazın, premium okuyucular sayesinde jeton kazanın.
       </p>
-      <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#111;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+      <a href="${SITE_URL}/" style="display:inline-block;background:#111;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
         Keşfetmeye Başla
       </a>
     `),
@@ -124,7 +124,7 @@ export function commentEmail(commenterName: string, postTitle: string, postSlug:
       <div style="background:#f5f5f5;border-radius:8px;padding:12px 16px;margin:0 0 20px;color:#333;font-size:14px;line-height:1.5">
         ${commentText.slice(0, 200)}
       </div>
-      <a href="${SITE_URL}/post/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Gönderiyi Gör
       </a>
     `),
@@ -139,7 +139,7 @@ export function giftReceivedEmail(senderName: string, giftType: string, coinAmou
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
         <strong>${senderName}</strong> size bir <strong>${giftType}</strong> hediye gönderdi (+${coinAmount} jeton).
       </p>
-      <a href="${SITE_URL}/dashboard/coins" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/coins" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Cüzdana Git
       </a>
     `),
@@ -159,7 +159,7 @@ export function withdrawalStatusEmail(status: 'completed' | 'rejected', amount: 
         ${isCompleted ? 'onaylandı ve hesabınıza aktarıldı.' : 'reddedildi.'}
       </p>
       ${reason ? `<p style="color:#999;font-size:13px;margin:0 0 20px">Sebep: ${reason}</p>` : ''}
-      <a href="${SITE_URL}/dashboard/coins" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/coins" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Cüzdana Git
       </a>
     `),
@@ -174,7 +174,7 @@ export function moderationReviewEmail(postTitle: string, postSlug: string): { su
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
         "<em>${postTitle}</em>" başlıklı içeriğiniz moderasyon incelemesine alındı. İnceleme tamamlanana kadar sadece siz görebilirsiniz.
       </p>
-      <a href="${SITE_URL}/post/${postSlug}/moderation" style="display:inline-block;background:#FF3E00;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/${postSlug}/moderation" style="display:inline-block;background:#FF3E00;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Durumu Görüntüle
       </a>
     `),
@@ -189,7 +189,7 @@ export function moderationApprovedEmail(postTitle: string, postSlug: string): { 
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
         "<em>${postTitle}</em>" başlıklı gönderiniz moderatörler tarafından incelendi ve onaylandı. Artık herkes görebilir.
       </p>
-      <a href="${SITE_URL}/post/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Gönderiyi Gör
       </a>
     `),
@@ -240,7 +240,7 @@ export function milestoneEmail(postTitle: string, viewCount: string, postSlug: s
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
         "<em>${postTitle}</em>" başlıklı gönderiniz <strong>${viewCount}</strong> görüntülenmeye ulaştı!
       </p>
-      <a href="${SITE_URL}/post/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/${postSlug}" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Gönderiyi Gör
       </a>
     `),
@@ -261,7 +261,7 @@ export function copyrightVerificationEmail(postTitle: string, matchedTitle: stri
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
         İçeriğinizin size ait olduğunu doğrulamak için lütfen doğrulama formunu doldurun.
       </p>
-      <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         Doğrulama Formunu Doldur
       </a>
     `),
@@ -276,7 +276,7 @@ export function copyrightClaimVerifiedEmail(postTitle: string): { subject: strin
       <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px">
         "<em>${postTitle}</em>" başlıklı içeriğiniz için telif hakkı doğrulamanız onaylandı. İçeriğiniz yayınlandı.
       </p>
-      <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
+      <a href="${SITE_URL}/" style="display:inline-block;background:#111;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">
         İçeriği Gör
       </a>
     `),

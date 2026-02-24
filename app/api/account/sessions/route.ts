@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createNotification } from "@/lib/notifications";
+
+function parseUA(ua: string | null): string {
+  if (!ua) return "Bilinmeyen cihaz";
+  let browser = "Tarayıcı";
+  let os = "";
+  if (/Chrome\//.test(ua) && !/Edg\//.test(ua)) browser = "Chrome";
+  else if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) browser = "Safari";
+  else if (/Firefox\//.test(ua)) browser = "Firefox";
+  else if (/Edg\//.test(ua)) browser = "Edge";
+  else if (/OPR\//.test(ua)) browser = "Opera";
+  if (/Windows/.test(ua)) os = "Windows";
+  else if (/Mac OS/.test(ua)) os = "macOS";
+  else if (/Android/.test(ua)) os = "Android";
+  else if (/iPhone|iPad/.test(ua)) os = "iOS";
+  else if (/Linux/.test(ua)) os = "Linux";
+  return os ? `${browser}, ${os}` : browser;
+}
 
 // GET: List user's sessions
 export async function GET() {
@@ -76,6 +94,18 @@ export async function POST(req: NextRequest) {
       })
       .select("id")
       .single();
+
+    // Send device login notification for new sessions
+    if (session?.id) {
+      const device = parseUA(user_agent);
+      createNotification({
+        admin,
+        user_id: user.id,
+        actor_id: user.id,
+        type: 'device_login',
+        content: `Yeni cihazdan giriş: ${device}`,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ session_id: session?.id, total_sessions: (trustedCount || 0) + 1 });
   } catch {

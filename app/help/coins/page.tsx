@@ -47,7 +47,7 @@ export default function CoinsPage() {
             <li>Farklı bütçelere uygun jeton paketleri mevcuttur</li>
             <li>Daha büyük paketler satın alındığında <strong>bonus jeton</strong> kazanılır</li>
             <li>Paket detaylarını{" "}
-              <Link href="/dashboard/coins" className="text-accent-main hover:opacity-80 font-semibold">Jeton Sayfası</Link>&apos;ndan
+              <Link href="/coins" className="text-accent-main hover:opacity-80 font-semibold">Jeton Sayfası</Link>&apos;ndan
               görüntüleyebilirsiniz
             </li>
           </ul>
@@ -72,7 +72,7 @@ export default function CoinsPage() {
         </p>
         <ul className="list-disc pl-5 space-y-2">
           <li>Profil sayfanızdaki bakiye göstergesinden anlık jeton bakiyenizi görebilirsiniz</li>
-          <li><Link href="/dashboard/coins" className="text-accent-main hover:opacity-80 font-semibold">Jeton Sayfası</Link>&apos;ndan
+          <li><Link href="/coins" className="text-accent-main hover:opacity-80 font-semibold">Jeton Sayfası</Link>&apos;ndan
             detaylı bakiye bilgisi, kazanım geçmişi ve satın alma geçmişinizi inceleyebilirsiniz</li>
         </ul>
 
@@ -132,7 +132,7 @@ export default function CoinsPage() {
             Jeton bakiyenizi görüntülemek, jeton satın almak veya çekim talebi oluşturmak için:
           </p>
           <Link
-            href="/dashboard/coins"
+            href="/coins"
             className="text-accent-main hover:opacity-80 font-semibold text-sm"
           >
             Jeton Sayfasına Git &rarr;

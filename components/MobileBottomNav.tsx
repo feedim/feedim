@@ -35,13 +35,13 @@ export default memo(function MobileBottomNav() {
   }, [isLoggedIn]);
 
   const navItems = [
-    { href: "/dashboard", icon: Home, label: "Ana Sayfa", active: pathname === "/dashboard" },
-    { href: "/dashboard/explore", icon: Search, label: "Keşfet", active: pathname === "/dashboard/explore" },
-    { href: "/dashboard/notifications", icon: Bell, label: "Bildirimler", active: pathname === "/dashboard/notifications" },
-    { href: "/dashboard/profile", icon: User, label: "Profil", active: pathname === "/dashboard/profile" },
+    { href: "/", icon: Home, label: "Ana Sayfa", active: pathname === "/" },
+    { href: "/explore", icon: Search, label: "Keşfet", active: pathname === "/explore" },
+    { href: "/notifications", icon: Bell, label: "Bildirimler", active: pathname === "/notifications" },
+    { href: "/profile", icon: User, label: "Profil", active: pathname === "/profile" },
   ];
 
-  const publicPaths = ["/dashboard", "/dashboard/explore", "/dashboard/moments", "/dashboard/video"];
+  const publicPaths = ["/", "/explore", "/moments", "/video"];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid-primary border-t border-border-primary/30 md:hidden">
@@ -59,7 +59,7 @@ export default memo(function MobileBottomNav() {
               }`}
               aria-label={item.label}
             >
-              <Icon className="h-6 w-6" strokeWidth={item.active ? 2.3 : 2} aria-hidden="true" />
+              <Icon className="h-[26px] w-[26px]" strokeWidth={item.active ? 2.3 : 2} aria-hidden="true" />
             </Link>
           );
         })}
@@ -70,7 +70,7 @@ export default memo(function MobileBottomNav() {
           className="flex items-center justify-center flex-1 h-full transition-colors text-text-primary"
           aria-label="Oluştur"
         >
-          <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 12H20M12 4V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
@@ -93,15 +93,15 @@ export default memo(function MobileBottomNav() {
                   <img
                     src={user.avatarUrl}
                     alt=""
-                    className={`h-7 w-7 rounded-full object-cover ${item.active ? "ring-2 ring-accent-main" : ""}`}
+                    className={`h-8 w-8 rounded-full object-cover ${item.active ? "ring-2 ring-accent-main" : ""}`}
                   />
                 ) : item.icon === User && isLoggedIn && !user?.avatarUrl ? (
-                  <img className={`default-avatar-auto h-7 w-7 rounded-full object-cover ${item.active ? "ring-2 ring-accent-main" : ""}`} alt="" />
+                  <img className={`default-avatar-auto h-8 w-8 rounded-full object-cover ${item.active ? "ring-2 ring-accent-main" : ""}`} alt="" />
                 ) : (
-                  <Icon className="h-6 w-6" strokeWidth={item.active ? 2.3 : 2} aria-hidden="true" />
+                  <Icon className="h-[26px] w-[26px]" strokeWidth={item.active ? 2.3 : 2} aria-hidden="true" />
                 )}
                 {item.label === "Bildirimler" && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[14px] h-[14px] rounded-full bg-error text-white text-[8px] font-bold flex items-center justify-center px-0.5">
+                  <span className="absolute -top-1 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-error text-white text-[8px] font-bold flex items-center justify-center px-0.5">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}

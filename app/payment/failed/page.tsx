@@ -14,7 +14,7 @@ export default function PaymentFailedPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          router.push("/dashboard/coins");
+          router.push("/coins");
           return 0;
         }
         return prev - 1;
@@ -66,7 +66,7 @@ export default function PaymentFailedPage() {
         {/* Actions */}
         <div className="space-y-3">
           <Link
-            href="/dashboard/coins"
+            href="/coins"
             className="t-btn accept w-full flex items-center justify-center gap-2"
           >
             <RefreshCw className="h-5 w-5" />
@@ -74,7 +74,7 @@ export default function PaymentFailedPage() {
           </Link>
 
           <Link
-            href="/dashboard"
+            href="/"
             className="t-btn cancel w-full flex items-center justify-center gap-2"
           >
             <ArrowLeft className="h-5 w-5" />

@@ -235,6 +235,10 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
   }, [loadFeed]);
 
   const loadMore = async () => {
+    if (!isLoggedIn) {
+      window.location.href = `/login?next=${encodeURIComponent("/")}`;
+      return;
+    }
     setLoadingMore(true);
     await loadFeed(activeTab, page + 1);
     setLoadingMore(false);
@@ -249,7 +253,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
       {activeTab === "for-you" && (
         <div className="px-2.5 sm:px-3 mt-4 mb-3">
         <button
-          onClick={() => { emitNavigationStart(); router.push(isLoggedIn ? "/dashboard/write" : "/login"); }}
+          onClick={() => { emitNavigationStart(); router.push(isLoggedIn ? "/create/note" : "/login"); }}
           className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary rounded-[18px]"
         >
           {ctxUser?.avatarUrl ? (
@@ -261,7 +265,6 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
           )}
           <span className="flex-1 text-left text-[0.95rem] text-text-muted">Aklınızda ne var?</span>
           <div className="flex items-center gap-[2px] shrink-0">
-            <span className="flex items-center justify-center h-[32px] w-[32px] rounded-full text-[0.7rem] font-bold text-text-muted">GIF</span>
             <span className="flex items-center justify-center h-[32px] w-[32px] rounded-full text-text-muted">
               <Smile className="h-[18px] w-[18px]" />
             </span>
@@ -281,7 +284,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
           <div className="flex flex-col gap-[40px]">
             {visiblePosts.map((post, index) => (
               <div key={post.id}>
-                <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />
+                <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} onDelete={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />
                 {index === 4 && isLoggedIn && <SuggestionCarousel />}
                 <FeedAdSlot index={index} />
               </div>
@@ -306,9 +309,9 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
           }
           action={
             activeTab === "for-you"
-              ? { label: "Keşfet", href: "/dashboard/explore" }
+              ? { label: "Keşfet", href: "/explore" }
               : activeTab === "followed"
-              ? { label: "Keşfet", href: "/dashboard/explore" }
+              ? { label: "Keşfet", href: "/explore" }
               : undefined
           }
         />

@@ -319,7 +319,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       )}
 
       {/* Load more */}
-      <LoadMoreTrigger onLoadMore={() => { setPage(p => p + 1); loadComments(page + 1); }} loading={loading} hasMore={hasMore} />
+      <LoadMoreTrigger onLoadMore={async () => { const u = await requireAuth(); if (!u) return; setPage(p => p + 1); loadComments(page + 1); }} loading={loading} hasMore={hasMore} />
     </section>
   );
 }

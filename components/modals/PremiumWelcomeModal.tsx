@@ -223,7 +223,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
         <div className="mx-4 mb-5 bg-bg-tertiary rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
             <span className="text-[0.95rem] font-bold">Kişileri Bul</span>
-            <Link href="/dashboard/suggestions" onClick={onClose} className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
+            <Link href="/suggestions" onClick={onClose} className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
               Tümünü gör
             </Link>
           </div>

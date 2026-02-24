@@ -4,8 +4,9 @@ import { useState, useEffect, memo, lazy, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Home, Search, Plus, Bell, Bookmark, User, Settings,
-  Sun, Moon, CloudMoon, Monitor, LogIn, BarChart3, Wallet, Film, Clapperboard, Keyboard
+  Home, Search, Plus, Bell, Bookmark, User, Users, Settings,
+  Sun, Moon, CloudMoon, Monitor, LogIn, BarChart3, Wallet, Film, Clapperboard, Keyboard,
+  BookOpen, ChevronDown, LayoutGrid
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 const DarkModeModal = lazy(() => import("@/components/modals/DarkModeModal"));
@@ -14,6 +15,15 @@ import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useUser } from "@/components/UserContext";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
+
+const contentNavItems = [
+  { href: "/posts", icon: BookOpen, label: "Gönderiler" },
+  { href: "/notes", icon: Users, label: "Topluluk Notları" },
+  { href: "/video", icon: Film, label: "Video" },
+  { href: "/moments", icon: Clapperboard, label: "Moments" },
+];
+
+const contentPaths = contentNavItems.map(i => i.href);
 
 export default memo(function Sidebar() {
   const pathname = usePathname();
@@ -25,6 +35,9 @@ export default memo(function Sidebar() {
   const [darkModeOpen, setDarkModeOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [contentExpanded, setContentExpanded] = useState(() =>
+    contentPaths.some(p => pathname === p || pathname.startsWith(p + "/"))
+  );
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -43,8 +56,14 @@ export default memo(function Sidebar() {
   }, [isLoggedIn]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("fdm-theme") || "system";
+    const saved = localStorage.getItem("fdm-theme") || "dark";
     setTheme(saved);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setDarkModeOpen(true);
+    window.addEventListener("fdm-open-darkmode", handler);
+    return () => window.removeEventListener("fdm-open-darkmode", handler);
   }, []);
 
   useEffect(() => {
@@ -61,25 +80,54 @@ export default memo(function Sidebar() {
     return <Monitor className="h-5 w-5" />;
   };
 
-  const navItems = [
-    { href: "/dashboard", icon: Home, label: "Ana Sayfa" },
-    { href: "/dashboard/explore", icon: Search, label: "Keşfet" },
-    { href: "/dashboard/video", icon: Film, label: "Video" },
-    { href: "/dashboard/moments", icon: Clapperboard, label: "Moments" },
-    { href: "/dashboard/notifications", icon: Bell, label: "Bildirimler" },
-    { href: "/dashboard/bookmarks", icon: Bookmark, label: "Kaydedilenler" },
-    { href: "/dashboard/analytics", icon: BarChart3, label: "Analitik" },
-    { href: "/dashboard/coins", icon: Wallet, label: "Bakiye" },
-    { href: "/dashboard/profile", icon: User, label: "Profil" },
+  const topNavItems = [
+    { href: "/", icon: Home, label: "Ana Sayfa" },
+  ];
+
+  const afterContentNavItems = [
+    { href: "/notifications", icon: Bell, label: "Bildirimler" },
+    { href: "/bookmarks", icon: Bookmark, label: "Kaydedilenler" },
+    { href: "/analytics", icon: BarChart3, label: "Analitik" },
+    { href: "/coins", icon: Wallet, label: "Bakiye" },
   ];
 
   const isActive = (href: string) => pathname === href;
+  const publicPaths = ["/", "/explore", "/moments", "/video", "/notes", "/posts"];
+
+  const renderNavItem = (item: { href: string; icon: any; label: string }, indent?: boolean) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+    const resolvedHref = !isLoggedIn && !publicPaths.includes(item.href) ? "/login" : item.href;
+    return (
+      <Link
+        key={item.href}
+        href={resolvedHref}
+        className={`flex items-center gap-3 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
+          indent ? "pl-7" : ""
+        } ${
+          active
+            ? "bg-bg-secondary text-text-primary font-semibold"
+            : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+        }`}
+      >
+        <div className="relative shrink-0">
+          <Icon className="h-5 w-5" />
+          {item.label === "Bildirimler" && unreadCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-error text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </div>
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <aside className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-40 w-[240px]">
       {/* Logo */}
       <div className="pt-5 pb-1 px-4">
-        <Link href="/dashboard" className="flex items-center gap-2.5 rounded-full hover:bg-bg-secondary transition w-max">
+        <Link href="/" className="flex items-center gap-2.5 rounded-full hover:bg-bg-secondary transition w-max">
           <FeedimIcon className="h-[56px] w-[56px]" />
         </Link>
       </div>
@@ -87,35 +135,53 @@ export default memo(function Sidebar() {
 
       {/* Nav items */}
       <nav className="flex-1 px-2 py-2 space-y-[5px] overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
-          const publicPaths = ["/dashboard", "/dashboard/explore", "/dashboard/moments", "/dashboard/video"];
-          const resolvedHref = !isLoggedIn && !publicPaths.includes(item.href) ? "/login" : item.href;
-          return (
-            <Link
-              key={item.href}
-              href={resolvedHref}
-              className={`flex items-center gap-3 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
-                active
-                  ? "bg-bg-secondary text-text-primary font-semibold"
-                  : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
-              }`}
-            >
-              <div className="relative shrink-0">
-                <Icon className="h-5 w-5" />
-                {item.label === "Bildirimler" && unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-error text-white text-[9px] font-bold flex items-center justify-center px-0.5">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </div>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+        {/* Ana Sayfa */}
+        {topNavItems.map(item => renderNavItem(item))}
 
-        {/* Theme toggle */}
+        {/* Keşfet — standalone */}
+        {renderNavItem({ href: "/explore", icon: Search, label: "Keşfet" })}
+
+        {/* İçerikler accordion */}
+        <button
+          onClick={() => setContentExpanded(prev => !prev)}
+          className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
+            contentExpanded && contentPaths.some(p => pathname === p || pathname.startsWith(p + "/"))
+              ? "text-text-primary"
+              : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+          }`}
+        >
+          <LayoutGrid className="h-5 w-5 shrink-0" />
+          <span className="flex-1 text-left">Daha Fazla</span>
+          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${contentExpanded ? "rotate-180" : ""}`} />
+        </button>
+        {contentExpanded && (
+          <div className="space-y-[2px]">
+            {contentNavItems.map(item => renderNavItem(item, true))}
+          </div>
+        )}
+
+        {/* Bildirimler, Kaydedilenler, Analitik, Bakiye — only for logged-in users */}
+        {isLoggedIn && afterContentNavItems.map(item => renderNavItem(item))}
+
+        {/* Ayarlar — only for logged-in users */}
+        {isLoggedIn && (
+          <Link
+            href="/settings"
+            className={`flex items-center gap-3 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
+              isActive("/settings")
+                ? "bg-bg-secondary text-text-primary font-semibold"
+                : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+            }`}
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+            <span>Ayarlar</span>
+          </Link>
+        )}
+
+        {/* Profil — only for logged-in users */}
+        {isLoggedIn && renderNavItem({ href: "/profile", icon: User, label: "Profil" })}
+
+        {/* Sistem (Theme toggle) */}
         <button
           onClick={() => setDarkModeOpen(true)}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium"
@@ -124,20 +190,7 @@ export default memo(function Sidebar() {
           <span className="capitalize">{theme === "system" ? "Sistem" : theme === "light" ? "Açık" : theme === "dark" ? "Koyu" : "Dim"}</span>
         </button>
 
-        {/* Settings */}
-        <Link
-          href={!isLoggedIn ? "/login" : "/dashboard/settings"}
-          className={`flex items-center gap-3 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
-            isActive("/dashboard/settings")
-              ? "bg-bg-secondary text-text-primary font-semibold"
-              : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
-          }`}
-        >
-          <Settings className="h-5 w-5 shrink-0" />
-          <span>Ayarlar</span>
-        </Link>
-
-        {/* Hotkeys */}
+        {/* Kısayollar */}
         <button
           onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium text-left"
@@ -163,7 +216,7 @@ export default memo(function Sidebar() {
             </button>
 
             {/* User info */}
-            <Link href="/dashboard/profile" className="flex items-center gap-[7px] py-2 px-2 rounded-[10px] hover:bg-bg-tertiary transition">
+            <Link href="/profile" className="flex items-center gap-[7px] py-2 px-2 rounded-[10px] hover:bg-bg-tertiary transition">
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
               ) : (
@@ -198,7 +251,7 @@ export default memo(function Sidebar() {
       {/* Modals */}
       {darkModeOpen && (
         <Suspense fallback={null}>
-          <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setTheme(localStorage.getItem("fdm-theme") || "system"); }} />
+          <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setTheme(localStorage.getItem("fdm-theme") || "dark"); }} />
         </Suspense>
       )}
       {createModalOpen && (

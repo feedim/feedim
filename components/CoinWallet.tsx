@@ -43,7 +43,7 @@ export function CoinWallet() {
   }
 
   return (
-    <Link href="/dashboard/coins" aria-label={`Jeton bakiyesi: ${balance.toLocaleString()}`}>
+    <Link href="/coins" aria-label={`Jeton bakiyesi: ${balance.toLocaleString()}`}>
       <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary hover:bg-bg-tertiary rounded-xl transition-all cursor-pointer group">
         <Coins className="h-5 w-5 text-accent-main" aria-hidden="true" />
         <div className="flex items-baseline gap-1">

@@ -35,7 +35,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
   const author = video.profiles;
 
   return (
-    <Link href={`/post/${video.slug}`} className="group block">
+    <Link href={`/${video.slug}`} className="group block">
       <div className="relative aspect-video min-h-[120px] rounded-xl overflow-hidden bg-bg-tertiary mb-3">
         {(video.video_thumbnail || video.featured_image) ? (
           <BlurImage

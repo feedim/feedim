@@ -25,7 +25,7 @@ export default function AnalyticsPage() {
             Analitik Paneli yalnızca Premium üyelik sahibi kullanıcılar tarafından erişilebilir.
             Ücretsiz hesapla analitik sayfasını açtığınızda &ldquo;Premium Üyelik Gerekli&rdquo; uyarısı görüntülenir
             ve istatistiklere erişim sağlanamazsınız. Premium üyelik hakkında detaylı bilgi için{" "}
-            <Link href="/dashboard/settings/premium" className="text-accent-main hover:opacity-80 font-semibold">Premium sayfasını</Link> ziyaret edebilirsiniz.
+            <Link href="/settings/premium" className="text-accent-main hover:opacity-80 font-semibold">Premium sayfasını</Link> ziyaret edebilirsiniz.
           </p>
         </div>
 
@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
           Panel, sol menüdeki &ldquo;Analitik&rdquo; sekmesinden de ulaşılabilir.
         </p>
         <div className="bg-bg-secondary rounded-xl p-4">
-          <Link href="/dashboard/analytics" className="text-accent-main hover:opacity-80 font-semibold">
+          <Link href="/analytics" className="text-accent-main hover:opacity-80 font-semibold">
             Analitik Paneline Git &rarr;
           </Link>
         </div>

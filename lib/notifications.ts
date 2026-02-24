@@ -24,7 +24,7 @@ export async function createNotification({
   content,
 }: CreateNotificationParams) {
   // Don't notify yourself (except for milestone/system notifications)
-  const selfNotifyTypes = ['milestone', 'system', 'coin_earned', 'premium_expired', 'moderation_approved', 'moderation_rejected', 'moderation_review', 'account_moderation', 'copyright_detected', 'copyright_claim_submitted', 'copyright_verified', 'copyright_rejected', 'copyright_verification_needed', 'copyright_similar_detected', 'copyright_application_approved', 'copyright_application_rejected', 'copyright_revoked'];
+  const selfNotifyTypes = ['milestone', 'system', 'coin_earned', 'premium_expired', 'view_milestone', 'device_login', 'moderation_approved', 'moderation_rejected', 'moderation_review', 'account_moderation', 'copyright_detected', 'copyright_claim_submitted', 'copyright_verified', 'copyright_rejected', 'copyright_verification_needed', 'copyright_similar_detected', 'copyright_application_approved', 'copyright_application_rejected', 'copyright_revoked'];
   if (user_id === actor_id && !selfNotifyTypes.includes(type)) return;
 
   // Check user's notification settings

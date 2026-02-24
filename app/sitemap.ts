@@ -16,6 +16,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${baseUrl}/kvkk`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${baseUrl}/disclaimer`, lastModified: now, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${baseUrl}/explore`, changeFrequency: 'hourly' as const, priority: 0.9 },
+    { url: `${baseUrl}/moments`, changeFrequency: 'hourly' as const, priority: 0.8 },
+    { url: `${baseUrl}/video`, changeFrequency: 'hourly' as const, priority: 0.8 },
+    { url: `${baseUrl}/notes`, changeFrequency: 'hourly' as const, priority: 0.7 },
+    { url: `${baseUrl}/posts`, changeFrequency: 'hourly' as const, priority: 0.7 },
+    { url: `${baseUrl}/sounds`, changeFrequency: 'daily' as const, priority: 0.5 },
   ]
 
   const supabase = await createClient()
@@ -31,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (posts) {
       postPages = posts.map(post => ({
-        url: `${baseUrl}/post/${encodeURIComponent(post.slug)}`,
+        url: `${baseUrl}/${encodeURIComponent(post.slug)}`,
         lastModified: post.updated_at || post.published_at || now,
         changeFrequency: 'weekly' as const,
         priority: 0.8,

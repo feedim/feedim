@@ -10,7 +10,8 @@ function Repeat<T>({ count, children }: { count: number; children: (i: number) =
 }
 
 /* ─── Post Card (Thread Layout — matches PostCard.tsx) ─── */
-export function PostCardSkeleton() {
+export function PostCardSkeleton({ variant = "post" }: { variant?: "post" | "note" }) {
+  const isNote = variant === "note";
   return (
     <div>
       <div className="pt-[4px] pb-[9px] pl-3 pr-3.5 mx-[3px] sm:mx-[12px]">
@@ -28,15 +29,24 @@ export function PostCardSkeleton() {
               <Bone className="h-2.5 w-8 rounded-full" />
               <Bone className="h-2.5 w-10 rounded-full" />
             </div>
-            {/* Title */}
-            <Bone className="h-[18px] w-[85%] rounded-xl" />
-            {/* Excerpt */}
-            <Bone className="h-3 w-full rounded-xl" />
-            <Bone className="h-3 w-3/5 rounded-xl" />
-            {/* Thumbnail */}
-            <Bone className="w-full aspect-[4/3] sm:aspect-[3/2] rounded-[12px] sm:rounded-[21px] mt-1" />
-            {/* View count */}
-            <Bone className="h-2.5 w-24 rounded-full mt-0.5" />
+            {isNote ? (
+              <>
+                {/* Note text lines */}
+                <Bone className="h-3.5 w-full rounded-xl" />
+                <Bone className="h-3.5 w-[90%] rounded-xl" />
+                <Bone className="h-3.5 w-3/5 rounded-xl" />
+              </>
+            ) : (
+              <>
+                {/* Title */}
+                <Bone className="h-[18px] w-[85%] rounded-xl" />
+                {/* Excerpt */}
+                <Bone className="h-3 w-full rounded-xl" />
+                <Bone className="h-3 w-3/5 rounded-xl" />
+                {/* Thumbnail */}
+                <Bone className="w-full aspect-[4/3] sm:aspect-[3/2] rounded-[12px] sm:rounded-[21px] mt-1" />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -52,9 +62,11 @@ export function PostCardSkeleton() {
 }
 
 export function PostGridSkeleton({ count = 4 }: { count?: number }) {
+  // Alternate between post and note variants to match mixed feed
+  const variants: Array<"post" | "note"> = ["post", "note", "post", "post"];
   return (
     <div className="flex flex-col gap-[40px]">
-      <Repeat count={count}>{(i) => <PostCardSkeleton key={i} />}</Repeat>
+      <Repeat count={count}>{(i) => <PostCardSkeleton key={i} variant={variants[i % variants.length]} />}</Repeat>
     </div>
   );
 }

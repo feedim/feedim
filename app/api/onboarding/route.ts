@@ -28,11 +28,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Onboarding adımları tamamlanmadı" }, { status: 400 });
     }
 
-    await supabase
+    const admin = createAdminClient();
+    const { error: completeErr } = await admin
       .from("profiles")
       .update({ onboarding_completed: true, onboarding_step: 8 })
       .eq("user_id", user.id);
-    return NextResponse.json({ completed: true });
+    if (completeErr) return NextResponse.json({ error: completeErr.message }, { status: 500 });
+
+    // Set onboarding cookie so middleware skips DB check
+    const res = NextResponse.json({ completed: true });
+    res.cookies.set('fdm-onboarding', '1', {
+      maxAge: 86400 * 30, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+    });
+    return res;
   }
 
   // Step doğrulaması

@@ -32,20 +32,8 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       // Redirect to login with next URL
-      const returnTo = rp || pathname || "/dashboard";
+      const returnTo = rp || pathname || "/";
       window.location.href = `/login?next=${encodeURIComponent(returnTo)}`;
-      return null;
-    }
-
-    // Check email verification
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("email_verified")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile && profile.email_verified === false) {
-      feedimAlert("error", "Bu işlemi yapabilmek için e-posta adresinizi doğrulamanız gerekiyor");
       return null;
     }
 

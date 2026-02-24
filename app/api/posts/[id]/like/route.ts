@@ -79,11 +79,18 @@ export async function POST(
     // Create notification for post author
     const { data: post } = await admin
       .from('posts')
-      .select('user_id')
+      .select('user_id, content_type')
       .eq('id', postId)
       .single();
 
     if (post) {
+      const likeContent = post.content_type === 'note'
+        ? 'notunuzu beğendi'
+        : post.content_type === 'video'
+          ? 'videonuzu beğendi'
+          : post.content_type === 'moment'
+            ? 'momentinizi beğendi'
+            : 'gönderinizi beğendi';
       await createNotification({
         admin,
         user_id: post.user_id,
@@ -91,7 +98,7 @@ export async function POST(
         type: 'like',
         object_type: 'post',
         object_id: postId,
-        content: 'gönderini beğendi',
+        content: likeContent,
       });
     }
 

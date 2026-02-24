@@ -83,7 +83,7 @@ export default function SuggestionWidget() {
     try {
       const res = await fetch("/api/posts/explore?page=1");
       const data = await res.json();
-      setTrendingPosts((data.posts || []).slice(0, 3).map((p: any) => ({
+      setTrendingPosts((data.posts || []).filter((p: any) => p.content_type !== 'note').slice(0, 3).map((p: any) => ({
         id: p.id,
         title: p.title,
         slug: p.slug,
@@ -182,7 +182,7 @@ export default function SuggestionWidget() {
     e.preventDefault();
     if (searchQuery.trim()) {
       emitNavigationStart();
-      router.push(`/dashboard/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -210,7 +210,7 @@ export default function SuggestionWidget() {
         <div className="rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
             <span className="text-[0.95rem] font-bold">Kişileri Bul</span>
-            <Link href="/dashboard/suggestions" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
+            <Link href="/suggestions" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
               Tümünü gör
             </Link>
           </div>
@@ -234,7 +234,7 @@ export default function SuggestionWidget() {
         <div className="rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
             <span className="text-[0.95rem] font-bold">Öne Çıkanlar</span>
-            <Link href="/dashboard/explore" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
+            <Link href="/explore" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
               Tümünü gör
             </Link>
           </div>
@@ -243,7 +243,7 @@ export default function SuggestionWidget() {
               <div key={post.id}>
                 {i > 0 && <div className="mx-2 h-px bg-border-primary/40" />}
                 <Link
-                  href={`/post/${post.slug}`}
+                  href={`/${post.slug}`}
                   className="flex flex-col gap-2 px-3 py-3 my-[3px] rounded-lg hover:bg-bg-secondary transition"
                 >
                   <div className="flex items-center gap-[2px]" style={{ columnGap: "2px" }}>
@@ -255,7 +255,7 @@ export default function SuggestionWidget() {
                     <div className="min-w-0 leading-none ml-[4px]">
                       <div className="flex items-center gap-1 leading-none">
                         <span className="text-[0.8rem] text-text-muted font-medium truncate">
-                          {post.author.username}
+                          @{post.author.username}
                         </span>
                         {post.author.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(post.author.premium_plan)} role={post.author.role} />}
                       </div>
@@ -308,7 +308,7 @@ export default function SuggestionWidget() {
             {tags.map(tag => (
               <Link
                 key={tag.id}
-                href={`/dashboard/explore/tag/${tag.slug}`}
+                href={`/explore/tag/${tag.slug}`}
                 className="block px-4 py-2 rounded-[12px] hover:bg-bg-secondary transition"
               >
                 <p className="text-[0.84rem] font-semibold">#{tag.name}</p>

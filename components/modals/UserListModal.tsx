@@ -144,7 +144,7 @@ export default function UserListModal({
   return (
     <Modal open={open} onClose={onClose} title={title} size="md" infoText={infoText} centerOnDesktop fullHeight>
       {/* Filter tabs */}
-      <div className="flex gap-0 px-4 border-b border-border-primary overflow-x-auto scrollbar-hide">
+      <div className="flex gap-0 px-2 border-b border-border-primary overflow-x-auto scrollbar-hide">
         {filterTabs.map(tab => (
           <button
             key={tab.key}
@@ -166,7 +166,7 @@ export default function UserListModal({
         ))}
       </div>
 
-      <div className="px-4 py-3 min-h-[300px]">
+      <div className="px-2 py-2 min-h-[300px]">
         {(loading && users.length === 0) || tabSwitching ? (
           <UserListSkeleton count={5} />
         ) : users.length === 0 ? (

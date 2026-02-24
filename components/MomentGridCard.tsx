@@ -27,7 +27,7 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
 
   return (
     <Link
-      href={`/dashboard/moments?s=${moment.slug}`}
+      href={`/moments?s=${moment.slug}`}
       className="relative block aspect-[9/16] bg-black overflow-hidden group"
     >
       {thumb ? (

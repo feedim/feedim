@@ -164,7 +164,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
 
         {/* "See all" card */}
         <Link
-          href="/dashboard/suggestions"
+          href="/suggestions"
           className="flex flex-col items-center justify-center shrink-0 w-[100px] py-3 px-2 bg-bg-secondary rounded-[14px] hover:bg-bg-secondary transition"
           style={{ scrollSnapAlign: "start" }}
         >

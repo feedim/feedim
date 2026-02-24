@@ -18,9 +18,10 @@ interface PostHeaderActionsProps {
   portalToHeader?: boolean;
   isVideo?: boolean;
   contentType?: "post" | "video" | "moment";
+  onDeleteSuccess?: () => void;
 }
 
-export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, authorUserId, authorName, isOwnPost, postSlug, portalToHeader, isVideo, contentType }: PostHeaderActionsProps) {
+export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, authorUserId, authorName, isOwnPost, postSlug, portalToHeader, isVideo, contentType, onDeleteSuccess }: PostHeaderActionsProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -57,6 +58,7 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
         isOwnPost={isOwnPost}
         postSlug={postSlug}
         contentType={contentType}
+        onDeleteSuccess={onDeleteSuccess}
       />
       <ShareModal
         open={shareOpen}

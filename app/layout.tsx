@@ -62,7 +62,7 @@ export default async function RootLayout({
         {/* Dark mode flash prevention + theme-color sync + skeleton gate */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem('fdm-theme');var c={light:'#ffffff',dark:'#090909',dim:'#0e1520'};var r=m;if(m==='system')r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(r==='dark'||r==='dim'){document.documentElement.setAttribute('data-theme',r)}var t=document.querySelector('meta[name="theme-color"]');if(t&&c[r])t.setAttribute('content',c[r])}catch(e){}try{var hasAuth=false;for(var k in localStorage){if(k.indexOf('sb-')===0&&k.indexOf('-auth-token')>0){if(localStorage.getItem(k)){hasAuth=true;break}}}if(!hasAuth){document.documentElement.setAttribute('data-skeletons-off','1')}}catch(e){}})()`,
+            __html: `(function(){try{var m=localStorage.getItem('fdm-theme')||'dark';var c={light:'#ffffff',dark:'#090909',dim:'#0e1520'};var r=m;if(m==='system')r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(r==='dark'||r==='dim'){document.documentElement.setAttribute('data-theme',r)}var t=document.querySelector('meta[name="theme-color"]');if(t&&c[r])t.setAttribute('content',c[r])}catch(e){}try{var hasAuth=false;for(var k in localStorage){if(k.indexOf('sb-')===0&&k.indexOf('-auth-token')>0){if(localStorage.getItem(k)){hasAuth=true;break}}}if(!hasAuth){document.documentElement.setAttribute('data-skeletons-off','1')}}catch(e){}})()`,
           }}
         />
         <script
@@ -77,7 +77,7 @@ export default async function RootLayout({
               inLanguage: "tr-TR",
               potentialAction: {
                 "@type": "SearchAction",
-                target: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/dashboard/explore?q={search_term_string}`,
+                target: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/explore?q={search_term_string}`,
                 "query-input": "required name=search_term_string",
               },
             }),

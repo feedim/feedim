@@ -23,9 +23,10 @@ interface PostMoreModalProps {
   isOwnPost?: boolean;
   postSlug?: string;
   contentType?: "post" | "video" | "moment";
+  onDeleteSuccess?: () => void;
 }
 
-export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug, contentType }: PostMoreModalProps) {
+export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug, contentType, onDeleteSuccess }: PostMoreModalProps) {
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -71,10 +72,10 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   const handleEdit = () => {
     onClose();
     const editPath = contentType === "moment"
-      ? `/dashboard/write/moment?edit=${postSlug}`
+      ? `/create/moment?edit=${postSlug}`
       : contentType === "video"
-        ? `/dashboard/write/video?edit=${postSlug}`
-        : `/dashboard/write?edit=${postSlug}`;
+        ? `/create/video?edit=${postSlug}`
+        : `/create?edit=${postSlug}`;
     emitNavigationStart();
     router.push(editPath);
   };
@@ -83,7 +84,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
     feedimAlert("question", "Bu gönderiyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.", {
       showYesNo: true,
       onYes: () => {
-        // Optimistic: immediately close, navigate, and show success
+        // Optimistic: immediately close and show success
         onClose();
         feedimAlert("success", "Gönderi silindi");
         // Mark as deleted in sessionStorage so feed hides it immediately
@@ -92,8 +93,18 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
           deleted.push(postId);
           sessionStorage.setItem("fdm-deleted-posts", JSON.stringify(deleted));
         } catch {}
-        emitNavigationStart();
-        router.push("/dashboard");
+
+        if (onDeleteSuccess) {
+          onDeleteSuccess();
+        } else {
+          // Default: go back if history exists, otherwise navigate to dashboard
+          emitNavigationStart();
+          if (window.history.length > 2) {
+            router.back();
+          } else {
+            router.push("/");
+          }
+        }
         // Fire-and-forget background delete
         fetch(`/api/posts/${postId}`, { method: "DELETE", keepalive: true }).catch(() => {});
       },

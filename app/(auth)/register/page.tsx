@@ -61,7 +61,7 @@ function RegisterForm() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.replace("/dashboard");
+      if (user) { window.location.href = "/"; return; }
     });
   }, [supabase, router]);
 
@@ -202,7 +202,7 @@ function RegisterForm() {
         feedimAlert("info", "Lütfen e-postanızı kontrol edin ve doğrulayın");
         router.push("/login");
       } else if (data.session) {
-        router.replace("/dashboard");
+        window.location.href = "/";
       } else {
         router.push("/login");
       }

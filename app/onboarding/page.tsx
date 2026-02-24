@@ -108,7 +108,7 @@ export default function OnboardingPage() {
 
     if (data?.onboarding_completed) {
       emitNavigationStart();
-      router.push("/dashboard");
+      router.push("/");
       return;
     }
 
@@ -208,7 +208,7 @@ export default function OnboardingPage() {
       });
       await waitMin();
       emitNavigationStart();
-      router.push("/dashboard");
+      router.push("/");
     } catch {
       await waitMin();
       feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
@@ -701,7 +701,7 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
                   <img className="default-avatar-auto w-11 h-11 rounded-full object-cover shrink-0" alt="" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-0.5">
                     <span className="text-sm font-semibold truncate">@{user.username}</span>
                     {user.is_verified && <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} role={user.role} />}
                   </div>

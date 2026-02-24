@@ -50,13 +50,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ posts: [], page, hasMore: false });
     }
 
-    // Build query for posts from followed users
-    let postIds = new Set<number>();
+    // Build query for posts from followed users + tags
+    // Collect {id, published_at} to sort correctly before pagination
+    const postMap = new Map<number, string>(); // id → published_at
 
     if (followedUserIds.length > 0) {
       const { data: userPosts } = await admin
         .from('posts')
-        .select('id, is_nsfw, author_id')
+        .select('id, is_nsfw, author_id, published_at')
         .in('author_id', followedUserIds)
         .eq('status', 'published')
         .order('published_at', { ascending: false })
@@ -64,7 +65,9 @@ export async function GET(request: NextRequest) {
 
       // NSFW posts: only show to the author
       (userPosts || []).forEach((p: any) => {
-        if (!p.is_nsfw || p.author_id === user.id) postIds.add(p.id);
+        if (!p.is_nsfw || p.author_id === user.id) {
+          postMap.set(p.id, p.published_at || '');
+        }
       });
     }
 
@@ -75,25 +78,32 @@ export async function GET(request: NextRequest) {
         .in('tag_id', followedTagIds);
 
       if (tagPosts && tagPosts.length > 0) {
-        const tagPostIds = tagPosts.map(pt => pt.post_id);
-        const { data: validPosts } = await admin
-          .from('posts')
-          .select('id, is_nsfw, author_id')
-          .in('id', tagPostIds)
-          .eq('status', 'published');
+        const tagPostIds = tagPosts.map(pt => pt.post_id).filter(id => !postMap.has(id));
+        if (tagPostIds.length > 0) {
+          const { data: validPosts } = await admin
+            .from('posts')
+            .select('id, is_nsfw, author_id, published_at')
+            .in('id', tagPostIds)
+            .eq('status', 'published');
 
-        // NSFW posts: only show to the author
-        (validPosts || []).forEach((p: any) => {
-          if (!p.is_nsfw || p.author_id === user.id) postIds.add(p.id);
-        });
+          // NSFW posts: only show to the author
+          (validPosts || []).forEach((p: any) => {
+            if (!p.is_nsfw || p.author_id === user.id) {
+              postMap.set(p.id, p.published_at || '');
+            }
+          });
+        }
       }
     }
 
-    const allPostIds = Array.from(postIds);
-
-    if (allPostIds.length === 0) {
+    if (postMap.size === 0) {
       return NextResponse.json({ posts: [], page, hasMore: false });
     }
+
+    // Sort all post IDs by published_at DESC before pagination
+    const allPostIds = Array.from(postMap.entries())
+      .sort((a, b) => (b[1] || '').localeCompare(a[1] || ''))
+      .map(([id]) => id);
 
     // Paginate
     const paginatedIds = allPostIds.slice(offset, offset + FEED_PAGE_SIZE + 1);
@@ -111,8 +121,14 @@ export async function GET(request: NextRequest) {
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
       `)
       .in('id', pageIds)
-      .eq('status', 'published')
-      .neq('content_type', 'moment');
+      .eq('status', 'published');
+
+    const contentType = request.nextUrl.searchParams.get('content_type');
+    if (contentType) {
+      feedQuery = feedQuery.eq('content_type', contentType);
+    } else {
+      feedQuery = feedQuery.neq('content_type', 'moment');
+    }
 
     // Filter out blocked authors
     if (blockedIds.size > 0) {

@@ -112,7 +112,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         ) : (
           <>
             {/* Profile Header */}
-            <Link href="/dashboard/profile" onClick={onClose} className="flex items-center gap-3 pb-4 hover:opacity-80 transition">
+            <Link href="/profile" onClick={onClose} className="flex items-center gap-3 pb-4 hover:opacity-80 transition">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover" />
               ) : (
@@ -126,7 +126,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
             {/* Coin Balance */}
             <Link
-              href="/dashboard/coins"
+              href="/coins"
               onClick={onClose}
               className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors"
             >
@@ -148,21 +148,21 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                 <h3 className="font-semibold text-xs text-text-muted uppercase tracking-wider">Hesap</h3>
               </div>
               <div className="">
-                <Link href="/dashboard/profile" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
+                <Link href="/profile" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
                   <div className="flex items-center gap-3">
                     <User className="h-5 w-5 text-text-muted" />
                     <span className="text-sm font-medium">Profil</span>
                   </div>
                   <ArrowLeft className="h-4 w-4 text-text-muted rotate-180" />
                 </Link>
-                <Link href="/dashboard/transactions" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
+                <Link href="/transactions" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
                   <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-text-muted" />
                     <span className="text-sm font-medium">İşlem Geçmişi</span>
                   </div>
                   <ArrowLeft className="h-4 w-4 text-text-muted rotate-180" />
                 </Link>
-                <Link href="/dashboard/bookmarks" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
+                <Link href="/bookmarks" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
                   <div className="flex items-center gap-3">
                     <Bookmark className="h-5 w-5 text-text-muted" />
                     <span className="text-sm font-medium">Kaydedilenler</span>
@@ -194,7 +194,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                 <h3 className="font-semibold text-xs text-text-muted uppercase tracking-wider">Güvenlik</h3>
               </div>
               <div className="">
-                <Link href="/dashboard/security" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
+                <Link href="/security" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
                   <div className="flex items-center gap-3">
                     <Mail className="h-5 w-5 text-text-muted" />
                     <div>
@@ -208,7 +208,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                     <span className="text-xs text-accent-main font-semibold">Doğrula</span>
                   )}
                 </Link>
-                <Link href="/dashboard/security" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
+                <Link href="/security" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
                   <div className="flex items-center gap-3">
                     <Shield className="h-5 w-5 text-text-muted" />
                     <span className="text-sm font-medium">Güvenlik Ayarları</span>

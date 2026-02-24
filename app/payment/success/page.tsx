@@ -20,7 +20,7 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
     const pending = sessionStorage.getItem("fdm_payment_pending");
     if (!pending) {
-      router.push("/dashboard");
+      router.push("/");
       return;
     }
     sessionStorage.removeItem("fdm_payment_pending");
@@ -166,7 +166,7 @@ export default function PaymentSuccessPage() {
         {/* Actions */}
         <div className="space-y-3">
           <Link
-            href="/dashboard"
+            href="/"
             className="t-btn accept w-full block text-center"
           >
             Ana Sayfaya Dön
@@ -181,7 +181,7 @@ export default function PaymentSuccessPage() {
             </Link>
           ) : (
             <Link
-              href="/dashboard/coins"
+              href="/coins"
               className="t-btn cancel w-full block text-center"
             >
               Bakiyemi Görüntüle

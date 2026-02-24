@@ -215,7 +215,7 @@ export default function VideoPlayerClient({
     if (countdown === null) return;
     if (countdown <= 0) {
       emitNavigationStart();
-      router.push(`/post/${nextVideoSlug}?autoplay=1`);
+      router.push(`/${nextVideoSlug}?autoplay=1`);
       return;
     }
     timerRef.current = setInterval(() => {
@@ -231,7 +231,7 @@ export default function VideoPlayerClient({
 
   const playNow = () => {
     emitNavigationStart();
-    router.push(`/post/${nextVideoSlug}?autoplay=1`);
+    router.push(`/${nextVideoSlug}?autoplay=1`);
   };
 
   const replay = () => {
@@ -334,10 +334,10 @@ export default function VideoPlayerClient({
           {/* Replay button */}
           <button
             onClick={replay}
-            className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center mb-2.5 transition"
+            className="w-11 h-11 rounded-full bg-black flex items-center justify-center mb-2.5 transition hover:bg-black/80"
             aria-label="Tekrar oynat"
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1 4 1 10 7 10" />
               <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>

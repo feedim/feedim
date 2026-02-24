@@ -169,7 +169,7 @@
   gap: 8px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
   user-select: none;
   z-index: 1;
 }
@@ -193,7 +193,7 @@
   justify-content: center;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   background: transparent;
   color: var(--text-primary);
 }
@@ -237,7 +237,7 @@
   gap: 5px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
   white-space: nowrap;
   flex-shrink: 0;
   background-color: var(--bg-inverse);
@@ -839,9 +839,9 @@ img, svg {
   font-weight: 600;
   border-radius: 2.5rem;
   border: 1px solid var(--border-primary);
-  backdrop-filter: blur(24px) saturate(1.4) brightness(1.1);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4) brightness(1.1);
-  background: color-mix(in srgb, var(--bg-secondary) 85%, transparent);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
@@ -1004,12 +1004,36 @@ img, svg {
 
 /* Post view images — full width */
 [data-post-content] .image-wrapper {
+  position: relative;
   margin: 16px 0;
   line-height: 0;
 }
 [data-post-content] .image-wrapper img {
   width: 100%;
   height: auto;
+}
+[data-post-content] .image-caption {
+  position: absolute;
+  bottom: 11px;
+  left: 0;
+  right: 0;
+  margin: auto;
+  width: max-content;
+  max-width: 85%;
+  height: auto;
+  padding: 13px 20px;
+  border-radius: 2.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+  line-height: 1.3;
 }
 
 /* Image wrapper (WordPress birebir) */
@@ -1297,15 +1321,21 @@ img, svg {
   left: 50%;
   transform: translateX(-50%);
   max-width: 575px;
-  width: 90%;
+  width: max-content;
+  max-width: 85%;
   text-align: center;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.88rem;
-  font-style: italic;
-  padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
-  backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 13px 20px;
+  background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+  border-radius: 2.5rem;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .imgsp-nav {
@@ -1405,7 +1435,7 @@ img, svg {
 
   .imgsp-caption {
     bottom: 50px;
-    font-size: 0.82rem;
+    font-size: 0.75rem;
   }
 }
 
@@ -1420,6 +1450,11 @@ img, svg {
 
 .default-avatar-auto {
   content: url("/imgs/default-avatar.jpg");
+}
+
+/* All circular avatar images get a subtle border */
+img.rounded-full.object-cover {
+  border: 1px solid var(--border-primary);
 }
 
 /* ── Blur-up lazy loading ── */
@@ -1684,4 +1719,36 @@ html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-so
 }
 @media (min-width: 801px) {
   .mobile-only { display: none !important; }
+}
+
+/* ── Performance: reduce heavy effects on mobile / low-end devices ── */
+@media (max-width: 800px), (hover: none) {
+  .feedim-toolbar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  html[data-ambient-light] .bg-bg-blur-overlay {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  html[data-ambient-light] .cancel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html[data-ambient-light] .i-btn:hover,
+  html[data-ambient-light] .i-btn:active {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .animate-marquee { animation: none !important; }
+  .animate-spin-slow { animation: none !important; }
 }

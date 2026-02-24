@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Only JSON format supported" }, { status: 501 });
   }
 
-  // Extract slug from URL pattern: /post/{slug}
-  const match = url.match(/\/post\/([^/?#]+)/);
+  // Extract slug from URL pattern: /{slug} or /post/{slug} (legacy)
+  const match = url.match(/\/post\/([^/?#]+)/) || url.match(/feedim\.com\/([^/?#]+)/);
   if (!match) {
     return NextResponse.json({ error: "Invalid URL" }, { status: 404 });
   }
@@ -92,6 +92,31 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json(response, {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
+  }
+
+  // Note embed
+  const isNote = post.content_type === "note";
+  if (isNote) {
+    const embedUrl = `${baseUrl}/embed/${encodeURIComponent(post.slug)}`;
+    const noteResponse = {
+      type: "rich",
+      version: "1.0",
+      title: post.excerpt || post.title,
+      author_name: authorName,
+      author_url: author?.username ? `${baseUrl}/u/${author.username}` : baseUrl,
+      provider_name: "Feedim",
+      provider_url: baseUrl,
+      html: `<iframe src="${embedUrl}" style="width:100%;border:none;overflow:hidden;" height="200" allowfullscreen></iframe>`,
+      width: 420,
+      height: 200,
+    };
+
+    return NextResponse.json(noteResponse, {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",

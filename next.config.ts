@@ -30,6 +30,22 @@ const nextConfig: NextConfig = {
       static: 300,
     },
   },
+  // 301 Redirects for old URL structure
+  async redirects() {
+    return [
+      // Write → Create (more specific, must come first)
+      { source: '/dashboard/write/:path*', destination: '/create/:path*', permanent: true },
+      { source: '/dashboard/write', destination: '/create', permanent: true },
+      // Payment rename
+      { source: '/dashboard/payment', destination: '/app-payment', permanent: true },
+      // Dashboard → root (general catch-all)
+      { source: '/dashboard', destination: '/', permanent: true },
+      { source: '/dashboard/:path*', destination: '/:path*', permanent: true },
+      // Post → root slug
+      { source: '/post/:slug/moderation', destination: '/:slug/moderation', permanent: true },
+      { source: '/post/:slug', destination: '/:slug', permanent: true },
+    ];
+  },
   // Security headers to protect against common web vulnerabilities
   async headers() {
     const commonSecurityHeaders = [

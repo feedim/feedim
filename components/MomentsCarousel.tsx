@@ -90,7 +90,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
           return (
             <Link
               key={m.id}
-              href={`/dashboard/moments?s=${m.slug}`}
+              href={`/moments?s=${m.slug}`}
               className="relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-black"
               style={{ scrollSnapAlign: "start" }}
             >
@@ -132,7 +132,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
 
         {/* "See all" card */}
         <Link
-          href="/dashboard/moments"
+          href="/moments"
           className="flex flex-col items-center justify-center shrink-0 w-[100px] h-[230px] rounded-[14px] bg-bg-tertiary hover:bg-bg-tertiary/80 transition"
           style={{ scrollSnapAlign: "start" }}
         >

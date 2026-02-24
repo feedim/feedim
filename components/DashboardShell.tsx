@@ -29,7 +29,7 @@ export default function DashboardShell({
 }) {
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
   const pathname = usePathname();
-  const isSettingsPage = pathname.startsWith("/dashboard/settings");
+  const isSettingsPage = pathname.startsWith("/settings");
 
   const setNav = useCallback((visible: boolean) => setMobileNavVisible(visible), []);
 

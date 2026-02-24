@@ -318,7 +318,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
             <p className="text-xs text-text-muted leading-relaxed">
               Hesabınız başarıyla profesyonel hesaba dönüştürüldü. Artık istatistiklerinize erişebilir ve profilinizde kategorinizi gösterebilirsiniz.
             </p>
-            <button onClick={() => { handleDone(); emitNavigationStart(); router.push("/dashboard/profile"); }} className="w-full t-btn accept">
+            <button onClick={() => { handleDone(); emitNavigationStart(); router.push("/profile"); }} className="w-full t-btn accept">
               Profile Git
             </button>
           </div>

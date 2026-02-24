@@ -93,8 +93,7 @@ export default function VerifyMfaPage() {
         });
       } catch {}
 
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/";
     } catch {
       feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
     } finally {

@@ -27,6 +27,7 @@ export default memo(function FeedTabs({
 
   const handleClick = useCallback((tabId: string) => {
     if (!isLoggedIn && authRequiredTabs.has(tabId)) {
+      window.location.href = `/login?next=${encodeURIComponent("/")}`;
       return;
     }
     onTabChange(tabId);
@@ -35,9 +36,7 @@ export default memo(function FeedTabs({
   return (
     <div className="sticky top-0 z-20 bg-bg-primary sticky-ambient px-1.5 sm:px-4 overflow-x-auto scrollbar-hide">
       <div className="flex gap-[6px] min-w-max">
-        {tabs.map(tab => {
-          const isAuthLocked = !isLoggedIn && authRequiredTabs.has(tab.id);
-          return (
+        {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => handleClick(tab.id)}
@@ -46,12 +45,11 @@ export default memo(function FeedTabs({
               activeTab === tab.id
                 ? "border-accent-main text-text-primary"
                 : "border-transparent text-text-muted opacity-60 hover:opacity-100 hover:text-text-primary",
-              isAuthLocked && "opacity-40 pointer-events-none"
             )}
           >
             {tab.label}
           </button>
-        )})}
+        ))}
       </div>
     </div>
   );

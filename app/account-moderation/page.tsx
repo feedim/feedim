@@ -7,7 +7,7 @@ import SignOutButton from "./SignOutButton";
 import UnblockVerify from "./UnblockVerify";
 import UnfreezeButton from "./UnfreezeButton";
 import PublicFooter from "@/components/PublicFooter";
-import ModerationContent from "@/app/post/[slug]/moderation/ModerationContent";
+import ModerationContent from "@/app/[slug]/moderation/ModerationContent";
 import Link from "next/link";
 
 export default async function AccountModerationPage() {
@@ -21,7 +21,7 @@ export default async function AccountModerationPage() {
     .eq("user_id", userId)
     .single();
 
-  if (!profile) redirect("/dashboard");
+  if (!profile) redirect("/");
 
   // Fetch last decision (frozen hariç tüm durumlar)
   let decisionCode: string | null = null;
@@ -77,7 +77,7 @@ export default async function AccountModerationPage() {
                 </div>
               )}
               <Link
-                href="/dashboard"
+                href="/"
                 className="t-btn bg-text-primary text-bg-primary flex items-center justify-center w-full"
               >
                 Anasayfaya Git

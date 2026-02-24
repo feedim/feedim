@@ -13,6 +13,19 @@ import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import ModerationBadge from "@/components/ModerationBadge";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import PostInteractionBar from "@/components/PostInteractionBar";
+import { useUser } from "@/components/UserContext";
+import { useAuthModal } from "@/components/AuthModal";
+
+// Global: follow status cache per username
+const followCache = new Map<string, boolean | "loading">();
+
+// Global: only one PostCard video preview plays at a time
+let activePreviewId: number | null = null;
+const previewListeners = new Set<(id: number | null) => void>();
+function setActivePreview(id: number | null) {
+  activePreviewId = id;
+  previewListeners.forEach(fn => fn(id));
+}
 
 interface PostCardProps {
   post: {
@@ -48,23 +61,80 @@ interface PostCardProps {
   };
   initialLiked?: boolean;
   initialSaved?: boolean;
+  onDelete?: (postId: number) => void;
 }
 
-export default memo(function PostCard({ post, initialLiked, initialSaved }: PostCardProps) {
+export default memo(function PostCard({ post, initialLiked, initialSaved, onDelete }: PostCardProps) {
   const author = post.profiles;
   const hasThumbnail = !!(post.video_thumbnail || post.featured_image);
   const isMoment = post.content_type === "moment";
   const isVideo = post.content_type === "video" || isMoment;
+  const isNote = post.content_type === "note";
   const canPreview = isVideo && !!post.video_url;
   const router = useRouter();
-  const postHref = isMoment ? `/dashboard/moments?s=${post.slug}` : `/post/${post.slug}`;
+  const postHref = isMoment ? `/moments?s=${post.slug}` : `/${post.slug}`;
+  const { user: ctxUser } = useUser();
+  const { requireAuth } = useAuthModal();
 
   const [inView, setInView] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
+
+  // Check follow status once per unique author (cached globally)
+  const isSelf = ctxUser?.username === author?.username;
+  useEffect(() => {
+    if (!author?.username || !ctxUser?.id || isSelf) return;
+    const cached = followCache.get(author.username);
+    if (cached === true || cached === false) { setIsFollowing(cached); return; }
+    if (cached === "loading") return;
+    followCache.set(author.username, "loading");
+    fetch(`/api/users/${author.username}`)
+      .then(r => r.json())
+      .then(d => {
+        const val = d.is_following === true;
+        followCache.set(author.username, val);
+        setIsFollowing(val);
+      })
+      .catch(() => { followCache.delete(author.username); });
+  }, [author?.username, ctxUser?.id, isSelf]);
+
+  const handleFollow = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const user = await requireAuth();
+    if (!user) return;
+    setIsFollowing(true);
+    if (author?.username) followCache.set(author.username, true);
+    try {
+      const res = await fetch(`/api/users/${author?.username}/follow`, { method: "POST", keepalive: true });
+      if (!res.ok) {
+        setIsFollowing(false);
+        if (author?.username) followCache.set(author.username, false);
+      }
+    } catch {
+      setIsFollowing(false);
+      if (author?.username) followCache.set(author.username, false);
+    }
+  }, [author?.username, requireAuth]);
   const thumbRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const MAX_PREVIEW_DURATION = 240; // 4 dakika
+
+  // Listen for global active preview changes — pause if another card starts
+  useEffect(() => {
+    if (!canPreview) return;
+    const handler = (id: number | null) => {
+      if (id !== null && id !== post.id && inView) {
+        setInView(false);
+        setShowCTA(false);
+        setMuted(true);
+        if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = undefined; }
+      }
+    };
+    previewListeners.add(handler);
+    return () => { previewListeners.delete(handler); };
+  }, [canPreview, post.id, inView]);
 
   // IntersectionObserver — start preview when thumbnail enters viewport
   useEffect(() => {
@@ -77,6 +147,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
         if (entry.isIntersecting) {
           // Delay preview start by 1.1s — don't auto-play on quick scrolls
           timerRef.current = setTimeout(() => {
+            setActivePreview(post.id);
             setInView(true);
             setShowCTA(false);
             // Stop preview after 4 minutes
@@ -85,6 +156,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
             }, MAX_PREVIEW_DURATION * 1000);
           }, 1100);
         } else {
+          if (activePreviewId === post.id) setActivePreview(null);
           setInView(false);
           setShowCTA(false);
           setMuted(true);
@@ -100,12 +172,13 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
     observer.observe(el);
     return () => {
       observer.disconnect();
+      if (activePreviewId === post.id) setActivePreview(null);
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = undefined;
       }
     };
-  }, [canPreview]);
+  }, [canPreview, post.id]);
 
   const handleVideoEnded = useCallback(() => {
     setShowCTA(true);
@@ -137,9 +210,9 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
         <div className="flex-1 min-w-0 relative flex flex-col gap-0 rounded-[21px] p-[5px]">
           <Link href={postHref} className="absolute inset-0 z-0 rounded-[21px]" />
           {/* Name row */}
-          <div className="flex items-center justify-between relative z-[1] pointer-events-none">
+          <div className="flex items-center justify-between relative z-[1] pointer-events-none mb-0.5">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-[0.84rem] font-semibold truncate">{author?.username || "Anonim"}</span>
+              <span className="text-[0.84rem] font-semibold truncate">@{author?.username || "Anonim"}</span>
               {author?.is_verified && <VerifiedBadge variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
               {post.published_at && (
                 <>
@@ -148,132 +221,158 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
                 </>
               )}
               <span className="text-text-muted/40 text-xs">·</span>
-              <span className="text-[0.62rem] text-text-muted shrink-0">{post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : "Gönderi"}</span>
+              <span className="text-[0.62rem] text-text-muted shrink-0">{post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : post.content_type === "note" ? "Not" : "Gönderi"}</span>
             </div>
-            <div className="pointer-events-auto shrink-0 -mr-2 [&_button]:!w-7 [&_button]:!h-7 [&_svg]:!h-4 [&_svg]:!w-4">
-              <PostHeaderActions
-                postId={post.id}
-                postUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/post/${post.slug}`}
-                postTitle={post.title}
-                authorUsername={author?.username}
-                authorUserId={author?.user_id}
-                authorName={author?.full_name || author?.username}
-                postSlug={post.slug}
-                contentType={post.content_type as "post" | "video" | "moment" | undefined}
-              />
-            </div>
-          </div>
-
-          {/* Title */}
-          <h3 className="text-[1.12rem] font-semibold leading-snug text-text-primary line-clamp-2">
-            {post.title}
-          </h3>
-
-          {/* Excerpt */}
-          {post.excerpt && (
-            <p className="text-[0.8rem] text-text-muted leading-relaxed line-clamp-2 mt-0.5">
-              {post.excerpt}
-            </p>
-          )}
-
-          {/* Thumbnail */}
-          <div
-            ref={thumbRef}
-            className="mt-2 rounded-[12px] sm:rounded-[21px] overflow-hidden bg-bg-tertiary cursor-pointer relative z-[1]"
-            onClick={() => router.push(postHref)}
-          >
-            <div className={`relative w-full ${isVideo ? "min-h-[180px] sm:min-h-[160px] aspect-[3/4] sm:aspect-video" : "min-h-[120px] sm:min-h-[140px] aspect-[4/3] sm:aspect-[3/2]"}`}>
-              {hasThumbnail ? (
-                <BlurImage
-                  src={(post.video_thumbnail || post.featured_image)!}
-                  alt={post.title}
-                  className="w-full h-full"
-                  blurhash={post.blurhash}
-                />
-              ) : (
-                <NoImage className="w-full h-full" iconSize={28} />
-              )}
-
-              {/* Video preview — plays when card scrolls into view */}
-              {inView && canPreview && (
-                <div className="absolute inset-0 z-[2]">
-                  <VideoPlayer
-                    src={post.video_url!}
-                    poster={thumbnail}
-                    moment
-                    externalPaused={showCTA}
-                    externalMuted={muted}
-                    onEnded={handleVideoEnded}
-                    videoClassName="w-full h-full object-cover"
-                  />
-                  {/* Unmute button — bottom left */}
-                  {!showCTA && (
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMuted(m => !m); }}
-                      className="absolute bottom-2.5 left-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto hover:bg-black/80 transition"
-                    >
-                      {muted ? (
-                        <>
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
-                          <span>Sesi Aç</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
-                          <span>Sesi Kapat</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {/* CTA overlay */}
-                  {showCTA && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[3]">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          router.push(postHref);
-                        }}
-                        className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-full hover:bg-white/90 transition-colors relative z-[4] pointer-events-auto"
-                      >
-                        İzlemeye Devam Et
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Play icon (show when not previewing) */}
-              {isVideo && hasThumbnail && !inView && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                    <svg className="h-6 w-6 text-white ml-0.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  </div>
-                </div>
-              )}
-              {/* İzle button — always visible on video thumbnails */}
-              {isVideo && hasThumbnail && !showCTA && (
+            <div className="pointer-events-auto shrink-0 flex items-center gap-1 -mr-2">
+              {!isSelf && isFollowing !== undefined && isFollowing !== ("loading" as any) && (
                 <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(postHref); }}
-                  className="absolute bottom-2.5 right-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto hover:bg-black/80 transition"
+                  onClick={isFollowing ? undefined : handleFollow}
+                  className={`follow-btn !h-[22px] !px-[10px] !text-[0.68rem] !gap-1 ${isFollowing ? "cursor-default" : ""}`}
                 >
-                  <svg className="h-3.5 w-3.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  <span>İzle</span>
+                  {isFollowing ? "Takip" : "Takip Et"}
                 </button>
               )}
-              {/* Duration badge */}
-              {isVideo && !inView && (
-                <div className="absolute top-2 right-2 bg-black/70 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
-                  {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : (post.content_type === "moment" ? "Moment" : "Video")}
-                </div>
-              )}
-              {/* Watch progress bar */}
-              {isVideo && <WatchProgressBar slug={post.slug} />}
+              <div className="[&_button]:!w-7 [&_button]:!h-7 [&_svg]:!h-4 [&_svg]:!w-4">
+                <PostHeaderActions
+                  postId={post.id}
+                  postUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/${post.slug}`}
+                  postTitle={post.title}
+                  authorUsername={author?.username}
+                  authorUserId={author?.user_id}
+                  authorName={author?.full_name || author?.username}
+                  postSlug={post.slug}
+                  contentType={post.content_type as "post" | "video" | "moment" | undefined}
+                  onDeleteSuccess={onDelete ? () => onDelete(post.id) : undefined}
+                />
+              </div>
             </div>
           </div>
 
-          {/* View count */}
-          {(post.view_count ?? 0) > 0 && (
+          {isNote ? (
+            <>
+              {/* Note text — Twitter-style */}
+              <p className="text-[0.82rem] leading-[1.45] text-text-primary whitespace-pre-line line-clamp-5">
+                {post.excerpt || post.title}
+              </p>
+              {/* View count — under note content */}
+              {(post.view_count ?? 0) > 0 && (
+                <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!)} görüntülenme</span>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Title */}
+              <h3 className="text-[1.12rem] font-semibold leading-snug text-text-primary line-clamp-2">
+                {post.title}
+              </h3>
+
+              {/* Excerpt */}
+              {post.excerpt && (
+                <p className="text-[0.8rem] text-text-muted leading-relaxed line-clamp-2 mt-0.5">
+                  {post.excerpt}
+                </p>
+              )}
+
+              {/* Thumbnail */}
+              <div
+                ref={thumbRef}
+                className="mt-2 rounded-[12px] sm:rounded-[21px] overflow-hidden bg-bg-tertiary cursor-pointer relative z-[1]"
+                onClick={() => router.push(postHref)}
+              >
+                <div className={`relative w-full ${isVideo ? "min-h-[180px] sm:min-h-[160px] aspect-[3/4] sm:aspect-video" : "min-h-[120px] sm:min-h-[140px] aspect-[4/3] sm:aspect-[3/2]"}`}>
+                  {hasThumbnail ? (
+                    <BlurImage
+                      src={(post.video_thumbnail || post.featured_image)!}
+                      alt={post.title}
+                      className="w-full h-full"
+                      blurhash={post.blurhash}
+                    />
+                  ) : (
+                    <NoImage className="w-full h-full" iconSize={28} />
+                  )}
+
+                  {/* Video preview — plays when card scrolls into view */}
+                  {inView && canPreview && (
+                    <div className="absolute inset-0 z-[2]">
+                      <VideoPlayer
+                        src={post.video_url!}
+                        poster={thumbnail}
+                        moment
+                        externalPaused={showCTA}
+                        externalMuted={muted}
+                        onEnded={handleVideoEnded}
+                        videoClassName="w-full h-full object-cover"
+                      />
+                      {/* Unmute button — bottom left */}
+                      {!showCTA && (
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMuted(m => !m); }}
+                          className="absolute bottom-2.5 left-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto hover:bg-black/80 transition"
+                        >
+                          {muted ? (
+                            <>
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
+                              <span>Sesi Aç</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+                              <span>Sesi Kapat</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {/* CTA overlay */}
+                      {showCTA && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[3]">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              router.push(postHref);
+                            }}
+                            className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-full hover:bg-white/90 transition-colors relative z-[4] pointer-events-auto"
+                          >
+                            İzlemeye Devam Et
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Play icon (show when not previewing) */}
+                  {isVideo && hasThumbnail && !inView && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                        <svg className="h-6 w-6 text-white ml-0.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      </div>
+                    </div>
+                  )}
+                  {/* İzle button — always visible on video thumbnails */}
+                  {isVideo && hasThumbnail && !showCTA && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(postHref); }}
+                      className="absolute bottom-2.5 right-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto hover:bg-black/80 transition"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      <span>İzle</span>
+                    </button>
+                  )}
+                  {/* Duration badge */}
+                  {isVideo && !inView && (
+                    <div className="absolute top-2 right-2 bg-black/70 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
+                      {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : (post.content_type === "moment" ? "Moment" : "Video")}
+                    </div>
+                  )}
+                  {/* Watch progress bar */}
+                  {isVideo && <WatchProgressBar slug={post.slug} />}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* View count (non-note posts) */}
+          {!isNote && (post.view_count ?? 0) > 0 && (
             <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!)} görüntülenme</span>
           )}
 
@@ -307,7 +406,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
         initialSaved={initialSaved ?? false}
         isVideo={isVideo}
         contentType={post.content_type}
-        compact={isVideo ? "full" : "no-like"}
+        compact={isVideo || isNote ? "full" : "no-like"}
       />
     </div>
     </div>

@@ -111,7 +111,7 @@ export async function middleware(request: NextRequest) {
   // ─── 3b. Account status + onboarding + role — batched DB query ───
   const isAuthPage = pathname === '/login' || pathname === '/register'
   const isOnboarding = pathname === '/onboarding'
-  const isAdminPath = pathname.startsWith('/dashboard/moderation') || pathname.startsWith('/dashboard/admin')
+  const isAdminPath = pathname.startsWith('/moderation') || pathname.startsWith('/admin')
   const isAuthenticated = !!user
 
   if (user && !pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/account/freeze') && !pathname.startsWith('/api/account/delete')) {
@@ -187,7 +187,7 @@ export async function middleware(request: NextRequest) {
     }
     if (needOnboarding && onboardingCompleted) {
       supabaseResponse.cookies.set('fdm-onboarding', '1', {
-        maxAge: 3600, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+        maxAge: 86400 * 30, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
       })
     }
 
@@ -199,7 +199,7 @@ export async function middleware(request: NextRequest) {
           supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
           return response
         }
-        return redirect('/dashboard')
+        return redirect('/')
       }
       supabaseResponse.cookies.set('fdm-role', role, {
         maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
@@ -213,9 +213,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 4. Route protection ───
-  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
-  const publicDashboardPaths = ['/dashboard', '/dashboard/explore', '/dashboard/moments', '/dashboard/video']
-  const isPublicDashboard = publicDashboardPaths.includes(pathname) || pathname.startsWith('/dashboard/explore/')
+  const publicAppPaths = ['/', '/explore', '/moments', '/video', '/notes', '/posts', '/sounds']
+  const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/')
+  const appPaths = ['/', '/explore', '/moments', '/video', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create']
+  const isAppPath = appPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
+  const isProtected = isAppPath && !isPublicApp
 
   // Helper: redirect that preserves refreshed auth cookies
   const redirect = (path: string) => {
@@ -224,8 +226,8 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Unauthenticated → login (protected routes, except public dashboard)
-  if (!isAuthenticated && isProtected && !isPublicDashboard) {
+  // Unauthenticated → login (protected routes)
+  if (!isAuthenticated && isProtected) {
     return redirect('/login')
   }
 
@@ -234,9 +236,9 @@ export async function middleware(request: NextRequest) {
     return redirect('/login')
   }
 
-  // Authenticated → dashboard (auth pages)
+  // Authenticated → home (auth pages)
   if (isAuthenticated && isAuthPage) {
-    return redirect('/dashboard')
+    return redirect('/')
   }
 
   return supabaseResponse
@@ -246,12 +248,32 @@ export const config = {
   matcher: [
     '/',
     '/api/:path*',
-    '/dashboard/:path*',
+    // App routes (was /dashboard/:path*)
+    '/explore/:path*',
+    '/moments',
+    '/video',
+    '/notes/:path*',
+    '/posts',
+    '/notifications',
+    '/bookmarks',
+    '/analytics',
+    '/coins/:path*',
+    '/settings/:path*',
+    '/profile',
+    '/security',
+    '/sounds/:path*',
+    '/moderation',
     '/admin/:path*',
+    '/app-payment',
+    '/subscription-payment',
+    '/transactions',
+    '/withdrawal',
+    '/suggestions',
+    '/create/:path*',
+    // Auth & other
     '/login',
     '/register',
     '/onboarding',
-    '/post/:path*',
     '/u/:path*',
     '/account-moderation',
     '/premium',

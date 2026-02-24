@@ -239,7 +239,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-[0.72rem] font-semibold">{c.author?.full_name || c.author?.username}</span>
+                          <span className="text-[0.72rem] font-semibold">{c.author?.full_name || `@${c.author?.username}`}</span>
                           <span className="text-[0.56rem] text-text-muted">{formatRelativeDate(c.created_at)}</span>
                         </div>
                         <p className="text-[0.72rem] text-text-secondary line-clamp-2 mt-0.5">{c.content?.replace(/<[^>]*>/g, "")}</p>

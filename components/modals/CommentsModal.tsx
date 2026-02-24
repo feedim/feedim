@@ -89,8 +89,16 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const resizeTextarea = useCallback(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
+    textarea.style.height = "0";
+    const scrollH = textarea.scrollHeight;
+    const maxH = 200;
+    if (scrollH > maxH) {
+      textarea.style.height = `${maxH}px`;
+      textarea.style.overflowY = "auto";
+    } else {
+      textarea.style.height = `${scrollH}px`;
+      textarea.style.overflowY = "hidden";
+    }
   }, []);
 
   useLayoutEffect(() => {
@@ -107,8 +115,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             const el = document.getElementById(`comment-${targetCommentId}`);
             if (el) {
               el.scrollIntoView({ behavior: "smooth", block: "center" });
-              el.classList.add("bg-accent-main/5");
-              setTimeout(() => el.classList.remove("bg-accent-main/5"), 2000);
+              el.classList.add("bg-accent-main/10");
+              setTimeout(() => el.classList.remove("bg-accent-main/10"), 2000);
             }
           }, 300);
         }
@@ -515,7 +523,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 <img className="default-avatar-auto h-7 w-7 rounded-full object-cover shrink-0" alt="" />
               )}
               <div className="flex flex-col">
-                <span className="font-medium">{u.username}</span>
+                <span className="font-medium">@{u.username}</span>
               </div>
               {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} role={u.role} />}
             </button>
@@ -540,8 +548,16 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       )}
 
       {/* Form row */}
-      <form onSubmit={handleSubmit} className="flex flex-col my-[10px]">
-        <div className="flex flex-1 items-stretch rounded-[24px] bg-bg-tertiary relative">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 my-[10px] w-full">
+        {/* Avatar */}
+        <div className="shrink-0 mb-[7px]">
+          {ctxUser?.avatarUrl ? (
+            <img src={ctxUser.avatarUrl} alt="" className="h-[36px] w-[36px] rounded-full object-cover" />
+          ) : (
+            <img className="default-avatar-auto h-[36px] w-[36px] rounded-full object-cover" alt="" />
+          )}
+        </div>
+        <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary relative">
           <textarea
             data-hotkey="comment-input"
             ref={inputRef}
@@ -555,7 +571,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             placeholder={pendingGif ? "GIF seçili." : "Düşüncelerini paylaş..."}
             rows={1}
             className={cn(
-              "comment-textarea flex-1 py-[13px] pl-[18px] pr-[56px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] overflow-hidden placeholder:text-text-muted",
+              "comment-textarea flex-1 py-[13px] pl-[18px] pr-[10px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] placeholder:text-text-muted",
               pendingGif && "opacity-20 cursor-default"
             )}
             onInput={resizeTextarea}
@@ -617,33 +633,33 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     <Modal open={open} onClose={onClose} title={`Yorumlar (${totalCount})`} size="md" infoText="Düşüncelerini paylaş, emoji ve GIF gönder. Yorumları beğenebilir ve yanıtlayabilirsin." footer={commentFormFooter} fullHeight>
         {/* Sort tabs - sticky */}
         {comments.length > 0 && (
-          <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-1 px-4 py-2 border-b border-border-primary">
+          <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-1 px-4 py-1">
             <button
               onClick={() => handleSortChange("smart")}
               className={cn(
-                "px-3 py-1.5 rounded-full text-[0.78rem] font-semibold transition",
+                "px-3 py-1 rounded-full text-[0.85rem] font-semibold transition",
                 sortBy === "smart" ? "bg-accent-main/10 text-accent-main" : "text-text-muted hover:text-text-primary"
               )}
             >
-              Akıllı
+              Senin için
             </button>
             <button
               onClick={() => handleSortChange("newest")}
               className={cn(
-                "px-3 py-1.5 rounded-full text-[0.78rem] font-semibold transition",
+                "px-3 py-1 rounded-full text-[0.85rem] font-semibold transition",
                 sortBy === "newest" ? "bg-accent-main/10 text-accent-main" : "text-text-muted hover:text-text-primary"
               )}
             >
-              En yeni
+              En son
             </button>
             <button
               onClick={() => handleSortChange("popular")}
               className={cn(
-                "px-3 py-1.5 rounded-full text-[0.78rem] font-semibold transition",
+                "px-3 py-1 rounded-full text-[0.85rem] font-semibold transition",
                 sortBy === "popular" ? "bg-accent-main/10 text-accent-main" : "text-text-muted hover:text-text-primary"
               )}
             >
-              En popüler
+              Popüler
             </button>
           </div>
         )}
@@ -720,7 +736,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
               {/* Load more */}
               <li>
-                <LoadMoreTrigger onLoadMore={() => { const next = page + 1; setPage(next); loadComments(next); }} loading={loadingMore} hasMore={hasMore} />
+                <LoadMoreTrigger onLoadMore={async () => { const u = await requireAuth(); if (!u) return; const next = page + 1; setPage(next); loadComments(next); }} loading={loadingMore} hasMore={hasMore} />
               </li>
             </ol>
           )}
@@ -737,18 +753,22 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           <div className="py-1 px-2">
             {!menuComment.is_nsfw && (
               <>
-                <a
-                  href={`/u/${menuUsername}`}
-                  className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full rounded-[12px]"
-                  onClick={() => setOpenMenuId(null)}
+                <button
+                  onClick={() => {
+                    const username = menuUsername;
+                    setOpenMenuId(null);
+                    onClose();
+                    window.location.href = `/u/${username}`;
+                  }}
+                  className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                 >
                   <User className="h-[18px] w-[18px] text-text-muted" />
                   Profile git
-                </a>
+                </button>
                 {postSlug && (
                   <button
                     onClick={() => {
-                      const url = `${window.location.origin}/post/${postSlug}?comment=${encodeId(menuComment.id)}`;
+                      const url = `${window.location.origin}/${postSlug}?comment=${encodeId(menuComment.id)}`;
                       navigator.clipboard.writeText(url);
                       setOpenMenuId(null);
                       feedimAlert("success", "Yorum bağlantısı kopyalandı");
@@ -864,12 +884,13 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
       <div className="flex flex-col items-start flex-1 min-w-0 ml-[7px]">
         {/* Author row + action buttons */}
         <div className="flex w-full justify-between mt-[5px]">
-          <div className="flex flex-col items-start">
+          <div className="flex items-center gap-1.5">
             <a href={`/u/${profileUsername}`} className="flex items-center gap-1 text-[0.8rem] font-bold leading-tight text-text-primary hover:underline">
               <span className="line-clamp-1">{displayName}</span>
               {comment.profiles?.is_verified && <VerifiedBadge variant={getBadgeVariant(comment.profiles?.premium_plan)} role={comment.profiles?.role} />}
             </a>
-            <span className="text-[0.64rem] text-text-muted mt-0.5">
+            <span className="text-[0.7rem] text-text-muted">·</span>
+            <span className="text-[0.7rem] text-text-muted">
               {formatRelativeDate(comment.created_at)}
             </span>
           </div>
@@ -913,7 +934,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
                 )}
               >
                 <Heart className={cn("h-[14px] w-[14px]", likedComments.has(comment.id) && "fill-current")} />
-                {comment.like_count > 0 && <span>{formatCount(comment.like_count)}</span>}
+                <span>{comment.like_count > 0 ? formatCount(comment.like_count) : "Beğen"}</span>
               </button>
               {!isReply && onReply && (
                 <button

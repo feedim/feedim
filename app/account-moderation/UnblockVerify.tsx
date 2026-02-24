@@ -73,7 +73,7 @@ export default function UnblockVerify() {
       const data = await res.json();
       if (res.ok) {
         document.cookie = "fdm-status=; Max-Age=0; Path=/;";
-        router.replace("/dashboard");
+        router.replace("/");
       } else {
         setError(data.error || "Doğrulama başarısız");
       }

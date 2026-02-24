@@ -59,13 +59,20 @@ export async function GET(
     .eq("author_id", profile.user_id)
     .eq("status", "published");
 
+  // NSFW filter: only show to profile owner
+  if (!isOwn) {
+    query = query.eq("is_nsfw", false);
+  }
+
   if (contentType) {
     query = query.eq("content_type", contentType);
   }
 
   const excludeType = searchParams.get("exclude_type");
   if (excludeType) {
-    query = query.neq("content_type", excludeType);
+    for (const t of excludeType.split(",")) {
+      query = query.neq("content_type", t.trim());
+    }
   }
 
   const { data: posts, error } = await query

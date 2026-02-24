@@ -25,7 +25,7 @@ function Section({ title, items }: { title: string; items: [string, string][] })
                 <Kbd key={`${keys}-${i}`}>{k}</Kbd>
               ))}
             </div>
-            <span className="text-[0.84rem] text-text-primary/90 flex-1 text-right">{label}</span>
+            <span className="text-[0.84rem] text-text-primary/90 font-semibold flex-1 text-right">{label}</span>
           </div>
         ))}
       </div>

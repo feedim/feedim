@@ -461,15 +461,15 @@ export default function Modal({
   const animClass =
     resolvedType === 1
       ? (closing
-          ? "animate-[slideOutBottom_0.25s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-          : "animate-[slideInBottom_0.28s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+          ? "animate-[slideOutBottom_0.2s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+          : "animate-[slideInBottom_0.22s_cubic-bezier(0.22,1,0.36,1)_forwards]")
       : resolvedType === 2
         ? (closing
-            ? "animate-[slideOutRight_0.25s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            : "animate-[slideInRight_0.28s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+            ? "animate-[slideOutRight_0.2s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+            : "animate-[slideInRight_0.22s_cubic-bezier(0.22,1,0.36,1)_forwards]")
         : (closing
-            ? "animate-[slideOut_0.2s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            : "animate-[slideIn_0.22s_cubic-bezier(0.25,0.1,0.25,1)_both]");
+            ? "animate-[slideOut_0.15s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+            : "animate-[slideIn_0.18s_cubic-bezier(0.25,0.1,0.25,1)_both]");
 
   return createPortal(
     <div

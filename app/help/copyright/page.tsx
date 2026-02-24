@@ -48,7 +48,7 @@ export default function CopyrightPage() {
         </p>
         <p className="mt-3">
           Şirketler ve kurumsal hesaplar ise{" "}
-          <Link href="/dashboard/settings/copyright" className="text-accent-main hover:opacity-80 font-semibold">başvuru formu</Link> ile
+          <Link href="/settings/copyright" className="text-accent-main hover:opacity-80 font-semibold">başvuru formu</Link> ile
           beklemeden doğrudan telif hakkı koruması talep edebilir.
         </p>
 

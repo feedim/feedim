@@ -59,9 +59,9 @@ export default function GlobalHotkeys() {
       if ((e.metaKey || e.ctrlKey) && (e.key === "/" || e.code === "Slash")) {
         e.preventDefault();
         try { sessionStorage.setItem("fdm-focus-search", "1"); } catch {}
-        if (pathname !== "/dashboard/explore") {
+        if (pathname !== "/explore") {
           emitNavigationStart();
-          router.push("/dashboard/explore");
+          router.push("/explore");
         } else {
           focusSearch();
         }
@@ -74,7 +74,7 @@ export default function GlobalHotkeys() {
       if (isEditable(active)) return;
 
       const key = e.key.toLowerCase();
-      const isMoments = pathname.startsWith("/dashboard/moments");
+      const isMoments = pathname.startsWith("/moments");
       const hasActiveMoment = !!document.querySelector('[data-moment-active="true"]');
       const hasVideoPlayer = !!document.querySelector(".vp-bar");
 
@@ -96,12 +96,12 @@ export default function GlobalHotkeys() {
         const next = key;
         seqRef.current = null;
         const map: Record<string, string> = {
-          h: "/dashboard",
-          e: "/dashboard/explore",
-          m: "/dashboard/moments",
-          p: "/dashboard/profile",
-          s: "/dashboard/settings",
-          n: "/dashboard/notifications",
+          h: "/",
+          e: "/explore",
+          m: "/moments",
+          p: "/profile",
+          s: "/settings",
+          n: "/notifications",
         };
         const dest = map[next];
         if (dest) {

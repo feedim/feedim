@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
   try {
   const { searchParams } = new URL(req.url);
   let q = sanitizeForFilter(searchParams.get("q")?.trim() || "");
-  const type = searchParams.get("type") || "all"; // all, users, posts, tags
+  const type = searchParams.get("type") || "all"; // all, users, posts, tags, sounds
 
   const supabase = await createClient();
   const admin = createAdminClient();
   const limit = parseInt(searchParams.get("limit") || "0") || (type === "all" ? 5 : 20);
-  const results: { users?: any[]; posts?: any[]; tags?: any[] } = {};
+  const results: { users?: any[]; posts?: any[]; tags?: any[]; sounds?: any[] } = {};
 
   // Get current user for personalized scoring + blocked users
   const { data: { user } } = await supabase.auth.getUser();
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         .slice(0, limit);
     }
     if (type === "all" || type === "posts") {
-      const { data: posts } = await supabase
+      let popQuery = admin
         .from("posts")
         .select(`
           id, title, slug, excerpt, featured_image, reading_time,
@@ -72,10 +72,14 @@ export async function GET(req: NextRequest) {
           profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
         `)
         .eq("status", "published")
+        .eq("is_nsfw", false)
         .order("published_at", { ascending: false })
         .limit(50);
+      if (blockedIds.size > 0) {
+        popQuery = popQuery.not("author_id", "in", `(${[...blockedIds].join(",")})`);
+      }
+      const { data: posts } = await popQuery;
       results.posts = (posts || [])
-        .filter(p => !blockedIds.has((p as any).author_id))
         .filter(p => {
           const author = (p as any).profiles;
           if (author?.status && author.status !== 'active') return false;
@@ -91,6 +95,15 @@ export async function GET(req: NextRequest) {
         .order("post_count", { ascending: false })
         .limit(limit);
       results.tags = tags || [];
+    }
+    if (type === "all" || type === "sounds") {
+      const { data: sounds } = await admin
+        .from("sounds")
+        .select("id, title, artist, audio_url, duration, usage_count, cover_image_url, is_original, created_at")
+        .eq("status", "active")
+        .order("usage_count", { ascending: false })
+        .limit(limit);
+      results.sounds = sounds || [];
     }
     return NextResponse.json(results);
   }
@@ -144,7 +157,7 @@ export async function GET(req: NextRequest) {
 
   // Search posts with scoring
   if (searchType === "all" || searchType === "posts") {
-    const { data: posts } = await admin
+    let searchPostQuery = admin
       .from("posts")
       .select(`
         id, title, slug, excerpt, featured_image, reading_time,
@@ -152,8 +165,13 @@ export async function GET(req: NextRequest) {
         profiles:user_id (user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
       `)
       .eq("status", "published")
+      .eq("is_nsfw", false)
       .or(`title.ilike.%${q}%,excerpt.ilike.%${q}%`)
       .limit(100);
+    if (blockedIds.size > 0) {
+      searchPostQuery = searchPostQuery.not("author_id", "in", `(${[...blockedIds].join(",")})`);
+    }
+    const { data: posts } = await searchPostQuery;
 
     const scored = (posts || [])
       .filter(p => !blockedIds.has((p as any).author_id))
@@ -191,11 +209,24 @@ export async function GET(req: NextRequest) {
     results.tags = tags || [];
   }
 
+  // Search sounds
+  if (searchType === "all" || searchType === "sounds") {
+    const { data: sounds } = await admin
+      .from("sounds")
+      .select("id, title, artist, audio_url, duration, usage_count, cover_image_url, is_original, created_at")
+      .eq("status", "active")
+      .or(`title.ilike.%${q}%,artist.ilike.%${q}%`)
+      .order("usage_count", { ascending: false })
+      .limit(limit);
+
+    results.sounds = sounds || [];
+  }
+
   const response = NextResponse.json(results);
   response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
   return response;
   } catch (error: any) {
     console.error('[Search] Error:', error?.message);
-    return NextResponse.json({ users: [], posts: [], tags: [] });
+    return NextResponse.json({ users: [], posts: [], tags: [], sounds: [] });
   }
 }

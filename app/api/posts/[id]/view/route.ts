@@ -240,10 +240,10 @@ export async function POST(
         admin,
         user_id: postForMilestone.author_id,
         actor_id: postForMilestone.author_id,
-        type: 'milestone',
+        type: 'view_milestone',
         object_type: 'post',
         object_id: postId,
-        content: `Gönderiniz ${milestoneLabel} görüntülemeye ulaştı!`,
+        content: `Gönderiniz ${milestoneLabel} gösterime ulaştı!`,
       });
     }
 

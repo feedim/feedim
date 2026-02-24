@@ -3,13 +3,20 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
+const nonIndexablePrefixes = ["/notifications", "/bookmarks", "/analytics", "/coins", "/settings", "/profile", "/security", "/moderation", "/admin", "/app-payment", "/subscription-payment", "/transactions", "/withdrawal", "/suggestions", "/create", "/login", "/register", "/onboarding", "/account-moderation", "/help", "/leaving", "/embed", "/payment", "/premium", "/auth"];
+
 function isIndexablePath(pathname: string) {
   if (pathname === "/") return true;
-  if (pathname.startsWith("/post/")) return true;
   if (pathname.startsWith("/u/")) return true;
-  if (pathname === "/dashboard") return true;
-  if (pathname.startsWith("/dashboard/explore")) return true;
-  return false;
+  if (pathname.startsWith("/explore")) return true;
+  if (pathname.startsWith("/moments")) return true;
+  if (pathname.startsWith("/video")) return true;
+  if (pathname.startsWith("/notes")) return true;
+  if (pathname.startsWith("/posts")) return true;
+  if (pathname.startsWith("/sounds")) return true;
+  // Post pages are at /<slug> — any path not matching known non-indexable prefixes
+  if (nonIndexablePrefixes.some(p => pathname.startsWith(p))) return false;
+  return true;
 }
 
 export default function SkeletonGate() {

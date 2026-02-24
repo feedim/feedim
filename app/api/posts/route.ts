@@ -5,7 +5,7 @@ import { createNotification } from '@/lib/notifications';
 import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { getProfileSignals } from '@/lib/modSignals';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
-import { VALIDATION, MOMENT_MAX_DURATION } from '@/lib/constants';
+import { VALIDATION, MOMENT_MAX_DURATION, CONTENT_TYPES } from '@/lib/constants';
 import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
 import { moderateContent } from '@/lib/moderation';
 import { checkCopyrightUnified, computeContentHash, stripHtmlToText, normalizeForComparison, computeImageHashFromUrl, COPYRIGHT_THRESHOLDS } from '@/lib/copyright';
@@ -43,13 +43,14 @@ export async function POST(request: NextRequest) {
     const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash, image_hash: clientImageHash, copyright_protected, sound_id, frame_hashes: clientFrameHashes, audio_hashes: clientAudioHashes } = body;
     const isVideo = content_type === 'video' || content_type === 'moment';
     const isMoment = content_type === 'moment';
+    const isNote = content_type === 'note';
 
     // Validate title
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return NextResponse.json({ error: 'Başlık gerekli' }, { status: 400 });
     }
     const trimmedTitle = title.trim();
-    if (trimmedTitle.length < VALIDATION.postTitle.min) {
+    if (!isNote && trimmedTitle.length < VALIDATION.postTitle.min) {
       return NextResponse.json({ error: `Başlık en az ${VALIDATION.postTitle.min} karakter olmalı` }, { status: 400 });
     }
     if (trimmedTitle.length > VALIDATION.postTitle.max) {
@@ -62,8 +63,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Başlık bir URL olamaz' }, { status: 400 });
     }
 
+    // Validate note content
+    if (isNote) {
+      const noteText = (content || '').replace(/<[^>]+>/g, '').trim();
+      if (!noteText) {
+        return NextResponse.json({ error: 'Not içeriği gerekli' }, { status: 400 });
+      }
+      if (noteText.length > VALIDATION.noteContent.max) {
+        return NextResponse.json({ error: `Not en fazla ${VALIDATION.noteContent.max} karakter olabilir` }, { status: 400 });
+      }
+    }
+
     // Validate content (video posts can have empty content/description)
-    if (!isVideo && (!content || typeof content !== 'string' || content.trim().length === 0)) {
+    if (!isVideo && !isNote && (!content || typeof content !== 'string' || content.trim().length === 0)) {
       return NextResponse.json({ error: 'İçerik gerekli' }, { status: 400 });
     }
 
@@ -83,15 +95,17 @@ export async function POST(request: NextRequest) {
     const slug = `${slugBase}-${slugHash}`;
 
     // Sanitize content — no iframe support
-    const sanitizedContent = isVideo
+    const sanitizedContent = isNote
+      ? sanitizeHtml(content || '', { allowedTags: ['br', 'p', 'a'], allowedAttributes: { 'a': ['href', 'target', 'rel'] } })
+      : isVideo
       ? sanitizeHtml(content || '', { allowedTags: ['br', 'strong', 'p'], allowedAttributes: {} })
       : sanitizeHtml(content, {
           allowedTags: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
           allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], '*': ['class'] },
         });
 
-    // Server-side content validation for published posts (skip for video posts)
-    if (status === 'published' && !isVideo) {
+    // Server-side content validation for published posts (skip for video and note posts)
+    if (status === 'published' && !isVideo && !isNote) {
       const textContent = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, '').trim();
       const hasImage = /<img\s/i.test(sanitizedContent);
 
@@ -160,10 +174,10 @@ export async function POST(request: NextRequest) {
     let modReason: string | null = null;
     let modCategory: string | null = null;
     if (status === 'published' && !isAdmin) {
-      // Unified copyright check with content-type routing (admin bypass)
-      try {
+      // Unified copyright check with content-type routing (admin bypass) — skip for notes
+      if (!isNote) try {
         const { wordCount: wc } = calculateReadingTime(sanitizedContent);
-        const contentTypeVal = isMoment ? 'moment' : (isVideo ? 'video' : 'post');
+        const contentTypeVal = isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post';
         const imgUrl = featured_image || (isVideo ? video_thumbnail : null);
         if (!imageHash && imgUrl) imageHash = await computeImageHashFromUrl(imgUrl);
 
@@ -202,7 +216,7 @@ export async function POST(request: NextRequest) {
         console.error('[Copyright] POST check error:', err);
       }
 
-      // AI moderation — skip if already flagged by copyright (save cost)
+      // AI moderation — skip if already flagged by copyright (save cost, notes always run moderation)
       if (!copyrightFlagged) {
         let profileMeta: { profileScore?: number; spamScore?: number } = {};
         try { profileMeta = await getProfileSignals(user.id); } catch {}
@@ -211,7 +225,7 @@ export async function POST(request: NextRequest) {
         if (featured_image && typeof featured_image === 'string') moderationHtml += `<img src="${featured_image.replace(/"/g, '&quot;')}" />`;
         if (isVideo && video_thumbnail && typeof video_thumbnail === 'string') moderationHtml += `<img src="${video_thumbnail.replace(/"/g, '&quot;')}" />`;
         const modResult = await moderateContent(trimmedTitle, moderationHtml, {
-          contentType: isMoment ? 'moment' : (isVideo ? 'video' : 'post'),
+          contentType: isMoment ? 'moment' : isVideo ? 'video' : 'post',
           ...profileMeta,
         });
         moderationAction = modResult.action;
@@ -306,7 +320,7 @@ export async function POST(request: NextRequest) {
         slug,
         content: sanitizedContent,
         excerpt,
-        content_type: isMoment ? 'moment' : (isVideo ? 'video' : 'post'),
+        content_type: isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post',
         featured_image: featured_image || (isVideo ? video_thumbnail : null) || null,
         video_url: isVideo ? (video_url || null) : null,
         video_duration: isVideo ? (video_duration || null) : null,
@@ -314,7 +328,7 @@ export async function POST(request: NextRequest) {
         blurhash: typeof blurhash === 'string' && blurhash.length > 0 ? blurhash : null,
         sound_id: resolvedSoundId,
         status: postStatus,
-        reading_time: isVideo ? null : readingTime,
+        reading_time: isVideo ? null : isNote ? 1 : readingTime,
         word_count: wordCount,
         allow_comments: allow_comments !== false,
         is_for_kids: is_for_kids === true,
@@ -403,7 +417,7 @@ export async function POST(request: NextRequest) {
             status: 'pending',
             claim_type: 'ownership',
             similarity_percent: copyrightSimilarity,
-            content_type: isMoment ? 'moment' : (isVideo ? 'video' : 'post'),
+            content_type: isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post',
           });
           await admin.from('posts').update({
             copyright_claim_status: 'pending_verification',
@@ -487,6 +501,13 @@ export async function POST(request: NextRequest) {
         await admin
           .from('post_tags')
           .insert(tagIds.map(tag_id => ({ post_id: post.id, tag_id })));
+
+        // Increment post_count for each tag
+        if (postStatus === 'published') {
+          for (const tagId of tagIds) {
+            await admin.rpc('increment_field', { table_name: 'tags', row_id: tagId, field_name: 'post_count', amount: 1 }).then(() => {}, () => {});
+          }
+        }
       }
     }
 

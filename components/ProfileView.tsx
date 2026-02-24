@@ -3,7 +3,7 @@
 import { useState, useEffect, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, PenLine, Heart, MessageCircle, Lock, BarChart3, Briefcase, Mail, Phone, Clock, Users, FileText, Flag, AlertTriangle, EyeOff, Clapperboard } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, Lock, Briefcase, Mail, Phone, Clock } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 import EditableAvatar from "@/components/EditableAvatar";
 import PostListSection from "@/components/PostListSection";
@@ -69,11 +69,24 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [followerCount, setFollowerCount] = useState(initialProfile.follower_count || 0);
   const [isBlocked, setIsBlocked] = useState(initialProfile.is_blocked || false);
   const [isBlockedBy, setIsBlockedBy] = useState(initialProfile.is_blocked_by || false);
-  const [activeTab, setActiveTab] = useState<"posts" | "moments" | "likes" | "comments">("posts");
-  const [posts, setPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "posts" | "notes" | "moments" | "video" | "likes" | "comments">("all");
+  // "all" tab (no filter)
+  const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [allLoading, setAllLoading] = useState(true);
+  const [allPage, setAllPage] = useState(1);
+  const [allHasMore, setAllHasMore] = useState(false);
+  // "posts" tab (article only)
+  const [articlePosts, setArticlePosts] = useState<any[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(false);
+  const [articlesPage, setArticlesPage] = useState(1);
+  const [articlesHasMore, setArticlesHasMore] = useState(false);
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
+  // "video" tab
+  const [videoPosts, setVideoPosts] = useState<any[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
+  const [videosPage, setVideosPage] = useState(1);
+  const [videosHasMore, setVideosHasMore] = useState(false);
+  const [videosLoaded, setVideosLoaded] = useState(false);
   const [likedPosts, setLikedPosts] = useState<any[]>([]);
   const [likesLoading, setLikesLoading] = useState(false);
   const [likesPage, setLikesPage] = useState(1);
@@ -89,6 +102,11 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [momentsPage, setMomentsPage] = useState(1);
   const [momentsHasMore, setMomentsHasMore] = useState(false);
   const [momentsLoaded, setMomentsLoaded] = useState(false);
+  const [notePosts, setNotePosts] = useState<any[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesPage, setNotesPage] = useState(1);
+  const [notesHasMore, setNotesHasMore] = useState(false);
+  const [notesLoaded, setNotesLoaded] = useState(false);
   // Modals
   const [editOpen, setEditOpen] = useState(false);
   const [editAvatarOnOpen, setEditAvatarOnOpen] = useState(false);
@@ -129,7 +147,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
 
   useEffect(() => {
     if (!isAnyBlocked) {
-      loadPosts(1);
+      loadAll(1);
     }
     if (profile.is_own) {
       fetch("/api/analytics?period=30d")
@@ -139,25 +157,76 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     }
   }, []);
 
-  const loadPosts = useCallback(async (pageNum: number) => {
-    setPostsLoading(true);
+  // Auth gate for load more (page 2+)
+  const authGate = useCallback(async (pageNum: number): Promise<boolean> => {
+    if (pageNum > 1 && !currentUser) {
+      const user = await requireAuth();
+      return !!user;
+    }
+    return true;
+  }, [currentUser, requireAuth]);
+
+  const loadAll = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
+    setAllLoading(true);
     try {
-      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&exclude_type=moment`);
+      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}`);
       const data = await res.json();
       if (pageNum === 1) {
-        setPosts(data.posts || []);
+        setAllPosts(data.posts || []);
       } else {
-        setPosts(prev => [...prev, ...(data.posts || [])]);
+        setAllPosts(prev => [...prev, ...(data.posts || [])]);
       }
-      setHasMore(data.hasMore || false);
+      setAllHasMore(data.hasMore || false);
     } catch {
       // Silent
     } finally {
-      setPostsLoading(false);
+      setAllLoading(false);
     }
-  }, [profile.username]);
+  }, [profile.username, authGate]);
+
+  const loadArticles = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
+    setArticlesLoading(true);
+    try {
+      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&content_type=article`);
+      const data = await res.json();
+      if (pageNum === 1) {
+        setArticlePosts(data.posts || []);
+      } else {
+        setArticlePosts(prev => [...prev, ...(data.posts || [])]);
+      }
+      setArticlesHasMore(data.hasMore || false);
+      setArticlesLoaded(true);
+    } catch {
+      // Silent
+    } finally {
+      setArticlesLoading(false);
+    }
+  }, [profile.username, authGate]);
+
+  const loadVideos = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
+    setVideosLoading(true);
+    try {
+      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&content_type=video`);
+      const data = await res.json();
+      if (pageNum === 1) {
+        setVideoPosts(data.posts || []);
+      } else {
+        setVideoPosts(prev => [...prev, ...(data.posts || [])]);
+      }
+      setVideosHasMore(data.hasMore || false);
+      setVideosLoaded(true);
+    } catch {
+      // Silent
+    } finally {
+      setVideosLoading(false);
+    }
+  }, [profile.username, authGate]);
 
   const loadLikes = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
     setLikesLoading(true);
     try {
       const res = await fetch(`/api/users/${profile.username}/likes?page=${pageNum}`);
@@ -174,9 +243,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } finally {
       setLikesLoading(false);
     }
-  }, [profile.username]);
+  }, [profile.username, authGate]);
 
   const loadComments = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
     setCommentsLoading(true);
     try {
       const res = await fetch(`/api/users/${profile.username}/comments?page=${pageNum}`);
@@ -193,9 +263,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } finally {
       setCommentsLoading(false);
     }
-  }, [profile.username]);
+  }, [profile.username, authGate]);
 
   const loadMoments = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
     setMomentsLoading(true);
     try {
       const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&content_type=moment`);
@@ -212,10 +283,36 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     } finally {
       setMomentsLoading(false);
     }
-  }, [profile.username]);
+  }, [profile.username, authGate]);
 
-  // Load likes/comments/moments when tab switches for the first time
+  const loadNotes = useCallback(async (pageNum: number) => {
+    if (!(await authGate(pageNum))) return;
+    setNotesLoading(true);
+    try {
+      const res = await fetch(`/api/users/${profile.username}/posts?page=${pageNum}&content_type=note`);
+      const data = await res.json();
+      if (pageNum === 1) {
+        setNotePosts(data.posts || []);
+      } else {
+        setNotePosts(prev => [...prev, ...(data.posts || [])]);
+      }
+      setNotesHasMore(data.hasMore || false);
+      setNotesLoaded(true);
+    } catch {
+      // Silent
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [profile.username, authGate]);
+
+  // Load data when tab switches for the first time
   useEffect(() => {
+    if (activeTab === "posts" && !articlesLoaded) {
+      loadArticles(1);
+    }
+    if (activeTab === "video" && !videosLoaded) {
+      loadVideos(1);
+    }
     if (activeTab === "likes" && !likesLoaded) {
       loadLikes(1);
     }
@@ -224,6 +321,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     }
     if (activeTab === "moments" && !momentsLoaded) {
       loadMoments(1);
+    }
+    if (activeTab === "notes" && !notesLoaded) {
+      loadNotes(1);
     }
   }, [activeTab]);
 
@@ -309,13 +409,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           const prevFollowing = following;
           const prevRequested = requested;
           const prevFollowerCount = followerCount;
-          const prevPosts = posts;
+          const prevPosts = allPosts;
           const prevLikedPosts = likedPosts;
           setIsBlocked(true);
           setFollowing(false);
           setRequested(false);
           setFollowerCount(0);
-          setPosts([]);
+          setAllPosts([]);
           setLikedPosts([]);
 
           fetch(`/api/users/${profile.username}/block`, { method: "POST", keepalive: true }).then(res => {
@@ -324,7 +424,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               setFollowing(prevFollowing);
               setRequested(prevRequested);
               setFollowerCount(prevFollowerCount);
-              setPosts(prevPosts);
+              setAllPosts(prevPosts);
               setLikedPosts(prevLikedPosts);
             }
           }).catch(() => {
@@ -332,7 +432,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             setFollowing(prevFollowing);
             setRequested(prevRequested);
             setFollowerCount(prevFollowerCount);
-            setPosts(prevPosts);
+            setAllPosts(prevPosts);
             setLikedPosts(prevLikedPosts);
           });
         },
@@ -348,7 +448,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         },
       });
     }
-  }, [profile.username, isBlocked, following, requested, followerCount, posts, likedPosts]);
+  }, [profile.username, isBlocked, following, requested, followerCount, allPosts, likedPosts]);
 
   const handleAvatarClick = useCallback(() => {
     if (!isAnyBlocked) setAvatarViewOpen(true);
@@ -371,7 +471,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </div>
           <div className="flex items-center gap-1">
             {profile.is_own && (
-              <Link href="/dashboard/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center" aria-label="Ayarlar">
+              <Link href="/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center" aria-label="Ayarlar">
                 <Settings className="h-5 w-5" />
               </Link>
             )}
@@ -405,15 +505,15 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           <div className="flex-1 flex items-center justify-around pt-2">
             <div className="text-center">
               <p className="text-[1.05rem] font-bold">{isAnyBlocked ? "0" : formatCount(profile.post_count || 0)}</p>
-              <p className="text-[0.72rem] text-text-muted">Gönderi</p>
+              <p className="text-[0.78rem] text-text-muted">Gönderi</p>
             </div>
             <button onClick={statsDisabled ? undefined : () => setFollowersOpen(true)} className={`text-center ${statsDisabled ? "cursor-default" : ""}`}>
               <p className="text-[1.05rem] font-bold">{isAnyBlocked ? "0" : formatCount(followerCount)}</p>
-              <p className="text-[0.72rem] text-text-muted">Takipçi</p>
+              <p className="text-[0.78rem] text-text-muted">Takipçi</p>
             </button>
             <button onClick={statsDisabled ? undefined : () => setFollowingOpen(true)} className={`text-center ${statsDisabled ? "cursor-default" : ""}`}>
               <p className="text-[1.05rem] font-bold">{isAnyBlocked ? "0" : formatCount(profile.following_count || 0)}</p>
-              <p className="text-[0.72rem] text-text-muted">Takip</p>
+              <p className="text-[0.78rem] text-text-muted">Takip</p>
             </button>
           </div>
         </div>
@@ -434,7 +534,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             ) : null}
           </div>
           {!isAnyBlocked && (
-            <div className="mt-1.5 space-y-1">
+            <div className="mt-1 space-y-1">
               {profile.bio && <p className="text-[0.84rem] text-text-secondary leading-snug">{profile.bio}</p>}
               {profile.website && (
                 <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[0.8rem] text-accent-main hover:underline">
@@ -442,7 +542,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 </a>
               )}
               {profile.created_at && (
-                <span className="flex items-center gap-1 text-[0.72rem] text-text-muted">
+                <span className="flex items-center gap-1 text-[0.78rem] text-text-muted">
                   <Calendar className="h-3 w-3" /> {new Date(profile.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinde katıldı
                 </span>
               )}
@@ -489,10 +589,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </div>
               <span className="text-[0.82rem] text-text-muted">
                 {profile.mutual_followers.length === 1
-                  ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</span> takip ediyor</>
+                  ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> takip ediyor</>
                   : profile.mutual_followers.length === 2
-                    ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</span> ve <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || profile.mutual_followers[1].username}</span> takip ediyor</>
-                    : <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || profile.mutual_followers[0].username}</span>, <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || profile.mutual_followers[1].username}</span> ve <span className="font-semibold text-text-primary">diğerleri</span> takip ediyor</>
+                    ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> ve <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> takip ediyor</>
+                    : <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span>, <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> ve <span className="font-semibold text-text-primary">diğerleri</span> takip ediyor</>
                 }
               </span>
             </button>
@@ -502,14 +602,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         {/* Analytics button (own profile, premium only) */}
         {profile.is_own && profile.is_premium && (
           <Link
-            href="/dashboard/analytics"
+            href="/analytics"
             className="flex flex-col w-full mb-3 py-3 px-4 rounded-[15px] bg-bg-tertiary hover:opacity-90 transition"
           >
             <span className="text-[0.88rem] font-bold">İstatistikler</span>
             {totalViews === null ? (
               <div className="skeleton h-3.5 w-40 rounded mt-1.5" />
             ) : (
-              <span className="flex items-center gap-1 text-[0.72rem] text-text-muted mt-0.5">
+              <span className="flex items-center gap-1 text-[0.78rem] text-text-muted mt-0.5">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-primary"><path d="M21 21H6.2C5.08 21 4.52 21 4.09 20.782C3.72 20.59 3.41 20.284 3.22 19.908C3 19.48 3 18.92 3 17.8V3" /><path d="M7 15l4-6 4 4 6-8" /></svg>
                 Son 30 günde {formatCount(totalViews)} görüntülenme
               </span>
@@ -594,7 +694,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             <VerifiedBadge size="md" className="shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[0.82rem] font-semibold text-text-primary leading-snug">Premium'a geç, farkını göster</p>
-              <p className="text-[0.72rem] text-accent-main font-medium">Onaylı rozet, analitik ve daha fazlası</p>
+              <p className="text-[0.78rem] text-accent-main font-medium">Onaylı rozet, analitik ve daha fazlası</p>
             </div>
             <svg className="h-4 w-4 text-text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </Link>
@@ -604,56 +704,73 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         {/* Tabs */}
         {!isAnyBlocked && (!profile.account_private || profile.is_own || following) && (
           <>
-            <div className="flex border-b border-border-primary">
-              <button
-                onClick={() => setActiveTab("posts")}
-                className={`flex-1 flex items-center justify-center py-4 transition relative ${
-                  activeTab === "posts" ? "text-text-primary" : "text-text-muted"
-                }`}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={activeTab === "posts" ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>
-                {activeTab === "posts" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
-              </button>
-              <button
-                onClick={() => setActiveTab("moments")}
-                className={`flex-1 flex items-center justify-center py-4 transition relative ${
-                  activeTab === "moments" ? "text-text-primary" : "text-text-muted"
-                }`}
-              >
-                <Clapperboard className="h-[22px] w-[22px]" strokeWidth={activeTab === "moments" ? 2.2 : 1.8} />
-                {activeTab === "moments" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
-              </button>
-              <button
-                onClick={() => setActiveTab("comments")}
-                className={`flex-1 flex items-center justify-center py-4 transition relative ${
-                  activeTab === "comments" ? "text-text-primary" : "text-text-muted"
-                }`}
-              >
-                <MessageCircle className="h-[22px] w-[22px]" strokeWidth={activeTab === "comments" ? 2.2 : 1.8} />
-                {activeTab === "comments" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
-              </button>
-              <button
-                onClick={() => setActiveTab("likes")}
-                className={`flex-1 flex items-center justify-center py-4 transition relative ${
-                  activeTab === "likes" ? "text-text-primary" : "text-text-muted"
-                }`}
-              >
-                <Heart className="h-[22px] w-[22px]" strokeWidth={activeTab === "likes" ? 2.2 : 1.8} />
-                {activeTab === "likes" && <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-accent-main rounded-full" />}
-              </button>
+            <div className="flex gap-[10px] border-b border-border-primary overflow-x-auto scrollbar-hide">
+              {([
+                { id: "all", label: "Hepsi" },
+                { id: "posts", label: "Gönderiler" },
+                { id: "notes", label: "Notlar" },
+                { id: "moments", label: "Moments" },
+                { id: "video", label: "Video" },
+                { id: "likes", label: "Beğeniler" },
+                { id: "comments", label: "Yorumlar" },
+              ] as const).map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`shrink-0 px-3 py-3 text-[0.95rem] font-semibold border-b-[2.5px] transition whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-accent-main text-text-primary"
+                      : "border-transparent text-text-muted"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {/* Posts Tab */}
+            {/* All Tab */}
+            {activeTab === "all" && (
+              <div className="pt-2 -mx-4">
+                {mounted ? (
+                  <PostListSection
+                    posts={allPosts}
+                    loading={allLoading}
+                    hasMore={allHasMore}
+                    onLoadMore={() => { setAllPage(p => p + 1); loadAll(allPage + 1); }}
+                    emptyTitle="Henüz gönderi yok"
+                    emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
+                  />
+                ) : null}
+              </div>
+            )}
+
+            {/* Posts (Articles) Tab */}
             {activeTab === "posts" && (
               <div className="pt-2 -mx-4">
                 {mounted ? (
                   <PostListSection
-                    posts={posts}
-                    loading={postsLoading}
-                    hasMore={hasMore}
-                    onLoadMore={() => { setPage(p => p + 1); loadPosts(page + 1); }}
+                    posts={articlePosts}
+                    loading={articlesLoading}
+                    hasMore={articlesHasMore}
+                    onLoadMore={() => { setArticlesPage(p => p + 1); loadArticles(articlesPage + 1); }}
                     emptyTitle="Henüz gönderi yok"
                     emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
+                  />
+                ) : null}
+              </div>
+            )}
+
+            {/* Notes Tab */}
+            {activeTab === "notes" && (
+              <div className="pt-2 -mx-4">
+                {mounted ? (
+                  <PostListSection
+                    posts={notePosts}
+                    loading={notesLoading}
+                    hasMore={notesHasMore}
+                    onLoadMore={() => { setNotesPage(p => p + 1); loadNotes(notesPage + 1); }}
+                    emptyTitle="Henüz not yok"
+                    emptyDescription={profile.is_own ? "İlk notunuzu paylaşmaya başlayın!" : "Bu kullanıcı henüz not paylaşmamış."}
                   />
                 ) : null}
               </div>
@@ -694,17 +811,17 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </div>
             )}
 
-            {/* Comments Tab */}
-            {activeTab === "comments" && (
+            {/* Video Tab */}
+            {activeTab === "video" && (
               <div className="pt-2 -mx-4">
                 {mounted ? (
                   <PostListSection
-                    posts={commentedPosts}
-                    loading={commentsLoading}
-                    hasMore={commentsHasMore}
-                    onLoadMore={() => { setCommentsPage(p => p + 1); loadComments(commentsPage + 1); }}
-                    emptyTitle="Henüz yorum yok"
-                    emptyDescription={profile.is_own ? "Yorum yaptığınız gönderiler burada görünecek." : "Bu kullanıcı henüz bir gönderiye yorum yapmamış."}
+                    posts={videoPosts}
+                    loading={videosLoading}
+                    hasMore={videosHasMore}
+                    onLoadMore={() => { setVideosPage(p => p + 1); loadVideos(videosPage + 1); }}
+                    emptyTitle="Henüz video yok"
+                    emptyDescription={profile.is_own ? "İlk videonuzu paylaşmaya başlayın!" : "Bu kullanıcı henüz video paylaşmamış."}
                   />
                 ) : null}
               </div>
@@ -721,6 +838,22 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     onLoadMore={() => { setLikesPage(p => p + 1); loadLikes(likesPage + 1); }}
                     emptyTitle="Henüz beğeni yok"
                     emptyDescription={profile.is_own ? "Beğendikleriniz burada görünecek." : "Bu kullanıcı henüz bir gönderi beğenmemiş."}
+                  />
+                ) : null}
+              </div>
+            )}
+
+            {/* Comments Tab */}
+            {activeTab === "comments" && (
+              <div className="pt-2 -mx-4">
+                {mounted ? (
+                  <PostListSection
+                    posts={commentedPosts}
+                    loading={commentsLoading}
+                    hasMore={commentsHasMore}
+                    onLoadMore={() => { setCommentsPage(p => p + 1); loadComments(commentsPage + 1); }}
+                    emptyTitle="Henüz yorum yok"
+                    emptyDescription={profile.is_own ? "Yorum yaptığınız gönderiler burada görünecek." : "Bu kullanıcı henüz bir gönderiye yorum yapmamış."}
                   />
                 ) : null}
               </div>

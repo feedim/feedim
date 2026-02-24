@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
   // Normal flow — redirect to onboarding if not completed
   const returnTo = requestUrl.searchParams.get("returnTo");
   const safeReturnTo = returnTo?.startsWith('/editor/') ? returnTo : null;
-  const defaultDest = needsOnboarding ? "/onboarding" : (safeReturnTo ? `${safeReturnTo}?auth_return=true` : "/dashboard");
+  const defaultDest = needsOnboarding ? "/onboarding" : (safeReturnTo ? `${safeReturnTo}?auth_return=true` : "/");
 
   const normalResponse = new NextResponse(
     `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>

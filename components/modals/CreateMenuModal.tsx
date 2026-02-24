@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, FileText, Trash2, Film, Clapperboard, ArrowLeft } from "lucide-react";
+import { BookOpen, FileText, Trash2, Film, Clapperboard, Users, ArrowLeft } from "lucide-react";
 import Modal from "./Modal";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -90,17 +90,17 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
   };
 
   const handleNewPost = () => {
-    if (pathname === "/dashboard/write") {
+    if (pathname === "/create") {
       feedimAlert("question", "Mevcut gönderi silinecek. Devam etmek istiyor musunuz?", {
         showYesNo: true,
         onYes: () => {
           onClose();
-          window.location.href = "/dashboard/write";
+          window.location.href = "/create";
         },
       });
       return;
     }
-    go("/dashboard/write");
+    go("/create");
   };
 
   const deleteDraft = (draftId: number) => {
@@ -143,7 +143,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
             className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition text-left my-[3px]"
           >
             <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
-              <Plus className="h-[18px] w-[18px] text-accent-main" />
+              <BookOpen className="h-[18px] w-[18px] text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">Gönderi</p>
@@ -151,9 +151,23 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
             </div>
           </button>
 
+          {/* Not */}
+          <button
+            onClick={() => go("/create/note")}
+            className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition text-left my-[3px]"
+          >
+            <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
+              <Users className="h-[18px] w-[18px] text-accent-main" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Not</p>
+              <p className="text-xs text-text-muted mt-0.5">Kısa metin paylaşın (maks 280 karakter)</p>
+            </div>
+          </button>
+
           {/* Video */}
           <button
-            onClick={() => go("/dashboard/write/video")}
+            onClick={() => go("/create/video")}
             className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition text-left my-[3px]"
           >
             <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
@@ -167,7 +181,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
 
           {/* Moment */}
           <button
-            onClick={() => go("/dashboard/write/moment")}
+            onClick={() => go("/create/moment")}
             className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition text-left my-[3px]"
           >
             <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
@@ -218,21 +232,23 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                   className="group w-full flex items-center gap-3 px-3 py-3 rounded-[13px] hover:bg-bg-tertiary transition text-left mb-1"
                 >
                   <button
-                    onClick={() => go(draft.content_type === "moment" ? `/dashboard/write/moment?edit=${draft.slug}` : draft.content_type === "video" ? `/dashboard/write/video?edit=${draft.slug}` : `/dashboard/write?edit=${draft.slug}`)}
+                    onClick={() => go(draft.content_type === "moment" ? `/create/moment?edit=${draft.slug}` : draft.content_type === "video" ? `/create/video?edit=${draft.slug}` : draft.content_type === "note" ? `/create/note?edit=${draft.slug}` : `/create?edit=${draft.slug}`)}
                     className="flex items-center gap-3 flex-1 min-w-0"
                   >
                     {draft.content_type === "moment" ? (
                       <Clapperboard className="h-4 w-4 text-text-muted shrink-0" />
                     ) : draft.content_type === "video" ? (
                       <Film className="h-4 w-4 text-text-muted shrink-0" />
+                    ) : draft.content_type === "note" ? (
+                      <Users className="h-4 w-4 text-text-muted shrink-0" />
                     ) : (
-                      <FileText className="h-4 w-4 text-text-muted shrink-0" />
+                      <BookOpen className="h-4 w-4 text-text-muted shrink-0" />
                     )}
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-medium truncate">{draft.title || "Başlıksız"}</p>
                       <p className="text-xs text-text-muted mt-0.5">
                         {new Date(draft.updated_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        {" "}{draft.content_type === "moment" ? "Moment" : draft.content_type === "video" ? "Video" : "Gönderi"}
+                        {" "}{draft.content_type === "moment" ? "Moment" : draft.content_type === "video" ? "Video" : draft.content_type === "note" ? "Not" : "Gönderi"}
                       </p>
                     </div>
                   </button>

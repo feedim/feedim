@@ -5,6 +5,7 @@ const NOTIFICATION_SETTING_TYPES = [
   "like", "comment", "reply", "mention", "follow",
   "follow_request", "follow_accepted",
   "milestone", "coin_earned", "gift_received", "system",
+  "view_milestone", "device_login",
 ];
 
 // GET — fetch notification settings
