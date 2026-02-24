@@ -881,7 +881,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
       </div>
 
       {/* Content */}
-      <div className="flex flex-col items-start flex-1 min-w-0 ml-[7px]">
+      <div className="flex flex-col items-start flex-1 min-w-0 ml-[9px]">
         {/* Author row + action buttons */}
         <div className="flex w-full justify-between mt-[5px]">
           <div className="flex items-center gap-1.5">
