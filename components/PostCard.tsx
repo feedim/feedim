@@ -55,7 +55,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved }: Post
   const hasThumbnail = !!(post.video_thumbnail || post.featured_image);
   const isMoment = post.content_type === "moment";
   const isVideo = post.content_type === "video" || isMoment;
-  const canPreview = isVideo && !!post.video_url && (!post.video_duration || post.video_duration <= 240);
+  const canPreview = isVideo && !!post.video_url;
   const router = useRouter();
   const postHref = isMoment ? `/dashboard/moments?s=${post.slug}` : `/post/${post.slug}`;
 
