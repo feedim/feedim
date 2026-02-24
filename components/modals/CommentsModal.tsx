@@ -917,7 +917,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           <img src={comment.gif_url} className="mt-0.5 max-w-[200px] rounded-xl cursor-pointer" loading="lazy" alt="GIF" />
         ) : (
           <div
-            className="w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none mt-0.5 break-words pr-[26px]"
+            className="w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px]"
             dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}
           />
         )}
