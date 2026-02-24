@@ -31,12 +31,20 @@ interface ExplorePost {
   save_count?: number;
   trending_score?: number;
   published_at?: string;
+  content_type?: string;
+  video_duration?: number;
+  video_thumbnail?: string;
+  video_url?: string;
+  blurhash?: string | null;
+  is_nsfw?: boolean;
+  moderation_category?: string | null;
   profiles?: {
     user_id: string;
     username: string;
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 

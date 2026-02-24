@@ -31,6 +31,13 @@ interface FeedPost {
   view_count?: number;
   save_count?: number;
   published_at?: string;
+  content_type?: string;
+  video_duration?: number;
+  video_thumbnail?: string;
+  video_url?: string;
+  blurhash?: string | null;
+  is_nsfw?: boolean;
+  moderation_category?: string | null;
   profiles?: {
     user_id: string;
     name?: string;
@@ -40,6 +47,7 @@ interface FeedPost {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
 }
 

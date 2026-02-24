@@ -25,7 +25,16 @@ interface TagPost {
   reading_time?: number;
   like_count?: number;
   comment_count?: number;
+  view_count?: number;
+  save_count?: number;
   published_at?: string;
+  content_type?: string;
+  video_duration?: number;
+  video_thumbnail?: string;
+  video_url?: string;
+  blurhash?: string | null;
+  is_nsfw?: boolean;
+  moderation_category?: string | null;
   profiles?: {
     user_id: string;
     username: string;
