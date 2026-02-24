@@ -861,9 +861,14 @@ interface CommentCardProps {
   renderMentionContent: (text: string) => string;
 }
 
+const COMMENT_TRUNCATE_LENGTH = 300;
+const COMMENT_TRUNCATE_LINES = 6;
+
 const CommentCard = memo(function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, postSlug, onToggleMenu, onLike, onReply, onDelete, onReport, renderMentionContent }: CommentCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const displayName = comment.profiles?.username ? `@${comment.profiles.username}` : "Anonim";
   const profileUsername = comment.profiles?.username || "anonim";
+  const isLong = (comment.content?.length || 0) > COMMENT_TRUNCATE_LENGTH || (comment.content?.split("\n").length || 0) > COMMENT_TRUNCATE_LINES;
   return (
     <div className={cn(
       "flex flex-row w-full py-[6px] px-[11px]",
@@ -916,10 +921,23 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
         {comment.content_type === "gif" && comment.gif_url ? (
           <img src={comment.gif_url} className="mt-0.5 max-w-[200px] rounded-xl cursor-pointer" loading="lazy" alt="GIF" />
         ) : (
-          <div
-            className="w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px]"
-            dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}
-          />
+          <>
+            <div
+              className={cn(
+                "w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px]",
+                !expanded && isLong && "line-clamp-6"
+              )}
+              dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}
+            />
+            {isLong && !expanded && (
+              <button
+                onClick={() => setExpanded(true)}
+                className="text-[0.78rem] text-text-muted hover:text-text-primary transition font-medium mt-0.5"
+              >
+                devamını oku...
+              </button>
+            )}
+          </>
         )}
 
         {/* Bottom action bar */}

@@ -27,6 +27,32 @@ function setActivePreview(id: number | null) {
   previewListeners.forEach(fn => fn(id));
 }
 
+const NOTE_TRUNCATE_LENGTH = 280;
+const NOTE_TRUNCATE_LINES = 5;
+
+function NoteContent({ text, viewCount }: { text: string; viewCount?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = (text?.length || 0) > NOTE_TRUNCATE_LENGTH || (text?.split("\n").length || 0) > NOTE_TRUNCATE_LINES;
+  return (
+    <>
+      <p className={`text-[0.82rem] leading-[1.45] text-text-primary whitespace-pre-line ${!expanded && isLong ? "line-clamp-5" : ""}`}>
+        {text}
+      </p>
+      {isLong && !expanded && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(true); }}
+          className="text-[0.78rem] text-text-muted hover:text-text-primary transition font-medium relative z-[1] pointer-events-auto"
+        >
+          devamını oku...
+        </button>
+      )}
+      {(viewCount ?? 0) > 0 && (
+        <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(viewCount!)} görüntülenme</span>
+      )}
+    </>
+  );
+}
+
 interface PostCardProps {
   post: {
     id: number;
@@ -249,16 +275,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           </div>
 
           {isNote ? (
-            <>
-              {/* Note text — Twitter-style */}
-              <p className="text-[0.82rem] leading-[1.45] text-text-primary whitespace-pre-line line-clamp-5">
-                {post.excerpt || post.title}
-              </p>
-              {/* View count — under note content */}
-              {(post.view_count ?? 0) > 0 && (
-                <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!)} görüntülenme</span>
-              )}
-            </>
+            <NoteContent text={post.excerpt || post.title} viewCount={post.view_count} />
           ) : (
             <>
               {/* Title */}
