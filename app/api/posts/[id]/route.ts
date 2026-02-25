@@ -3,10 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { slugify, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION } from '@/lib/constants';
-import { checkImageContent, checkTextContent } from '@/lib/moderation';
+import { checkNsfwContent } from '@/lib/nsfwCheck';
+import { checkTextContent, checkMetadataContent } from '@/lib/moderation';
 import { checkCopyrightUnified, computeContentHash, stripHtmlToText, normalizeForComparison, computeImageHashFromUrl, COPYRIGHT_THRESHOLDS } from '@/lib/copyright';
 import { createNotification } from '@/lib/notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { safeError } from '@/lib/apiError';
 import sanitizeHtml from 'sanitize-html';
 
 export async function GET(
@@ -103,7 +105,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, content, status, tags, category_id, featured_image, excerpt: customExcerpt, meta_title, meta_description, meta_keywords, allow_comments, is_for_kids, video_url, video_duration, video_thumbnail, content_type, copyright_protected, sound_id, frame_hashes: clientFrameHashes } = body;
+    const { title, content, status, tags, category_id, featured_image, excerpt: customExcerpt, meta_title, meta_description, meta_keywords, allow_comments, is_for_kids, is_ai_content, video_url, video_duration, video_thumbnail, content_type, copyright_protected, sound_id, frame_hashes: clientFrameHashes, visibility } = body;
     const isVideo = content_type === 'video' || content_type === 'moment' || existing.content_type === 'video' || existing.content_type === 'moment';
 
     // Check if user is admin (needed for copyright protection rules)
@@ -179,6 +181,8 @@ export async function PUT(
     if (featured_image !== undefined) updates.featured_image = featured_image || null;
     if (allow_comments !== undefined) updates.allow_comments = allow_comments !== false;
     if (is_for_kids !== undefined) updates.is_for_kids = is_for_kids === true;
+    if (is_ai_content !== undefined) updates.is_ai_content = is_ai_content === true;
+    if (visibility !== undefined && ['public', 'followers', 'only_me'].includes(visibility)) updates.visibility = visibility;
     if (copyright_protected !== undefined) {
       // Prevent non-admin from disabling copyright_protected once enabled
       if (existing.copyright_protected && copyright_protected === false && !isAdminEarly) {
@@ -256,7 +260,7 @@ export async function PUT(
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     // If content cleared, remove related moderation artifacts (reports/logs/decisions)
@@ -363,6 +367,7 @@ export async function PUT(
       const finalTitle = (updates.title as string) || existing.title;
       const finalContent = (updates.content as string) || existing.content || '';
       const admin = createAdminClient();
+      const capturedTags = tags;
       after(async () => {
         try {
           // Unified copyright check with content-type routing
@@ -478,7 +483,7 @@ export async function PUT(
             let moderationHtml = finalContent;
             if (featImg) moderationHtml += `<img src="${featImg.replace(/"/g, '&quot;')}" />`;
             if (isVideo && vidThumb) moderationHtml += `<img src="${vidThumb.replace(/"/g, '&quot;')}" />`;
-            const imgRes = await checkImageContent(moderationHtml);
+            const imgRes = await checkNsfwContent(moderationHtml);
             const scoreStr = imgRes.maxScores
               ? `Porn=${(imgRes.maxScores.Porn).toFixed(2)},Sexy=${(imgRes.maxScores.Sexy).toFixed(2)},Hentai=${(imgRes.maxScores.Hentai).toFixed(2)},Neutral=${(imgRes.maxScores.Neutral).toFixed(2)}`
               : '';
@@ -514,6 +519,22 @@ export async function PUT(
                   target_type: 'post', target_id: String(post.id), decision: 'flagged', reason: txtRes.reason || imgRes.reason || 'Feedim AI tarafından işaretlendi', moderator_id: 'system', decision_code: aiCode,
                 });
               } catch {}
+            }
+
+            // Tag metadata moderation — only if content is clean
+            if (!shouldNSFW && capturedTags && Array.isArray(capturedTags)) {
+              const tagStrings = capturedTags.filter((t: unknown) => typeof t === 'string' && (t as string).trim()) as string[];
+              if (tagStrings.length > 0) {
+                const metaRes = await checkMetadataContent({ tags: tagStrings });
+                if (!metaRes.safe) {
+                  await admin.from('posts').update({
+                    is_nsfw: true,
+                    moderation_due_at: new Date().toISOString(),
+                    moderation_reason: metaRes.reason || 'Tag içeriği uygunsuz',
+                    moderation_category: metaRes.category || null,
+                  }).eq('id', post.id);
+                }
+              }
             }
           }
         } catch {}
@@ -564,7 +585,7 @@ export async function DELETE(
     const { error } = await supabase.from('posts').delete().eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     return NextResponse.json({ success: true });

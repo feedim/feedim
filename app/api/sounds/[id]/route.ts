@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(
   req: NextRequest,
@@ -101,7 +102,7 @@ export async function PATCH(
       .select("id, title, status")
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     return NextResponse.json({ sound });
   } catch {

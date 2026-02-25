@@ -254,7 +254,7 @@ export async function GET(req: NextRequest) {
       headers: { "Cache-Control": "private, max-age=60" },
     });
   } catch (err) {
-    console.error("[suggestions] Error:", err);
+    if (process.env.NODE_ENV === "development") console.error("[suggestions] Error:", err);
     return NextResponse.json({ users: [], hasMore: false, total: 0 }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeError } from "@/lib/apiError";
 
 /**
  * POST /api/posts/[id]/transcode-complete
@@ -72,7 +73,7 @@ export async function POST(
     .eq("id", postId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeError(error);
   }
 
   return NextResponse.json({ ok: true });

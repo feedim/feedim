@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import Modal from "./Modal";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
-
+import { useAuthModal } from "@/components/AuthModal";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 
 interface Visitor {
@@ -33,6 +33,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const { requireAuth } = useAuthModal();
 
   useEffect(() => {
     if (open) {
@@ -95,7 +96,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
                 </Link>
               );
             })}
-            <LoadMoreTrigger onLoadMore={() => { setPage(p => p + 1); loadVisitors(page + 1); }} loading={loading} hasMore={hasMore} />
+            <LoadMoreTrigger onLoadMore={async () => { const u = await requireAuth(); if (!u) return; const next = page + 1; setPage(next); loadVisitors(next); }} loading={loading} hasMore={hasMore} />
           </div>
         )}
       </div>

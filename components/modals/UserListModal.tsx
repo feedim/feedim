@@ -8,6 +8,7 @@ import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowButton from "@/components/FollowButton";
 import UserListItem from "@/components/UserListItem";
 import { feedimAlert } from "@/components/FeedimAlert";
+import { useAuthModal } from "@/components/AuthModal";
 
 interface User {
   user_id: string;
@@ -60,6 +61,7 @@ export default function UserListModal({
   const [toggling, setToggling] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState(filterTabs[0]?.key || "all");
   const [tabSwitching, setTabSwitching] = useState(false);
+  const { requireAuth } = useAuthModal();
 
   useEffect(() => {
     if (open) {
@@ -192,7 +194,7 @@ export default function UserListModal({
                 ) : undefined}
               />
             ))}
-            <LoadMoreTrigger onLoadMore={() => { setPage(p => p + 1); loadUsers(page + 1); }} loading={loading} hasMore={hasMore} />
+            <LoadMoreTrigger onLoadMore={async () => { const u = await requireAuth(); if (!u) return; const next = page + 1; setPage(next); loadUsers(next); }} loading={loading} hasMore={hasMore} />
           </div>
         )}
       </div>

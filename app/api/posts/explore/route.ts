@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { FEED_PAGE_SIZE } from '@/lib/constants';
 import { cached } from '@/lib/cache';
 import { safePage } from '@/lib/utils';
+import { safeError } from '@/lib/apiError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest) {
     const { data: posts, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     // Get followed user IDs for private account visibility

@@ -187,6 +187,9 @@ export default function NotificationsPage() {
   const [followGroupNotif, setFollowGroupNotif] = useState<GroupedNotification | null>(null);
   const [likeGroupPostId, setLikeGroupPostId] = useState<number | null>(null);
 
+  // System notifications banner state
+  const [unreadSystemCount, setUnreadSystemCount] = useState(0);
+
   // Suggestions state
   const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
   const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
@@ -238,6 +241,17 @@ export default function NotificationsPage() {
     }
   }, []);
 
+  const loadUnreadSystemCount = useCallback(async () => {
+    try {
+      // Use count-only endpoint to avoid marking notifications as read
+      const res = await fetch("/api/notifications?count=true&tab=system");
+      const data = await res.json();
+      const count = data.unread_count || 0;
+      // Only set if > 0 to prevent StrictMode double-mount from clearing the count
+      if (count > 0) setUnreadSystemCount(count);
+    } catch {}
+  }, []);
+
   const loadSuggestions = useCallback(async () => {
     try {
       const res = await fetch("/api/suggestions?limit=6");
@@ -260,6 +274,7 @@ export default function NotificationsPage() {
     setNotifications([]);
     setPage(1);
     loadNotifications(tab, 1);
+    if (tab === "system") setUnreadSystemCount(0);
   };
 
   const handleFollow = useCallback(async (userId: string) => {
@@ -291,6 +306,7 @@ export default function NotificationsPage() {
     loadNotifications("social", 1);
     loadFollowRequestInfo();
     loadSuggestions();
+    loadUnreadSystemCount();
   }, []);
 
   const hasUnread = notifications.some(n => !n.is_read);
@@ -365,6 +381,37 @@ export default function NotificationsPage() {
                 <ChevronRight className="h-4 w-4 text-text-muted" />
               </div>
             </button>
+          </>
+        )}
+
+        {/* System Notifications Banner — always visible on social tab */}
+        {activeTab === "social" && (
+          <>
+            <button
+              onClick={() => handleTabChange("system")}
+              className="w-full flex items-center gap-3 mx-3 my-2 px-4 py-3.5 rounded-lg bg-bg-secondary hover:bg-bg-tertiary transition text-left"
+              style={{ width: "calc(100% - 1.5rem)" }}
+            >
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${unreadSystemCount > 0 ? "bg-[var(--accent-color)]/10" : "bg-bg-tertiary"}`}>
+                <Bell className={`h-5 w-5 ${unreadSystemCount > 0 ? "text-[var(--accent-color)]" : "text-text-muted"}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{t("systemNotifications")}</p>
+                {unreadSystemCount > 0 && (
+                  <p className="text-xs text-text-muted">
+                    {t("unreadSystemNotifications", { count: unreadSystemCount > 99 ? "99+" : unreadSystemCount })}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {unreadSystemCount > 0 && (
+                  <span className="bg-[var(--accent-color)] text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                    {unreadSystemCount > 99 ? "99+" : unreadSystemCount}
+                  </span>
+                )}
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </div>
+            </button>
             <div className="mx-3 mt-[5px] border-b border-border-primary/40" />
           </>
         )}
@@ -378,22 +425,19 @@ export default function NotificationsPage() {
           />
         ) : (
           <>
-            {hasUnread && (
-              <div className="flex justify-end px-3 sm:px-4 py-2">
-                <button
-                  onClick={markAllRead}
-                  className="flex items-center gap-1.5 text-xs font-medium text-accent-main hover:text-accent-main/80 transition"
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                  {t("markAllRead")}
-                </button>
-              </div>
-            )}
-
-            {sections.map(section => (
+            {sections.map((section, sectionIdx) => (
               <div key={section.label}>
-                <div className="px-4 pt-4 pb-2">
+                <div className="flex items-center justify-between px-4 pt-4 pb-2">
                   <h3 className="text-[0.78rem] font-bold text-text-muted uppercase tracking-wider">{section.label}</h3>
+                  {sectionIdx === 0 && hasUnread && (
+                    <button
+                      onClick={markAllRead}
+                      className="flex items-center gap-1.5 text-xs font-medium text-accent-main hover:text-accent-main/80 transition"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      {t("markAllRead")}
+                    </button>
+                  )}
                 </div>
                 <div className="px-1.5">
                   {section.items.map(n => {

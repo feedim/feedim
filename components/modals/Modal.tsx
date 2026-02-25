@@ -133,6 +133,7 @@ export default function Modal({
     if (sheetRef.current) {
       sheetRef.current.style.transform = "";
       sheetRef.current.style.transition = "";
+      sheetRef.current.style.animation = "";
     }
     if (backdropRef.current) {
       backdropRef.current.style.opacity = "";
@@ -273,6 +274,7 @@ export default function Modal({
         }
       } else {
         // Not a drag gesture — cleanup
+        if (sheetRef.current) { sheetRef.current.style.animation = ""; sheetRef.current.style.transition = ""; }
         resetDragState();
         return;
       }
@@ -318,7 +320,7 @@ export default function Modal({
     }
 
     if (!isDragging.current || dy < 4) {
-      if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; }
+      if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; sheet.style.animation = ""; }
       if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
       resetDragState();
       return;

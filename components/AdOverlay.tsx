@@ -248,7 +248,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
       </span>
 
       {/* Center: Loader or ad */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-[400px] px-3 sm:px-4 overflow-hidden max-h-[60%]">
+      <div className={`flex-1 flex items-center justify-center w-full max-w-[400px] px-3 sm:px-4 overflow-hidden ${provider.id === "adsense" ? "" : "max-h-[60%]"}`}>
         {!adLoaded && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
@@ -313,7 +313,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
         {canSkip && (
           <button
             onClick={handleSkip}
-            className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 active:bg-white/30 text-white rounded-full pl-4 pr-3 py-2.5 text-[0.82rem] font-semibold backdrop-blur-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-black/60 hover:bg-black/70 active:bg-black/80 text-white rounded-full pl-4 pr-3 py-2.5 text-[0.82rem] font-semibold backdrop-blur-sm transition cursor-pointer border border-white/10"
           >
             {t("skipAd")}
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

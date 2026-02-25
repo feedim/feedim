@@ -44,8 +44,66 @@ function cleanupRateMap() {
   }
 }
 
+// Public paths that support locale prefix (/en/..., /az/...)
+const PUBLIC_LOCALE_PATHS = ['/help', '/landing', '/u/', '/embed/', '/leaving']
+// Matches /{slug} patterns for posts — single segment, not a known app route
+const KNOWN_APP_PREFIXES = [
+  '/api', '/explore', '/moments', '/video', '/note', '/notes', '/posts',
+  '/notifications', '/bookmarks', '/analytics', '/coins', '/settings',
+  '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment',
+  '/subscription-payment', '/transactions', '/withdrawal', '/suggestions',
+  '/create', '/login', '/register', '/onboarding', '/account-moderation',
+  '/premium', '/payment', '/auth', '/help', '/landing', '/u', '/embed', '/leaving',
+]
+
+function isPublicLocalePath(pathname: string): boolean {
+  // Explicit public paths
+  for (const p of PUBLIC_LOCALE_PATHS) {
+    if (pathname === p || pathname.startsWith(p)) return true
+  }
+  // Single-segment paths like /{slug} (post slugs) — not a known app route
+  const segments = pathname.split('/').filter(Boolean)
+  if (segments.length === 1) {
+    const first = '/' + segments[0]
+    if (!KNOWN_APP_PREFIXES.some(p => first === p || first.startsWith(p + '/'))) {
+      return true
+    }
+  }
+  return false
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // ─── 0. Locale prefix handling for public pages ───
+  // /en/help/terms → strip prefix, set locale, rewrite to /help/terms
+  // /az/help/terms → strip prefix, set locale, rewrite to /help/terms
+  // /tr/help/terms → 301 redirect to /help/terms (TR is default, no prefix)
+  const localeMatch = pathname.match(/^\/(en|az|tr)(\/.*)?$/)
+  if (localeMatch) {
+    const urlLocale = localeMatch[1]
+    const restPath = localeMatch[2] || '/'
+
+    // Only handle locale prefixes for public pages
+    if (isPublicLocalePath(restPath)) {
+      // /tr/... → 301 redirect to unprefixed (TR is default)
+      if (urlLocale === DEFAULT_LOCALE) {
+        const url = request.nextUrl.clone()
+        url.pathname = restPath
+        return NextResponse.redirect(url, 301)
+      }
+
+      // /en/... or /az/... → rewrite to unprefixed, set locale
+      const url = request.nextUrl.clone()
+      url.pathname = restPath
+      request.headers.set('x-locale', urlLocale)
+      const response = NextResponse.rewrite(url, { request })
+      response.cookies.set('fdm-locale', urlLocale, {
+        maxAge: 86400 * 365, httpOnly: false, secure: true, sameSite: 'lax', path: '/',
+      })
+      return response
+    }
+  }
 
   // ─── 1. Create Supabase client with cookie-based session ───
   // This is the ONLY place where tokens get refreshed server-side.
@@ -260,7 +318,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 4. Route protection ───
-  const publicAppPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/sounds']
+  const publicAppPaths = ['/explore', '/moments', '/video', '/note', '/notes', '/posts', '/sounds']
   const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/') || pathname.startsWith('/video/') || pathname.startsWith('/note/') || pathname.startsWith('/moments/')
   const appPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create']
   const isAppPath = appPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
@@ -271,6 +329,25 @@ export async function middleware(request: NextRequest) {
     const response = NextResponse.redirect(new URL(path, request.url))
     supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
     return response
+  }
+
+  // Helper: rewrite that preserves refreshed auth cookies
+  const rewrite = (path: string) => {
+    const url = request.nextUrl.clone()
+    url.pathname = path
+    const response = NextResponse.rewrite(url)
+    supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
+    return response
+  }
+
+  // Unauthenticated on home → show landing page
+  if (!isAuthenticated && pathname === '/') {
+    return rewrite('/landing')
+  }
+
+  // Authenticated on landing → go to home
+  if (isAuthenticated && pathname === '/landing') {
+    return redirect('/')
   }
 
   // Unauthenticated → login (protected routes)
@@ -295,6 +372,10 @@ export const config = {
   matcher: [
     '/',
     '/api/:path*',
+    // Locale-prefixed public paths
+    '/en/:path*',
+    '/az/:path*',
+    '/tr/:path*',
     // App routes (was /dashboard/:path*)
     '/explore/:path*',
     '/moments',
@@ -321,6 +402,7 @@ export const config = {
     '/suggestions',
     '/create/:path*',
     // Auth & other
+    '/landing',
     '/login',
     '/register',
     '/onboarding',
@@ -328,5 +410,7 @@ export const config = {
     '/account-moderation',
     '/premium',
     '/payment/:path*',
+    // Dynamic post sub-routes that need auth
+    '/:slug/moderation',
   ],
 }

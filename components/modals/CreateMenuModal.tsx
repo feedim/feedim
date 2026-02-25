@@ -258,7 +258,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteDraft(draft.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-bg-tertiary transition text-text-muted hover:text-error shrink-0"
+                    className="p-2 rounded-full hover:bg-bg-tertiary transition text-text-muted hover:text-error shrink-0"
                     title="Sil"
                     aria-label="Taslağı sil"
                   >

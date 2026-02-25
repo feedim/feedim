@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeError } from "@/lib/apiError";
 
 export async function DELETE(
   _req: NextRequest,
@@ -27,7 +28,7 @@ export async function DELETE(
   if (comment.author_id !== user.id && !isAdmin) return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
 
   const { error } = await admin.from("comments").delete().eq("id", commentId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return safeError(error);
 
   // Recalculate post comment_count (exclude NSFW)
   try {

@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import { getAlternateLanguages } from "@/lib/seo";
 
 const contentMap: Record<string, () => Promise<{ default: React.ComponentType }>> = {
   tr: () => import("./content.tr"),
@@ -12,6 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("contact.title"),
     description: t("contact.description"),
+    alternates: {
+      languages: getAlternateLanguages("/help/contact"),
+    },
   };
 }
 

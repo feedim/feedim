@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: true });
 
     if (appsError) {
-      console.error('copyright_applications query error:', appsError);
+      if (process.env.NODE_ENV === "development") console.error('copyright_applications query error:', appsError);
       return NextResponse.json({ applications: [], total: 0 });
     }
 

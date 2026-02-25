@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {useRouter, useSearchParams } from "next/navigation";
-import { emitNavigationStart } from "@/lib/navigationProgress";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Trash2, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -29,7 +28,6 @@ export default function DeleteAccountPage() {
   const [password, setPassword] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleDelete = async () => {
@@ -81,9 +79,9 @@ export default function DeleteAccountPage() {
         throw new Error(data.error || t("deleteAccountFailed"));
       }
 
-      await supabase.auth.signOut();
-      emitNavigationStart();
-      router.push("/");
+      const { signOutCleanup } = await import("@/lib/authClient");
+      await signOutCleanup();
+      window.location.replace("/");
     } catch (error: any) {
       feedimAlert("error", error.message || t("genericError"));
     } finally {

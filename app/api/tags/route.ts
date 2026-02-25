@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { transliterateTurkish, formatTagName } from '@/lib/utils';
 import { VALIDATION } from '@/lib/constants';
+import { safeError } from '@/lib/apiError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     const response = NextResponse.json({ tags: data });

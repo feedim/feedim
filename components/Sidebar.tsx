@@ -114,6 +114,7 @@ export default memo(function Sidebar() {
             : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
         }`}
       >
+        {indent && <span className="w-[2px] h-3.5 rounded-full bg-border-primary shrink-0 -ml-1" />}
         <div className="relative shrink-0">
           <Icon className="h-5 w-5" />
           {item.label === notificationsLabel && unreadCount > 0 && (

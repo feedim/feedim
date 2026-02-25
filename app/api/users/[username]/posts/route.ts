@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(
   req: NextRequest,
@@ -80,7 +81,7 @@ export async function GET(
     .range(from, to);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeError(error);
   }
 
   const normalized = (posts || []).map((p: any) => ({

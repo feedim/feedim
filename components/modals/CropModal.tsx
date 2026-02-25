@@ -12,6 +12,8 @@ interface CropModalProps {
   /** width / height — default 16/9 */
   aspectRatio?: number;
   onCrop: (croppedDataUrl: string) => void;
+  /** Optional callback to replace the image being cropped */
+  onChangeImage?: () => void;
 }
 
 export default function CropModal({
@@ -20,6 +22,7 @@ export default function CropModal({
   imageSrc,
   aspectRatio = 16 / 9,
   onCrop,
+  onChangeImage,
 }: CropModalProps) {
   const t = useTranslations("modals");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,6 +36,9 @@ export default function CropModal({
   // Natural image size
   const [naturalW, setNaturalW] = useState(0);
   const [naturalH, setNaturalH] = useState(0);
+
+  // Safe src: convert external URLs to blob URLs to avoid tainted canvas
+  const [safeSrc, setSafeSrc] = useState("");
 
   // Drag state
   const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
@@ -67,6 +73,33 @@ export default function CropModal({
       }, 200);
       return () => clearTimeout(timer);
     }
+  }, [open, imageSrc]);
+
+  // Convert external URLs to blob URLs to avoid tainted canvas SecurityError
+  useEffect(() => {
+    if (!open || !imageSrc) { setSafeSrc(""); return; }
+    // data: and blob: URLs are already same-origin safe
+    if (imageSrc.startsWith("data:") || imageSrc.startsWith("blob:")) {
+      setSafeSrc(imageSrc);
+      return;
+    }
+    // External/CDN URLs: fetch as blob → create object URL (bypasses CORS canvas tainting)
+    let cancelled = false;
+    let objectUrl = "";
+    fetch(imageSrc)
+      .then(r => r.blob())
+      .then(blob => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSafeSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setSafeSrc(imageSrc);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [open, imageSrc]);
 
   const handleImgLoad = useCallback(() => {
@@ -299,15 +332,17 @@ export default function CropModal({
             transition: dragStart.current ? "none" : "transform 0.1s ease-out",
           }}
         >
+          {safeSrc && (
           <img
-            key={imageSrc}
+            key={safeSrc}
             ref={imgRef}
-            src={imageSrc}
+            src={safeSrc}
             alt=""
             onLoad={handleImgLoad}
             className="w-full h-full object-cover"
             draggable={false}
           />
+          )}
         </div>
 
         {/* Overlay mask — darkens outside crop */}
@@ -403,6 +438,14 @@ export default function CropModal({
         >
           <RotateCcw className="h-4 w-4" />
         </button>
+        {onChangeImage && (
+          <button
+            onClick={() => { onClose(); onChangeImage(); }}
+            className="ml-auto text-sm text-text-muted hover:text-text-primary font-medium transition"
+          >
+            {t("cropChange")}
+          </button>
+        )}
       </div>
     </div>,
     document.body

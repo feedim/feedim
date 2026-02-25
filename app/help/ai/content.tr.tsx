@@ -10,6 +10,37 @@ export default function ContentTr() {
           AI, içerik moderasyonundan SEO üretimine, telif hakkı taramasından profil puanı hesaplamaya kadar birçok alanda kullanılır.
         </p>
 
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Yapay Zeka ile Oluşturulan İçerikler</h2>
+        <p>
+          Feedim, yapay zeka ile oluşturulan içeriklerin (metin, görsel, video) şeffaf bir şekilde bildirilmesini talep eder.
+          İçerik oluştururken &ldquo;Yapay zeka içeriği&rdquo; seçeneğini açarak içeriğinizin AI tarafından üretildiğini beyan edebilirsiniz.
+        </p>
+
+        <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
+          <h3 className="text-sm font-bold text-text-primary">Neden ayırıyoruz?</h3>
+          <ul className="list-disc pl-5 space-y-2 text-text-muted text-xs">
+            <li><strong className="text-text-primary">Şeffaflık</strong> &mdash; Kullanıcıların bir içeriğin insan mı yoksa AI tarafından mı oluşturulduğunu bilme hakkı vardır</li>
+            <li><strong className="text-text-primary">Güven</strong> &mdash; Orijinal insan emeği ile üretilen içerikler ile AI içeriklerinin ayırt edilmesi platform güvenini artırır</li>
+            <li><strong className="text-text-primary">Adil keşif</strong> &mdash; İçerik önerme algoritmaları, AI içeriklerini orijinal içeriklerden ayrı değerlendirerek adil bir keşif deneyimi sunar</li>
+            <li><strong className="text-text-primary">Yasal uyum</strong> &mdash; Birçok ülkede yapay zeka ile üretilen içeriklerin etiketlenmesi yasal zorunluluk haline gelmektedir</li>
+          </ul>
+        </div>
+
+        <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3 mt-4">
+          <h3 className="text-sm font-bold text-text-primary">Bildirilmezse ne olur?</h3>
+          <ul className="list-disc pl-5 space-y-2 text-text-muted text-xs">
+            <li>Feedim AI, metin ve görsellerde yapay zeka üretim kalıplarını otomatik olarak tespit edebilir</li>
+            <li>AI tarafından üretildiği tespit edilen ancak bildirilmemiş içerikler, <strong className="text-text-primary">profil güven puanını düşürür</strong></li>
+            <li>Tekrarlayan durumlarda içerik moderasyona alınabilir ve hesap kısıtlamaları uygulanabilir</li>
+            <li>AI ile oluşturulmuş içeriklerde telif hakkı koruması talep edilemez</li>
+          </ul>
+        </div>
+
+        <p className="text-xs text-text-muted italic">
+          Not: AI araçlarını yardımcı olarak kullanan (örn. yazım düzeltme, dil kontrolü) ancak içeriğin özünü kendi oluşturan kullanıcıların
+          bu seçeneği açması gerekmez. Seçenek, içeriğin büyük ölçüde veya tamamen AI tarafından üretildiği durumlar içindir.
+        </p>
+
         <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Metin Analizi</h2>
         <p>
           Her gönderi, moment veya yorum yayınlanırken metin içeriği AI tarafından otomatik olarak taranır.

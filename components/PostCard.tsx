@@ -106,6 +106,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   const postHref = getPostUrl(post.slug, post.content_type);
   const { user: ctxUser } = useUser();
   const { requireAuth } = useAuthModal();
+  const [isDeleted, setIsDeleted] = useState(false);
 
   const [inView, setInView] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
@@ -221,9 +222,11 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
 
   const thumbnail = post.video_thumbnail || post.featured_image;
 
+  if (isDeleted) return null;
+
   return (
     <div>
-    <article className="pt-[4px] pb-[9px] pl-3 pr-3.5 mx-[10px] hover:bg-bg-secondary rounded-[24px] transition-colors overflow-hidden">
+    <article className="pt-[4px] pb-[9px] pl-[10px] pr-[12px] mx-[5px] hover:bg-bg-secondary rounded-[24px] transition-colors overflow-hidden">
       <div className="flex gap-2 items-stretch">
         {/* Avatar — fixed left column with timeline line */}
         <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
@@ -276,7 +279,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                   authorName={author?.full_name || author?.username}
                   postSlug={post.slug}
                   contentType={post.content_type as "post" | "video" | "moment" | undefined}
-                  onDeleteSuccess={onDelete ? () => onDelete(post.id) : undefined}
+                  onDeleteSuccess={() => { if (onDelete) onDelete(post.id); else setIsDeleted(true); }}
                 />
               </div>
             </div>
@@ -398,24 +401,24 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
 
           {/* View count (non-note posts) */}
           {!isNote && (post.view_count ?? 0) > 0 && (
-            <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
+            <span className="relative z-[1] text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
           )}
 
           {/* NSFW moderation badge */}
           {post.is_nsfw && (
-            <ModerationBadge label={t('post.underReview')} className="mt-2" />
+            <ModerationBadge label={t('post.underReview')} className="relative z-[1] mt-2" />
           )}
 
           {/* Copyright badge */}
           {!post.is_nsfw && (post.moderation_category === 'copyright' || post.moderation_category === 'kopya_icerik') && (
-            <div className="flex items-center gap-1 text-warning text-xs mt-1">
+            <div className="relative z-[1] flex items-center gap-1 text-warning text-xs mt-1">
               <Copyright size={12} />
               <span>{post.moderation_category === 'kopya_icerik' ? t('post.duplicateContent') : t('post.copyrightNotice')}</span>
             </div>
           )}
 
           {/* Actions — inside content column, below view count */}
-          <div className="mt-1.5">
+          <div className="relative z-[1] mt-1.5">
             <PostInteractionBar
               postId={post.id}
               postUrl={postHref}

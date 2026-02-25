@@ -963,3 +963,37 @@ export async function generateSeoFieldsAI(
 
   return { keyword: fallbackKeyword, description: fallbackDescription };
 }
+
+// ─── Locale-Aware URL Utilities (SEO hreflang) ───
+
+import { locales, defaultLocale } from "@/i18n/config";
+
+const SEO_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
+
+/** Build a full URL with locale prefix (no prefix for default locale) */
+export function getLocalizedUrl(path: string, locale: string): string {
+  const clean = path.startsWith("/") ? path : `/${path}`;
+  if (locale === defaultLocale) return `${SEO_BASE_URL}${clean}`;
+  return `${SEO_BASE_URL}/${locale}${clean}`;
+}
+
+/** Generate alternates.languages object for Next.js Metadata (includes x-default) */
+export function getAlternateLanguages(path: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const locale of locales) {
+    result[locale] = getLocalizedUrl(path, locale);
+  }
+  result["x-default"] = getLocalizedUrl(path, defaultLocale);
+  return result;
+}
+
+/** Canonical URL for the given locale */
+export function getCanonicalUrl(path: string, locale: string): string {
+  return getLocalizedUrl(path, locale);
+}
+
+/** Add locale prefix to a path (for internal links in client components) */
+export function localizedPath(path: string, locale: string): string {
+  if (locale === defaultLocale) return path;
+  return `/${locale}${path}`;
+}

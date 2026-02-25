@@ -247,6 +247,12 @@ function LoginPageContent() {
 
       try { sessionStorage.removeItem("fdm_switch_account"); } catch {}
 
+      // Broadcast sign-in to other tabs
+      try {
+        const { broadcastSignIn } = await import("@/lib/authClient");
+        broadcastSignIn();
+      } catch {}
+
       // Increment login counter and flag location request every 4th login
       try {
         const prev = parseInt(localStorage.getItem("fdm-login-count") || "0", 10);

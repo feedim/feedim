@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
+import { safeError } from "@/lib/apiError";
 
 interface RouteParams {
   params: Promise<{ id: string; commentId: string }>;
@@ -39,7 +40,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       .from("comment_likes")
       .insert({ user_id: user.id, comment_id: cId });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     // Update like_count
     const { count } = await admin
@@ -84,7 +85,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
       .eq("user_id", user.id)
       .eq("comment_id", cId);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     // Update like_count
     const { count } = await admin

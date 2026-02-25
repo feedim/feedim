@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (paymentError) {
-      console.error('[PayTR] Payment insert failed:', paymentError.message);
+      if (process.env.NODE_ENV === "development") console.error('[PayTR] Payment insert failed:', paymentError.message);
       return NextResponse.json({ success: false, error: 'Ödeme kaydı oluşturulamadı' }, { status: 500 });
     }
 

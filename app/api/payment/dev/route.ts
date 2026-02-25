@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
           is_verified: true,
         }).eq("user_id", user.id);
         // Not: Migration 010 çalıştırıldıktan sonra bu sorun ortadan kalkar
-        console.warn("profiles_premium_plan_check constraint needs migration 010");
+        if (process.env.NODE_ENV === "development") console.warn("profiles_premium_plan_check constraint needs migration 010");
       }
 
       return NextResponse.json({
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Geçersiz işlem tipi" }, { status: 400 });
   } catch (error: any) {
-    console.error("Dev payment error:", error);
+    if (process.env.NODE_ENV === "development") console.error("Dev payment error:", error);
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
   }
 }

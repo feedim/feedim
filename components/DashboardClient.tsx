@@ -98,14 +98,17 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
     const newIds = posts.map(p => p.id).filter(id => !fetchedInteractionIds.current.has(id));
     if (newIds.length === 0) return;
     newIds.forEach(id => fetchedInteractionIds.current.add(id));
+    let cancelled = false;
     fetch(`/api/posts/batch-interactions?ids=${newIds.join(",")}`)
       .then(r => r.json())
       .then(data => {
+        if (cancelled) return;
         if (data.interactions) {
           setInteractions(prev => ({ ...prev, ...data.interactions }));
         }
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [posts, isLoggedIn]);
 
   // Premium hoşgeldin modalı

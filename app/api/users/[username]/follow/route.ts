@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
 import { cache } from "@/lib/cache";
 import { getUserPlan, checkDailyLimit, logRateLimitHit } from "@/lib/limits";
+import { safeError } from "@/lib/apiError";
 
 export async function POST(
   req: NextRequest,
@@ -97,7 +98,7 @@ export async function POST(
     const { error } = await admin
       .from("follow_requests")
       .insert({ requester_id: user.id, target_id: target.user_id, status: "pending" });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
     await createNotification({
       admin,
       user_id: target.user_id,
@@ -112,7 +113,7 @@ export async function POST(
   const { error } = await admin
     .from("follows")
     .insert({ follower_id: user.id, following_id: target.user_id });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return safeError(error);
   // Invalidate follows cache
   cache.delete(`user:${user.id}:follows`);
   await createNotification({

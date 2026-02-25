@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { checkImageBuffer } from '@/lib/moderation';
+import { checkNsfwBuffer } from '@/lib/nsfwCheck';
 import { uploadToR2 } from '@/lib/r2';
 import { encode as encodeBlurhash } from 'blurhash';
 import { computeImageHash } from '@/lib/copyright';
-import { validateMagicBytes, stripMetadataAndOptimize } from '@/lib/imageSecurityUtils';
+import { validateMagicBytes, stripMetadataAndOptimize, extractFeedimId, generateFeedimFileId } from '@/lib/imageSecurityUtils';
+import { safeError } from '@/lib/apiError';
+import sharp from 'sharp';
 import * as jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 
@@ -62,13 +64,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Geçersiz dosya içeriği' }, { status: 400 });
     }
 
-    // Metadata strip + optimize
-    const { buffer: cleanBuffer, mimeType: cleanType } = await stripMetadataAndOptimize(imageBuffer, file.type);
+    // Check if image already has a Feedim file ID (re-upload detection)
+    let originFileId: string | null = null;
+    try {
+      const metadata = await sharp(imageBuffer).metadata();
+      if (metadata.exif) {
+        originFileId = extractFeedimId(metadata.exif);
+      }
+    } catch {}
+
+    // Generate new Feedim file ID
+    const feedimFileId = generateFeedimFileId();
+
+    // Metadata strip + optimize (embeds new feedimFileId in EXIF)
+    const { buffer: cleanBuffer, mimeType: cleanType } = await stripMetadataAndOptimize(imageBuffer, file.type, feedimFileId);
 
     // NSFW pre-check — don't block upload, just tag it. Final check at publish time.
     let nsfwFlag = false;
     try {
-      const nsfwResult = await checkImageBuffer(cleanBuffer, cleanType);
+      const nsfwResult = await checkNsfwBuffer(cleanBuffer, cleanType, 'standard');
       if (nsfwResult.action === 'flag') nsfwFlag = true;
     } catch {}
 
@@ -101,8 +115,8 @@ export async function POST(request: NextRequest) {
       // Hash generation failed — return without it
     }
 
-    return NextResponse.json({ success: true, url, blurhash, imageHash, nsfw: nsfwFlag });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Yükleme hatası' }, { status: 500 });
+    return NextResponse.json({ success: true, url, blurhash, imageHash, nsfw: nsfwFlag, feedimFileId, originFileId });
+  } catch (error: unknown) {
+    return safeError(error);
   }
 }

@@ -260,12 +260,10 @@ export default function SuggestionWidget() {
                           @{post.author.username}
                         </span>
                         {post.author.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(post.author.premium_plan)} role={post.author.role} />}
+                        {post.published_at && (
+                          <span className="text-[0.56rem] text-text-muted/50 leading-none shrink-0">· {formatRelativeDate(post.published_at)}</span>
+                        )}
                       </div>
-                      {post.published_at && (
-                        <span className="text-[0.56rem] text-text-muted/70 leading-none relative -top-[2px]">
-                          {formatRelativeDate(post.published_at)}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <div className="flex justify-between items-start gap-3">

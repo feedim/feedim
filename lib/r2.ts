@@ -17,7 +17,8 @@ export async function uploadToR2(
   key: string,
   body: Buffer | Uint8Array,
   contentType: string,
-  cacheControl = "public, max-age=31536000, immutable"
+  cacheControl = "public, max-age=31536000, immutable",
+  customMetadata?: Record<string, string>,
 ) {
   await R2.send(
     new PutObjectCommand({
@@ -26,6 +27,7 @@ export async function uploadToR2(
       Body: body,
       ContentType: contentType,
       CacheControl: cacheControl,
+      ...(customMetadata ? { Metadata: customMetadata } : {}),
     })
   );
   return `${PUBLIC_URL}/${key}`;
@@ -35,7 +37,8 @@ export async function getPresignedUploadUrl(
   key: string,
   contentType: string,
   expiresIn = 3600,
-  cacheControl = "public, max-age=31536000, immutable"
+  cacheControl = "public, max-age=31536000, immutable",
+  customMetadata?: Record<string, string>,
 ) {
   const url = await getSignedUrl(
     R2,
@@ -44,6 +47,7 @@ export async function getPresignedUploadUrl(
       Key: key,
       ContentType: contentType,
       CacheControl: cacheControl,
+      ...(customMetadata ? { Metadata: customMetadata } : {}),
     }),
     { expiresIn }
   );

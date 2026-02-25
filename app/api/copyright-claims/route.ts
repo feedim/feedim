@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
+import { safeError } from '@/lib/apiError';
 
 // GET: Return the authenticated user's own copyright claims
 export async function GET() {
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
       .eq('id', existingClaim.id);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return safeError(updateError);
     }
 
     // Send notification to the user confirming submission

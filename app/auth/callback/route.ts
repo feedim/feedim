@@ -155,6 +155,7 @@ export async function GET(request: NextRequest) {
           } catch(e) {}
         })();
 
+        try { new BroadcastChannel("fdm-auth").postMessage({ type: "SIGNED_IN" }); } catch(e) {}
         var saved = localStorage.getItem('fdm_auth_return');
         if (${needsOnboarding}) {
           localStorage.removeItem('fdm_auth_return');

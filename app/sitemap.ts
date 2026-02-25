@@ -1,27 +1,63 @@
 import { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { locales, defaultLocale } from '@/i18n/config'
+
+function buildAlternates(baseUrl: string, path: string) {
+  const languages: Record<string, string> = {}
+  for (const locale of locales) {
+    languages[locale] = locale === defaultLocale
+      ? `${baseUrl}${path}`
+      : `${baseUrl}/${locale}${path}`
+  }
+  return { languages }
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://feedim.com'
   const now = new Date().toISOString()
 
-  // Static pages
+  // Static pages — public pages get locale alternates
+  const publicStaticPaths = [
+    { path: '/help', changeFrequency: 'monthly' as const, priority: 0.6 },
+    { path: '/help/about', changeFrequency: 'monthly' as const, priority: 0.5 },
+    { path: '/help/terms', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/privacy', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/disclaimer', changeFrequency: 'monthly' as const, priority: 0.2 },
+    { path: '/help/contact', changeFrequency: 'monthly' as const, priority: 0.5 },
+    { path: '/help/community-guidelines', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/copyright', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/coins', changeFrequency: 'monthly' as const, priority: 0.4 },
+    { path: '/help/earning', changeFrequency: 'monthly' as const, priority: 0.4 },
+    { path: '/help/analytics', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/moderation', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/ai', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/content-types', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/data-sharing', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/access-restrictions', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/accessibility', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/payment-security', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/refund-policy', changeFrequency: 'monthly' as const, priority: 0.3 },
+    { path: '/help/distance-sales-contract', changeFrequency: 'monthly' as const, priority: 0.2 },
+    { path: '/help/pre-information-form', changeFrequency: 'monthly' as const, priority: 0.2 },
+  ]
+
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: now, changeFrequency: 'daily', priority: 1 },
     { url: `${baseUrl}/premium`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/help`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/kvkk`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/disclaimer`, lastModified: now, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${baseUrl}/explore`, changeFrequency: 'hourly' as const, priority: 0.9 },
     { url: `${baseUrl}/moments`, changeFrequency: 'hourly' as const, priority: 0.8 },
     { url: `${baseUrl}/video`, changeFrequency: 'hourly' as const, priority: 0.8 },
     { url: `${baseUrl}/notes`, changeFrequency: 'hourly' as const, priority: 0.7 },
     { url: `${baseUrl}/posts`, changeFrequency: 'hourly' as const, priority: 0.7 },
     { url: `${baseUrl}/sounds`, changeFrequency: 'daily' as const, priority: 0.5 },
+    // Public pages with locale alternates
+    ...publicStaticPaths.map(({ path, changeFrequency, priority }) => ({
+      url: `${baseUrl}${path}`,
+      lastModified: now,
+      changeFrequency,
+      priority,
+      alternates: buildAlternates(baseUrl, path),
+    })),
   ]
 
   const supabase = await createClient()
@@ -41,6 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: post.updated_at || post.published_at || now,
         changeFrequency: 'weekly' as const,
         priority: 0.8,
+        alternates: buildAlternates(baseUrl, `/${encodeURIComponent(post.slug)}`),
       }))
     }
   } catch {
@@ -63,6 +100,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: p.updated_at || now,
         changeFrequency: 'weekly' as const,
         priority: 0.6,
+        alternates: buildAlternates(baseUrl, `/u/${encodeURIComponent(p.username)}`),
       }))
     }
   } catch {}

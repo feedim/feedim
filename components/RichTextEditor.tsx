@@ -19,6 +19,7 @@ interface RichTextEditorProps {
   onEmojiClick?: () => void;
   onGifClick?: () => void;
   onMentionSearch?: (query: string) => Promise<MentionUser[]>;
+  onCropImage?: (src: string) => Promise<string>;
   onSave?: () => void;
   onPublish?: () => void;
   placeholder?: string;
@@ -36,6 +37,8 @@ export interface RichTextEditorHandle {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  getSelectedImageSrc: () => string | null;
+  replaceSelectedImage: (newSrc: string) => void;
 }
 
 function escapeAttr(s: string) {
@@ -46,7 +49,7 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onSave, onPublish, placeholder }, ref) {
+const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onCropImage, onSave, onPublish, placeholder }, ref) {
   const t = useTranslations("editor");
   const resolvedPlaceholder = placeholder || t("defaultPlaceholder");
   const editorRef = useRef<HTMLDivElement>(null);
@@ -120,6 +123,21 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     redo,
     canUndo: () => historyIndexRef.current > 0,
     canRedo: () => historyIndexRef.current < historyRef.current.length - 1,
+    getSelectedImageSrc: () => {
+      if (!editorRef.current) return null;
+      const sel = editorRef.current.querySelector(".image-wrapper.selected img") as HTMLImageElement | null;
+      return sel?.src || null;
+    },
+    replaceSelectedImage: (newSrc: string) => {
+      if (!editorRef.current) return;
+      const sel = editorRef.current.querySelector(".image-wrapper.selected img") as HTMLImageElement | null;
+      if (sel) {
+        sel.src = newSrc;
+        isInternalUpdate.current = true;
+        onChange(editorRef.current.innerHTML);
+        addToHistory();
+      }
+    },
   }));
 
   // Track caption focus — hide toolbar when editing captions
@@ -966,7 +984,20 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         : node.parentElement?.closest("h2, h3, .image-caption, th, td, blockquote"))
     );
     if (isRestricted) {
-      document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+      let plainText = e.clipboardData.getData("text/plain");
+      // Enforce caption character limit
+      const captionEl = node instanceof Node && (
+        node.nodeType === Node.ELEMENT_NODE
+          ? (node as HTMLElement).closest(".image-caption")
+          : node.parentElement?.closest(".image-caption")
+      ) as HTMLElement | null;
+      if (captionEl) {
+        const current = (captionEl.textContent || "").length;
+        const remaining = Math.max(0, 150 - current);
+        plainText = plainText.slice(0, remaining);
+        if (!plainText) return;
+      }
+      document.execCommand("insertText", false, plainText);
       return;
     }
 
@@ -1102,11 +1133,21 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     const headingRestricted = isInHeading || selIntersectsHeading;
     const blockquoteRestricted = isInBlockquote || selIntersectsBlockquote;
 
-    // --- Caption guard: sadece düz metin, formatlama yok ---
-    if (isInCaption && isMod) {
-      const k = e.key.toLowerCase();
-      if (["b", "i", "u", "k"].includes(k)) { e.preventDefault(); return; }
-      if (e.shiftKey && ["7", "8", "9"].includes(e.key)) { e.preventDefault(); return; }
+    // --- Caption guard: sadece düz metin, formatlama yok, 150 karakter sınırı ---
+    if (isInCaption) {
+      if (isMod) {
+        const k = e.key.toLowerCase();
+        if (["b", "i", "u", "k"].includes(k)) { e.preventDefault(); return; }
+        if (e.shiftKey && ["7", "8", "9"].includes(e.key)) { e.preventDefault(); return; }
+      }
+      // Character limit for captions
+      const captionEl = (anchorNode?.nodeType === Node.ELEMENT_NODE
+        ? (anchorNode as HTMLElement).closest(".image-caption")
+        : anchorNode?.parentElement?.closest(".image-caption")) as HTMLElement | null;
+      if (captionEl && !e.metaKey && !e.ctrlKey && e.key.length === 1 && !sel?.toString()) {
+        const text = captionEl.textContent || "";
+        if (text.length >= 150) { e.preventDefault(); return; }
+      }
     }
 
     // --- Tablo guard: tablo içinde başlık/liste/blockquote yok ---
@@ -1412,10 +1453,27 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     { icon: AlignRightSvg, onClick: handleAlignRight, title: t("alignRight"), key: "alignRight" },
   ];
 
-  // Media management buttons — blok yönetimi + seçim kaldır
+  // Handle crop for selected image
+  const handleCropSelectedImage = useCallback(async () => {
+    if (!onCropImage || !editorRef.current) return;
+    const img = editorRef.current.querySelector(".image-wrapper.selected img") as HTMLImageElement | null;
+    if (!img?.src) return;
+    try {
+      const newSrc = await onCropImage(img.src);
+      if (newSrc) {
+        img.src = newSrc;
+        isInternalUpdate.current = true;
+        onChange(editorRef.current.innerHTML);
+        addToHistory();
+      }
+    } catch {}
+  }, [onCropImage, onChange, addToHistory]);
+
+  // Media management buttons — blok yönetimi + kırp + seçim kaldır
   const mediaButtons: (ToolbarBtn | null)[] = [
     ...blockManagementButtons,
     null,
+    ...(onCropImage && (() => { const s = editorRef.current?.querySelector(".image-wrapper.selected img")?.getAttribute("src") || ""; return !/\.gif(\?|$)/i.test(s) && !s.includes("giphy."); })() ? [{ icon: CropSvg, onClick: handleCropSelectedImage, title: t("crop") }] : []),
     { icon: DeselectSvg, onClick: deselectAllMedia, title: t("deselect") },
   ];
 
@@ -1865,6 +1923,7 @@ const LinkSvg = <svg {...s}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.
 const ImageSvg = <svg {...s}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>;
 
 // Media management SVG icons
+const CropSvg = <svg {...s}><path d="M6 2v4H2M18 22v-4h4M22 18H6a2 2 0 01-2-2V2"/><path d="M2 6h16a2 2 0 012 2v16"/></svg>;
 const DeselectSvg = <svg {...s}><path d="M18 6L6 18M6 6l12 12"/></svg>;
 const DeleteBlockSvg = <svg {...s}><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>;
 const MoveUpSvg = <svg {...s}><path d="M12 19V5M5 12l7-7 7 7"/></svg>;

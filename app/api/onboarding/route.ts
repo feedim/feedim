@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkTextContent } from "@/lib/moderation";
 import { getTranslations } from "next-intl/server";
+import { safeError } from "@/lib/apiError";
 
 /** POST — Save onboarding step data & advance progression */
 export async function POST(req: NextRequest) {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .update({ onboarding_completed: true, onboarding_step: 10 })
       .eq("user_id", user.id);
-    if (completeErr) return NextResponse.json({ error: completeErr.message }, { status: 500 });
+    if (completeErr) return safeError(completeErr);
 
     // Set onboarding cookie so middleware skips DB check
     const res = NextResponse.json({ completed: true });
@@ -147,48 +148,9 @@ export async function POST(req: NextRequest) {
   const { data: onbProfile } = await (createAdminClient()).from('profiles').select('role').eq('user_id', user.id).single();
   const isAdminUser = onbProfile?.role === 'admin';
 
-  // Only run AI moderation when text fields are being updated (not for enums like gender)
-  const TEXT_FIELDS = ['full_name', 'name', 'surname', 'username', 'bio'];
-  const hasTextUpdates = Object.keys(updates).some(k => TEXT_FIELDS.includes(k));
-
   if (Object.keys(updates).length > 0) {
-    // Synchronous AI moderation for onboarding profile fields — admin immune
-    if (hasTextUpdates && !isAdminUser) try {
-      const supa = await createClient();
-      const { data: curr } = await supa
-        .from('profiles')
-        .select('name, surname, username, bio')
-        .eq('user_id', user.id)
-        .single();
-      const text = [updates.full_name, curr?.name, curr?.surname, curr?.username, updates.bio]
-        .filter(Boolean).join(' ').slice(0, 500);
-      if (text && text.trim().length >= 3) {
-        // Overall
-        const overall = await checkTextContent('', text, { contentType: 'profile', linkCount: (String(updates.bio||'').match(/https?:\/\//g) || []).length });
-        if (overall.safe === false) {
-          // Multi-field threshold
-          const parts = [String(updates.username||''), String(updates.bio||'')].filter(Boolean);
-          let flagged = 0;
-          for (const p of parts) {
-            const r = await checkTextContent('', p, { contentType: 'profile', linkCount: (p.match(/https?:\/\//g) || []).length });
-            if (r.safe === false) flagged++;
-          }
-          if (flagged >= 2) {
-            updates.status = 'moderation';
-            try {
-              const admin2 = createAdminClient();
-              const aiCode = String(Math.floor(100000 + Math.random() * 900000));
-              await admin2.from('moderation_decisions').insert({
-                target_type: 'user', target_id: user.id, decision: 'moderation', reason: overall.reason || 'Profil bilgileri AI tarafından işaretlendi', moderator_id: 'system', decision_code: aiCode,
-              });
-            } catch {}
-          }
-        }
-      }
-    } catch {}
-
     const { error } = await supabase.from("profiles").update(updates).eq("user_id", user.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
   }
 
   // Background AI check on public profile fields during onboarding only (first signup) — admin immune

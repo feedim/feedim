@@ -205,6 +205,20 @@ function RegisterForm() {
       await waitMin();
 
       if (data.user && !data.session) {
+        // E-posta onayını otomatik atla ve giriş yap
+        try {
+          await fetch("/api/auth/auto-confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: data.user.id }),
+          });
+          const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+          if (!loginError) {
+            window.location.href = "/";
+            return;
+          }
+        } catch {}
+        // Fallback: e-posta onayı başarısız olursa eski davranış
         feedimAlert("info", t('checkEmail'));
         router.push("/login");
       } else if (data.session) {

@@ -2,9 +2,9 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, Upload, Film, Music } from "lucide-react";
+import { X, Plus, Upload, Film, Music, Clapperboard, Scissors, ChevronDown } from "lucide-react";
 import PostMetaFields from "@/components/PostMetaFields";
-import VideoPlayer from "@/components/VideoPlayer";
+import VideoEditorPreview from "@/components/VideoEditorPreview";
 import { createClient } from "@/lib/supabase/client";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -19,6 +19,8 @@ import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import CropModal from "@/components/modals/CropModal";
 import SoundPickerModal, { type SoundItem } from "@/components/modals/SoundPickerModal";
+import VideoTrimModal from "@/components/modals/VideoTrimModal";
+import ThumbnailPickerModal from "@/components/modals/ThumbnailPickerModal";
 import SoundPreviewButton from "@/components/SoundPreviewButton";
 
 interface Tag {
@@ -79,17 +81,25 @@ function MomentWriteContent() {
   const [tagCreating, setTagCreating] = useState(false);
   const [popularTags, setPopularTags] = useState<Tag[]>([]);
   const [thumbnail, setThumbnail] = useState("");
+  const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [isAiContent, setIsAiContent] = useState(false);
   const [copyrightProtected, setCopyrightProtected] = useState(false);
   const [frameHashes, setFrameHashes] = useState<{ frameIndex: number; hash: string }[]>([]);
   const [audioHashes, setAudioHashes] = useState<{ chunkIndex: number; hash: string }[]>([]);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [showThumbPicker, setShowThumbPicker] = useState(false);
 
   // Sound
   const [selectedSound, setSelectedSound] = useState<SoundItem | null>(null);
   const [soundModalOpen, setSoundModalOpen] = useState(false);
   const [useOriginalSound, setUseOriginalSound] = useState(true);
+
+  // Preview controls
+  const [previewPaused, setPreviewPaused] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
+  const [trimModalOpen, setTrimModalOpen] = useState(false);
 
   // SEO meta
   const [metaTitle, setMetaTitle] = useState("");
@@ -137,6 +147,8 @@ function MomentWriteContent() {
         setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setIsAiContent(data.post.is_ai_content === true);
+        setVisibility(data.post.visibility || "public");
         setCopyrightProtected(data.post.copyright_protected === true);
         if (data.post.meta_title) setMetaTitle(data.post.meta_title);
         if (data.post.meta_description) setMetaDescription(data.post.meta_description);
@@ -164,91 +176,100 @@ function MomentWriteContent() {
     }
   };
 
+  // Ref to track latest previewMuted without re-running the heavy sync effect
+  const previewMutedRef = useRef(previewMuted);
+  previewMutedRef.current = previewMuted;
+
   // Sync preview video with selected sound (editor-like preview)
   useEffect(() => {
-    // Small delay to ensure video ref is mounted after render
-    const timer = setTimeout(() => {
-      const video = previewVideoRef.current;
-      if (!video) return;
+    const video = previewVideoRef.current;
+    if (!video) return;
 
-      if (selectedSound) {
-        // Mute original video when a sound overlay is selected (Reels/TikTok behavior)
-        video.muted = true;
-        video.volume = 0;
-
-        // Create audio element for selected sound
-        const audio = new Audio();
-        audio.src = selectedSound.audio_url;
-        audio.loop = true;
-        audio.preload = "auto";
-        previewAudioRef.current = audio;
-
-        // Sync play/pause/seek with video
-        const onPlay = () => {
-          if (audio.duration) {
-            audio.currentTime = video.currentTime % audio.duration;
-          }
-          audio.play().catch(() => {});
-        };
-        const onPause = () => audio.pause();
-        const onSeeked = () => {
-          if (!video.paused && audio.duration) {
-            audio.currentTime = video.currentTime % audio.duration;
-          }
-        };
-        const onEnded = () => {
-          // If video loops or ends, sync audio
-          audio.pause();
-          audio.currentTime = 0;
-        };
-
-        video.addEventListener("play", onPlay);
-        video.addEventListener("pause", onPause);
-        video.addEventListener("seeked", onSeeked);
-        video.addEventListener("ended", onEnded);
-
-        // If video is already playing, start audio now
-        if (!video.paused) {
-          audio.play().catch(() => {});
-        }
-
-        // Store cleanup
-        const cleanup = () => {
-          video.removeEventListener("play", onPlay);
-          video.removeEventListener("pause", onPause);
-          video.removeEventListener("seeked", onSeeked);
-          video.removeEventListener("ended", onEnded);
-          audio.pause();
-          audio.src = "";
-          previewAudioRef.current = null;
-        };
-
-        // Attach cleanup to ref for external access
-        (previewAudioRef as any)._cleanup = cleanup;
-      } else {
-        // Stop and clean up audio
-        if (previewAudioRef.current) {
-          previewAudioRef.current.pause();
-          previewAudioRef.current.src = "";
-          previewAudioRef.current = null;
-        }
-        // Restore original video sound
-        if (video) {
-          video.muted = false;
-          video.volume = 1;
-        }
-      }
-    }, 50);
-
-    return () => {
-      clearTimeout(timer);
-      // Cleanup previous audio on re-run
+    // No sound selected → clean up and restore original audio
+    if (!selectedSound) {
       if (previewAudioRef.current) {
         previewAudioRef.current.pause();
         previewAudioRef.current.src = "";
         previewAudioRef.current = null;
       }
-      // Cleanup audio on effect re-run
+      video.muted = false;
+      video.volume = 1;
+      return;
+    }
+
+    // Mute original video when a sound overlay is active (Reels/TikTok behavior)
+    video.muted = true;
+    video.volume = 0;
+
+    // Create audio element for selected sound
+    const audio = new Audio();
+    audio.src = selectedSound.audio_url;
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.muted = previewMutedRef.current;
+    previewAudioRef.current = audio;
+
+    // Wait for audio to buffer before syncing — prevents seek-on-unbuffered stalls
+    let audioReady = false;
+    const onAudioReady = () => {
+      audioReady = true;
+      if (!video.paused && audio.duration) {
+        audio.currentTime = video.currentTime % audio.duration;
+        audio.play().catch(() => {});
+      }
+    };
+    audio.addEventListener("canplaythrough", onAudioReady, { once: true });
+    // If audio is already cached, canplaythrough may have fired before listener
+    if (audio.readyState >= 4) onAudioReady();
+
+    // Sync on play/pause/seek events
+    const onPlay = () => {
+      if (audioReady && audio.duration) {
+        audio.currentTime = video.currentTime % audio.duration;
+      }
+      audio.play().catch(() => {});
+    };
+    const onPause = () => audio.pause();
+    const onSeeked = () => {
+      if (!video.paused && audioReady && audio.duration) {
+        audio.currentTime = video.currentTime % audio.duration;
+      }
+    };
+
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+    video.addEventListener("seeked", onSeeked);
+
+    // RAF loop — drift correction + mute sync (catches loop restarts that skip seeked)
+    let raf: number;
+    const tick = () => {
+      // Sync mute state every frame (responds to previewMuted changes instantly)
+      audio.muted = previewMutedRef.current;
+
+      if (!video.paused && audioReady && audio.duration) {
+        const expected = video.currentTime % audio.duration;
+        // Correct drift if > 300ms (loop boundary, etc.)
+        if (Math.abs(audio.currentTime - expected) > 0.3) {
+          audio.currentTime = expected;
+        }
+        // Ensure audio is playing when video is playing
+        if (audio.paused) audio.play().catch(() => {});
+      } else if (video.paused && !audio.paused) {
+        audio.pause();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      audio.removeEventListener("canplaythrough", onAudioReady);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
+      video.removeEventListener("seeked", onSeeked);
+      audio.pause();
+      audio.src = "";
+      previewAudioRef.current = null;
     };
   }, [selectedSound, videoPreviewUrl, videoUrl]);
 
@@ -490,6 +511,24 @@ function MomentWriteContent() {
     setThumbnail("");
   };
 
+  // Trim handler — only updates preview, re-upload happens at step transition
+  const handleTrim = async (trimmedFile: File, newDuration: number) => {
+    setVideoFile(trimmedFile);
+    setVideoDuration(newDuration);
+    const newUrl = URL.createObjectURL(trimmedFile);
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    setVideoPreviewUrl(newUrl);
+    setPreviewPaused(false); // ensure auto-play after trim
+
+    // Regenerate thumbnail from trimmed file
+    try {
+      const thumb = await generateThumbnail(trimmedFile);
+      setThumbnail(thumb);
+    } catch { /* keep existing */ }
+
+    setVideoUrl(""); // re-upload will happen at goToStep2
+  };
+
   // Tags
   useEffect(() => {
     if (step === 2 && popularTags.length === 0) loadPopularTags();
@@ -575,8 +614,6 @@ function MomentWriteContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
-    if (!title.trim()) { feedimAlert("error", t("titleRequired")); return; }
-    if (title.trim().length < 3) { feedimAlert("error", t("titleMinLength")); return; }
     if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
     if (status === "published" && uploading) { feedimAlert("error", t("videoStillUploading")); return; }
 
@@ -619,6 +656,8 @@ function MomentWriteContent() {
           blurhash: thumbBlurhash,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          is_ai_content: isAiContent,
+          visibility,
           copyright_protected: copyrightProtected,
           meta_title: metaTitle.trim() || null,
           meta_description: metaDescription.trim() || null,
@@ -642,6 +681,14 @@ function MomentWriteContent() {
 
   const goToStep2 = () => {
     if (!videoFile && !videoUrl) { feedimAlert("error", t("videoNotSelected")); return; }
+    // If video was trimmed (videoUrl cleared), re-upload
+    if (videoFile && !videoUrl && !uploading) {
+      (async () => {
+        let f = videoFile;
+        try { f = await (await import("@/lib/videoOptimize")).optimizeVideo(videoFile); } catch {}
+        uploadVideo(f);
+      })();
+    }
     setStep(2);
   };
 
@@ -735,8 +782,8 @@ function MomentWriteContent() {
               <div className="space-y-3">
                 {/* Sound selection — top, before video */}
                 {!uploading && (videoUrl || videoFile) && (
-                  <div className="mb-[10px]">
-                    {selectedSound ? (
+                  <div className="mb-[10px] space-y-2">
+                    {selectedSound && (
                       <div className="flex items-center gap-3 p-3 bg-bg-tertiary rounded-xl max-w-[300px] mx-auto">
                         <div className="w-9 h-9 rounded-lg bg-accent-main/10 flex items-center justify-center shrink-0 overflow-hidden">
                           {selectedSound.cover_image_url ? (
@@ -754,13 +801,11 @@ function MomentWriteContent() {
                         <SoundPreviewButton audioUrl={selectedSound.audio_url} />
                         <button
                           onClick={() => {
-                            // Stop preview audio immediately
                             if (previewAudioRef.current) {
                               previewAudioRef.current.pause();
                               previewAudioRef.current.src = "";
                               previewAudioRef.current = null;
                             }
-                            // Restore video volume and unmute
                             if (previewVideoRef.current) {
                               previewVideoRef.current.muted = false;
                               previewVideoRef.current.volume = 1;
@@ -773,50 +818,52 @@ function MomentWriteContent() {
                           <X className="h-3.5 w-3.5 text-text-muted" />
                         </button>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => setSoundModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition mx-auto"
-                      >
-                        <Music className="h-4 w-4 text-text-muted" />
-                        <span className="text-sm text-text-muted">{t("addSound")}</span>
-                      </button>
                     )}
+                    <div className="flex items-center gap-2 justify-center">
+                      {videoFile && !uploading && (
+                        <button
+                          onClick={() => { setPreviewPaused(true); setTrimModalOpen(true); }}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition"
+                        >
+                          <Scissors className="h-4 w-4 text-text-muted" />
+                          <span className="text-sm text-text-muted">{t("trimVideo")}</span>
+                        </button>
+                      )}
+                      {!selectedSound && (
+                        <button
+                          onClick={() => setSoundModalOpen(true)}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition"
+                        >
+                          <Music className="h-4 w-4 text-text-muted" />
+                          <span className="text-sm text-text-muted">{t("addSound")}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                <div className="relative rounded-xl overflow-hidden max-w-[300px] mx-auto bg-black" style={{ aspectRatio: "9/16" }}>
-                  {(videoPreviewUrl || videoUrl) && (
-                    <VideoPlayer
-                      ref={previewVideoRef}
-                      src={videoPreviewUrl || videoUrl}
-                      poster={thumbnail || undefined}
-                      disabled={uploading}
-                      moment
-                      loop
-                      externalMuted={!!selectedSound}
-                      externalPaused={uploading}
-                      videoClassName="absolute inset-0 w-full h-full object-cover"
-                    />
-                  )}
-
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
-                      <span className="loader mb-3" style={{ width: 28, height: 28, borderTopColor: "var(--accent-color)" }} />
-                      <p className="text-white/80 text-[0.82rem] font-medium">{uploadProgress > 0 ? `%${uploadProgress}` : t("processing")}</p>
-                      <div className="w-48 h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, backgroundColor: "var(--accent-color)" }} />
-                      </div>
-                      <button onClick={removeVideo} className="text-xs text-error hover:underline mt-3">
-                        {t("cancelUpload")}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <VideoEditorPreview
+                  src={videoPreviewUrl || videoUrl}
+                  poster={thumbnail || undefined}
+                  aspectRatio="9/16"
+                  maxWidth="300px"
+                  uploading={uploading}
+                  uploadProgress={uploadProgress}
+                  onCancelUpload={removeVideo}
+                  paused={previewPaused}
+                  onTogglePause={() => setPreviewPaused(p => !p)}
+                  muted={previewMuted}
+                  onToggleMute={() => setPreviewMuted(m => !m)}
+                  duration={videoDuration}
+                  videoRef={previewVideoRef}
+                  hasSoundOverlay={!!selectedSound}
+                  onRemove={removeVideo}
+                  t={t}
+                />
 
                 <div className="flex items-center justify-center px-1">
                   <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <Film className="h-3.5 w-3.5" />
+                    <Clapperboard className="h-3.5 w-3.5" />
                     <span>{fmtDuration(videoDuration)}</span>
                     {videoFile && (
                       <>
@@ -841,7 +888,48 @@ function MomentWriteContent() {
         {step === 2 && !loadingDraft && (
           <div className="flex flex-col flex-1 px-3 sm:px-4 pt-4 pb-20 space-y-5">
 
-            {/* Açıklama (tek alan — title olarak gönderilir) */}
+            {/* Thumbnail — top center */}
+            <div className="flex flex-col items-center">
+              <p className="text-[0.68rem] text-text-muted/70 mb-2">{t("thumbnailRecommended9by16")}</p>
+              {thumbnail ? (
+                <div>
+                  <div className="relative rounded-xl overflow-hidden max-w-[160px]">
+                    <img src={thumbnail} alt={t("thumbnail")} className="w-full aspect-[9/16] object-cover" />
+                    <button onClick={() => setThumbnail("")} className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {videoFile && (
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbPicker(true)}
+                      className="mt-2 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition text-center"
+                    >
+                      {t("editCover")}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="max-w-[160px] w-full">
+                  <label className="flex flex-col items-center justify-center aspect-[9/16] border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
+                    <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
+                    <p className="text-xs text-text-muted text-center">{t("thumbnailUpload")}</p>
+                    <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
+                  </label>
+                  {videoFile && (
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbPicker(true)}
+                      className="mt-2 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition text-center"
+                    >
+                      {t("editCover")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Description (no border) */}
             <div>
               <textarea
                 value={title}
@@ -849,7 +937,7 @@ function MomentWriteContent() {
                 maxLength={VALIDATION.postTitle.max}
                 placeholder={t("momentDescPlaceholder")}
                 rows={3}
-                className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px] pt-3"
+                className="w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px] pt-3 bg-transparent outline-none placeholder:text-text-muted/50"
                 autoFocus
               />
               <div className="flex justify-end mt-1">
@@ -859,36 +947,8 @@ function MomentWriteContent() {
               </div>
             </div>
 
-            {/* Etiketler + Küçük Resim — yan yana */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Thumbnail */}
-            <div className="md:order-2">
-              <label className="block text-sm font-semibold mb-1">{t("thumbnail")}</label>
-              <p className="text-[0.68rem] text-text-muted/70 mb-2">{t("thumbnailRecommended9by16")}</p>
-              {thumbnail ? (
-                <div className="relative rounded-xl overflow-hidden max-w-[200px]">
-                  <img src={thumbnail} alt={t("thumbnail")} className="w-full aspect-[9/16] object-cover" />
-                  <div className="absolute top-2 right-2 flex gap-1.5">
-                    <label className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition cursor-pointer" aria-label={t("thumbnailChange")}>
-                      <Upload className="h-4 w-4" />
-                      <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
-                    </label>
-                    <button onClick={() => setThumbnail("")} className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center h-36 max-w-[200px] border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
-                  <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
-                  <p className="text-sm text-text-muted">{t("thumbnailUpload")}</p>
-                  <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
-                </label>
-              )}
-            </div>
-
             {/* Tags */}
-            <div className="md:order-1">
+            <div>
               <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -954,6 +1014,22 @@ function MomentWriteContent() {
                 </div>
               )}
             </div>
+
+            {/* Visibility */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">{t("visibilityLabel")}</label>
+              <div className="relative">
+                <select
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value)}
+                  className="input-modern w-full appearance-none pr-10 cursor-pointer"
+                >
+                  <option value="public">{t("visibilityPublic")}</option>
+                  <option value="followers">{t("visibilityFollowers")}</option>
+                  <option value="only_me">{t("visibilityOnlyMe")}</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+              </div>
             </div>
 
             {/* Settings */}
@@ -986,6 +1062,24 @@ function MomentWriteContent() {
                 </button>
                 <div>
                 <button
+                  onClick={() => setIsAiContent(!isAiContent)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t("aiContent")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <p className="px-4 pb-2 text-xs text-text-muted leading-relaxed">
+                  {t("aiContentWarning")}{" "}
+                  <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
+                </p>
+                </div>
+                <div>
+                <button
                   onClick={() => {
                     if (!user?.copyrightEligible) return;
                     if (isEditMode && copyrightProtected) return;
@@ -1002,7 +1096,7 @@ function MomentWriteContent() {
                   </div>
                 </button>
                 {!user?.copyrightEligible && (
-                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
+                  <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
               </div>
@@ -1034,6 +1128,30 @@ function MomentWriteContent() {
         onClose={() => setSoundModalOpen(false)}
         onSelect={(sound) => { setSelectedSound(sound); setUseOriginalSound(false); }}
       />
+
+      {/* Video Trim Modal */}
+      {videoFile && (
+        <VideoTrimModal
+          open={trimModalOpen}
+          onClose={() => { setTrimModalOpen(false); setPreviewPaused(false); }}
+          videoFile={videoFile}
+          duration={videoDuration}
+          onTrim={handleTrim}
+          soundUrl={selectedSound?.audio_url}
+        />
+      )}
+
+      {/* Thumbnail Picker Modal */}
+      {videoFile && (
+        <ThumbnailPickerModal
+          open={showThumbPicker}
+          onClose={() => setShowThumbPicker(false)}
+          videoFile={videoFile}
+          duration={videoDuration}
+          aspectRatio="9:16"
+          onSelect={(dataUrl) => setThumbnail(dataUrl)}
+        />
+      )}
     </AppLayout>
   );
 }

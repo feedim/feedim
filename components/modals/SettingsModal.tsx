@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
-import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import {
   User, Mail, LogOut, Clock, Calendar, Wallet, Bookmark,
@@ -32,7 +30,6 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -65,20 +62,10 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   const handleSignOut = async () => {
     setSigningOut(true);
-    // Clear all client-side caches to prevent stale data on next login
-    try {
-      const { invalidateCache } = await import("@/lib/fetchWithCache");
-      invalidateCache("");
-    } catch {}
-    try {
-      localStorage.removeItem("fdm-blocked-words");
-      localStorage.removeItem("fdm-deleted-posts");
-      sessionStorage.clear();
-    } catch {}
-    await supabase.auth.signOut();
+    const { signOutCleanup } = await import("@/lib/authClient");
+    await signOutCleanup();
     onClose();
-    emitNavigationStart();
-    router.push("/");
+    window.location.replace("/");
   };
 
   const handleDeleteAccount = async () => {
@@ -93,11 +80,11 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         const data = await res.json();
         throw new Error(data.error || t("accountDeleteFailed"));
       }
-      await supabase.auth.signOut();
+      const { signOutCleanup } = await import("@/lib/authClient");
+      await signOutCleanup();
       feedimAlert("success", t("accountDeleted"));
       onClose();
-      emitNavigationStart();
-      router.push("/");
+      window.location.replace("/");
     } catch (error: any) {
       feedimAlert("error",error.message);
     } finally {

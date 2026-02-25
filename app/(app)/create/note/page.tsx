@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus } from "lucide-react";
+import { X, Plus, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -53,8 +53,10 @@ function NoteWriteContent() {
   const [tagHighlight, setTagHighlight] = useState(-1);
   const [tagCreating, setTagCreating] = useState(false);
   const [popularTags, setPopularTags] = useState<Tag[]>([]);
+  const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [isAiContent, setIsAiContent] = useState(false);
 
   // Mention system
   const [mentionQuery, setMentionQuery] = useState("");
@@ -108,6 +110,8 @@ function NoteWriteContent() {
         setDraftId(data.post.id);
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setIsAiContent(data.post.is_ai_content === true);
+        setVisibility(data.post.visibility || "public");
         const postTags = (data.post.post_tags || [])
           .map((pt: { tags: Tag }) => pt.tags)
           .filter(Boolean);
@@ -142,6 +146,8 @@ function NoteWriteContent() {
             tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
             allow_comments: allowComments,
             is_for_kids: isForKids,
+            is_ai_content: isAiContent,
+            visibility,
           }),
         });
         const data = await res.json();
@@ -153,7 +159,7 @@ function NoteWriteContent() {
       setAutoSaving(false);
     }, 30000);
     return () => clearInterval(timer);
-  }, [noteText, hasUnsavedChanges, savingAs, autoSaving, draftId, tags, allowComments, isForKids]);
+  }, [noteText, hasUnsavedChanges, savingAs, autoSaving, draftId, tags, allowComments, isForKids, isAiContent, visibility]);
 
   // — Mention helpers —
   const searchMentionUsers = useCallback(async (query: string) => {
@@ -380,6 +386,8 @@ function NoteWriteContent() {
           tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          is_ai_content: isAiContent,
+          visibility,
         }),
       });
 
@@ -623,6 +631,23 @@ function NoteWriteContent() {
               )}
             </div>
 
+            {/* Visibility */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">{t("visibilityLabel")}</label>
+              <div className="relative">
+                <select
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value)}
+                  className="input-modern w-full appearance-none pr-10 cursor-pointer"
+                >
+                  <option value="public">{t("visibilityPublic")}</option>
+                  <option value="followers">{t("visibilityFollowers")}</option>
+                  <option value="only_me">{t("visibilityOnlyMe")}</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+              </div>
+            </div>
+
             {/* Settings */}
             <div>
               <label className="block text-sm font-semibold mb-3">{t("settingsLabel")}</label>
@@ -639,6 +664,36 @@ function NoteWriteContent() {
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
                   </div>
                 </button>
+                <button
+                  onClick={() => setIsForKids(!isForKids)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t("forKids")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <div>
+                <button
+                  onClick={() => setIsAiContent(!isAiContent)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t("aiContent")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <p className="px-4 pb-2 text-xs text-text-muted leading-relaxed">
+                  {t("aiContentWarning")}{" "}
+                  <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
+                </p>
+                </div>
               </div>
             </div>
           </div>

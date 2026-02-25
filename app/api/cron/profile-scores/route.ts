@@ -9,6 +9,7 @@ import {
   type PostStat,
   type RateLimitHit,
 } from "@/lib/profileScore";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
       .limit(500);
 
     if (usersError) {
-      return NextResponse.json({ error: usersError.message }, { status: 500 });
+      return safeError(usersError);
     }
 
     let targetUsers = users;

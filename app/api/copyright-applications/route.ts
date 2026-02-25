@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { safeError } from '@/lib/apiError';
 
 export async function GET() {
   try {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     return NextResponse.json({ success: true, application }, { status: 201 });

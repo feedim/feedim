@@ -226,7 +226,7 @@ export async function GET(req: NextRequest) {
   response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
   return response;
   } catch (error: any) {
-    console.error('[Search] Error:', error?.message);
+    if (process.env.NODE_ENV === "development") console.error('[Search] Error:', error?.message);
     return NextResponse.json({ users: [], posts: [], tags: [], sounds: [] });
   }
 }

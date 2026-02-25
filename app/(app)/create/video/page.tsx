@@ -2,9 +2,11 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, Upload, Film } from "lucide-react";
+import { X, Plus, Upload, Film, Scissors, ChevronDown } from "lucide-react";
 import PostMetaFields from "@/components/PostMetaFields";
-import VideoPlayer from "@/components/VideoPlayer";
+import VideoEditorPreview from "@/components/VideoEditorPreview";
+import VideoTrimModal from "@/components/modals/VideoTrimModal";
+import ThumbnailPickerModal from "@/components/modals/ThumbnailPickerModal";
 import { createClient } from "@/lib/supabase/client";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -54,6 +56,7 @@ function VideoWriteContent() {
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   const [step, setStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -78,12 +81,20 @@ function VideoWriteContent() {
   const [tagCreating, setTagCreating] = useState(false);
   const [popularTags, setPopularTags] = useState<Tag[]>([]);
   const [thumbnail, setThumbnail] = useState("");
+  const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [isAiContent, setIsAiContent] = useState(false);
   const [copyrightProtected, setCopyrightProtected] = useState(false);
   const [frameHashes, setFrameHashes] = useState<{ frameIndex: number; hash: string }[]>([]);
   const [audioHashes, setAudioHashes] = useState<{ chunkIndex: number; hash: string }[]>([]);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [showThumbPicker, setShowThumbPicker] = useState(false);
+
+  // Preview controls
+  const [previewPaused, setPreviewPaused] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
+  const [trimModalOpen, setTrimModalOpen] = useState(false);
 
   // SEO meta
   const [metaTitle, setMetaTitle] = useState("");
@@ -134,6 +145,8 @@ function VideoWriteContent() {
         setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setIsAiContent(data.post.is_ai_content === true);
+        setVisibility(data.post.visibility || "public");
         setCopyrightProtected(data.post.copyright_protected === true);
         if (data.post.meta_title) setMetaTitle(data.post.meta_title);
         if (data.post.meta_description) setMetaDescription(data.post.meta_description);
@@ -399,6 +412,24 @@ function VideoWriteContent() {
     setThumbnail("");
   };
 
+  // Trim handler — only updates preview, re-upload happens at step transition
+  const handleTrim = async (trimmedFile: File, newDuration: number) => {
+    setVideoFile(trimmedFile);
+    setVideoDuration(newDuration);
+    const newUrl = URL.createObjectURL(trimmedFile);
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    setVideoPreviewUrl(newUrl);
+    setPreviewPaused(false); // ensure auto-play after trim
+
+    // Regenerate thumbnail from trimmed file
+    try {
+      const thumb = await generateThumbnail(trimmedFile);
+      setThumbnail(thumb);
+    } catch { /* keep existing */ }
+
+    setVideoUrl(""); // re-upload will happen at goToStep2
+  };
+
   // Tags
   useEffect(() => {
     if (step === 2 && popularTags.length === 0) loadPopularTags();
@@ -529,6 +560,8 @@ function VideoWriteContent() {
           blurhash: thumbBlurhash,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          is_ai_content: isAiContent,
+          visibility,
           copyright_protected: copyrightProtected,
           frame_hashes: frameHashes,
           audio_hashes: audioHashes,
@@ -551,6 +584,14 @@ function VideoWriteContent() {
 
   const goToStep2 = () => {
     if (!videoFile && !videoUrl) { feedimAlert("error", t("videoNotSelected")); return; }
+    // If video was trimmed (videoUrl cleared), re-upload
+    if (videoFile && !videoUrl && !uploading) {
+      (async () => {
+        let f = videoFile;
+        try { f = await (await import("@/lib/videoOptimize")).optimizeVideo(videoFile); } catch {}
+        uploadVideo(f);
+      })();
+    }
     setStep(2);
   };
 
@@ -644,30 +685,36 @@ function VideoWriteContent() {
             ) : (
               /* Video preview */
               <div className="space-y-3">
-                <div className="relative rounded-xl overflow-hidden">
-                  {(videoPreviewUrl || videoUrl) && (
-                    <VideoPlayer
-                      src={videoPreviewUrl || videoUrl}
-                      poster={thumbnail || undefined}
-                      disabled={uploading}
-                    />
-                  )}
+                {/* Trim button */}
+                {videoFile && !uploading && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => { setPreviewPaused(true); setTrimModalOpen(true); }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition"
+                    >
+                      <Scissors className="h-4 w-4 text-text-muted" />
+                      <span className="text-sm text-text-muted">{t("trimVideo")}</span>
+                    </button>
+                  </div>
+                )}
 
-                  {/* Upload progress overlay */}
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
-                      <span className="loader mb-3" style={{ width: 28, height: 28, borderTopColor: "var(--accent-color)" }} />
-                      <p className="text-white/80 text-[0.82rem] font-medium">{uploadProgress > 0 ? `%${uploadProgress}` : t("processing")}</p>
-                      <div className="w-48 h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, backgroundColor: "var(--accent-color)" }} />
-                      </div>
-                      <button onClick={removeVideo} className="text-xs text-error hover:underline mt-3">
-                        {t("cancelUpload")}
-                      </button>
-                    </div>
-                  )}
-
-                </div>
+                <VideoEditorPreview
+                  src={videoPreviewUrl || videoUrl}
+                  poster={thumbnail || undefined}
+                  aspectRatio="16/9"
+                  maxWidth="100%"
+                  uploading={uploading}
+                  uploadProgress={uploadProgress}
+                  onCancelUpload={removeVideo}
+                  paused={previewPaused}
+                  onTogglePause={() => setPreviewPaused(p => !p)}
+                  muted={previewMuted}
+                  onToggleMute={() => setPreviewMuted(m => !m)}
+                  duration={videoDuration}
+                  videoRef={previewVideoRef}
+                  onRemove={removeVideo}
+                  t={t}
+                />
 
                 {/* Video info */}
                 <div className="flex items-center justify-center px-1">
@@ -724,31 +771,47 @@ function VideoWriteContent() {
               </div>
             </div>
 
-            {/* Etiketler + Küçük Resim — yan yana */}
+            {/* Tags + Thumbnail — side by side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Thumbnail */}
             <div className="md:order-2">
               <label className="block text-sm font-semibold mb-1">{t("thumbnail")}</label>
               <p className="text-[0.68rem] text-text-muted/70 mb-2">{t("thumbnailRecommended16by9")}</p>
               {thumbnail ? (
-                <div className="relative rounded-xl overflow-hidden">
-                  <img src={thumbnail} alt={t("thumbnail")} className="w-full h-48 object-cover" />
-                  <div className="absolute top-2 right-2 flex gap-1.5">
-                    <label className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition cursor-pointer" aria-label={t("thumbnailChange")}>
-                      <Upload className="h-4 w-4" />
-                      <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
-                    </label>
-                    <button onClick={() => setThumbnail("")} className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
+                <div>
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img src={thumbnail} alt={t("thumbnail")} className="w-full h-48 object-cover" />
+                    <button onClick={() => setThumbnail("")} className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
                       <X className="h-4 w-4" />
                     </button>
                   </div>
+                  {videoFile && (
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbPicker(true)}
+                      className="mt-2 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
+                    >
+                      {t("editCover")}
+                    </button>
+                  )}
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
-                  <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
-                  <p className="text-sm text-text-muted">{t("thumbnailUpload")}</p>
-                  <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
-                </label>
+                <div>
+                  <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
+                    <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
+                    <p className="text-sm text-text-muted">{t("thumbnailUpload")}</p>
+                    <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
+                  </label>
+                  {videoFile && (
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbPicker(true)}
+                      className="mt-2 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
+                    >
+                      {t("editCover")}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -821,6 +884,23 @@ function VideoWriteContent() {
             </div>
             </div>
 
+            {/* Visibility */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">{t("visibilityLabel")}</label>
+              <div className="relative">
+                <select
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value)}
+                  className="input-modern w-full appearance-none pr-10 cursor-pointer"
+                >
+                  <option value="public">{t("visibilityPublic")}</option>
+                  <option value="followers">{t("visibilityFollowers")}</option>
+                  <option value="only_me">{t("visibilityOnlyMe")}</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+              </div>
+            </div>
+
             {/* Settings */}
             <div>
               <label className="block text-sm font-semibold mb-3">{t("settingsLabel")}</label>
@@ -851,6 +931,24 @@ function VideoWriteContent() {
                 </button>
                 <div>
                 <button
+                  onClick={() => setIsAiContent(!isAiContent)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t("aiContent")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <p className="px-4 pb-2 text-xs text-text-muted leading-relaxed">
+                  {t("aiContentWarning")}{" "}
+                  <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
+                </p>
+                </div>
+                <div>
+                <button
                   onClick={() => {
                     if (!user?.copyrightEligible) return;
                     if (isEditMode && copyrightProtected) return;
@@ -867,7 +965,7 @@ function VideoWriteContent() {
                   </div>
                 </button>
                 {!user?.copyrightEligible && (
-                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
+                  <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
               </div>
@@ -892,6 +990,29 @@ function VideoWriteContent() {
         aspectRatio={16 / 9}
         onCrop={(croppedUrl) => { setThumbnail(croppedUrl); setCropSrc(null); }}
       />
+
+      {/* Video Trim Modal */}
+      {videoFile && (
+        <VideoTrimModal
+          open={trimModalOpen}
+          onClose={() => { setTrimModalOpen(false); setPreviewPaused(false); }}
+          videoFile={videoFile}
+          duration={videoDuration}
+          onTrim={handleTrim}
+        />
+      )}
+
+      {/* Thumbnail Picker Modal */}
+      {videoFile && (
+        <ThumbnailPickerModal
+          open={showThumbPicker}
+          onClose={() => setShowThumbPicker(false)}
+          videoFile={videoFile}
+          duration={videoDuration}
+          aspectRatio="16:9"
+          onSelect={(dataUrl) => setThumbnail(dataUrl)}
+        />
+      )}
     </AppLayout>
   );
 }

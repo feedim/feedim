@@ -162,6 +162,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     loadComments(1, sort);
   };
 
+  const loadLikedCommentsRef = useRef(false);
   const loadLikedComments = async () => {
     if (!ctxUser?.id) return;
     setCurrentUserId(ctxUser.id);
@@ -170,7 +171,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       .from("comment_likes")
       .select("comment_id")
       .eq("user_id", ctxUser.id);
-    if (data) setLikedComments(new Set(data.map(l => l.comment_id)));
+    if (data && !loadLikedCommentsRef.current) setLikedComments(new Set(data.map(l => l.comment_id)));
   };
 
   // — Mention helpers —
@@ -555,9 +556,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         {/* Avatar */}
         <div className="shrink-0 mb-[7px]">
           {ctxUser?.avatarUrl ? (
-            <img src={ctxUser.avatarUrl} alt="" className="h-[36px] w-[36px] rounded-full object-cover" />
+            <img src={ctxUser.avatarUrl} alt="" className="h-[34px] w-[34px] rounded-full object-cover" />
           ) : (
-            <img className="default-avatar-auto h-[36px] w-[36px] rounded-full object-cover" alt="" />
+            <img className="default-avatar-auto h-[34px] w-[34px] rounded-full object-cover" alt="" />
           )}
         </div>
         <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary relative">

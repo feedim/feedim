@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeError } from "@/lib/apiError";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
     });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeError(error);
   }
 
   // Keep max 10 locations per user

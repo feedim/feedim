@@ -16,23 +16,9 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
     { href: "/help/about", label: t("about"), short: t("about") },
     { href: "/help/terms", label: t("termsLong"), short: t("terms") },
     { href: "/help/privacy", label: t("privacy"), short: t("privacy") },
-    { href: "/help/privacy", label: t("kvkk"), short: t("kvkk") },
     { href: "/help/community-guidelines", label: t("communityGuidelines"), short: t("communityGuidelines") },
     { href: "/help/contact", label: t("contact"), short: t("contact") },
-    { href: "/help/copyright", label: t("copyright"), short: t("copyright") },
-    { href: "/help/moderation", label: t("moderationSystem"), short: t("moderationSystem") },
-    { href: "/help/ai", label: t("feedimAi"), short: t("feedimAi") },
-    { href: "/help/content-types", label: t("contentTypesHelp"), short: t("contentTypesHelp") },
-    { href: "/help/coins", label: t("tokenSystem"), short: t("tokenSystem") },
-    { href: "/help/earning", label: t("earning"), short: t("earning") },
-    { href: "/help/analytics", label: t("analyticsHelp"), short: t("analyticsHelp") },
-    { href: "/help/data-sharing", label: t("dataSharing"), short: t("dataSharing") },
-    { href: "/help/access-restrictions", label: t("accessRestrictions"), short: t("accessRestrictions") },
-    { href: "/help/accessibility", label: t("accessibility"), short: t("accessibility") },
     { href: "/help/disclaimer", label: t("disclaimer"), short: t("disclaimer") },
-    { href: "/help/distance-sales-contract", label: t("distanceSales"), short: t("distanceSales") },
-    { href: "/help/refund-policy", label: t("refundPolicy"), short: t("refundPolicy") },
-    { href: "/help/payment-security", label: t("paymentSecurity"), short: t("paymentSecurity") },
   ];
 
   // Minimal — just copyright (error page)
@@ -94,7 +80,7 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
     <footer className="mt-auto border-t border-border-primary py-8 px-4 sm:px-6">
       <div className="container mx-auto">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm justify-center sm:justify-start">
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs justify-center sm:justify-start">
             {links.map((link) => (
               <Link key={link.href + link.label} href={link.href} className="text-text-muted hover:text-text-primary transition">{link.label}</Link>
             ))}

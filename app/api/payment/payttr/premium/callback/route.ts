@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const hash = formData.get('hash') as string;
 
     if (!merchant_oid || !status || !total_amount || !hash) {
-      console.error('[PayTR Premium Callback] Missing required fields');
+      if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Missing required fields');
       return new NextResponse('FAIL', { status: 500 });
     }
 
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const merchant_salt = (process.env.PAYTTR_MERCHANT_SALT || '').trim();
 
     if (!merchant_key || !merchant_salt) {
-      console.error('[PayTR Premium Callback] Missing env vars');
+      if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Missing env vars');
       return new NextResponse('FAIL', { status: 500 });
     }
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const hashBuffer = Buffer.from(hash, 'utf8');
     const calculatedBuffer = Buffer.from(calculatedHash, 'utf8');
     if (hashBuffer.length !== calculatedBuffer.length || !crypto.timingSafeEqual(hashBuffer, calculatedBuffer)) {
-      console.error('[PayTR Premium Callback] Hash mismatch for', merchant_oid);
+      if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Hash mismatch for', merchant_oid);
       return new NextResponse('FAIL', { status: 400 });
     }
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (paymentError || !payment) {
-      console.error('[PayTR Premium Callback] Payment not found:', merchant_oid);
+      if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Payment not found:', merchant_oid);
       return new NextResponse('FAIL', { status: 500 });
     }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const expectedAmountKurus = Math.round(payment.amount_paid * 100);
     const receivedAmountKurus = parseInt(total_amount, 10);
     if (expectedAmountKurus !== receivedAmountKurus) {
-      console.error('[PayTR Premium Callback] Amount mismatch:', merchant_oid);
+      if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Amount mismatch:', merchant_oid);
       await supabase
         .from('premium_payments')
         .update({
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       }).select('id').single();
 
       if (subError) {
-        console.error('[PayTR Premium Callback] Subscription create failed:', subError.message);
+        if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Subscription create failed:', subError.message);
         await supabase.from('premium_payments').update({ status: 'pending', completed_at: null }).eq('id', payment.id);
         return new NextResponse('FAIL', { status: 500 });
       }
@@ -148,10 +148,10 @@ export async function POST(request: NextRequest) {
         .eq('user_id', payment.user_id);
 
       if (profileError) {
-        console.error('[PayTR Premium Callback] Profile update failed:', profileError.message);
+        if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Profile update failed:', profileError.message);
       }
 
-      console.warn('[PayTR Premium Callback] ✓', merchant_oid, planId);
+      if (process.env.NODE_ENV === "development") console.warn('[PayTR Premium Callback] ✓', merchant_oid, planId);
     } else {
       await supabase
         .from('premium_payments')
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     return new NextResponse('OK', { status: 200 });
   } catch (error: any) {
-    console.error('[PayTR Premium Callback] Exception:', error?.message);
+    if (process.env.NODE_ENV === "development") console.error('[PayTR Premium Callback] Exception:', error?.message);
     return new NextResponse('FAIL', { status: 500 });
   }
 }

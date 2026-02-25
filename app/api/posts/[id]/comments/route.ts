@@ -5,6 +5,7 @@ import { createNotification } from '@/lib/notifications';
 import { getUserPlan, checkDailyLimit, logRateLimitHit, COMMENT_CHAR_LIMITS } from '@/lib/limits';
 import { checkTextContent } from '@/lib/moderation';
 import { safePage } from '@/lib/utils';
+import { safeError } from '@/lib/apiError';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const fetchLimit = sort === 'smart' ? Math.max(limit * 3, 30) : limit;
     let { data: comments, error } = await query.range(sort === 'smart' ? 0 : offset, sort === 'smart' ? fetchLimit : offset + limit);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     // Smart scoring: balance likes, replies, and recency
     if (sort === 'smart' && comments && comments.length > 0) {
@@ -299,7 +300,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role)`)
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     // Recalculate post comment_count to ensure accuracy (exclude NSFW)
     try {

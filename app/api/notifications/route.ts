@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { NOTIFICATION_SOCIAL_TYPES, NOTIFICATION_SYSTEM_TYPES } from "@/lib/constants";
+import { safeError } from "@/lib/apiError";
 
 // GET — fetch notifications with unread count
 export async function GET(request: NextRequest) {
@@ -25,12 +27,21 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ unread_count: 0, paused: true });
       }
 
-      const { count } = await supabase
+      const tab = request.nextUrl.searchParams.get("tab");
+      let countQuery = supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("is_read", false)
         .gte("created_at", thirtyDaysAgo);
+
+      if (tab === "system") {
+        countQuery = countQuery.in("type", NOTIFICATION_SYSTEM_TYPES as unknown as string[]);
+      } else if (tab === "social") {
+        countQuery = countQuery.in("type", NOTIFICATION_SOCIAL_TYPES as unknown as string[]);
+      }
+
+      const { count } = await countQuery;
       return NextResponse.json({ unread_count: count || 0 });
     }
 
@@ -58,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     let { data: notifications, error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     // Filter out notifications from inactive actors (frozen, blocked, deleted)
     if (notifications && notifications.length > 0) {
@@ -98,7 +109,7 @@ export async function PUT(_req: NextRequest) {
       .eq("user_id", user.id)
       .eq("is_read", false);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
@@ -121,7 +132,7 @@ export async function DELETE(request: NextRequest) {
       .eq("id", notifId)
       .eq("user_id", user.id);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });

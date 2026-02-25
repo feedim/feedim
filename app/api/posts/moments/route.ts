@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MOMENT_PAGE_SIZE } from "@/lib/constants";
 import { cached } from "@/lib/cache";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(req: NextRequest) {
   try {
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
     const { data: moments, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     // Filter inactive authors + private accounts

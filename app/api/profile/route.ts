@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkTextContent } from "@/lib/moderation";
 import { getUserPlan } from "@/lib/limits";
 import { revalidateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
+import { safeError } from "@/lib/apiError";
 
 export async function GET() {
   const supabase = await createClient();
@@ -17,7 +18,7 @@ export async function GET() {
     .eq("user_id", user.id)
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return safeError(error);
   return NextResponse.json({ profile: data });
 }
 
@@ -219,59 +220,6 @@ export async function PUT(req: NextRequest) {
     })().catch(() => {});
   }
 
-  // AI moderation on profile text fields (name, surname, username, bio)
-  try {
-    const { data: current } = await supabase
-      .from("profiles")
-      .select("name, surname, username, bio, profile_score, spam_score, status")
-      .eq("user_id", user.id)
-      .single();
-    const fields = {
-      name: (updates.name ?? current?.name ?? '') as string,
-      surname: (updates.surname ?? current?.surname ?? '') as string,
-      username: (updates.username ?? current?.username ?? '') as string,
-      bio: (updates.bio ?? current?.bio ?? '') as string,
-    };
-    const linkCount = (fields.bio.match(/https?:\/\//g) || []).length;
-    // Overall check
-    const overall = await checkTextContent('', [fields.name, fields.surname, fields.username, fields.bio].filter(Boolean).join(' '), {
-      contentType: 'profile',
-      linkCount,
-      profileScore: current?.profile_score,
-      spamScore: current?.spam_score,
-    });
-    if (overall.safe === false) {
-      // Per-field checks; require >= 2 fields flagged to set moderation
-      let flaggedCount = 0;
-      for (const value of [fields.username, fields.bio]) {
-        if (value && value.trim().length >= 2) {
-          try {
-            const res = await checkTextContent('', value, { contentType: 'profile', linkCount: (value.match(/https?:\/\//g) || []).length });
-            if (res.safe === false) flaggedCount++;
-          } catch {}
-        }
-      }
-      if (flaggedCount >= 2) {
-        updates.status = 'moderation';
-        updates.moderation_reason = overall.reason || 'Profil alanlarında ihlal tespit edildi';
-      }
-    } else {
-      // If profile is clean and currently in moderation, restore to active
-      if (current?.status === 'moderation') {
-        updates.status = 'active';
-        updates.moderation_reason = null;
-        try {
-          const admin = createAdminClient();
-          await Promise.all([
-            admin.from("reports").delete().eq("content_type", "user").eq("content_id", user.id),
-            admin.from("moderation_decisions").delete().eq("target_type", "user").eq("target_id", String(user.id)),
-            admin.from("moderation_logs").delete().eq("target_type", "user").eq("target_id", String(user.id)),
-          ]);
-        } catch {}
-      }
-    }
-  } catch {}
-
   const { data, error } = await supabase
     .from("profiles")
     .update(updates)
@@ -279,7 +227,74 @@ export async function PUT(req: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return safeError(error);
   revalidateTag("profiles", { expire: 0 });
+
+  // AI moderation on profile text fields — runs async after response
+  const TEXT_FIELDS = ['name', 'surname', 'username', 'bio'];
+  const hasTextUpdates = Object.keys(updates).some(k => TEXT_FIELDS.includes(k));
+  if (hasTextUpdates) {
+    const userId = user.id;
+    after(async () => {
+      try {
+        const admin = createAdminClient();
+        const { data: current } = await admin
+          .from("profiles")
+          .select("name, surname, username, bio, profile_score, spam_score, status")
+          .eq("user_id", userId)
+          .single();
+        if (!current) return;
+        // Check if user is admin (immune to moderation)
+        const { data: roleCheck } = await admin.from("profiles").select("role").eq("user_id", userId).single();
+        if (roleCheck?.role === 'admin') return;
+
+        const fields = {
+          name: (current.name ?? '') as string,
+          surname: (current.surname ?? '') as string,
+          username: (current.username ?? '') as string,
+          bio: (current.bio ?? '') as string,
+        };
+        const linkCount = (fields.bio.match(/https?:\/\//g) || []).length;
+        const overall = await checkTextContent('', [fields.name, fields.surname, fields.username, fields.bio].filter(Boolean).join(' '), {
+          contentType: 'profile',
+          linkCount,
+          profileScore: current.profile_score,
+          spamScore: current.spam_score,
+        });
+        if (overall.safe === false) {
+          let flaggedCount = 0;
+          for (const value of [fields.username, fields.bio]) {
+            if (value && value.trim().length >= 2) {
+              try {
+                const res = await checkTextContent('', value, { contentType: 'profile', linkCount: (value.match(/https?:\/\//g) || []).length });
+                if (res.safe === false) flaggedCount++;
+              } catch {}
+            }
+          }
+          if (flaggedCount >= 2) {
+            await admin.from("profiles").update({
+              status: 'moderation',
+              moderation_reason: overall.reason || 'Profil alanlarında ihlal tespit edildi',
+            }).eq("user_id", userId);
+          }
+        } else {
+          if (current.status === 'moderation') {
+            await admin.from("profiles").update({
+              status: 'active',
+              moderation_reason: null,
+            }).eq("user_id", userId);
+            try {
+              await Promise.all([
+                admin.from("reports").delete().eq("content_type", "user").eq("content_id", userId),
+                admin.from("moderation_decisions").delete().eq("target_type", "user").eq("target_id", String(userId)),
+                admin.from("moderation_logs").delete().eq("target_type", "user").eq("target_id", String(userId)),
+              ]);
+            } catch {}
+          }
+        }
+      } catch {}
+    });
+  }
+
   return NextResponse.json({ profile: data });
 }

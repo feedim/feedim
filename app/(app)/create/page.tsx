@@ -76,6 +76,7 @@ function WritePageContent() {
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
   const [isForKids, setIsForKids] = useState(false);
+  const [isAiContent, setIsAiContent] = useState(false);
   const [copyrightProtected, setCopyrightProtected] = useState(false);
 
   // Auto-disable copyright protection when content drops below 50 words
@@ -142,6 +143,7 @@ function WritePageContent() {
         setVisibility(data.post.visibility || "public");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
+        setIsAiContent(data.post.is_ai_content === true);
         setCopyrightProtected(data.post.copyright_protected === true);
         if (data.post.meta_title) setMetaTitle(data.post.meta_title);
         if (data.post.meta_description) setMetaDescription(data.post.meta_description);
@@ -339,6 +341,9 @@ function WritePageContent() {
         setCropSrc(dataUrl);
       });
 
+      // Crop cancelled
+      if (!croppedUrl) throw new Error("cancelled");
+
       // Upload cropped image to R2 immediately (data: URLs are stripped by sanitizer)
       const blob = await fetch(croppedUrl).then(r => r.blob());
       const uploadFile = new File([blob], `inline-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
@@ -373,12 +378,32 @@ function WritePageContent() {
         reader.readAsDataURL(compressed);
       });
 
+      // Dismiss keyboard before crop modal
+      (document.activeElement as HTMLElement)?.blur();
+
       const croppedUrl = await new Promise<string>((resolve) => {
-        cropResolveRef.current = (url) => { resolve(url); setFeaturedImage(url); };
+        cropResolveRef.current = resolve;
         setCropAspect(16 / 9);
         setCropSrc(dataUrl);
       });
 
+      // Crop cancelled
+      if (!croppedUrl) {
+        setImageUploading(false);
+        return;
+      }
+
+      // Upload cropped image to R2
+      const blob = await fetch(croppedUrl).then(r => r.blob());
+      const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('fileName', uploadFile.name);
+      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+
+      setFeaturedImage(uploadData.url);
       setImageUploading(false);
     } catch {
       setImageUploading(false);
@@ -413,12 +438,28 @@ function WritePageContent() {
         reader.readAsDataURL(compressed);
       });
 
-      await new Promise<string>((resolve) => {
-        cropResolveRef.current = (url) => { resolve(url); setFeaturedImage(url); };
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = resolve;
         setCropAspect(16 / 9);
         setCropSrc(dataUrl);
       });
 
+      if (!croppedUrl) {
+        setImageUploading(false);
+        return;
+      }
+
+      // Upload cropped image to R2
+      const blob = await fetch(croppedUrl).then(r => r.blob());
+      const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('fileName', uploadFile.name);
+      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+
+      setFeaturedImage(uploadData.url);
       setImageUploading(false);
     } catch {
       setImageUploading(false);
@@ -500,6 +541,8 @@ function WritePageContent() {
           featured_image: featuredImage || null,
           allow_comments: allowComments,
           is_for_kids: isForKids,
+          is_ai_content: isAiContent,
+          visibility,
           copyright_protected: copyrightProtected && cleanedContent.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length >= 50,
           meta_title: metaTitle.trim() || null,
           meta_description: metaDescription.trim() || null,
@@ -527,6 +570,27 @@ function WritePageContent() {
     } finally {
       setSavingAs(null);
     }
+  };
+
+  // Crop inline image in editor — called by editor's crop toolbar button
+  const handleEditorCropImage = async (src: string): Promise<string> => {
+    (document.activeElement as HTMLElement)?.blur();
+    const croppedUrl = await new Promise<string>((resolve) => {
+      cropResolveRef.current = resolve;
+      setCropAspect(16 / 9);
+      setCropSrc(src);
+    });
+    if (!croppedUrl) return "";
+    // Upload cropped image to R2
+    const blob = await fetch(croppedUrl).then(r => r.blob());
+    const uploadFile = new File([blob], `crop-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    formData.append('fileName', uploadFile.name);
+    const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+    const uploadData = await uploadRes.json();
+    if (uploadRes.ok && uploadData.url) return uploadData.url;
+    return "";
   };
 
   // Auto-detect featured image from first content image when entering step 2
@@ -663,6 +727,7 @@ function WritePageContent() {
               onBackspaceAtStart={() => titleInputRef.current?.focus()}
               onEmojiClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowEmojiPicker(true); }}
               onGifClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowGifPicker(true); }}
+              onCropImage={handleEditorCropImage}
               onSave={() => savePost("draft")}
               onPublish={() => savePost("published")}
               placeholder={t("whatsOnYourMind")}
@@ -763,14 +828,50 @@ function WritePageContent() {
               <div>
                 <label className="block text-sm font-semibold mb-2">{t("coverImage")}</label>
                 {featuredImage ? (
-                  <div className="relative rounded-xl overflow-hidden">
-                    <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-cover" />
-                    <button
-                      onClick={() => setFeaturedImage("")}
-                      className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                  <div>
+                    <div className="relative rounded-xl overflow-hidden">
+                      <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-cover" />
+                      <button
+                        onClick={() => setFeaturedImage("")}
+                        className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        onClick={async () => {
+                          // Re-crop existing cover image
+                          (document.activeElement as HTMLElement)?.blur();
+                          setImageUploading(true);
+                          try {
+                            const croppedUrl = await new Promise<string>((resolve) => {
+                              cropResolveRef.current = resolve;
+                              setCropAspect(16 / 9);
+                              setCropSrc(featuredImage);
+                            });
+                            if (!croppedUrl) { setImageUploading(false); return; }
+                            const blob = await fetch(croppedUrl).then(r => r.blob());
+                            const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+                            const formData = new FormData();
+                            formData.append('file', uploadFile);
+                            formData.append('fileName', uploadFile.name);
+                            const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+                            const uploadData = await uploadRes.json();
+                            if (uploadRes.ok && uploadData.url) setFeaturedImage(uploadData.url);
+                          } catch {} finally { setImageUploading(false); }
+                        }}
+                        className="text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
+                      >
+                        {t("editCover")}
+                      </button>
+                      <button
+                        onClick={() => coverInputRef.current?.click()}
+                        className="text-sm text-text-muted hover:text-text-primary font-medium py-1.5 transition"
+                      >
+                        {t("changeCover")}
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <label
@@ -854,6 +955,24 @@ function WritePageContent() {
                 </button>
                 <div>
                 <button
+                  onClick={() => setIsAiContent(!isAiContent)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t("aiContent")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <p className="px-4 pb-2 text-xs text-text-muted leading-relaxed">
+                  {t("aiContentWarning")}{" "}
+                  <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
+                </p>
+                </div>
+                <div>
+                <button
                   onClick={() => {
                     if (!user?.copyrightEligible) return;
                     if (isEditMode && copyrightProtected) return;
@@ -873,7 +992,7 @@ function WritePageContent() {
                   </div>
                 </button>
                 {!user?.copyrightEligible && (
-                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
+                  <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
               </div>
@@ -918,6 +1037,9 @@ function WritePageContent() {
         open={!!cropSrc}
         onClose={() => {
           setCropSrc(null);
+          if (cropResolveRef.current) {
+            cropResolveRef.current("");
+          }
           cropResolveRef.current = null;
         }}
         imageSrc={cropSrc || ""}
@@ -928,6 +1050,12 @@ function WritePageContent() {
             cropResolveRef.current = null;
           }
           setCropSrc(null);
+        }}
+        onChangeImage={() => {
+          // Close crop modal first, then open file picker for cover or inline image
+          setTimeout(() => {
+            if (coverInputRef.current) coverInputRef.current.click();
+          }, 100);
         }}
       />
     </AppLayout>

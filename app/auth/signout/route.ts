@@ -5,5 +5,9 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   await supabase.auth.signOut();
 
-  return NextResponse.redirect(new URL("/", request.url));
+  const response = NextResponse.redirect(new URL("/", request.url));
+  response.cookies.set("fdm-status", "", { maxAge: 0, path: "/" });
+  response.cookies.set("fdm-onboarding", "", { maxAge: 0, path: "/" });
+  response.cookies.set("fdm-role", "", { maxAge: 0, path: "/" });
+  return response;
 }

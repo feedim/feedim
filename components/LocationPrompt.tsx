@@ -11,10 +11,22 @@ export default function LocationPrompt() {
       const lastSaved = localStorage.getItem("fdm-location-saved");
       if (lastSaved) {
         const elapsed = Date.now() - parseInt(lastSaved, 10);
-        if (elapsed < FIVE_DAYS) return; // Saved within 5 days — skip
+        if (elapsed < FIVE_DAYS) return;
       }
 
-      requestLocation();
+      // Check if user already has a known location in DB
+      fetch("/api/location")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.location?.city || data.location?.country_code) {
+            // User already has a known location — mark as saved, skip prompt
+            localStorage.setItem("fdm-location-saved", String(Date.now()));
+            return;
+          }
+          // Location unknown — ask for it
+          requestLocation();
+        })
+        .catch(() => {});
     } catch {}
   }, []);
 
@@ -49,7 +61,6 @@ function saveLocation(body: Record<string, unknown>) {
   })
     .then((r) => r.json())
     .then((data) => {
-      // Only mark as saved if we actually got a location
       if (data.location) {
         localStorage.setItem("fdm-location-saved", String(Date.now()));
       }

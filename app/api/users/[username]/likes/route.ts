@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(
   req: NextRequest,
@@ -48,7 +49,7 @@ export async function GET(
     .range(from, to);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeError(error);
   }
 
   const posts = (likes || []).map((l: any) => {

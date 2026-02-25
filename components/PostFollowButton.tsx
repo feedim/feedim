@@ -26,15 +26,18 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
   useEffect(() => {
     if (!isLoggedIn || !ctxUser || isOwn) { setReady(true); return; }
 
+    let cancelled = false;
     const supabase = createClient();
     Promise.all([
       supabase.from("follows").select("id").eq("follower_id", ctxUser.id).eq("following_id", authorUserId).maybeSingle(),
       supabase.from("follow_requests").select("id").eq("requester_id", ctxUser.id).eq("target_id", authorUserId).eq("status", "pending").maybeSingle(),
     ]).then(([followRes, reqRes]) => {
+      if (cancelled) return;
       setFollowing(!!followRes.data);
       setRequested(!!reqRes.data);
       setReady(true);
     });
+    return () => { cancelled = true; };
   }, [authorUserId, ctxUser, isLoggedIn, isOwn]);
 
   const doFollow = async () => {

@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {useRouter, useSearchParams } from "next/navigation";
-import { emitNavigationStart } from "@/lib/navigationProgress";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Snowflake, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 
@@ -26,8 +24,6 @@ export default function FreezeAccountPage() {
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [otherText, setOtherText] = useState("");
   const [freezing, setFreezing] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
 
   const handleFreeze = async () => {
     if (!selectedReason) {
@@ -48,9 +44,9 @@ export default function FreezeAccountPage() {
       ]);
 
       if (res.ok) {
-        await supabase.auth.signOut();
-        emitNavigationStart();
-        router.push("/");
+        const { signOutCleanup } = await import("@/lib/authClient");
+        await signOutCleanup();
+        window.location.replace("/");
       } else {
         const data = await res.json();
         feedimAlert("error", data.error || t("freezeFailed"));

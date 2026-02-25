@@ -909,9 +909,34 @@ export async function checkCopyrightUnified(
     postId?: number;
     frameHashes?: { frameIndex: number; hash: string }[];
     audioHashes?: { chunkIndex: number; hash: string }[];
+    originFileId?: string | null;
   } = {},
 ): Promise<CopyrightResult> {
   try {
+    // ─── Feedim file re-upload detection ───
+    if (options.originFileId) {
+      try {
+        const { data: origin } = await admin
+          .from('file_identifiers')
+          .select('post_id, uploader_id, file_type')
+          .eq('feedim_id', options.originFileId)
+          .single();
+
+        if (origin && origin.uploader_id !== authorId) {
+          return {
+            flagged: true,
+            matchType: 'exact',
+            similarity: 100,
+            matchedPostId: origin.post_id,
+            matchedAuthorId: origin.uploader_id,
+            reason: 'Feedim dosya kimliği ile kopya içerik tespit edildi (yeniden yükleme)',
+            category: 'kopya_icerik',
+          };
+        }
+      } catch {
+        // file_identifiers table may not exist yet — skip silently
+      }
+    }
     // ─── POST type ───
     if (contentType === 'post') {
       // Body-only check (title excluded), 75/80 thresholds

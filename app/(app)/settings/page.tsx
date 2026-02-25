@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {useRouter, useSearchParams } from "next/navigation";
-import { emitNavigationStart } from "@/lib/navigationProgress";
 import Link from "next/link";
 import {
   User, Mail, LogOut, Clock, Calendar, Wallet, Bookmark,
@@ -56,15 +55,18 @@ export default function SettingsPage() {
     setCurrentTheme(localStorage.getItem("fdm-theme") || "dark");
     setAmbientLight(localStorage.getItem("fdm-ambient-light") || "on");
     // Fetch user location
+    let cancelled = false;
     fetch("/api/location")
       .then(r => r.json())
       .then(d => {
+        if (cancelled) return;
         if (d.location) {
           const parts = [d.location.city, d.location.region, d.location.country_code].filter(Boolean);
           if (parts.length > 0) setLocationText(parts.join(", "));
         }
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const loadProfile = async () => {
@@ -184,9 +186,9 @@ export default function SettingsPage() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    emitNavigationStart();
-    router.push("/");
+    const { signOutCleanup } = await import("@/lib/authClient");
+    await signOutCleanup();
+    window.location.replace("/");
   };
 
   const handleLanguageChange = async (lang: string) => {

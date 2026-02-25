@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
+import { safeError } from "@/lib/apiError";
 
 function parseUA(ua: string | null): string {
   if (!ua) return "Bilinmeyen cihaz";
@@ -149,7 +150,7 @@ export async function PUT(req: NextRequest) {
       .eq("id", session_id)
       .eq("user_id", user.id);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
@@ -186,7 +187,7 @@ export async function DELETE(req: NextRequest) {
         .eq("id", sessionId)
         .eq("user_id", user.id);
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return safeError(error);
       return NextResponse.json({ success: true });
     }
 

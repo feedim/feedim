@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkMetadataContent } from "@/lib/moderation";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,7 +55,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { data: sounds, error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     const items = (sounds || []).slice(0, limit);
     return NextResponse.json({
@@ -91,6 +93,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Sound title moderation
+    const soundModResult = await checkMetadataContent({ soundTitle: title.trim() });
+    if (!soundModResult.safe) {
+      return NextResponse.json({ error: soundModResult.reason || 'Ses başlığı uygunsuz içerik içeriyor' }, { status: 400 });
+    }
+
     const { data: sound, error } = await admin
       .from("sounds")
       .insert({
@@ -106,7 +114,7 @@ export async function POST(req: NextRequest) {
       .select("id, title, artist, audio_url, duration, usage_count, cover_image_url, is_original, status")
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     return NextResponse.json({ sound, deduplicated: false }, { status: 201 });
   } catch {

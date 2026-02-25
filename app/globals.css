@@ -824,9 +824,9 @@ img, svg {
   font-weight: 600;
   border-radius: 2.5rem;
   border: 1px solid var(--border-primary);
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  backdrop-filter: blur(40px) saturate(1.5);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  background: var(--bg-secondary);
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;

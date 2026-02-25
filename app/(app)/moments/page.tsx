@@ -95,7 +95,7 @@ function MomentsContent() {
   // Modal states
   const [commentModal, setCommentModal] = useState<{ postId: number; count: number; slug: string } | null>(null);
   const [shareModal, setShareModal] = useState<{ url: string; title: string; postId: number; slug: string } | null>(null);
-  const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string } | null>(null);
+  const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string; authorName?: string } | null>(null);
   const [likesModalPostId, setLikesModalPostId] = useState<number | null>(null);
 
   // Capture initial slug only on mount — ignore subsequent URL changes
@@ -212,11 +212,26 @@ function MomentsContent() {
     link.crossOrigin = "anonymous";
     document.head.appendChild(link);
     return () => {
-      if (preconnect) document.head.removeChild(preconnect);
-      if (dnsPrefetch) document.head.removeChild(dnsPrefetch);
-      document.head.removeChild(link);
+      try { if (preconnect) document.head.removeChild(preconnect); } catch {}
+      try { if (dnsPrefetch) document.head.removeChild(dnsPrefetch); } catch {}
+      try { document.head.removeChild(link); } catch {}
     };
   }, [moments]);
+
+  // Prefetch video at activeIndex+2 during idle time for smoother scrolling
+  useEffect(() => {
+    const nextIndex = activeDisplayIndex + 2;
+    const item = displayItems[nextIndex];
+    if (item?.type !== "moment" || !item.moment.video_url) return;
+
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "video";
+    link.href = item.moment.video_url;
+    document.head.appendChild(link);
+
+    return () => { try { document.head.removeChild(link); } catch {} };
+  }, [activeDisplayIndex, displayItems]);
 
   // IntersectionObserver
   useEffect(() => {
@@ -346,6 +361,7 @@ function MomentsContent() {
       title: moment.title,
       authorUsername: moment.profiles?.username,
       authorUserId: moment.profiles?.user_id,
+      authorName: moment.profiles?.full_name || moment.profiles?.name || undefined,
     });
   }, []);
 
@@ -365,7 +381,16 @@ function MomentsContent() {
           <button onClick={() => { emitNavigationStart(); router.push("/create/moment"); }} className="t-btn accept !h-10 !px-6 !text-sm">
             {t("createMoment")}
           </button>
-          <button onClick={() => router.back()} className="text-sm text-text-muted underline">{t("goBack")}</button>
+          <button onClick={() => {
+            try {
+              const ref = document.referrer;
+              if (ref && new URL(ref).origin === window.location.origin) {
+                router.back();
+                return;
+              }
+            } catch {}
+            window.location.href = "/";
+          }} className="text-sm text-text-muted underline">{t("goBack")}</button>
         </div>
       </div>
     );
@@ -400,14 +425,17 @@ function MomentsContent() {
           className="h-full snap-y snap-mandatory scrollbar-hide overscroll-contain overflow-y-auto touch-pan-y"
           style={{ backgroundColor: "#000" }}
         >
-      {displayItems.map((item, displayIndex) => (
+      {displayItems.map((item, displayIndex) => {
+        const distance = Math.abs(displayIndex - activeDisplayIndex);
+        const preloadHint: "auto" | "metadata" = distance <= 1 ? "auto" : "metadata";
+        return (
         <React.Fragment key={item.type === "moment" ? `m-${item.moment.id}` : `ad-${item.adIndex}`}>
           <div data-index={displayIndex}>
                 {item.type === "moment" ? (
                   <MomentCard
                     moment={item.moment}
                     isActive={displayIndex === activeDisplayIndex}
-                    loadVideo={Math.abs(displayIndex - activeDisplayIndex) <= 1}
+                    loadVideo={distance <= 3}
                     liked={likedSet.has(item.moment.id)}
                     saved={savedSet.has(item.moment.id)}
                     muted={globalMuted}
@@ -418,6 +446,7 @@ function MomentsContent() {
                     onShare={() => handleShare(item.moment)}
                     onSave={() => handleSave(item.moment.id)}
                     onOptions={() => handleOptions(item.moment)}
+                    preloadHint={preloadHint}
                   />
                 ) : (
                   <MomentAdCard
@@ -430,7 +459,8 @@ function MomentsContent() {
                 )}
               </div>
             </React.Fragment>
-          ))}
+          );
+          })}
 
           {loadingMore && (
             <div className="h-20 flex items-center justify-center">
@@ -468,21 +498,23 @@ function MomentsContent() {
         </Suspense>
       )}
 
-      {/* Options Modal */}
-      {optionsModal && (
-        <Suspense fallback={null}>
-          <PostMoreModal
-            open={!!optionsModal}
-            onClose={() => setOptionsModal(null)}
-            postId={optionsModal.postId}
-            postUrl={`/${optionsModal.slug}`}
-            authorUsername={optionsModal.authorUsername}
-            authorUserId={optionsModal.authorUserId}
-            postSlug={optionsModal.slug}
-            contentType="moment"
-          />
-        </Suspense>
-      )}
+      {/* Options Modal — always rendered, open controlled via prop */}
+      <Suspense fallback={null}>
+        <PostMoreModal
+          open={!!optionsModal}
+          onClose={() => setOptionsModal(null)}
+          postId={optionsModal?.postId ?? 0}
+          postUrl={optionsModal ? `/${optionsModal.slug}` : ''}
+          authorUsername={optionsModal?.authorUsername}
+          authorUserId={optionsModal?.authorUserId}
+          authorName={optionsModal?.authorName}
+          postSlug={optionsModal?.slug}
+          contentType="moment"
+          onDeleteSuccess={() => {
+            setMoments(prev => prev.filter(m => m.id !== optionsModal?.postId));
+          }}
+        />
+      </Suspense>
 
       {/* Likes Modal */}
       {likesModalPostId !== null && (

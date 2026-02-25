@@ -56,8 +56,7 @@ export default function ResetPasswordPage() {
 
       await waitMin();
       feedimAlert("success", t("resetPasswordChanged"));
-      await supabase.auth.signOut();
-      router.push("/login");
+      window.location.replace("/");
     } catch (error: any) {
       await waitMin();
       feedimAlert("error", translateError(error.message, tErrors) || t("resetPasswordFailed"));

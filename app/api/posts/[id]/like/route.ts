@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
 import { getUserPlan, checkDailyLimit, logRateLimitHit } from '@/lib/limits';
+import { safeError } from '@/lib/apiError';
 
 export async function POST(
   request: NextRequest,
@@ -70,7 +71,7 @@ export async function POST(
       .insert({ user_id: user.id, post_id: postId });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return safeError(error);
     }
 
     // Read trigger-updated like_count

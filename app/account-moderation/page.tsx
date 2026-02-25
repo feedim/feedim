@@ -58,7 +58,7 @@ export default async function AccountModerationPage() {
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
           <div className="max-w-lg w-full space-y-6">
             <div className="flex justify-center">
-              <img src="/imgs/feedim-mobile.svg" alt="Feedim" className="h-20 w-20" draggable={false} />
+              <img alt="Feedim" className="feedim-icon-auto h-20 w-20" draggable={false} />
             </div>
             <div className="bg-bg-secondary rounded-[15px] p-5 space-y-4">
               <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export default async function AccountModerationPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
         <div className="max-w-lg w-full space-y-6">
           <div className="flex justify-center">
-            <img src="/imgs/feedim-mobile.svg" alt="Feedim" className="h-20 w-20" draggable={false} />
+            <img alt="Feedim" className="feedim-icon-auto h-20 w-20" draggable={false} />
           </div>
 
           <div className="bg-bg-secondary rounded-[15px] p-5 space-y-4">

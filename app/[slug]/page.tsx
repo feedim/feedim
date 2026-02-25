@@ -27,6 +27,7 @@ import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 import ModerationBadge from "@/components/ModerationBadge";
 import { getTranslations } from "next-intl/server";
+import { getAlternateLanguages } from "@/lib/seo";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -234,6 +235,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     alternates: {
       canonical: url,
+      languages: getAlternateLanguages(`/${encodeURIComponent(post.slug)}`),
       types: {
         'application/json+oembed': `${baseUrl}/api/oembed?url=${encodeURIComponent(url)}&format=json`,
       },
@@ -398,7 +400,7 @@ export default async function PostPage({ params }: PageProps) {
         <VideoViewTracker postId={post.id} />
 
         {/* NSFW moderation banner */}
-        {post.is_nsfw && isOwnPost && (
+        {post.is_nsfw && (isOwnPost || isStaff) && (
           <Link href={`/${post.slug}/moderation`} className="block mx-3 sm:mx-4 mb-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
             <ModerationBadge label={t("moderationBanner")} />
             <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">{t("moderationBannerDesc")} &rarr;</p>
@@ -548,7 +550,7 @@ export default async function PostPage({ params }: PageProps) {
         <PostViewTracker postId={post.id} />
 
         {/* NSFW moderation banner */}
-        {post.is_nsfw && isOwnPost && (
+        {post.is_nsfw && (isOwnPost || isStaff) && (
           <Link href={`/${post.slug}/moderation`} className="block mx-4 sm:mx-5 mt-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
             <ModerationBadge label={t("moderationBanner")} />
             <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">{t("moderationBannerDesc")} &rarr;</p>
@@ -654,7 +656,7 @@ export default async function PostPage({ params }: PageProps) {
       <PostViewTracker postId={post.id} />
 
         {/* NSFW moderation banner */}
-        {post.is_nsfw && isOwnPost && (
+        {post.is_nsfw && (isOwnPost || isStaff) && (
           <Link href={`/${post.slug}/moderation`} className="block mx-4 sm:mx-5 mt-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
             <ModerationBadge label={t("moderationBanner")} />
             <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">{t("moderationBannerDesc")} &rarr;</p>

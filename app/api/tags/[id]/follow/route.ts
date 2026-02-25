@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cache } from "@/lib/cache";
+import { safeError } from "@/lib/apiError";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -52,7 +53,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       .from("tag_follows")
       .insert({ user_id: user.id, tag_id: tagId });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return safeError(error);
 
     cache.delete(`user:${user.id}:tag-follows`);
     return NextResponse.json({ following: true });

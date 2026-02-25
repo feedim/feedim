@@ -1,4 +1,3 @@
-import type { NSFWJS } from 'nsfwjs';
 import Anthropic from '@anthropic-ai/sdk';
 
 // ============================================================
@@ -16,146 +15,72 @@ function stripHtml(html: string): string {
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ============================================================
-// MODERATION SYSTEM PROMPT — TikTok-grade, comprehensive
+// MODERATION SYSTEM PROMPT — Token-optimized (~600 tokens)
 // ============================================================
 
-const MODERATION_SYSTEM = `You are the AI content safety moderator for Feedim, a Turkish-first social media platform similar to TikTok, Instagram, and Twitter. Your job is to protect the community by detecting harmful, policy-violating, or low-quality content in POSTS, COMMENTS, and PROFILE FIELDS (display name, username, bio, website). You must handle Turkish, English, German, French, Arabic, Russian, and all major Unicode scripts including leet-speak, lookalike letters, zero-width characters, and creative bypasses (e.g. s*x, s3x, s.e.x, ѕеx).
+const MODERATION_SYSTEM = `Feedim AI moderator. Turkish-first social platform (TikTok/Instagram/Twitter). Detect harmful content in posts, comments, profiles, metadata. Handle TR/EN/DE/FR/AR/RU + leet-speak, lookalikes, zero-width, creative bypasses.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PLATFORM POLICY — ALLOWED CONTENT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Only everyday, non-controversial, community-safe content is allowed:
-- Daily life, humor, entertainment, memes (non-offensive)
-- Hobbies, sports, fitness, travel, fashion
-- Food, recipes, cooking
-- Education, science, technology, programming
-- Music, art, literature, film (non-pirated discussion)
-- Positive social interaction, Q&A, advice
-- Small businesses announcing their own products (no aggressive spam)
+ALLOWED: daily life, humor, memes, hobbies, sports, food, education, tech, music, art, positive social, small biz (no aggressive spam).
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VIOLATION CATEGORIES — DETECT ALL OF THESE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORIES:
+[profanity] Hedefsiz argo (amk, siktir) → ALLOW. Küfür + sen/seni/senin/sana/@mention 15 char içinde → FLAG harassment_threats.
+[sexual] Açık cinsel, pornografi, CSAM (en yüksek öncelik), cinsel servis teklifi → flag.
+[hate_speech] Irk/din/cinsiyet/yönelim/engellilik temelli aşağılama, dehumanizasyon → flag.
+[harassment_threats] Kişiye hakaret, tehdit, doxxing, zorbalık → flag.
+[violence_gore] Şiddete teşvik, grafik şiddet, katliam yüceltme → flag.
+[terrorism_extremism] Terör propagandası, cihat, neo-Nazi, aşırılık → flag.
+[politics] Siyasi propaganda, slogan, oy çağrısı → flag. Tarafsız haber → allow.
+[religion_sensitive] Dini figüre hakaret → flag. Akademik tartışma → allow.
+[national_symbols] Atatürk/bayrak/milli değerlere hakaret → flag.
+[drugs_illegal] Uyuşturucu/silah satışı, yasadışı hizmet → flag.
+[self_harm_suicide] İntihar/kendine zarar teşviki → flag. Destek arayışı → allow.
+[spam_scam] Bahis/kumar reklam, garanti kazanç, MLM, sahte çekiliş, phishing → flag.
+[gambling] Kumar/bahis sitesi (1xbet, bwin, betboo, superbahis vb.) → flag.
+[money_scam] Bedava/kolay para, pump-dump, Ponzi → flag.
+[personal_data] TC/kart/IBAN/şifre paylaşımı → flag.
+[misinformation] Zararlı tıbbi/finansal yanlış bilgi → flag.
+[platform_redirect] Bio link/profil link çağrısı, Telegram/Discord daveti → flag. WhatsApp/Instagram/YouTube → allow.
+[impersonation] Ünlü/marka/kurum taklidi → flag.
+[copyright_piracy] Korsan link/yazılım → flag.
 
-[profanity]
-Küfür kuralı — iki ayrım:
-• Genel exclamation/argo (hedefsiz): "ya amına koyim bu ne", "siktir ya", "ananızı satayım", "amk ya" → ALLOW. Bunlar günlük konuşma argosu, kimseye yönelik değil.
-• Hedefli hakaret: Küfür + 2. şahıs zamiri (senin, seni, sen, sana) veya @mention → FLAG. Örnekler: "senin amına koyim", "@user orospu çocuğu", "seni sikeyim", "ananızı sikeyim" → flag (harassment_threats).
-Tespit kuralı: Küfür kelimesi + (sen/senin/seni/sana veya @mention 15 karakter içinde) → hedefli. Aksi halde → genel argo, allow.
+RULES:
+- Bypass detection: s*x, s3x, ѕеx, zero-width vb. tüm obfuscation tespit et.
+- Tüm dillere aynı standart. Humor/ironi savunması geçersiz.
+- Yeni hesap (ad<7 gün, rc>3) → spam eşiğini düşür.
+- NSFW skorları: Porn≥0.70, Hentai≥0.70, Sexy≥0.88 → flag. Altı güvenli.
 
-[sexual]
-Açık cinsel içerik, pornografi, müstehcen anlatım, çıplaklık, cinsel organların betimlenmesi, ensest, tecavüz fantezisi, hayvanlarla cinsellik. 18 yaş altına yönelik herhangi bir cinsel içerik (CSAM) → en yüksek öncelikli flag. İma içeren ama açık olmayan: bağlama göre değerlendir. Profillerde cinsel servis teklifi → flag.
+OUTPUT (JSON only, no markdown):
+Flag: {"action":"flag","category":"<slug>","severity":"<low|medium|high|critical>","reason":"<Kısa Türkçe, max 80 char>","confidence":<0.0-1.0>}
+Allow: {"action":"allow"}
 
-[hate_speech]
-Irk, etnisite, din, cinsiyet, cinsel yönelim, engellilik, uyruk, yaş, sosyoekonomik statü temelinde aşağılama, nefret söylemi, dehumanizasyon. "Bunlar insan değil", "X ırkı defol" gibi ifadeler → flag. Gruplara yönelik olumsuz genelleme bile tek başına flag tetikler.
+reason: Sadece ihlali basitçe belirt, dilbilgisi analizi yapma.
+Severity: critical=CSAM/terör/ölüm tehdidi, high=nefret/şiddet/hedefli küfür, medium=propaganda/taciz/spam, low=sınırda/belirsiz.
 
-[harassment_threats]
-Kişiye yönelik hakaret, aşağılayıcı söz, tehdit, zorbalık, taciz, doxxing. "Düşünme yetisi yok", "aptal/salak/gerizekalı/öküz" gibi kişiye yönelmiş ifadeler. Ölüm/fiziksel zarar tehdidi. Fotoğraf/video sızdırma tehdidi. Hedef gösterme (ismini ver, adresi paylaş). Birikimli taciz örüntüsü.
-
-[violence_gore]
-Şiddete teşvik, grafik şiddet anlatımı, kan, işkence, organ, infaz, katliam yüceltme. Tarihsel veya habercilik bağlamı → bağlama göre değerlendir; yüceltme/teşvik içeriyorsa → flag.
-
-[terrorism_extremism]
-Terör örgütü propagandası, cihat çağrısı, ırkçı-etnik katliam yüceltme, neo-Nazi içerik, aşırılık sembolizmi. İsim vermeden de ideoloji tanınırsa → flag.
-
-[politics]
-Siyasi parti, lider, ideoloji, seçim, oy, sandık, kampanya, kutuplaştırıcı gündem. Tarafsız haber paylaşımı allow; ancak açık propaganda, slogan, oy çağrısı → flag. Profil biyolarında siyasi slogan → flag.
-
-[religion_sensitive]
-Dini figürlere, kutsal metinlere veya inanç sistemlerine yönelik aşağılama veya hakaret. Dini tartışma veya karşılaştırma → nötr ise allow; hakaret/çatışma içeriyorsa → flag. Dini grubu hedef alan nefret söylemi → hate_speech kategorisine ek olarak flag.
-
-[national_symbols]
-Türkiye'nin kurucu değerlerine, Atatürk'e, bayrağa, milli marşa, devlet kurumlarına yönelik aşağılayıcı, hakaret içeren veya provokatif ifadeler. Diğer ülkelerin milli sembollerine yönelik de aynı kural.
-
-[drugs_illegal]
-Uyuşturucu satışı/temini, yasadışı ilaç, silah satışı, IBAN/kart bilgisi paylaşımı, kara para, insan kaçakçılığı, yasa dışı hizmet reklamı. Kullanıcı deneyimi anlatımı (zarar azaltma bağlamı) → bağlama göre; satış/temin → her zaman flag.
-
-[self_harm_suicide]
-Kendine zarar verme, intihar, yeme bozukluğu teşviki, aşırı kilo verme yarışması, tehlikeli diyet tavsiyeleri. Kriz anlatımı destek arıyorsa allow + bağlamsal dikkat; teşvik veya yöntem paylaşımı → flag.
-
-[spam_scam]
-• Bahis/kumar/kripto yatırım reklamı
-• "Hemen tıkla / Şimdi kazan / Ücretsiz / Bedava" + para/ödül kombinasyonu
-• Garanti kazanç, get-rich-quick, MLM piramit
-• Follow-for-follow, like-for-like, abone satın al
-• Referral/affiliate link yağmuru (>2 link)
-• Yanıltıcı promosyon, sahte çekiliş
-• Phishing, kimlik avı, sahte marka
-• Kopya-yapıştır tekrar eden metin bloğu
-
-[gambling]
-Kumar, bahis sitesi reklamı veya yönlendirmesi: 1xbet, bwin, betboo, superbahis, youwin, mobilbahis, tipobet, rivalo, betnano, illegal bahis siteleri. "Kupon", "bahis oranı", "canlı bahis" + site/link birleşimi → flag.
-
-[money_scam]
-"Bedava para", "kolay para kazan", "günde X TL kazan", "yatırımsız kazanç", "risksiz kazanç", MLM, piramit, Ponzi, sahte yatırım vaadi. Kripto pump-and-dump. "Telegram grubuma katıl + para kazan" kombinasyonu → flag.
-
-[personal_data]
-TC kimlik no, pasaport no, adres, telefon numarası, e-posta, kredi kartı, banka hesabı, şifre paylaşımı. İzinsiz üçüncü şahıs verisi → her zaman flag.
-
-[misinformation]
-Zararlı tıbbi yanlış bilgi (aşı reddi + hastalık yaymayı teşvik, mucize ilaç), finansal yanlış bilgi (garanti yatırım getirisi), seçim sonuçlarını tahrif eden iddialar, konspirasyonist içerik insan hayatını tehdit ediyorsa.
-
-[platform_redirect]
-Kullanıcıları platform dışına çekme: "Profilimdeki linke tıkla", "Bio'mdaki linke bak". Büyük sosyal ağ paylaşımları (WhatsApp, Facebook, Instagram, X/Twitter, YouTube) GÜNLÜK İLETİŞİMDİR → allow. "WhatsApp'tan yaz", "facebooktan yaz" gibi ifadeler → allow. Sadece Telegram grubu/kanalı, Discord sunucu daveti gibi niş platformlara yönlendirme + çağrı birleşirse → flag.
-
-[impersonation]
-Kullanıcı adı veya profilde ünlü kişi, marka, kurum, resmi hesap taklidi. "Official", "resmi", "real_X", "X_official" gibi ibarelerle taklit → flag.
-
-[copyright_piracy]
-Telif hakkı ihlali içeriği paylaşma, yasa dışı indirme/stream linkleri, korsan yazılım paylaşımı.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DECISION RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Output ONLY one of these two JSON objects — no extra text, no markdown:
-
-FLAG (human review required):
-{"action":"flag","category":"<category_slug>","severity":"<low|medium|high|critical>","reason":"<Kısa, kullanıcı dostu Türkçe açıklama, max 80 chars>","confidence":<0.0-1.0>}
-
-reason kuralı: Sadece ihlali basitçe belirt. Dilbilgisi analizi (zamir tespiti, kelime analizi, cümle yapısı) YAPMA. YANLIŞ örnek: "Hedefli küfür + tehdit. 'Senin' zamiri + cinsel tehdit içeriği." DOĞRU örnek: "Kişiye yönelik küfür ve hakaret." Diğer doğru örnekler: "Kumar sitesi reklamı.", "Cinsel içerik.", "Nefret söylemi.", "Spam ve dolandırıcılık."
-
-ALLOW (publish immediately):
-{"action":"allow"}
-
-Severity guide:
-- critical: CSAM, terör, doxxing, ölüm tehdidi, açık pornografi, Porn≥0.85 görsel
-- high: nefret söylemi, şiddet teşviki, açık küfür+hedef, büyük çaplı dolandırıcılık, Porn≥0.70 görsel
-- medium: siyasi propaganda, taciz, spam, platform yönlendirme, ima-cinsel, Sexy≥0.88 görsel
-- low: sınırda içerik, hafif argo, tek link şüphesi, bağlamsal belirsizlik
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONTEXT FIELDS (abbreviated, provided before content)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ct: post|comment|profile (content type)
-lc: <N> (link count)
-if: none|flaggedCount=<N>,reason=<text>,scores=Porn=<0-1>,Sexy=<0-1>,Hentai=<0-1>,Neutral=<0-1> (image NSFW scores)
-ps: <0-100> (profile/trust score; low=new/suspicious)
-ss: <0-100> (spam signal; >60=suspicious)
-ad: <N> (account age in days)
-rc: <N> (prior community reports on this account)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-NUANCED GUIDANCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Bypass detection: Detect ALL obfuscation — s*x, s3x, s.e.x, ѕеx, 𝓼𝓮𝔁, zero-width spaces, reversed text, emoji substitution. Do not be fooled.
-2. Language: Apply identical standards to ALL languages. Do not be lenient with non-Turkish.
-3. Argo vs. hakaret: Öz-yönelik hafif argo → allow. Başkasına yönelik herhangi bir hakaret/aşağılama → flag (harassment).
-4. Humor defense: "Şaka olsun diye" veya "ironi" gerekçesi geçerli değildir; nefret/tehdit içeriği yine flag.
-5. Profil: Birden fazla alanda ihlal varsa → flag. Tek küçük argo tek alanda → allow unless otherwise qualifying.
-6. Yeni hesap riski: account_age_days < 7 veya report_count > 3 → spam/scam eşiğini düşür.
-7. Image context: NSFW skorları verilir (Porn, Sexy, Hentai, Neutral). ÖNEMLİ: NSFWJS modeli çok fazla yanlış pozitif verir — zombi, korku, karikatür, renkli, sıcak tonlu görseller 0.3-0.8 arası skor alabilir. Bu nedenle görsel skorlarını TEK BAŞINA flag sebebi YAPMA. SADECE aşağıdaki eşikleri aşan skorlar gerçekten uygunsuz kabul edilebilir: Porn≥0.70, Hentai≥0.70, Sexy≥0.88. Bu eşiklerin altındaki TÜM skorlar (örn. Sexy=0.83, Hentai=0.35, Porn=0.40) NORMAL ve GÜVENLİ kabul edilir — bunları flag ETME. Görsel skoru eşiğin üstündeyse ve gerçekten uygunsuz bir görsel varsa flag et. Metin temiz olsa bile görsel eşiği aşmışsa flag. Ancak metin cinsel/şiddet içerikliyse görsel skorundan bağımsız olarak flag.
-8. Platform redirect: "Bio'ma bak", "linke tıkla", "DM'den ulaş", "WhatsApp/Telegram'a gel" → flag (platform_redirect).
-9. Dini tartışma: Hakaret yok, akademik/felsefi tartışma → allow. Dini figüre hakaret veya dini grubu hedef alan saldırı → flag.
-10. Siyaset: Siyasi olayları tarafsızca haberdar etmek → allow. Propaganda, slogan, oy çağrısı → flag.
-11. Confidence: Eğer içerik açıkça ihlal içeriyorsa confidence 0.85+. Belirsiz/sınırda ise 0.5-0.84, low severity ile flag.`;
+CONTEXT (before content): ct:post|video|moment|comment|profile|metadata lc:<N> if:<hint> ps:<0-100> ss:<0-100> ad:<N> rc:<N>`;
 
 // ============================================================
 // TYPES
 // ============================================================
 
+// ============================================================
+// REPORT EVALUATION TYPES
+// ============================================================
+
+export type ReportData = {
+  reason: string;
+  description: string | null;
+  weight: number;
+};
+
+export type ReportEvaluationResult = {
+  shouldModerate: boolean;
+  reason: string;
+  severity: 'low' | 'medium' | 'high' | 'critical' | null;
+  confidence: number;
+};
+
 export type ModerationMeta = {
-  contentType?: 'post' | 'video' | 'moment' | 'comment' | 'profile';
+  contentType?: 'post' | 'video' | 'moment' | 'comment' | 'profile' | 'metadata';
   linkCount?: number;
   imageHint?: string;
   profileScore?: number;
@@ -171,6 +96,8 @@ export type ModerationResult = {
   reason: string | null;
   confidence: number | null;
 };
+
+const SAFE_RESULT: ModerationResult = { safe: true, severity: null, category: null, reason: null, confidence: null };
 
 // ============================================================
 // LOCAL FAST HEURISTICS (pre-filter before Claude call)
@@ -256,25 +183,93 @@ function localPoliticsHeuristic(text: string): { hit: boolean } {
 }
 
 // ============================================================
-// TEXT MODERATION — Claude
+// LOCAL FALLBACK (when Claude API fails)
 // ============================================================
 
-export async function checkTextContent(
-  title: string,
-  htmlContent: string,
-  meta?: ModerationMeta
-): Promise<ModerationResult> {
-  const plainBody = stripHtml(htmlContent);
-  const combined = `${title}\n${plainBody}`.trim();
+function localFallback(text: string): ModerationResult {
+  const pol = localPoliticsHeuristic(text);
+  if (pol.hit) return { safe: false, severity: 'medium', category: 'politics', reason: 'Siyasi içerik', confidence: 0.7 };
 
-  if (combined.length < 3) {
-    return { safe: true, severity: null, category: null, reason: null, confidence: null };
+  const prof = localProfanityHeuristic(text);
+  if (prof.hit) return { safe: false, severity: 'high', category: 'profanity', reason: prof.reason, confidence: 0.8 };
+
+  const spam = localSpamHeuristic(text);
+  if (spam?.hit) return { safe: false, severity: 'medium', category: 'spam_scam', reason: spam.reason, confidence: 0.75 };
+
+  return SAFE_RESULT;
+}
+
+// ============================================================
+// SPLIT INTO CHUNKS (for long content)
+// ============================================================
+
+function splitIntoChunks(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Find best split point: paragraph > sentence > line > space
+    const minSplit = Math.floor(maxLen * 0.4);
+    let splitAt = -1;
+
+    // Prefer paragraph boundary
+    const paraIdx = remaining.lastIndexOf('\n\n', maxLen);
+    if (paraIdx >= minSplit) {
+      splitAt = paraIdx + 2;
+    }
+
+    // Fallback: sentence boundary
+    if (splitAt === -1) {
+      const sentIdx = remaining.lastIndexOf('. ', maxLen);
+      if (sentIdx >= minSplit) {
+        splitAt = sentIdx + 2;
+      }
+    }
+
+    // Fallback: line boundary
+    if (splitAt === -1) {
+      const lineIdx = remaining.lastIndexOf('\n', maxLen);
+      if (lineIdx >= minSplit) {
+        splitAt = lineIdx + 1;
+      }
+    }
+
+    // Fallback: space
+    if (splitAt === -1) {
+      const spaceIdx = remaining.lastIndexOf(' ', maxLen);
+      if (spaceIdx >= minSplit) {
+        splitAt = spaceIdx + 1;
+      }
+    }
+
+    // Hard cut as last resort
+    if (splitAt === -1) {
+      splitAt = maxLen;
+    }
+
+    chunks.push(remaining.substring(0, splitAt));
+    remaining = remaining.substring(splitAt);
   }
 
-  // Build context prefix (abbreviated keys for token savings)
+  return chunks;
+}
+
+// ============================================================
+// CALL CLAUDE — single API call with JSON parsing
+// ============================================================
+
+async function callClaude(text: string, meta?: ModerationMeta): Promise<ModerationResult> {
+  // Build context prefix
   const ctxLines: string[] = [
     `ct:${meta?.contentType || 'post'}`,
-    `lc:${meta?.linkCount ?? (combined.match(/https?:\/\//g) || []).length}`,
+    `lc:${meta?.linkCount ?? (text.match(/https?:\/\//g) || []).length}`,
   ];
   if (meta?.imageHint) ctxLines.push(`if:${meta.imageHint}`);
   if (meta?.profileScore !== undefined) ctxLines.push(`ps:${meta.profileScore}`);
@@ -283,11 +278,66 @@ export async function checkTextContent(
   if (meta?.reportCount !== undefined) ctxLines.push(`rc:${meta.reportCount}`);
   const ctx = ctxLines.join('\n') + '\n\n';
 
-  const fullText = ctx + combined;
+  const userMessage = ctx + text;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 180,
+    temperature: 0,
+    system: MODERATION_SYSTEM,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+
+  const rawText = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
+
+  let json: Record<string, unknown>;
+  try {
+    let jsonStr = rawText;
+    const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      jsonStr = fenceMatch[1].trim();
+    } else {
+      const objMatch = rawText.match(/\{[^}]*\}/);
+      if (objMatch) jsonStr = objMatch[0].trim();
+    }
+    json = JSON.parse(jsonStr);
+  } catch {
+    return SAFE_RESULT;
+  }
+
+  if (json.action === 'flag' || json.action === 'block') {
+    return {
+      safe: false,
+      severity: (json.severity as ModerationResult['severity']) || 'medium',
+      category: (json.category as string) || null,
+      reason: (json.reason as string) || null,
+      confidence: typeof json.confidence === 'number' ? json.confidence : null,
+    };
+  }
+
+  return SAFE_RESULT;
+}
+
+// ============================================================
+// TEXT MODERATION — Claude (with chunking for long content)
+// ============================================================
+
+export async function checkTextContent(
+  title: string,
+  htmlContent: string,
+  meta?: ModerationMeta
+): Promise<ModerationResult> {
+  const plainTitle = stripHtml(title);
+  const plainBody = stripHtml(htmlContent);
+  const combined = `${plainTitle}\n${plainBody}`.trim();
+
+  if (combined.length < 3) {
+    return SAFE_RESULT;
+  }
 
   // ── LOCAL FAST PATH ──────────────────────────────────────
   // Critical/extreme → flag immediately, no API call needed
-  const extreme = localExtremeHeuristic(fullText);
+  const extreme = localExtremeHeuristic(combined);
   if (extreme) {
     return {
       safe: false,
@@ -298,329 +348,68 @@ export async function checkTextContent(
     };
   }
 
-  // Truncate for Claude
-  const truncated = fullText.length > 3000 ? fullText.substring(0, 3000) : fullText;
-
-  try {
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 180,
-      temperature: 0,
-      system: MODERATION_SYSTEM,
-      messages: [{ role: 'user', content: truncated }],
-    });
-
-    const rawText = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
-
-    let json: Record<string, unknown>;
+  // ── SHORT CONTENT (<=2000 char) → single call ────────────
+  if (combined.length <= 2000) {
     try {
-      // Extract JSON from markdown fences or raw text
-      let jsonStr = rawText;
-      const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (fenceMatch) {
-        jsonStr = fenceMatch[1].trim();
-      } else {
-        // Try to find a JSON object directly
-        const objMatch = rawText.match(/\{[^}]*\}/);
-        if (objMatch) jsonStr = objMatch[0].trim();
-      }
-      json = JSON.parse(jsonStr);
+      return await callClaude(combined, meta);
     } catch {
-      // JSON parse failed, default to allow
-      return { safe: true, severity: null, category: null, reason: null, confidence: null };
+      return localFallback(combined);
     }
-
-    if (json.action === 'flag' || json.action === 'block') {
-      return {
-        safe: false,
-        severity: (json.severity as ModerationResult['severity']) || 'medium',
-        category: (json.category as string) || null,
-        reason: (json.reason as string) || null,
-        confidence: typeof json.confidence === 'number' ? json.confidence : null,
-      };
-    }
-
-    return { safe: true, severity: null, category: null, reason: null, confidence: null };
-  } catch (err) {
-    // Claude API error, running local fallback
-
-    // Local fallback chain
-    const pol = localPoliticsHeuristic(fullText);
-    if (pol.hit) return { safe: false, severity: 'medium', category: 'politics', reason: 'Siyasi içerik', confidence: 0.7 };
-
-    const prof = localProfanityHeuristic(fullText);
-    if (prof.hit) return { safe: false, severity: 'high', category: 'profanity', reason: prof.reason, confidence: 0.8 };
-
-    const spam = localSpamHeuristic(fullText);
-    if (spam?.hit) return { safe: false, severity: 'medium', category: 'spam_scam', reason: spam.reason, confidence: 0.75 };
-
-    return { safe: true, severity: null, category: null, reason: null, confidence: null };
   }
-}
 
-// ============================================================
-// IMAGE MODERATION — NSFW.js
-// ============================================================
+  // ── LONG CONTENT (>2000 char) → chunked scanning ────────
+  const chunks = splitIntoChunks(combined, 1500);
 
-let nsfwModel: NSFWJS | null = null;
-
-async function loadModel(): Promise<NSFWJS> {
-  if (!nsfwModel) {
-    // Loading TensorFlow.js
-    const tf = await import('@tensorflow/tfjs');
-    await tf.setBackend('cpu');
-    await tf.ready();
-    // TF backend ready
-    const nsfwjs = await import('nsfwjs');
-    // Loading NSFW model
-    nsfwModel = await nsfwjs.load();
-    // NSFW model loaded
-  }
-  return nsfwModel;
-}
-
-type NsfwAction = 'allow' | 'flag';
-
-// Conservative thresholds — NSFWJS has high false-positive rate on Sexy/Hentai
-// (zombies, cartoons, warm-toned images frequently score 0.3-0.8)
-function evaluateScores(scores: Record<string, number>): { action: NsfwAction; reason?: string } {
-  const porn = scores['Porn'] || 0;
-  const hentai = scores['Hentai'] || 0;
-  const sexy = scores['Sexy'] || 0;
-  const neutral = scores['Neutral'] || 0;
-  if (porn >= 0.70) return { action: 'flag', reason: 'Görsel: pornografi' };
-  if (hentai >= 0.70) return { action: 'flag', reason: 'Görsel: hentai' };
-  if (sexy >= 0.88) return { action: 'flag', reason: 'Görsel: erotik içerik' };
-  if (porn + hentai >= 0.80) return { action: 'flag', reason: 'Görsel: cinsel içerik' };
-  if (porn + hentai + sexy >= 0.92 && neutral < 0.15) return { action: 'flag', reason: 'Görsel: uygunsuz içerik' };
-  return { action: 'allow' };
-}
-
-async function decodeBufferToTensor(buffer: Buffer, mimeType: string) {
-  const tf = await import('@tensorflow/tfjs');
   try {
-    let width: number, height: number;
-    let pixels: Uint8Array;
-
-    const mt = mimeType.toLowerCase();
-
-    if (mt.includes('jpeg') || mt.includes('jpg')) {
-      const jpeg = await import('jpeg-js');
-      const decoded = jpeg.decode(buffer, { useTArray: true });
-      width = decoded.width;
-      height = decoded.height;
-      pixels = decoded.data as Uint8Array;
-    } else if (mt.includes('png')) {
-      const { PNG } = await import('pngjs');
-      const png = PNG.sync.read(buffer);
-      width = png.width;
-      height = png.height;
-      pixels = new Uint8Array(png.data);
-    } else if (mt.includes('webp')) {
-      const sharp = (await import('sharp')).default;
-      const img = sharp(buffer, { animated: false });
-      const meta = await img.metadata();
-      width = meta.width || 0;
-      height = meta.height || 0;
-      if (!width || !height) return null;
-      const raw = await img.ensureAlpha().raw().toBuffer();
-      pixels = new Uint8Array(raw);
-    } else if (mt.includes('gif')) {
-      const { GifReader } = await import('omggif');
-      const reader = new GifReader(buffer);
-      width = reader.width;
-      height = reader.height;
-      const rgba = new Uint8Array(width * height * 4);
-      reader.decodeAndBlitFrameRGBA(0, rgba);
-      pixels = rgba;
-    } else {
-      // Unsupported mimeType
-      return null;
+    for (const chunk of chunks) {
+      const result = await callClaude(chunk, meta);
+      if (!result.safe) return result; // Stop at first flag
     }
-
-    const numPixels = width * height;
-    const rgb = new Uint8Array(numPixels * 3);
-    for (let i = 0; i < numPixels; i++) {
-      rgb[i * 3] = pixels[i * 4];
-      rgb[i * 3 + 1] = pixels[i * 4 + 1];
-      rgb[i * 3 + 2] = pixels[i * 4 + 2];
-    }
-
-    return tf.tensor3d(rgb, [height, width, 3], 'int32');
-  } catch (err) {
-    // decodeBufferToTensor error
-    return null;
-  }
-}
-
-export async function checkImageBuffer(
-  buffer: Buffer,
-  mimeType: string,
-  opts?: { strict?: boolean }
-): Promise<{ safe: boolean; action: NsfwAction; scores: Record<string, number>; reason?: string }> {
-  try {
-    const model = await loadModel();
-    const tensor = await decodeBufferToTensor(buffer, mimeType);
-    if (!tensor) {
-      // Could not decode image to tensor
-      if (opts?.strict) return { safe: false, action: 'flag', scores: {}, reason: 'Görsel okunamadı (strict)' };
-      return { safe: true, action: 'allow', scores: {} };
-    }
-
-    try {
-      const predictions = await model.classify(tensor);
-      tensor.dispose();
-
-      const scores: Record<string, number> = {};
-      for (const p of predictions) scores[p.className] = p.probability;
-
-      const { action, reason } = evaluateScores(scores);
-      // Buffer check done
-      return { safe: action === 'allow', action, scores, reason };
-    } catch (err) {
-      console.error('[NSFW] classify error:', err);
-      tensor.dispose();
-      if (opts?.strict) return { safe: false, action: 'flag', scores: {}, reason: 'Model hatası (strict)' };
-      return { safe: true, action: 'allow', scores: {} };
-    }
-  } catch (err) {
-    // checkImageBuffer error
-    if (opts?.strict) return { safe: false, action: 'flag', scores: {}, reason: 'Görsel modülü hatası' };
-    return { safe: true, action: 'allow', scores: {} };
-  }
-}
-
-// ============================================================
-// HTML IMAGE EXTRACTION
-// ============================================================
-
-const MAX_IMAGES = 8;
-const MAX_BASE64_BYTES = 8 * 1024 * 1024; // 8 MB
-
-interface ExtractedImage {
-  type: 'base64' | 'url';
-  data: string;
-  mimeType: string;
-}
-
-function extractImagesFromHtml(html: string): ExtractedImage[] {
-  const images: ExtractedImage[] = [];
-
-  // Base64 embedded images
-  const b64Regex = /src="data:image\/(jpeg|jpg|png|webp|gif);base64,([^"]+)"/gi;
-  let match: RegExpExecArray | null;
-  while ((match = b64Regex.exec(html)) !== null) {
-    if (match[2].length > MAX_BASE64_BYTES) continue;
-    images.push({ type: 'base64', data: match[2], mimeType: match[1].toLowerCase() });
-    if (images.length >= MAX_IMAGES) break;
-  }
-
-  // External URL images
-  if (images.length < MAX_IMAGES) {
-    const urlRegex = /<img[^>]+src="(https?:\/\/[^\"]+)"/gi;
-    while ((match = urlRegex.exec(html)) !== null) {
-      images.push({ type: 'url', data: match[1], mimeType: '' });
-      if (images.length >= MAX_IMAGES) break;
-    }
-  }
-
-  return images;
-}
-
-function getMimeFromUrl(url: string, contentType?: string): string {
-  if (contentType) {
-    if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'image/jpeg';
-    if (contentType.includes('png')) return 'image/png';
-    if (contentType.includes('webp')) return 'image/webp';
-    if (contentType.includes('gif')) return 'image/gif';
-  }
-  const lower = url.toLowerCase().split('?')[0];
-  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.gif')) return 'image/gif';
-  return '';
-}
-
-async function fetchImageBuffer(url: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return null;
-    const contentType = res.headers.get('content-type') || '';
-    const mimeType = getMimeFromUrl(url, contentType);
-    if (!mimeType) return null;
-    const arrayBuf = await res.arrayBuffer();
-    if (arrayBuf.byteLength > 15 * 1024 * 1024) return null; // 15 MB cap
-    return { buffer: Buffer.from(arrayBuf), mimeType };
+    return SAFE_RESULT;
   } catch {
-    return null;
+    return localFallback(combined);
   }
 }
 
-export async function checkImageContent(htmlContent: string): Promise<{
-  safe: boolean;
-  action: NsfwAction;
-  flaggedCount: number;
-  reason?: string;
-  maxScores?: Record<string, number>;
-}> {
-  const images = extractImagesFromHtml(htmlContent);
-  if (images.length === 0) return { safe: true, action: 'allow', flaggedCount: 0 };
+// ============================================================
+// METADATA MODERATION (tags, meta_title, meta_description, sound_title)
+// ============================================================
+
+export async function checkMetadataContent(fields: {
+  tags?: string[];
+  metaTitle?: string;
+  metaDescription?: string;
+  soundTitle?: string;
+}, meta?: ModerationMeta): Promise<ModerationResult> {
+  const parts: string[] = [];
+  if (fields.tags && fields.tags.length > 0) parts.push(`tags: ${fields.tags.join(', ')}`);
+  if (fields.metaTitle) parts.push(`meta_title: ${fields.metaTitle}`);
+  if (fields.metaDescription) parts.push(`meta_description: ${fields.metaDescription}`);
+  if (fields.soundTitle) parts.push(`sound_title: ${fields.soundTitle}`);
+
+  const combined = parts.join('\n').trim();
+  if (combined.length < 3) {
+    return SAFE_RESULT;
+  }
+
+  // Local heuristic first
+  const extreme = localExtremeHeuristic(combined);
+  if (extreme) {
+    return {
+      safe: false,
+      severity: extreme.severity,
+      category: extreme.severity === 'critical' ? 'terrorism_extremism' : 'violence_gore',
+      reason: extreme.reason,
+      confidence: 0.98,
+    };
+  }
+
+  const metaForCall: ModerationMeta = { ...meta, contentType: 'metadata' };
 
   try {
-    const model = await loadModel();
-    let action: NsfwAction = 'allow';
-    let flaggedCount = 0;
-    let reason: string | undefined;
-    // Track worst scores across all images
-    const maxScores: Record<string, number> = { Porn: 0, Hentai: 0, Sexy: 0, Neutral: 1, Drawing: 0 };
-
-    for (const img of images) {
-      let buffer: Buffer;
-      let mimeType: string;
-
-      if (img.type === 'base64') {
-        buffer = Buffer.from(img.data, 'base64');
-        mimeType = img.mimeType.includes('jpg') ? 'image/jpeg' : `image/${img.mimeType}`;
-      } else {
-        const fetched = await fetchImageBuffer(img.data);
-        if (!fetched) continue;
-        buffer = fetched.buffer;
-        mimeType = fetched.mimeType;
-      }
-
-      const tensor = await decodeBufferToTensor(buffer, mimeType);
-      if (!tensor) continue;
-
-      try {
-        const predictions = await model.classify(tensor);
-        tensor.dispose();
-
-        const scores: Record<string, number> = {};
-        for (const p of predictions) scores[p.className] = p.probability;
-
-        // Keep worst (highest) scores
-        for (const key of ['Porn', 'Hentai', 'Sexy', 'Drawing']) {
-          if ((scores[key] || 0) > maxScores[key]) maxScores[key] = scores[key] || 0;
-        }
-        // Keep lowest Neutral
-        if ((scores['Neutral'] || 0) < maxScores['Neutral']) maxScores['Neutral'] = scores['Neutral'] || 0;
-
-        const { action: imgAction, reason: imgReason } = evaluateScores(scores);
-
-        if (imgAction === 'flag') {
-          action = 'flag';
-          flaggedCount++;
-          if (!reason) reason = imgReason;
-        }
-      } catch (err) {
-        tensor.dispose();
-      }
-    }
-
-    return { safe: action === 'allow', action, flaggedCount, reason, maxScores };
-  } catch (err) {
-    return { safe: true, action: 'allow', flaggedCount: 0 };
+    return await callClaude(combined, metaForCall);
+  } catch {
+    return localFallback(combined);
   }
 }
 
@@ -647,64 +436,114 @@ export async function moderateProfile(
 
   const combined = parts.join('\n');
   if (combined.trim().length < 3) {
-    return { safe: true, severity: null, category: null, reason: null, confidence: null };
+    return SAFE_RESULT;
   }
 
   return checkTextContent('', combined, { ...meta, contentType: 'profile' });
 }
 
 // ============================================================
-// COMBINED MODERATION — Main entry point
+// REPORT EVALUATION SYSTEM PROMPT
 // ============================================================
 
-/**
- * Decision matrix:
- *  text=flag  OR  image=flag  →  action: 'moderation'  (human review queue)
- *  text=safe  AND image=safe  →  action: 'allow'
- */
-export async function moderateContent(
-  title: string,
-  htmlContent: string,
-  meta?: ModerationMeta
-): Promise<{
-  action: 'allow' | 'moderation';
-  reason: string | null;
-  category: string | null;
-  severity: ModerationResult['severity'];
-  confidence: number | null;
-}> {
-  // Starting moderation
+const REPORT_EVALUATION_SYSTEM = `Feedim AI moderasyon asistanı. Kullanıcı şikayetlerini gerçek içerikle karşılaştırarak değerlendir.
 
-  // 1. Image scan
-  const imageResult = await checkImageContent(htmlContent);
-  // Image moderation done
+Görev:
+1. Şikayet nedenlerini ve açıklamalarını analiz et
+2. Gerçek içeriği incele — şikayetler haklı mı?
+3. İçerikte ihlal var mı yok mu, dürüstçe belirt
+4. Moderatör ekibine Türkçe kısa özet sun
 
-  const scoreStr = imageResult.maxScores
-    ? `Porn=${(imageResult.maxScores.Porn).toFixed(2)},Sexy=${(imageResult.maxScores.Sexy).toFixed(2)},Hentai=${(imageResult.maxScores.Hentai).toFixed(2)},Neutral=${(imageResult.maxScores.Neutral).toFixed(2)}`
-    : '';
-  const imageHint =
-    imageResult.action !== 'allow'
-      ? `flaggedCount=${imageResult.flaggedCount},reason=${imageResult.reason || 'n/a'},scores=${scoreStr}`
-      : (scoreStr ? `none,scores=${scoreStr}` : 'none');
+OUTPUT (JSON only, no markdown):
+Moderate: {"action":"moderate","reason":"<N şikayet: Özet açıklama, max 200 char>","severity":"<low|medium|high|critical>","confidence":<0.0-1.0>}
+Dismiss: {"action":"dismiss","reason":"<N şikayet incelendi: Neden ihlal bulunamadığı, max 200 char>","confidence":<0.0-1.0>}
 
-  // 2. Text scan (with image context injected)
-  const linkCount = (stripHtml(htmlContent).match(/https?:\/\//g) || []).length;
-  const textResult = await checkTextContent(title, htmlContent, {
-    ...(meta || {}),
-    imageHint,
-    linkCount,
-  });
-  // Text moderation done
+reason örnekleri:
+- "12 şikayet: Nefret söylemi ve hedefli hakaret içeriyor"
+- "5 şikayet: Spam bildirimi, içerikte spam unsuru bulunamadı — insan moderasyonu önerilir"
+- "8 şikayet: Cinsel içerik bildirimi, içerikte uygunsuz ifadeler doğrulandı"
+- "3 şikayet: Şiddet/tehdit bildirimi ancak içerik mizah bağlamında, sınırda — insan kararı gerekli"`;
 
-  if (!textResult.safe || imageResult.action !== 'allow') {
+// ============================================================
+// EVALUATE USER REPORTS — AI-based report assessment
+// ============================================================
+
+export async function evaluateUserReports(
+  contentText: string,
+  contentType: 'post' | 'video' | 'moment' | 'comment' | 'profile',
+  reports: ReportData[],
+  totalReportCount: number,
+): Promise<ReportEvaluationResult> {
+  try {
+    // Build report summary grouped by reason
+    const reasonCounts: Record<string, number> = {};
+    for (const r of reports) {
+      reasonCounts[r.reason] = (reasonCounts[r.reason] || 0) + 1;
+    }
+    const reasonSummary = Object.entries(reasonCounts)
+      .map(([reason, count]) => `${reason}: ${count}`)
+      .join(', ');
+
+    // Collect first 5 descriptions (max 100 chars each)
+    const descriptions = reports
+      .filter(r => r.description)
+      .slice(0, 5)
+      .map(r => r.description!.slice(0, 100));
+
+    const trustedCount = reports.filter(r => r.weight >= 0.4).length;
+
+    const reportSection = [
+      `Şikayet özeti (${totalReportCount} toplam): ${reasonSummary}`,
+      descriptions.length > 0 ? `Açıklamalar:\n${descriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')}` : '',
+    ].filter(Boolean).join('\n');
+
+    const contextPrefix = `ct:${contentType} reports:${totalReportCount} trusted_reports:${trustedCount}`;
+    const userMessage = `${contextPrefix}\n\nŞİKAYETLER:\n${reportSection}\n\nİÇERİK:\n${contentText.slice(0, 3000)}`;
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 250,
+      temperature: 0,
+      system: REPORT_EVALUATION_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    const rawText = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
+
+    let json: Record<string, unknown>;
+    let jsonStr = rawText;
+    const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      jsonStr = fenceMatch[1].trim();
+    } else {
+      const objMatch = rawText.match(/\{[^}]*\}/);
+      if (objMatch) jsonStr = objMatch[0].trim();
+    }
+    json = JSON.parse(jsonStr);
+
+    if (json.action === 'moderate') {
+      return {
+        shouldModerate: true,
+        reason: (json.reason as string) || `${totalReportCount} şikayet: AI moderasyona aldı`,
+        severity: (json.severity as ReportEvaluationResult['severity']) || 'medium',
+        confidence: typeof json.confidence === 'number' ? json.confidence : 0.5,
+      };
+    }
+
+    // dismiss
     return {
-      action: 'moderation',
-      reason: textResult.reason || imageResult.reason || 'İçerik inceleme gerektiriyor',
-      category: textResult.category || (imageResult.action !== 'allow' ? (imageResult.reason || 'nsfw_image') : null),
-      severity: textResult.severity || (imageResult.action !== 'allow' ? 'high' : null),
-      confidence: textResult.confidence,
+      shouldModerate: false,
+      reason: (json.reason as string) || `${totalReportCount} şikayet incelendi: İhlal bulunamadı`,
+      severity: null,
+      confidence: typeof json.confidence === 'number' ? json.confidence : 0.5,
+    };
+  } catch {
+    // Fail-safe: send to moderation on error
+    return {
+      shouldModerate: true,
+      reason: 'AI değerlendirme hatası, insan moderasyonu gerekli',
+      severity: 'low',
+      confidence: 0,
     };
   }
-
-  return { action: 'allow', reason: null, category: null, severity: null, confidence: null };
 }

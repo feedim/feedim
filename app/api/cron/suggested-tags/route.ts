@@ -131,7 +131,7 @@ Sadece seçtiğin 10 etiketin adını virgülle ayırarak yaz, başka hiçbir ş
       counts: Object.fromEntries(Object.entries(results).map(([k, v]) => [k, v.length])),
     });
   } catch (err) {
-    console.error("suggested-tags cron error:", err);
+    if (process.env.NODE_ENV === "development") console.error("suggested-tags cron error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

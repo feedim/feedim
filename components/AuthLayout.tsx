@@ -14,10 +14,21 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
   const router = useRouter();
   const t = useTranslations("auth");
 
+  const handleBack = () => {
+    try {
+      const ref = document.referrer;
+      if (ref && new URL(ref).origin === window.location.origin) {
+        router.back();
+        return;
+      }
+    } catch {}
+    window.location.href = "/";
+  };
+
   return (
     <div className="min-h-screen px-4 py-12 relative">
       <button
-        onClick={() => router.back()}
+        onClick={handleBack}
         className="absolute top-6 left-4 flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
         aria-label={t("goBack")}
       >

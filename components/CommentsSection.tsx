@@ -76,8 +76,20 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   }, [postId]);
 
   useEffect(() => {
+    let cancelled = false;
     loadComments(1);
-    loadLikedComments();
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+      const { data } = await supabase
+        .from("comment_likes")
+        .select("comment_id")
+        .eq("user_id", user.id);
+      if (!cancelled && data) {
+        setLikedComments(new Set(data.map(l => l.comment_id)));
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const loadLikedComments = async () => {

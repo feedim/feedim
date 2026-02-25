@@ -227,6 +227,7 @@
     "watch": "Watch",
     "unmute": "Unmute",
     "mute": "Mute",
+    "noSound": "No sound",
     "pinned": "Pinned",
     "draft": "Draft",
     "published": "Published",
@@ -829,6 +830,7 @@
     "cropCancel": "Cancel",
     "cropLabel": "Crop",
     "cropReset": "Reset",
+    "cropChange": "Change",
     "soundPickerTitle": "Select Sound",
     "soundPickerInfoText": "Search for a sound or select from the list to add to your Moment.",
     "soundPopular": "Popular",
@@ -933,6 +935,10 @@
     "allowCommentsDescViewers": "Viewers can comment",
     "forKids": "For kids",
     "forKidsDesc": "This content is for children",
+    "aiContent": "AI content",
+    "aiContentDesc": "This content was created with AI",
+    "aiContentWarning": "We require this option to be enabled for AI-generated content. If detected by the system, your profile trust score will be reduced.",
+    "aiContentLearnMore": "Learn more...",
     "copyrightProtection": "Copyright protection",
     "copyrightCannotDisable": "Copyright protection cannot be disabled on protected content.",
     "copyrightAutoEnable": "Automatically enabled by the system for regular original content creation.",
@@ -960,7 +966,12 @@
     "maxSeconds": "Max {seconds} seconds",
     "processing": "Processing...",
     "cancelUpload": "Cancel",
-    "videoTitlePlaceholder": "Video title...",
+    "play": "Play",
+    "pause": "Pause",
+    "unmute": "Unmute",
+    "mute": "Mute",
+    "noSound": "No sound",
+    "videoTitlePlaceholder": "Title...",
     "videoDescPlaceholder": "Video description (optional)...",
     "thumbnail": "Thumbnail",
     "thumbnailRecommended16by9": "Recommended: 1280×720px (16:9), max 5MB",
@@ -968,6 +979,11 @@
     "thumbnailChange": "Change thumbnail",
     "thumbnailRemove": "Remove thumbnail",
     "thumbnailUpload": "Upload thumbnail",
+    "thumbnailPickerTitle": "Thumbnail",
+    "thumbnailSelectFrame": "Select This Frame",
+    "thumbnailUploadImage": "Upload Image",
+    "editCover": "Edit Cover",
+    "changeCover": "Change",
     "momentMaxDuration": "Moment can be at most {seconds} seconds",
     "momentVerticalRequired": "Vertical (9:16) video is required for Moments. Please select a vertical video",
     "momentUploadClick": "Click to upload a Moment",
@@ -978,7 +994,12 @@
     "postMaxWords": "Post cannot exceed {max} words",
     "postMaxListItems": "Post cannot contain more than 300 list items",
     "repetitiveContent": "Repetitive content detected",
-    "postOnlyNumbers": "Post cannot consist of only numbers"
+    "postOnlyNumbers": "Post cannot consist of only numbers",
+    "trimVideo": "Trim",
+    "trimTitle": "Trim Video",
+    "trimApply": "Apply",
+    "trimming": "Trimming...",
+    "removeVideo": "Remove Video"
   },
   "explore": {
     "title": "Explore",
@@ -1069,7 +1090,9 @@
     "copyrightDetected": "a similar post to your content was detected",
     "someone": "Someone",
     "andOthers": "and {count} others",
-    "startedFollowing": "started following you"
+    "startedFollowing": "started following you",
+    "systemNotifications": "System notifications",
+    "unreadSystemNotifications": "{count} unread notifications"
   },
   "video": {
     "play": "Play",
@@ -2071,7 +2094,9 @@
     "articlesCount": "{count} articles",
     "ctaTitle": "Couldn't find the answer you're looking for?",
     "ctaDescription": "Our team is happy to answer your questions as soon as possible.",
-    "ctaButton": "Contact Us"
+    "ctaButton": "Contact Us",
+    "quickLinksTitle": "More Support",
+    "faqTitle": "Frequently Asked Questions"
   },
   "editor": {
     "defaultPlaceholder": "Start writing your post...",
@@ -2097,6 +2122,7 @@
     "alignRight": "Align Right",
     "horizontalRule": "Horizontal Rule",
     "table": "Table",
+    "crop": "Crop",
     "deselect": "Deselect",
     "addRow": "Add Row",
     "addColumn": "Add Column",
@@ -2105,5 +2131,29 @@
     "maxRows": "Maximum 20 rows",
     "maxColumns": "Maximum 6 columns",
     "imageUploadFailed": "Could not upload image"
+  },
+  "landing": {
+    "title": "Discover and Share.",
+    "description": "Discover inspiring content, watch videos, share your thoughts and set the agenda.",
+    "continueAs": "Continue as {name}",
+    "continueWithAccount": "Continue with your account",
+    "loginDifferent": "Log in with a different account",
+    "browseWithoutLogin": "Browse without logging in",
+    "googleContinue": "Continue with Google",
+    "createAccount": "Create account",
+    "termsAgreePrefix": "By signing up, you agree to our",
+    "termsAgreeAnd": "and",
+    "termsAgreeSuffix": ".",
+    "termsLink": "Terms of Service",
+    "privacyLink": "Privacy Policy",
+    "alreadyHaveAccount": "Already have an account?",
+    "login": "Log in",
+    "removeAccount": "Remove account"
+  },
+  "leaving": {
+    "title": "You are leaving Feedim",
+    "description": "The link below redirects to a page outside of Feedim. Make sure you want to continue.",
+    "openLink": "Open Link",
+    "goBack": "Go Back"
   }
 }

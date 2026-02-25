@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getPresignedUploadUrl } from "@/lib/r2";
 import { VIDEO_ALLOWED_TYPES } from "@/lib/constants";
+import { nanoid } from "nanoid";
+import { safeError } from "@/lib/apiError";
 
 const MAX_FILE_SIZE = 209715200; // 200MB
 
@@ -48,12 +50,12 @@ export async function POST(request: NextRequest) {
     const safeExt = ext.replace(/[^a-z0-9]/g, "").slice(0, 10) || "mp4";
     const key = `videos/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
 
-    const { uploadUrl, publicUrl } = await getPresignedUploadUrl(key, contentType);
+    const feedimFileId = nanoid(16);
+    const { uploadUrl, publicUrl } = await getPresignedUploadUrl(key, contentType, undefined, undefined, { "x-fdm-id": feedimFileId });
 
-    return NextResponse.json({ uploadUrl, publicUrl, key });
+    return NextResponse.json({ uploadUrl, publicUrl, key, feedimFileId });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("Video upload init error:", msg);
-    return NextResponse.json({ error: msg || "Sunucu hatasi" }, { status: 500 });
+    if (process.env.NODE_ENV === "development") console.error("Video upload init error:", err);
+    return safeError(err);
   }
 }

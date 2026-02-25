@@ -107,7 +107,6 @@ export default function TransactionsPage() {
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : transactions.length === 0 ? (
           <div className="text-center py-16">
-            <Coins className="h-12 w-12 text-accent-main/40 mx-auto mb-3" />
             <h2 className="text-lg font-bold mb-2">Henüz işlem yok</h2>
             <p className="text-sm text-text-muted mb-5">Başlamak için Jeton satın alın.</p>
             <Link href="/coins" className="t-btn accept inline-block">
@@ -122,7 +121,9 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
+        {!loading && transactions.length > 0 && (
+          <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
+        )}
       </div>
     </AppLayout>
   );

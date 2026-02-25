@@ -7,13 +7,15 @@ import { getProfileSignals } from '@/lib/modSignals';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION, MOMENT_MAX_DURATION, CONTENT_TYPES } from '@/lib/constants';
 import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
-import { moderateContent } from '@/lib/moderation';
+import { checkNsfwContent } from '@/lib/nsfwCheck';
+import { checkTextContent, checkMetadataContent } from '@/lib/moderation';
 import { checkCopyrightUnified, computeContentHash, stripHtmlToText, normalizeForComparison, computeImageHashFromUrl, COPYRIGHT_THRESHOLDS } from '@/lib/copyright';
 import { sendEmail, getEmailIfEnabled, moderationReviewEmail } from '@/lib/email';
 import { revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import sanitizeHtml from 'sanitize-html';
 import { getTranslations } from 'next-intl/server';
+import { safeError } from '@/lib/apiError';
 
 export async function POST(request: NextRequest) {
   const tErrors = await getTranslations('apiErrors');
@@ -42,17 +44,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash, image_hash: clientImageHash, copyright_protected, sound_id, frame_hashes: clientFrameHashes, audio_hashes: clientAudioHashes } = body;
+    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, is_ai_content, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash, image_hash: clientImageHash, copyright_protected, sound_id, frame_hashes: clientFrameHashes, audio_hashes: clientAudioHashes, video_feedim_id, image_feedim_id, audio_feedim_id, video_origin_id, image_origin_id, visibility } = body;
     const isVideo = content_type === 'video' || content_type === 'moment';
     const isMoment = content_type === 'moment';
     const isNote = content_type === 'note';
 
-    // Validate title
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    // Validate title (optional for moments)
+    if (!isMoment && (!title || typeof title !== 'string' || title.trim().length === 0)) {
       return NextResponse.json({ error: tErrors('titleRequired') }, { status: 400 });
     }
-    const trimmedTitle = title.trim();
-    if (!isNote && trimmedTitle.length < VALIDATION.postTitle.min) {
+    const trimmedTitle = (title || '').trim();
+    if (!isNote && !isMoment && trimmedTitle.length < VALIDATION.postTitle.min) {
       return NextResponse.json({ error: tErrors('titleMinLength', { min: VALIDATION.postTitle.min }) }, { status: 400 });
     }
     if (trimmedTitle.length > VALIDATION.postTitle.max) {
@@ -190,6 +192,7 @@ export async function POST(request: NextRequest) {
           : normalizeForComparison(plainText);
         contentHash = normalizedForHash.split(/\s+/).filter(Boolean).length >= 8 ? computeContentHash(normalizedForHash) : null;
 
+        const originFileId = image_origin_id || video_origin_id || null;
         const copyrightResult = await checkCopyrightUnified(
           admin, trimmedTitle, sanitizedContent, user.id, contentTypeVal, wc, {
             featuredImage: featured_image || null,
@@ -199,6 +202,7 @@ export async function POST(request: NextRequest) {
             imageHash,
             frameHashes: frameHashes.length > 0 ? frameHashes : undefined,
             audioHashes: audioHashes.length > 0 ? audioHashes : undefined,
+            originFileId,
           },
         );
 
@@ -215,7 +219,7 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (err) {
-        console.error('[Copyright] POST check error:', err);
+        if (process.env.NODE_ENV === "development") console.error('[Copyright] POST check error:', err);
       }
 
       // AI moderation — skip if already flagged by copyright (save cost, notes always run moderation)
@@ -226,15 +230,46 @@ export async function POST(request: NextRequest) {
         let moderationHtml = sanitizedContent;
         if (featured_image && typeof featured_image === 'string') moderationHtml += `<img src="${featured_image.replace(/"/g, '&quot;')}" />`;
         if (isVideo && video_thumbnail && typeof video_thumbnail === 'string') moderationHtml += `<img src="${video_thumbnail.replace(/"/g, '&quot;')}" />`;
-        const modResult = await moderateContent(trimmedTitle, moderationHtml, {
+
+        // 1. NSFW image scan
+        const nsfwResult = await checkNsfwContent(moderationHtml);
+
+        // 2. Text moderation (with NSFW scores as hint)
+        const scoreStr = nsfwResult.maxScores
+          ? `Porn=${(nsfwResult.maxScores.Porn).toFixed(2)},Sexy=${(nsfwResult.maxScores.Sexy).toFixed(2)},Hentai=${(nsfwResult.maxScores.Hentai).toFixed(2)},Neutral=${(nsfwResult.maxScores.Neutral).toFixed(2)}`
+          : '';
+        const imageHint = nsfwResult.action !== 'allow'
+          ? `flaggedCount=${nsfwResult.flaggedCount},reason=${nsfwResult.reason || 'n/a'},scores=${scoreStr}`
+          : (scoreStr ? `none,scores=${scoreStr}` : 'none');
+        const textResult = await checkTextContent(trimmedTitle, moderationHtml, {
           contentType: isMoment ? 'moment' : isVideo ? 'video' : 'post',
+          imageHint,
           ...profileMeta,
         });
-        moderationAction = modResult.action;
-        if (moderationAction === 'moderation') {
+
+        // Decision: either flags → moderation
+        if (!textResult.safe || nsfwResult.action !== 'allow') {
+          moderationAction = 'moderation';
           isNsfw = true;
-          modReason = modResult.reason || null;
-          modCategory = modResult.category || null;
+          modReason = textResult.reason || nsfwResult.reason || 'İçerik inceleme gerektiriyor';
+          modCategory = textResult.category || (nsfwResult.action !== 'allow' ? 'nsfw_image' : null);
+        }
+      }
+
+      // Metadata moderation (tags + meta fields + sound title) — only if not already flagged
+      if (!copyrightFlagged && moderationAction === 'allow') {
+        const tagStrings = (tags || []).filter((t: unknown) => typeof t === 'string' && (t as string).trim()) as string[];
+        const metaResult = await checkMetadataContent({
+          tags: tagStrings.length > 0 ? tagStrings : undefined,
+          metaTitle: typeof meta_title === 'string' && meta_title.trim() ? meta_title.trim() : undefined,
+          metaDescription: typeof meta_description === 'string' && meta_description.trim() ? meta_description.trim() : undefined,
+          soundTitle: isMoment ? trimmedTitle : undefined,
+        });
+        if (!metaResult.safe) {
+          moderationAction = 'moderation';
+          isNsfw = true;
+          modReason = metaResult.reason || 'Metadata ihlal içeriyor';
+          modCategory = metaResult.category || null;
         }
       }
     }
@@ -269,7 +304,7 @@ export async function POST(request: NextRequest) {
         if (!manualDesc) finalMetaDescription = seo.description;
         if (!manualKw) finalMetaKeywords = seo.keyword;
       } catch (err) {
-        console.error('[SEO] AI generation failed, using fallbacks:', err);
+        if (process.env.NODE_ENV === "development") console.error('[SEO] AI generation failed, using fallbacks:', err);
       }
     }
     // Algorithmic fallback
@@ -332,6 +367,8 @@ export async function POST(request: NextRequest) {
         word_count: wordCount,
         allow_comments: allow_comments !== false,
         is_for_kids: is_for_kids === true,
+        is_ai_content: is_ai_content === true,
+        visibility: ['public', 'followers', 'only_me'].includes(visibility) ? visibility : 'public',
         is_nsfw: isNsfw,
         copyright_protected: copyrightProtectedFinal,
         moderation_reason: modReason,
@@ -346,7 +383,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (postError) {
-      return NextResponse.json({ error: postError.message }, { status: 500 });
+      return safeError(postError);
     }
 
     // AI moderation decision record
@@ -369,7 +406,38 @@ export async function POST(request: NextRequest) {
         if (copyrightSimilarity) copyrightData.copyright_similarity = copyrightSimilarity;
         await admin.from('posts').update(copyrightData).eq('id', post.id);
       } catch (err) {
-        console.error('[Copyright] Failed to store copyright data:', err);
+        if (process.env.NODE_ENV === "development") console.error('[Copyright] Failed to store copyright data:', err);
+      }
+    }
+
+    // Store Feedim file IDs in posts table
+    const feedimIdData: Record<string, unknown> = {};
+    if (typeof video_feedim_id === 'string' && video_feedim_id) feedimIdData.video_feedim_id = video_feedim_id;
+    if (typeof image_feedim_id === 'string' && image_feedim_id) feedimIdData.image_feedim_id = image_feedim_id;
+    if (Object.keys(feedimIdData).length > 0) {
+      try {
+        await admin.from('posts').update(feedimIdData).eq('id', post.id);
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") console.error('[FileId] Failed to store feedim IDs on post:', err);
+      }
+    }
+
+    // Register file identifiers for lookup
+    const fileIdInserts: { feedim_id: string; file_type: string; uploader_id: string; post_id: number; storage_key: string }[] = [];
+    if (typeof image_feedim_id === 'string' && image_feedim_id) {
+      fileIdInserts.push({ feedim_id: image_feedim_id, file_type: 'image', uploader_id: user.id, post_id: post.id, storage_key: featured_image || '' });
+    }
+    if (typeof video_feedim_id === 'string' && video_feedim_id) {
+      fileIdInserts.push({ feedim_id: video_feedim_id, file_type: 'video', uploader_id: user.id, post_id: post.id, storage_key: video_url || '' });
+    }
+    if (typeof audio_feedim_id === 'string' && audio_feedim_id) {
+      fileIdInserts.push({ feedim_id: audio_feedim_id, file_type: 'audio', uploader_id: user.id, post_id: post.id, storage_key: '' });
+    }
+    if (fileIdInserts.length > 0) {
+      try {
+        await admin.from('file_identifiers').insert(fileIdInserts);
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") console.error('[FileId] Failed to register file identifiers:', err);
       }
     }
 
@@ -384,7 +452,7 @@ export async function POST(request: NextRequest) {
           }))
         );
       } catch (err) {
-        console.error('[Copyright] Failed to store frame hashes:', err);
+        if (process.env.NODE_ENV === "development") console.error('[Copyright] Failed to store frame hashes:', err);
       }
     }
 
@@ -399,7 +467,7 @@ export async function POST(request: NextRequest) {
           }))
         );
       } catch (err) {
-        console.error('[Copyright] Failed to store audio fingerprints:', err);
+        if (process.env.NODE_ENV === "development") console.error('[Copyright] Failed to store audio fingerprints:', err);
       }
     }
 
@@ -423,7 +491,7 @@ export async function POST(request: NextRequest) {
             copyright_claim_status: 'pending_verification',
           }).eq('id', post.id);
         } catch (err) {
-          console.error('[Copyright] Failed to create copyright claim:', err);
+          if (process.env.NODE_ENV === "development") console.error('[Copyright] Failed to create copyright claim:', err);
         }
       } else {
         // Eşleşme YOK → otomatik Feedim Telif Hakkı
@@ -438,7 +506,7 @@ export async function POST(request: NextRequest) {
             copyright_claim_status: 'verified',
           }).eq('id', post.id);
         } catch (err) {
-          console.error('[Copyright] Failed to auto-verify:', err);
+          if (process.env.NODE_ENV === "development") console.error('[Copyright] Failed to auto-verify:', err);
         }
       }
     }
@@ -465,7 +533,7 @@ export async function POST(request: NextRequest) {
         }
         await admin.from('profiles').update(strikeUpdate).eq('user_id', user.id);
       } catch (err) {
-        console.error('[Copyright] Strike increment failed:', err);
+        if (process.env.NODE_ENV === "development") console.error('[Copyright] Strike increment failed:', err);
       }
     }
 
@@ -643,7 +711,7 @@ export async function POST(request: NextRequest) {
               }),
             });
           } catch (err) {
-            console.error('[Transcode] Failed to trigger worker:', err);
+            if (process.env.NODE_ENV === "development") console.error('[Transcode] Failed to trigger worker:', err);
             await admin.from('posts').update({ video_status: 'error' }).eq('id', post.id);
           }
         });
@@ -651,7 +719,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(response, { status: 201 });
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") console.error('[POST /api/posts] Error:', err);
     return NextResponse.json({ error: tErrors('serverError') }, { status: 500 });
   }
 }

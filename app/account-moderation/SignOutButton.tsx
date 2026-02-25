@@ -2,9 +2,9 @@
 
 export default function SignOutButton() {
   const handleSignOut = async () => {
-    await fetch("/auth/signout", { method: "POST" });
-    document.cookie = "fdm-status=; Max-Age=0; Path=/;";
-    window.location.href = "/";
+    const { signOutCleanup } = await import("@/lib/authClient");
+    await signOutCleanup();
+    window.location.replace("/");
   };
 
   return (

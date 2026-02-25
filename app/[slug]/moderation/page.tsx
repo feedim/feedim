@@ -25,6 +25,15 @@ export default async function ModerationStatusPage({ params, searchParams }: Pag
   const admin = createAdminClient();
   const decodedSlug = decodeURIComponent(slug);
 
+  // Check if current user is admin/moderator
+  let isStaff = false;
+  const { data: viewerProfile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('user_id', currentUserId)
+    .single();
+  isStaff = viewerProfile?.role === 'admin' || viewerProfile?.role === 'moderator';
+
   const { data: post } = await admin
     .from("posts")
     .select("id, title, slug, status, is_nsfw, moderation_reason, moderation_category, moderation_due_at, author_id, removal_reason, removal_decision_id, content_type, copyright_claim_status, copyright_match_id, copyright_similarity")
@@ -32,7 +41,7 @@ export default async function ModerationStatusPage({ params, searchParams }: Pag
     .single();
 
   if (!post) notFound();
-  if (post.author_id !== currentUserId) notFound();
+  if (post.author_id !== currentUserId && !isStaff) notFound();
 
   // 48-hour rule
   if (post.moderation_due_at) {
@@ -53,7 +62,7 @@ export default async function ModerationStatusPage({ params, searchParams }: Pag
         .select("id, content, is_nsfw, status, moderation_reason, moderation_category, author_id")
         .eq("id", commentId)
         .single();
-      if (c && c.author_id === currentUserId) {
+      if (c && (c.author_id === currentUserId || isStaff)) {
         commentData = c;
       }
     }
@@ -109,7 +118,7 @@ export default async function ModerationStatusPage({ params, searchParams }: Pag
     const { data: authorProfile } = await admin
       .from("profiles")
       .select("copyright_strike_count")
-      .eq("user_id", currentUserId)
+      .eq("user_id", post.author_id)
       .single();
     copyrightStrikeCount = authorProfile?.copyright_strike_count || 0;
   }

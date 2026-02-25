@@ -82,7 +82,13 @@ export default function ErrorState({
 
         {showBackLink && (
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = "/";
+              }
+            }}
             className="w-full bg-bg-secondary hover:bg-bg-tertiary text-text-primary py-3 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-2"
             aria-label={t("goBack")}
           >

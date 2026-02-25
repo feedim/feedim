@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { checkImageBuffer } from "@/lib/moderation";
+import { checkNsfwBuffer } from "@/lib/nsfwCheck";
 import { uploadToR2 } from "@/lib/r2";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateMagicBytes, stripMetadataAndOptimize } from "@/lib/imageSecurityUtils";
+import { safeError } from "@/lib/apiError";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -68,31 +69,20 @@ export async function POST(req: NextRequest) {
 
   if (!isAdmin) {
     try {
-      const nsfwPromise = checkImageBuffer(cleanBuffer, cleanType);
+      const nsfwPromise = checkNsfwBuffer(cleanBuffer, cleanType, 'strict');
       const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
       const nsfwResult = await Promise.race([nsfwPromise, timeout]);
 
       if (!nsfwResult) {
-        console.warn("[AVATAR NSFW] Check timed out after 15s, allowing upload");
+        if (process.env.NODE_ENV === "development") console.warn("[AVATAR NSFW] Check timed out after 15s, allowing upload");
       } else {
         nsfwScores = nsfwResult.scores || {};
-        console.log("[AVATAR NSFW]", user.id, nsfwResult.action, JSON.stringify(nsfwScores));
-
-        const porn = nsfwScores["Porn"] || 0;
-        const hentai = nsfwScores["Hentai"] || 0;
-        const sexy = nsfwScores["Sexy"] || 0;
-        const neutral = nsfwScores["Neutral"] || 0;
-
-        isNsfwAvatar =
-          (porn >= 0.55) || (hentai >= 0.55) ||
-          (sexy >= 0.75) ||
-          (porn + hentai >= 0.65) ||
-          (porn + hentai + sexy >= 0.85 && neutral < 0.3);
-
-        console.log("[AVATAR NSFW] shouldFlag:", isNsfwAvatar);
+        if (process.env.NODE_ENV === "development") console.log("[AVATAR NSFW]", user.id, nsfwResult.action, JSON.stringify(nsfwScores));
+        isNsfwAvatar = nsfwResult.action === 'flag';
+        if (process.env.NODE_ENV === "development") console.log("[AVATAR NSFW] shouldFlag:", isNsfwAvatar);
       }
     } catch (err) {
-      console.error("[AVATAR NSFW] Check failed, treating as NSFW:", err);
+      if (process.env.NODE_ENV === "development") console.error("[AVATAR NSFW] Check failed, treating as NSFW:", err);
       isNsfwAvatar = true;
     }
   }
@@ -116,20 +106,20 @@ export async function POST(req: NextRequest) {
     .eq("user_id", user.id);
 
   if (updateError) {
-    console.error("[AVATAR] Profile update failed:", updateError);
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (process.env.NODE_ENV === "development") console.error("[AVATAR] Profile update failed:", updateError);
+    return safeError(updateError);
   }
 
   // Log NSFW event + moderation decision
   if (isNsfwAvatar) {
-    console.log("[AVATAR NSFW] Profile sent to moderation:", user.id);
+    if (process.env.NODE_ENV === "development") console.log("[AVATAR NSFW] Profile sent to moderation:", user.id);
     try {
       await adminClient.from('security_events').insert({
         user_id: user.id,
         event_type: 'avatar_nsfw_flagged',
         metadata: { url, scores: nsfwScores },
       });
-    } catch (e) { console.error("[AVATAR] security_events insert failed:", e); }
+    } catch (e) { if (process.env.NODE_ENV === "development") console.error("[AVATAR] security_events insert failed:", e); }
     try {
       await adminClient.from('moderation_decisions').insert({
         target_type: 'user',
@@ -139,7 +129,7 @@ export async function POST(req: NextRequest) {
         moderator_id: 'system',
         decision_code: String(Math.floor(100000 + Math.random() * 900000)),
       });
-    } catch (e) { console.error("[AVATAR] moderation_decisions insert failed:", e); }
+    } catch (e) { if (process.env.NODE_ENV === "development") console.error("[AVATAR] moderation_decisions insert failed:", e); }
   }
 
   return NextResponse.json({ url, nsfw: isNsfwAvatar });
@@ -155,6 +145,6 @@ export async function DELETE() {
     .update({ avatar_url: null, updated_at: new Date().toISOString() })
     .eq("user_id", user.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return safeError(error);
   return NextResponse.json({ success: true });
 }

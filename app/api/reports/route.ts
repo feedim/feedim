@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { checkTextContent, checkImageContent } from "@/lib/moderation";
+import { checkNsfwContent } from "@/lib/nsfwCheck";
+import { checkTextContent, evaluateUserReports } from "@/lib/moderation";
+import type { ReportData } from "@/lib/moderation";
 import { createNotification } from "@/lib/notifications";
+import { safeError } from "@/lib/apiError";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeError(error);
   }
 
   // Create copyright_claims entry for copyright reports
@@ -106,6 +109,11 @@ export async function POST(request: NextRequest) {
 
   const weightedTotal = (weightData || []).reduce((sum: number, r: any) => sum + (r.reporter_weight || 1.0), 0);
   const reportCount = (weightData || []).length;
+
+  // Unique trusted reporters check — prevents spam report abuse
+  const trustedReporterCount = (weightData || []).filter((r: any) => r.reporter_weight >= 0.4).length;
+  const MIN_TRUSTED_REPORTERS = 3;
+  const MIN_PRIORITY_REPORTERS = 5;
 
   // Check if the target belongs to an admin (immune to moderation)
   let targetIsAdmin = false;
@@ -142,11 +150,26 @@ export async function POST(request: NextRequest) {
     } catch {}
   }
 
-  // Weighted >= 3.0 → AI deep scan (background); reports stay until admin resolves — admin immune
-  if (weightedTotal >= 3.0 && weightedTotal < 10.0 && !targetIsAdmin && !isApprovedByModerator) {
+  // Weighted >= 3.0 + enough trusted reporters → AI report evaluation (background)
+  // Admin immune, approved immune, requires minimum trusted reporters to prevent spam abuse
+  if (weightedTotal >= 3.0 && weightedTotal < 10.0 && trustedReporterCount >= MIN_TRUSTED_REPORTERS && !targetIsAdmin && !isApprovedByModerator) {
     after(async () => {
       try {
         const admin2 = createAdminClient();
+
+        // Fetch all reports for this content (reason + description + weight)
+        const { data: allReports } = await admin2
+          .from('reports')
+          .select('reason, description, reporter_weight')
+          .eq('content_type', type)
+          .eq('content_id', Number(target_id))
+          .eq('status', 'pending');
+        const reports: ReportData[] = (allReports || []).map((r: any) => ({
+          reason: r.reason,
+          description: r.description,
+          weight: r.reporter_weight || 1.0,
+        }));
+
         if (type === "post") {
           const { data: postData } = await admin2
             .from("posts")
@@ -154,21 +177,40 @@ export async function POST(request: NextRequest) {
             .eq("id", Number(target_id))
             .single();
           if (postData) {
-            const [imgRes, txtRes] = await Promise.all([
-              checkImageContent(postData.content || ""),
-              checkTextContent(postData.title || "", postData.content || ""),
+            const contentText = [postData.title || '', (postData.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()].filter(Boolean).join('\n');
+
+            // Run NSFW image check + AI report evaluation in parallel
+            const [imgRes, aiResult] = await Promise.all([
+              checkNsfwContent(postData.content || ""),
+              evaluateUserReports(contentText, 'post', reports, reportCount),
             ]);
-            const shouldNSFW = (imgRes.action !== 'allow') || (txtRes.safe === false);
-            const modUpdates: Record<string, unknown> = shouldNSFW
-              ? {
-                  is_nsfw: true,
-                  moderation_due_at: new Date().toISOString(),
-                  moderation_reason: txtRes.reason || imgRes.reason || 'Topluluk şikayeti sonrası AI tarama',
-                  moderation_category: txtRes.category || (imgRes.action !== 'allow' ? (imgRes.reason || 'nsfw_image') : null),
-                }
-              : { is_nsfw: false, moderation_due_at: null };
-            await admin2.from("posts").update(modUpdates).eq("id", postData.id);
-            // Notify reporters — reports stay until admin resolves
+
+            const nsfwFlagged = imgRes.action !== 'allow';
+            const shouldModerate = aiResult.shouldModerate || nsfwFlagged;
+
+            if (shouldModerate) {
+              await admin2.from("posts").update({
+                is_nsfw: true,
+                moderation_due_at: new Date().toISOString(),
+                moderation_reason: aiResult.reason,
+                moderation_category: aiResult.severity ? `report_${aiResult.severity}` : (nsfwFlagged ? 'nsfw_image' : null),
+              }).eq("id", postData.id);
+            }
+
+            // Log AI decision
+            const postDecisionCode = String(Math.floor(100000 + Math.random() * 900000));
+            try {
+              await admin2.from('moderation_decisions').insert({
+                target_type: 'post',
+                target_id: String(target_id),
+                decision: shouldModerate ? 'flagged' : 'reports_reviewed',
+                reason: aiResult.reason,
+                moderator_id: 'system',
+                decision_code: postDecisionCode,
+              });
+            } catch {}
+
+            // Notify reporters
             const { data: reps } = await admin2
               .from('reports')
               .select('reporter_id')
@@ -181,7 +223,7 @@ export async function POST(request: NextRequest) {
                 type: 'system',
                 object_type: 'post',
                 object_id: Number(target_id),
-                content: shouldNSFW ? 'Şikayet ettiğiniz içerik inceleme altına alındı.' : 'Şikayet edilen içerik AI tarafından incelendi.'
+                content: shouldModerate ? 'Şikayet ettiğiniz içerik inceleme altına alındı.' : 'Şikayet edilen içerik AI tarafından incelendi.',
               });
             }
           }
@@ -192,13 +234,13 @@ export async function POST(request: NextRequest) {
             .eq("id", Number(target_id))
             .single();
           if (c) {
-            const t = await checkTextContent('', c.content || '');
-            const flagged = t.safe === false;
-            if (flagged) {
+            const contentText = (c.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const aiResult = await evaluateUserReports(contentText, 'comment', reports, reportCount);
+
+            if (aiResult.shouldModerate) {
               await admin2.from('comments').update({
                 is_nsfw: true,
-                moderation_reason: t.reason || 'Topluluk şikayeti sonrası AI tarama',
-                moderation_category: t.category || null,
+                moderation_reason: aiResult.reason,
               }).eq('id', c.id);
               // Recalculate post comment_count to exclude NSFW
               const { data: pc } = await admin2.from('comments').select('post_id').eq('id', c.id).single();
@@ -212,14 +254,79 @@ export async function POST(request: NextRequest) {
                 await admin2.from('posts').update({ comment_count: count || 0 }).eq('id', pc.post_id);
               }
             }
-            // Notify reporters — reports stay until admin resolves
+
+            // Log AI decision
+            const commentDecCode = String(Math.floor(100000 + Math.random() * 900000));
+            try {
+              await admin2.from('moderation_decisions').insert({
+                target_type: 'comment',
+                target_id: String(target_id),
+                decision: aiResult.shouldModerate ? 'flagged' : 'reports_reviewed',
+                reason: aiResult.reason,
+                moderator_id: 'system',
+                decision_code: commentDecCode,
+              });
+            } catch {}
+
+            // Notify reporters
             const { data: reps } = await admin2
               .from('reports')
               .select('reporter_id')
               .eq('content_type', 'comment')
               .eq('content_id', Number(target_id));
             for (const rep of reps || []) {
-              await admin2.from('notifications').insert({ user_id: rep.reporter_id, actor_id: rep.reporter_id, type: 'system', object_type: 'comment', object_id: Number(target_id), content: flagged ? 'Şikayet ettiğiniz içerik inceleme altına alındı.' : 'Şikayet edilen içerik AI tarafından incelendi.' });
+              await admin2.from('notifications').insert({
+                user_id: rep.reporter_id,
+                actor_id: rep.reporter_id,
+                type: 'system',
+                object_type: 'comment',
+                object_id: Number(target_id),
+                content: aiResult.shouldModerate ? 'Şikayet ettiğiniz içerik inceleme altına alındı.' : 'Şikayet edilen içerik AI tarafından incelendi.',
+              });
+            }
+          }
+        } else if (type === "user") {
+          // Profile reports
+          const { data: profile } = await admin2
+            .from('profiles')
+            .select('full_name, username, bio, website')
+            .eq('user_id', target_id)
+            .single();
+          if (profile) {
+            const contentText = [profile.full_name, profile.username, profile.bio, profile.website].filter(Boolean).join('\n');
+            const aiResult = await evaluateUserReports(contentText, 'profile', reports, reportCount);
+
+            if (aiResult.shouldModerate) {
+              await admin2.from('profiles').update({ status: 'moderation' }).eq('user_id', target_id);
+            }
+
+            const userDecCode = String(Math.floor(100000 + Math.random() * 900000));
+            try {
+              await admin2.from('moderation_decisions').insert({
+                target_type: 'user',
+                target_id: String(target_id),
+                decision: aiResult.shouldModerate ? 'flagged' : 'reports_reviewed',
+                reason: aiResult.reason,
+                moderator_id: 'system',
+                decision_code: userDecCode,
+              });
+            } catch {}
+
+            // Notify reporters
+            const { data: reps } = await admin2
+              .from('reports')
+              .select('reporter_id')
+              .eq('content_type', 'user')
+              .eq('content_id', target_id);
+            for (const rep of reps || []) {
+              await admin2.from('notifications').insert({
+                user_id: rep.reporter_id,
+                actor_id: rep.reporter_id,
+                type: 'system',
+                object_type: 'user',
+                object_id: 0,
+                content: aiResult.shouldModerate ? 'Şikayet ettiğiniz profil inceleme altına alındı.' : 'Şikayet edilen profil AI tarafından incelendi.',
+              });
             }
           }
         }
@@ -227,45 +334,46 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Weighted >= 10.0 → priority moderation queue; reports stay until admin resolves — admin immune, approved immune
-  if (weightedTotal >= 10.0 && !targetIsAdmin && !isApprovedByModerator) {
+  // Weighted >= 10.0 + enough trusted reporters → priority moderation queue + AI reason
+  // Admin immune, approved immune, requires MIN_PRIORITY_REPORTERS trusted reporters
+  if (weightedTotal >= 10.0 && trustedReporterCount >= MIN_PRIORITY_REPORTERS && !targetIsAdmin && !isApprovedByModerator) {
+    const decisionCode = String(Math.floor(100000 + Math.random() * 900000));
+    const genericReason = 'Çok sayıda topluluk şikayeti';
+
     if (type === "post") {
-      // Generate 6-digit decision code; store in decision_code if possible, else embed into reason
-      let decisionCode = String(Math.floor(100000 + Math.random() * 900000));
-      let autoDecision: any = null;
-      const { data: postOwner } = await admin
-        .from('posts')
-        .select('author_id, title, slug')
-        .eq('id', Number(target_id))
-        .single();
+      // Auto-flag immediately
+      await admin.from('posts').update({ status: 'moderation', is_nsfw: true, moderation_due_at: new Date().toISOString() }).eq('id', Number(target_id));
+
+      // Insert decision with generic reason (AI will update in background)
+      let decisionId: string | null = null;
       try {
         const ins = await admin.from("moderation_decisions")
           .insert({
             target_type: "post",
             target_id: String(target_id),
             decision: "removed",
-            reason: "Çok sayıda topluluk şikayeti",
+            reason: genericReason,
             moderator_id: "system",
             decision_code: decisionCode,
           })
-          .select("id, decision_code").single();
-        autoDecision = ins.data;
-      } catch (_) {
-        const ins2 = await admin.from("moderation_decisions")
-          .insert({
-            target_type: "post",
-            target_id: String(target_id),
-            decision: "removed",
-            reason: `Çok sayıda topluluk şikayeti (Ref:#${decisionCode})`,
-            moderator_id: "system",
-          })
           .select("id").single();
-        autoDecision = ins2.data;
+        decisionId = ins.data?.id || null;
+      } catch {
+        try {
+          const ins2 = await admin.from("moderation_decisions")
+            .insert({
+              target_type: "post",
+              target_id: String(target_id),
+              decision: "removed",
+              reason: `${genericReason} (Ref:#${decisionCode})`,
+              moderator_id: "system",
+            })
+            .select("id").single();
+          decisionId = ins2.data?.id || null;
+        } catch {}
       }
 
-      // Stricter review: set to moderation (no auto removal)
-      await admin.from('posts').update({ status: 'moderation', is_nsfw: true, moderation_due_at: new Date().toISOString() }).eq('id', Number(target_id));
-      // Notify reporters — reports stay until admin resolves
+      // Notify reporters
       const { data: postReps } = await admin
         .from('reports')
         .select('reporter_id')
@@ -274,15 +382,37 @@ export async function POST(request: NextRequest) {
       for (const rep of (postReps || [])) {
         await createNotification({ admin, user_id: rep.reporter_id, actor_id: 'system' as any, type: 'system', object_type: 'post', object_id: Number(target_id), content: 'Şikayet ettiğiniz içerik öncelikli incelemeye alındı.' });
       }
+
+      // Background: generate AI reason and update decision
+      after(async () => {
+        try {
+          const admin2 = createAdminClient();
+          const { data: postData } = await admin2.from('posts').select('title, content').eq('id', Number(target_id)).single();
+          const { data: allReports } = await admin2.from('reports').select('reason, description, reporter_weight').eq('content_type', 'post').eq('content_id', Number(target_id)).eq('status', 'pending');
+          if (postData && allReports) {
+            const contentText = [postData.title || '', (postData.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()].filter(Boolean).join('\n');
+            const reports: ReportData[] = allReports.map((r: any) => ({ reason: r.reason, description: r.description, weight: r.reporter_weight || 1.0 }));
+            const aiResult = await evaluateUserReports(contentText, 'post', reports, reportCount);
+            // Update moderation reason with AI-generated summary
+            await admin2.from('posts').update({ moderation_reason: aiResult.reason }).eq('id', Number(target_id));
+            if (decisionId) {
+              await admin2.from('moderation_decisions').update({ reason: aiResult.reason }).eq('id', decisionId);
+            }
+          }
+        } catch {}
+      });
+
     } else if (type === "comment") {
-      // Stricter review: mark NSFW (no auto removal)
       await admin.from('comments').update({ is_nsfw: true }).eq('id', Number(target_id));
+
+      let commentDecisionId: string | null = null;
       try {
-        const comRepCode = String(Math.floor(100000 + Math.random() * 900000));
-        await admin.from('moderation_decisions').insert({
-          target_type: 'comment', target_id: String(target_id), decision: 'flagged', reason: 'Çok sayıda topluluk şikayeti', moderator_id: 'system', decision_code: comRepCode,
-        });
+        const ins = await admin.from('moderation_decisions').insert({
+          target_type: 'comment', target_id: String(target_id), decision: 'flagged', reason: genericReason, moderator_id: 'system', decision_code: decisionCode,
+        }).select('id').single();
+        commentDecisionId = ins.data?.id || null;
       } catch {}
+
       const { data: reps } = await admin
         .from('reports')
         .select('reporter_id')
@@ -291,14 +421,62 @@ export async function POST(request: NextRequest) {
       for (const rep of reps || []) {
         await createNotification({ admin, user_id: rep.reporter_id, actor_id: 'system' as any, type: 'system', object_type: 'comment', object_id: Number(target_id), content: 'Şikayet ettiğiniz içerik öncelikli incelemeye alındı.' });
       }
+
+      // Background: AI reason
+      after(async () => {
+        try {
+          const admin2 = createAdminClient();
+          const { data: c } = await admin2.from('comments').select('content').eq('id', Number(target_id)).single();
+          const { data: allReports } = await admin2.from('reports').select('reason, description, reporter_weight').eq('content_type', 'comment').eq('content_id', Number(target_id)).eq('status', 'pending');
+          if (c && allReports) {
+            const contentText = (c.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const reports: ReportData[] = allReports.map((r: any) => ({ reason: r.reason, description: r.description, weight: r.reporter_weight || 1.0 }));
+            const aiResult = await evaluateUserReports(contentText, 'comment', reports, reportCount);
+            await admin2.from('comments').update({ moderation_reason: aiResult.reason }).eq('id', Number(target_id));
+            if (commentDecisionId) {
+              await admin2.from('moderation_decisions').update({ reason: aiResult.reason }).eq('id', commentDecisionId);
+            }
+          }
+        } catch {}
+      });
+
     } else if (type === "user") {
       await admin.from("profiles").update({ status: "moderation" }).eq("user_id", target_id);
+
+      let userDecisionId: string | null = null;
       try {
-        const userRepCode = String(Math.floor(100000 + Math.random() * 900000));
-        await admin.from('moderation_decisions').insert({
-          target_type: 'user', target_id: String(target_id), decision: 'moderation', reason: 'Çok sayıda topluluk şikayeti', moderator_id: 'system', decision_code: userRepCode,
-        });
+        const ins = await admin.from('moderation_decisions').insert({
+          target_type: 'user', target_id: String(target_id), decision: 'moderation', reason: genericReason, moderator_id: 'system', decision_code: decisionCode,
+        }).select('id').single();
+        userDecisionId = ins.data?.id || null;
       } catch {}
+
+      // Notify reporters
+      const { data: userReps } = await admin
+        .from('reports')
+        .select('reporter_id')
+        .eq('content_type', 'user')
+        .eq('content_id', target_id);
+      for (const rep of (userReps || [])) {
+        await createNotification({ admin, user_id: rep.reporter_id, actor_id: 'system' as any, type: 'system', object_type: 'user', object_id: 0, content: 'Şikayet ettiğiniz profil öncelikli incelemeye alındı.' });
+      }
+
+      // Background: AI reason
+      after(async () => {
+        try {
+          const admin2 = createAdminClient();
+          const { data: profile } = await admin2.from('profiles').select('full_name, username, bio, website').eq('user_id', target_id).single();
+          const { data: allReports } = await admin2.from('reports').select('reason, description, reporter_weight').eq('content_type', 'user').eq('content_id', target_id).eq('status', 'pending');
+          if (profile && allReports) {
+            const contentText = [profile.full_name, profile.username, profile.bio, profile.website].filter(Boolean).join('\n');
+            const reports: ReportData[] = allReports.map((r: any) => ({ reason: r.reason, description: r.description, weight: r.reporter_weight || 1.0 }));
+            const aiResult = await evaluateUserReports(contentText, 'profile', reports, reportCount);
+            if (userDecisionId) {
+              await admin2.from('moderation_decisions').update({ reason: aiResult.reason }).eq('id', userDecisionId);
+            }
+          }
+        } catch {}
+      });
     }
   }
 

@@ -35,9 +35,11 @@ interface VideoPlayerProps {
   loop?: boolean;
   /** CSS class for the video element */
   videoClassName?: string;
+  /** Preload hint for moment mode — "auto" loads full video, "metadata" loads only metadata */
+  preloadHint?: "auto" | "metadata";
 }
 
-const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function VideoPlayer({ src, hlsUrl, poster, onEnded, autoStart, disabled, moment, externalMuted, externalPaused, loop, videoClassName }, fwdRef) {
+const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function VideoPlayer({ src, hlsUrl, poster, onEnded, autoStart, disabled, moment, externalMuted, externalPaused, loop, videoClassName, preloadHint }, fwdRef) {
   const t = useTranslations("video");
   // Compute saved position ONCE on mount — must be stable across re-renders.
   // If recomputed every render, effectiveSrc changes (video.mp4 → video.mp4#t=X)
@@ -829,7 +831,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           ref={videoRef}
           {...(hlsUrl ? {} : src ? { src } : {})}
           poster={poster}
-          preload="auto"
+          preload={preloadHint || "auto"}
           playsInline
           muted={externalMuted}
           loop={loop}

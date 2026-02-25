@@ -10,6 +10,37 @@ export default function ContentAz() {
           AI, məzmun moderasiyasından SEO istehsalına, müəllif hüququ yoxlamasından profil xalı hesablamasına qədər bir çox sahədə istifadə olunur.
         </p>
 
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Süni İntellektlə Yaradılmış Məzmunlar</h2>
+        <p>
+          Feedim, süni intellektlə yaradılmış məzmunların (mətn, şəkil, video) şəffaf şəkildə bildirilməsini tələb edir.
+          Məzmun yaradarkən &ldquo;Süni intellekt məzmunu&rdquo; seçimini açaraq məzmununuzun AI tərəfindən istehsal edildiyini bəyan edə bilərsiniz.
+        </p>
+
+        <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
+          <h3 className="text-sm font-bold text-text-primary">Niyə ayırırıq?</h3>
+          <ul className="list-disc pl-5 space-y-2 text-text-muted text-xs">
+            <li><strong className="text-text-primary">Şəffaflıq</strong> &mdash; İstifadəçilərin məzmunun insan tərəfindən mi yoxsa AI tərəfindən mi yaradıldığını bilmək hüququ var</li>
+            <li><strong className="text-text-primary">Etibar</strong> &mdash; Orijinal insan əməyi ilə istehsal edilən məzmunların AI məzmunlarından ayrılması platforma etimadı artırır</li>
+            <li><strong className="text-text-primary">Ədalətli kəşf</strong> &mdash; Məzmun tövsiyə alqoritmləri, AI məzmunlarını orijinal məzmunlardan ayrı qiymətləndirərək ədalətli kəşf təcrübəsi təqdim edir</li>
+            <li><strong className="text-text-primary">Hüquqi uyğunluq</strong> &mdash; Bir çox ölkədə süni intellektlə istehsal edilən məzmunların etiketlənməsi qanuni tələb halına gəlir</li>
+          </ul>
+        </div>
+
+        <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3 mt-4">
+          <h3 className="text-sm font-bold text-text-primary">Bildirilməzsə nə baş verir?</h3>
+          <ul className="list-disc pl-5 space-y-2 text-text-muted text-xs">
+            <li>Feedim AI, mətn və şəkillərdə süni intellekt istehsal nümunələrini avtomatik olaraq aşkarlaya bilir</li>
+            <li>AI tərəfindən istehsal edildiyi aşkarlanan lakin bildirilməyən məzmunlar <strong className="text-text-primary">profil etibar xalını azaldır</strong></li>
+            <li>Təkrarlanan hallarda məzmun moderasiyaya göndərilə bilər və hesab məhdudiyyətləri tətbiq oluna bilər</li>
+            <li>AI ilə yaradılmış məzmunlarda müəllif hüququ qorunması tələb edilə bilməz</li>
+          </ul>
+        </div>
+
+        <p className="text-xs text-text-muted italic">
+          Qeyd: AI alətlərini köməkçi olaraq istifadə edən (məs. orfoqrafiya yoxlaması, dil düzəltməsi) lakin məzmunun özünü özü yaradan
+          istifadəçilərin bu seçimi açması lazım deyil. Bu seçim, məzmunun böyük ölçüdə və ya tamamilə AI tərəfindən istehsal edildiyi hallar üçündür.
+        </p>
+
         <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Mətn Analizi</h2>
         <p>
           Hər yazı, moment və ya şərh dərc edildikdə mətn məzmunu AI tərəfindən avtomatik olaraq yoxlanılır.

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       await admin.auth.admin.deleteUser(account.user_id);
       deletedCount++;
     } catch (err) {
-      console.error(`Failed to delete user ${account.user_id}:`, err);
+      if (process.env.NODE_ENV === "development") console.error(`Failed to delete user ${account.user_id}:`, err);
     }
   }
 

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
 import ProfileView from "@/components/ProfileView";
 import { getTranslations } from "next-intl/server";
+import { getAlternateLanguages } from "@/lib/seo";
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -51,6 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     alternates: {
       canonical: `${baseUrl}/u/${profile.username}`,
+      languages: getAlternateLanguages(`/u/${profile.username}`),
     },
   };
 }

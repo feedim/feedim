@@ -7,6 +7,7 @@ import {
   Search, ChevronRight, X, HelpCircle, Mail,
 } from "lucide-react";
 import type { HelpArticle, HelpPageLink, HelpSection } from "./articles.types";
+import { defaultLocale } from "@/i18n/config";
 
 import {
   sections as sectionsTr,
@@ -41,6 +42,9 @@ export default function HelpContent() {
   const t = useTranslations("helpCenter");
 
   const { sections, pageLinks, articles } = localeData[locale] || localeData.en;
+
+  // Add locale prefix to paths for SEO (crawlers see correct locale URLs)
+  const lp = (path: string) => locale === defaultLocale ? path : `/${locale}${path}`;
 
   const [search, setSearch] = useState("");
   const [openItem, setOpenItem] = useState<string | null>(null);
@@ -114,7 +118,7 @@ export default function HelpContent() {
                 {filteredPages.map((page, i) => (
                   <Link
                     key={`${page.href}-${i}`}
-                    href={page.href}
+                    href={lp(page.href)}
                     className="flex items-center justify-between px-5 py-3.5 rounded-[13px] bg-bg-secondary hover:opacity-80 transition-opacity"
                   >
                     <div>
@@ -167,16 +171,44 @@ export default function HelpContent() {
               <p className="text-sm text-text-secondary mb-1">{t("noResultsTitle")}</p>
               <p className="text-sm text-text-muted">
                 {t("noResultsTryAgain")}{" "}
-                <Link href="/help/contact" className={lnk}>{t("noResultsContactUs")}</Link>
+                <Link href={lp("/help/contact")} className={lnk}>{t("noResultsContactUs")}</Link>
               </p>
             </div>
           ) : null}
         </div>
       )}
 
+      {/* Quick Links Grid — detailed help pages */}
+      {!isSearching && (
+        <div className="mb-8">
+          <h2 className="text-[1.05rem] font-bold mb-3">{t("quickLinksTitle")}</h2>
+          <div className="grid grid-cols-2 gap-2.5">
+          {(() => {
+            const items = pageLinks.filter((p) =>
+              ["/help/copyright", "/help/moderation", "/help/coins", "/help/earning", "/help/analytics", "/help/data-sharing", "/help/access-restrictions", "/help/accessibility", "/help/ai"].includes(p.href)
+            );
+            // Only show complete pairs (even count)
+            const visibleItems = items.slice(0, items.length - (items.length % 2));
+            return visibleItems.map((page, i) => (
+              <Link
+                key={`${page.href}-${i}`}
+                href={lp(page.href)}
+                className="flex items-center justify-between px-5 py-5 rounded-[13px] bg-bg-secondary hover:opacity-80 transition-opacity"
+              >
+                <span className="text-[0.95rem] font-bold text-text-primary">{page.title}</span>
+                <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
+              </Link>
+            ));
+          })()}
+          </div>
+        </div>
+      )}
+
       {/* Sections */}
       {!isSearching && (
-        <div className="space-y-2.5">
+        <div>
+          <h2 className="text-[1.05rem] font-bold mb-3">{t("faqTitle")}</h2>
+          <div className="space-y-2.5">
           {sections.map((section) => {
             const sectionArticles = articles.filter((a) => a.section === section.id);
             const isSectionOpen = openSection === section.id;
@@ -231,9 +263,10 @@ export default function HelpContent() {
             <HelpCircle className="h-10 w-10 text-accent-main mx-auto mb-4" />
             <h3 className="text-lg font-bold mb-2">{t("ctaTitle")}</h3>
             <p className="text-sm text-text-secondary mb-6 max-w-sm mx-auto">{t("ctaDescription")}</p>
-            <Link href="/help/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-main text-white font-semibold text-sm hover:opacity-90 transition">
+            <Link href={lp("/help/contact")} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-main text-white font-semibold text-sm hover:opacity-90 transition">
               <Mail className="h-4 w-4" /> {t("ctaButton")}
             </Link>
+          </div>
           </div>
         </div>
       )}
