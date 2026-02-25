@@ -68,6 +68,8 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning data-ads-enabled={adsEnabled ? "1" : "0"}>
       <head>
         <meta charSet="utf-8" />
+        <meta name="6483fe48ff87edcb3c7ff243db8b559b8efdd201" content="6483fe48ff87edcb3c7ff243db8b559b8efdd201" />
+        <meta name="referrer" content="no-referrer-when-downgrade" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
