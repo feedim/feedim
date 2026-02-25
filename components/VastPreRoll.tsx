@@ -237,7 +237,6 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
           muted
           playsInline
           preload="auto"
-          crossOrigin="anonymous"
           className="w-full h-full object-contain"
           onClick={(e) => { e.stopPropagation(); handleClick(); }}
           onContextMenu={(e) => e.preventDefault()}
