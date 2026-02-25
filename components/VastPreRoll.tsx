@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import { AD_SKIP_DELAY } from "@/lib/constants";
-import { VAST_TAG_URL } from "@/lib/adProviders";
 import { parseVast, firePixels, type VastAd } from "@/lib/vastParser";
 
 interface VastPreRollProps {
@@ -63,7 +62,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       }
     }, 4000);
 
-    parseVast(VAST_TAG_URL).then(data => {
+    parseVast("/api/vast").then(data => {
       clearTimeout(timeout);
       if (cancelled) return;
       if (!data) {
