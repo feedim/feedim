@@ -1,6 +1,6 @@
 // Feedim — Çoklu Reklam Ağı Sağlayıcı Sistemi
 
-export type AdProviderType = "adsense" | "gam" | "custom" | "vast";
+export type AdProviderType = "adsense" | "gam" | "custom";
 
 export interface AdProviderConfig {
   id: AdProviderType;
@@ -31,15 +31,7 @@ export const AD_PROVIDERS: Record<AdProviderType, AdProviderConfig> = {
     // Kendi reklam sunucumuzdan — harici script gerekmez
     enabled: false,
   },
-  vast: {
-    id: "vast",
-    name: "HilltopAds VAST",
-    enabled: true,
-  },
 };
-
-// VAST pre-roll tag URL (HilltopAds — Zone #6826069)
-export const VAST_TAG_URL = "https://faithfuloccasion.com/dzmGFgz.d/GbNFvcZVGSUz/MeHme9ouaZkUMlnkvPTT_YF4NMlj/Y/wYNhjxkvtpN_jag/y/N/jkAW3PMPwK";
 
 // Her slot için hangi sağlayıcı kullanılacak
 export type AdSlot =
@@ -50,8 +42,7 @@ export type AdSlot =
   | "explore"
   | "sidebar"
   | "overlay"
-  | "moment"
-  | "video-preroll";
+  | "moment";
 
 export const SLOT_PROVIDER: Record<AdSlot, AdProviderType> = {
   feed: "adsense",
@@ -62,7 +53,6 @@ export const SLOT_PROVIDER: Record<AdSlot, AdProviderType> = {
   sidebar: "adsense",
   overlay: "adsense",
   moment: "adsense",
-  "video-preroll": "vast",
 };
 
 // Yardımcı fonksiyonlar

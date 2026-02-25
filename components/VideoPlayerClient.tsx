@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import VideoPlayer from "@/components/VideoPlayer";
 import AdOverlay from "@/components/AdOverlay";
-import VastPreRoll from "@/components/VastPreRoll";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { AD_NO_MIDROLL_MAX, AD_ONE_MIDROLL_MAX } from "@/lib/constants";
 import { saveWatchProgress, getWatchProgress, removeWatchProgress } from "@/lib/watchProgress";
@@ -41,7 +40,6 @@ export default function VideoPlayerClient({
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Ad break state
-  const [preRollActive, setPreRollActive] = useState(true);
   const [adBreakActive, setAdBreakActive] = useState(false);
   const [postRollActive, setPostRollActive] = useState(false);
   const adBreaksCompletedRef = useRef<Set<number>>(new Set());
@@ -165,7 +163,7 @@ export default function VideoPlayerClient({
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (!preRollActive && !adBreakActive && !postRollActive) return;
+    if (!adBreakActive && !postRollActive) return;
 
     const onSeeking = () => {
       // Revert to where the ad started — can't skip by seeking
@@ -187,21 +185,7 @@ export default function VideoPlayerClient({
       v.removeEventListener("seeking", onSeeking);
       v.removeEventListener("play", onPlay);
     };
-  }, [preRollActive, adBreakActive, postRollActive]);
-
-  // Start main video after pre-roll ends
-  const preRollCompletedRef = useRef(false);
-  useEffect(() => {
-    if (preRollActive || preRollCompletedRef.current) return;
-    preRollCompletedRef.current = true;
-    const v = videoRef.current;
-    if (!v) return;
-    setTimeout(() => { if (v.paused) v.play().catch(() => {}); }, 50);
-  }, [preRollActive]);
-
-  const handlePreRollComplete = useCallback(() => {
-    setPreRollActive(false);
-  }, []);
+  }, [adBreakActive, postRollActive]);
 
   const handleEnded = useCallback(() => {
     const v = videoRef.current;
@@ -266,20 +250,17 @@ export default function VideoPlayerClient({
   const circleC = 2 * Math.PI * circleR;
   const countdownMax = 10;
 
-  const adActive = preRollActive || adBreakActive || postRollActive;
+  const adActive = adBreakActive || postRollActive;
 
   return (
     <div className="relative sm:rounded-lg sm:overflow-hidden">
       <div className={adActive ? "pointer-events-none" : ""}>
-        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={!preRollActive && autoStart} />
+        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
       </div>
 
-      {/* VAST pre-roll video ad */}
-      <VastPreRoll active={preRollActive} onComplete={handlePreRollComplete} />
-
-      {/* Ad overlay — mid-roll or post-roll (not during pre-roll) */}
+      {/* Ad overlay — mid-roll or post-roll */}
       <AdOverlay
-        active={!preRollActive && (adBreakActive || postRollActive)}
+        active={adBreakActive || postRollActive}
         onSkip={handleAdSkip}
         mode="overlay"
       />
