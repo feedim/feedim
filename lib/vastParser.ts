@@ -22,8 +22,11 @@ export async function parseVast(tagUrl: string, depth = 0): Promise<VastAd | nul
     const res = await fetch(tagUrl, { cache: "no-store" });
     if (!res.ok) return null;
 
-    const text = await res.text();
+    let text = await res.text();
     if (!text.trim()) return null;
+
+    // Strip XML namespace — browsers' querySelector doesn't match namespaced elements
+    text = text.replace(/\s+xmlns\s*=\s*"[^"]*"/g, "");
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, "text/xml");
