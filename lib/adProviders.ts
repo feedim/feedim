@@ -39,7 +39,24 @@ export const AD_PROVIDERS: Record<AdProviderType, AdProviderConfig> = {
 };
 
 // VAST pre-roll tag URL (HilltopAds)
-export const VAST_TAG_URL = "https://faithfuloccasion.com/d.mUF/zAdnG/NBvGZiGpUO/oefma9/uVZJUnl/ktP/TkYU4vM/j-YPwAN/jRkwtdNlj/gOyiNGjtA_3aM/wp";
+export const VAST_TAG_URL = "https://faithfuloccasion.com/dtmmFkzId.GgNNvdZiG/UF/reTms9zudZ/UtlAkiPFT/Yf4/M/jgYuw_NCjUk/tONqjRgbyNNkjyA/3/Mswy";
+
+// HilltopAds display/interstitial script URL
+export const HILLTOPADS_DISPLAY_URL = "https://faithfuloccasion.com/dtmmFkzId.GgNNvdZiG/UF/reTms9zudZ/UtlAkiPFT/Yf4/M/jgYuw_NCjUk/tONqjRgbyNNkjyA/3/Mswy";
+
+// Overlay reklam rotasyonu: 1 AdSense → 5 HilltopAds → tekrar
+let _overlayImpressionCount = 0;
+const ADSENSE_EVERY = 6; // Her 6 gösterimde 1'i AdSense
+
+export function getNextOverlayProvider(): "adsense" | "hilltopads" {
+  const current = _overlayImpressionCount;
+  _overlayImpressionCount++;
+  return current % ADSENSE_EVERY === 0 ? "adsense" : "hilltopads";
+}
+
+export function resetOverlayRotation() {
+  _overlayImpressionCount = 0;
+}
 
 // Her slot için hangi sağlayıcı kullanılacak
 export type AdSlot =

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import { AD_SKIP_DELAY } from "@/lib/constants";
-import { getProviderForSlot, type AdProviderConfig } from "@/lib/adProviders";
+import { getProviderForSlot, getNextOverlayProvider, HILLTOPADS_DISPLAY_URL } from "@/lib/adProviders";
 
 interface AdOverlayProps {
   active: boolean;
@@ -22,16 +22,18 @@ declare global {
 export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOverlayProps) {
   const t = useTranslations("ad");
   const { user } = useUser();
-  const provider = getProviderForSlot("overlay");
+  const adsenseProvider = getProviderForSlot("overlay");
+  const [currentProvider, setCurrentProvider] = useState<"adsense" | "hilltopads">("adsense");
   const [countdown, setCountdown] = useState(AD_SKIP_DELAY);
   const [adLoaded, setAdLoaded] = useState(false);
   const [adKey, setAdKey] = useState(0);
   const insRef = useRef<HTMLModElement>(null);
+  const hilltopRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const observerRef = useRef<MutationObserver | null>(null);
   const skipCalledRef = useRef(false);
   const countdownRef = useRef(AD_SKIP_DELAY);
-  const pausedAtRef = useRef<number | null>(null); // timestamp when tab was hidden
+  const pausedAtRef = useRef<number | null>(null);
 
   // Premium users: skip immediately (no overlay)
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
       return;
     }
 
+    setCurrentProvider(getNextOverlayProvider());
     setAdKey(prev => prev + 1);
     setCountdown(AD_SKIP_DELAY);
     setAdLoaded(false);
@@ -158,7 +161,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
   useEffect(() => {
     if (!active || user?.isPremium) return;
 
-    if (provider.id === "adsense") {
+    if (currentProvider === "adsense") {
       const pushTimer = setTimeout(() => {
         const ins = insRef.current;
         if (!ins) return;
@@ -187,11 +190,25 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
       };
     }
 
-    // GAM / Custom — ad yüklenmiş kabul et (kendi entegrasyonlarında kontrol edilir)
-    if (provider.id === "gam" || provider.id === "custom") {
-      setAdLoaded(true);
+    if (currentProvider === "hilltopads") {
+      // HilltopAds: script tag ile reklam yükle
+      const container = hilltopRef.current;
+      if (!container) return;
+      container.innerHTML = "";
+      const script = document.createElement("script");
+      script.src = HILLTOPADS_DISPLAY_URL;
+      script.async = true;
+      script.onload = () => setAdLoaded(true);
+      script.onerror = () => setAdLoaded(true); // Hata olsa bile skip butonunu göster
+      container.appendChild(script);
+      // 3 saniye içinde yüklenmediyse yine göster
+      const fallback = setTimeout(() => setAdLoaded(true), 3000);
+      return () => {
+        clearTimeout(fallback);
+        container.innerHTML = "";
+      };
     }
-  }, [active, adKey, user?.isPremium, provider.id]);
+  }, [active, adKey, user?.isPremium, currentProvider]);
 
   const handleSkip = useCallback(() => {
     if (skipCalledRef.current) return;
@@ -258,22 +275,23 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
           </div>
         )}
         <div className={`w-full transition-opacity duration-300 ${adLoaded ? "opacity-100" : "opacity-0"}`}>
-          {provider.id === "adsense" && (
+          {currentProvider === "adsense" && (
             <ins
               key={adKey}
               ref={insRef}
               className="adsbygoogle"
               style={{ display: "block", textAlign: "center" }}
-              data-ad-client={provider.clientId}
+              data-ad-client={adsenseProvider.clientId}
               data-ad-format="auto"
               data-full-width-responsive="true"
             />
           )}
-          {provider.id === "gam" && (
-            <div key={adKey} ref={insRef as any} data-gam-overlay style={{ minHeight: 250, textAlign: "center" }} />
-          )}
-          {provider.id === "custom" && (
-            <div key={adKey} ref={insRef as any} data-feedim-ad-slot="overlay" style={{ minHeight: 250, textAlign: "center" }} />
+          {currentProvider === "hilltopads" && (
+            <div
+              key={adKey}
+              ref={hilltopRef}
+              style={{ minHeight: 250, textAlign: "center", width: "100%" }}
+            />
           )}
         </div>
       </div>
