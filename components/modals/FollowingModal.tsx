@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import UserListModal from "./UserListModal";
 
 interface FollowingModalProps {
@@ -9,18 +10,19 @@ interface FollowingModalProps {
 }
 
 export default function FollowingModal({ open, onClose, username }: FollowingModalProps) {
+  const t = useTranslations("modals");
   return (
     <UserListModal
       open={open}
       onClose={onClose}
-      title="Takip Edilenler"
-      infoText="Bu kullanıcının takip ettiği kişiler burada listelenir."
+      title={t("followings")}
+      infoText={t("followingsInfoText")}
       fetchUrl={`/api/users/${username}/following`}
-      emptyText="Henüz takip edilen yok"
+      emptyText={t("noFollowing")}
       filterTabs={[
-        { key: "verified", label: "Doğrulanmış" },
-        { key: "all", label: "Tümü" },
-        { key: "following", label: "Takip Edilenler" },
+        { key: "verified", label: t("filterVerified") },
+        { key: "all", label: t("filterAll") },
+        { key: "following", label: t("filterFollowing") },
       ]}
     />
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Search, X, Hash } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
@@ -57,17 +58,19 @@ interface TagUser {
   bio?: string;
 }
 
-type TagTab = "for-you" | "latest" | "moments" | "video" | "notes" | "users";
+type TagTab = "for-you" | "latest" | "posts" | "moments" | "video" | "notes" | "users";
 
 export default function TagPage() {
   useSearchParams();
   const { slug } = useParams<{ slug: string }>();
+  const t = useTranslations("explore");
 
   const [tagInfo, setTagInfo] = useState<{ id: number; name: string; slug: string; post_count: number } | null>(null);
   const [activeTab, setActiveTab] = useState<TagTab>("for-you");
 
   // Shared posts state per tab
   const [posts, setPosts] = useState<TagPost[]>([]);
+  const [postTypePosts, setPostTypePosts] = useState<TagPost[]>([]);
   const [users, setUsers] = useState<TagUser[]>([]);
   const [moments, setMoments] = useState<TagPost[]>([]);
   const [videos, setVideos] = useState<TagPost[]>([]);
@@ -97,12 +100,13 @@ export default function TagPage() {
   const { isLoggedIn } = useUser();
 
   const tabs: { key: TagTab; label: string }[] = [
-    { key: "for-you", label: "Senin İçin" },
-    { key: "latest", label: "En Son" },
-    { key: "moments", label: "Moments" },
-    { key: "video", label: "Video" },
-    { key: "notes", label: "Notlar" },
-    { key: "users", label: "Kişiler" },
+    { key: "for-you", label: t("forYou") },
+    { key: "latest", label: t("latest") },
+    { key: "posts", label: t("posts") },
+    { key: "moments", label: t("moments") },
+    { key: "video", label: t("video") },
+    { key: "notes", label: t("notes") },
+    { key: "users", label: t("users") },
   ];
 
   // Batch-fetch liked/saved status
@@ -152,6 +156,7 @@ export default function TagPage() {
 
   // Batch fetch interactions when posts change
   useEffect(() => { batchFetchInteractions(posts); }, [posts]);
+  useEffect(() => { batchFetchInteractions(postTypePosts); }, [postTypePosts]);
   useEffect(() => { batchFetchInteractions(videos); }, [videos]);
   useEffect(() => { batchFetchInteractions(notes); }, [notes]);
 
@@ -198,6 +203,10 @@ export default function TagPage() {
         const result = await loadTagPosts(1, "latest");
         setPosts(result.posts);
         setHasMore(result.hasMore);
+      } else if (tab === "posts") {
+        const result = await loadTagPosts(1, "latest", "post");
+        setPostTypePosts(result.posts);
+        setHasMore(result.hasMore);
       } else if (tab === "moments") {
         const result = await loadTagPosts(1, "latest", "moment");
         setMoments(result.posts);
@@ -237,6 +246,10 @@ export default function TagPage() {
       const result = await loadTagPosts(nextPage, "latest");
       setPosts(prev => [...prev, ...result.posts]);
       setHasMore(result.hasMore);
+    } else if (activeTab === "posts") {
+      const result = await loadTagPosts(nextPage, "latest", "post");
+      setPostTypePosts(prev => [...prev, ...result.posts]);
+      setHasMore(result.hasMore);
     } else if (activeTab === "moments") {
       const result = await loadTagPosts(nextPage, "latest", "moment");
       setMoments(prev => [...prev, ...result.posts]);
@@ -272,7 +285,7 @@ export default function TagPage() {
     if (!tagInfo) return;
     if (!currentUser) { const user = await requireAuth(); if (!user) return; }
     if (isFollowing) {
-      feedimAlert("question", `#${tagInfo.name} takibinden çıkmak istiyor musunuz?`, {
+      feedimAlert("question", t("unfollowTagConfirm", { tag: tagInfo.name }), {
         showYesNo: true,
         onYes: doTagFollow,
       });
@@ -310,6 +323,7 @@ export default function TagPage() {
 
   // Get current tab's post list
   const getCurrentPosts = () => {
+    if (activeTab === "posts") return postTypePosts;
     if (activeTab === "moments") return moments;
     if (activeTab === "video") return videos;
     if (activeTab === "notes") return notes;
@@ -334,7 +348,7 @@ export default function TagPage() {
     ) : (
       <div className="py-16 text-center">
         <Hash className="h-10 w-10 text-text-muted mx-auto mb-3" />
-        <p className="text-sm text-text-muted">Bu etikette içerik bulunamadı.</p>
+        <p className="text-sm text-text-muted">{t("noContentInTag")}</p>
       </div>
     )
   );
@@ -355,7 +369,7 @@ export default function TagPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder={`${tagInfo?.name || slug} ile alakalı daha fazla`}
+            placeholder={t("searchInTag", { tag: tagInfo?.name || slug })}
             className="input-modern w-full !pl-10 pr-9 py-2.5 text-[0.9rem]"
           />
           {searchQuery && (
@@ -402,7 +416,7 @@ export default function TagPage() {
           </div>
         ) : searchResults ? (
           <div className="py-16 text-center">
-            <p className="text-sm text-text-muted">&quot;{searchQuery}&quot; için sonuç bulunamadı.</p>
+            <p className="text-sm text-text-muted">{t("noResultsFor", { query: searchQuery })}</p>
           </div>
         ) : null
       ) : loading ? (
@@ -437,7 +451,7 @@ export default function TagPage() {
             </div>
           ) : (
             <div className="py-16 text-center">
-              <p className="text-sm text-text-muted">Bu etikette kullanıcı bulunamadı.</p>
+              <p className="text-sm text-text-muted">{t("noUsersInTag")}</p>
             </div>
           )}
         </div>
@@ -456,7 +470,7 @@ export default function TagPage() {
           ) : (
             <div className="py-16 text-center">
               <Hash className="h-10 w-10 text-text-muted mx-auto mb-3" />
-              <p className="text-sm text-text-muted">Bu etikette moment bulunamadı.</p>
+              <p className="text-sm text-text-muted">{t("noMomentsInTag")}</p>
             </div>
           )}
         </div>

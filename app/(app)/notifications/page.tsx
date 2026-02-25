@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Sparkles, Undo2, ChevronRight, Clock, CheckCircle, XCircle, Copyright, Eye, Smartphone, Monitor } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
@@ -103,18 +104,18 @@ function getGroupedNotificationLink(n: GroupedNotification): string | null {
   return null;
 }
 
-function getGroupedText(n: GroupedNotification): React.ReactNode {
+function getGroupedText(n: GroupedNotification, t: (key: string, values?: Record<string, any>) => string): React.ReactNode {
   if (n.is_grouped) {
     const firstActor = n.actors?.[0];
     const count = (n.actor_count || 1) - 1;
-    const name = firstActor?.username ? `@${firstActor.username}` : "Birisi";
+    const name = firstActor?.username ? `@${firstActor.username}` : t("someone");
 
     if (n.type === "like") {
       return (
         <>
           <span className="font-semibold">{name}</span>
-          {count > 0 && <> ve <span className="font-semibold">di{"\u011F"}er {count} ki{"\u015F"}i</span></>}
-          {" "}<span className="text-text-muted">{n.content || "g\u00F6nderinizi be\u011Fendi"}</span>
+          {count > 0 && <> {t("andOthers", { count })}</>}
+          {" "}<span className="text-text-muted">{n.content || t("liked")}</span>
         </>
       );
     }
@@ -122,8 +123,8 @@ function getGroupedText(n: GroupedNotification): React.ReactNode {
       return (
         <>
           <span className="font-semibold">{name}</span>
-          {count > 0 && <> ve <span className="font-semibold">di{"\u011F"}er {count} ki{"\u015F"}i</span></>}
-          {" "}<span className="text-text-muted">sizi takip etmeye ba{"\u015F"}lad{"\u0131"}</span>
+          {count > 0 && <> {t("andOthers", { count })}</>}
+          {" "}<span className="text-text-muted">{t("startedFollowing")}</span>
         </>
       );
     }
@@ -137,13 +138,13 @@ function getGroupedText(n: GroupedNotification): React.ReactNode {
     <>
       {actorName && !isSystem && <><span className="font-semibold">{actorName}</span>{" "}</>}
       <span className={isSystem ? "text-text-primary font-medium" : "text-text-muted"}>
-        {n.content || getDefaultText(n.type)}
+        {n.content || getDefaultText(n.type, t)}
       </span>
     </>
   );
 }
 
-function groupByTimeSection(notifications: GroupedNotification[]): { label: string; items: GroupedNotification[] }[] {
+function groupByTimeSection(notifications: GroupedNotification[], t: (key: string) => string): { label: string; items: GroupedNotification[] }[] {
   const now = Date.now();
   const sevenDays = 7 * 24 * 60 * 60 * 1000;
   const thirtyDays = 30 * 24 * 60 * 60 * 1000;
@@ -161,13 +162,14 @@ function groupByTimeSection(notifications: GroupedNotification[]): { label: stri
   }
 
   const sections: { label: string; items: GroupedNotification[] }[] = [];
-  if (recent.length > 0) sections.push({ label: "Son 7 g\u00FCn", items: recent });
-  if (older.length > 0) sections.push({ label: "Son 30 g\u00FCn", items: older });
+  if (recent.length > 0) sections.push({ label: t("last7Days"), items: recent });
+  if (older.length > 0) sections.push({ label: t("last30Days"), items: older });
   return sections;
 }
 
 export default function NotificationsPage() {
   useSearchParams();
+  const t = useTranslations("notifications");
   const [activeTab, setActiveTab] = useState<NotifTab>("social");
   const [notifications, setNotifications] = useState<GroupedNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -292,10 +294,10 @@ export default function NotificationsPage() {
   }, []);
 
   const hasUnread = notifications.some(n => !n.is_read);
-  const sections = groupByTimeSection(notifications);
+  const sections = groupByTimeSection(notifications, t);
 
   return (
-    <AppLayout headerTitle="Bildirimler" hideRightSidebar>
+    <AppLayout headerTitle={t("title")} hideRightSidebar>
       {/* Tab bar */}
       <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient border-b border-border-primary">
         <div className="flex">
@@ -308,7 +310,7 @@ export default function NotificationsPage() {
                 : "border-transparent text-text-muted"
             )}
           >
-            Kişisel
+            {t("social")}
           </button>
           <button
             onClick={() => handleTabChange("system")}
@@ -319,7 +321,7 @@ export default function NotificationsPage() {
                 : "border-transparent text-text-muted"
             )}
           >
-            Sistem
+            {t("system")}
           </button>
         </div>
       </div>
@@ -351,9 +353,9 @@ export default function NotificationsPage() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Takip istekleri</p>
+                <p className="text-sm font-semibold">{t("followRequests")}</p>
                 <p className="text-xs text-text-muted">
-                  {followRequestCount > 99 ? "99+" : followRequestCount} bekleyen istek
+                  {t("pendingRequests", { count: followRequestCount > 99 ? "99+" : followRequestCount })}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -371,8 +373,8 @@ export default function NotificationsPage() {
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : notifications.length === 0 ? (
           <EmptyState
-            title="Bildirim yok"
-            description={activeTab === "social" ? "Yeni etkile\u015Fimler burada g\u00F6r\u00FCnecek." : "Sistem bildirimleri burada g\u00F6r\u00FCnecek."}
+            title={t("noNotifications")}
+            description={activeTab === "social" ? t("noNotificationsDescSocial") : t("noNotificationsDescSystem")}
           />
         ) : (
           <>
@@ -383,7 +385,7 @@ export default function NotificationsPage() {
                   className="flex items-center gap-1.5 text-xs font-medium text-accent-main hover:text-accent-main/80 transition"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
-                  T{"\u00FC"}m{"\u00FC"}n{"\u00FC"} okundu yap
+                  {t("markAllRead")}
                 </button>
               </div>
             )}
@@ -441,7 +443,7 @@ export default function NotificationsPage() {
                         {/* Middle: Text */}
                         <div className="flex-1 min-w-0 z-[1] pointer-events-none">
                           <p className="text-sm leading-snug">
-                            {getGroupedText(n)}
+                            {getGroupedText(n, t)}
                           </p>
                           <p className="text-xs text-text-muted mt-0.5">{formatRelativeDate(n.latest_at)}</p>
                         </div>
@@ -479,9 +481,9 @@ export default function NotificationsPage() {
         {!hasMore && !loading && activeTab === "social" && suggestions.length > 0 && (
           <div className="px-3 sm:px-4 py-4 mt-2 border-t border-border-primary">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[0.9rem] font-bold">Ki{"\u015F"}ileri Bul</h3>
+              <h3 className="text-[0.9rem] font-bold">{t("findPeople")}</h3>
               <Link href="/suggestions" className="text-xs font-medium text-accent-main hover:text-accent-main/80 transition">
-                T{"\u00FC"}m{"\u00FC"}n{"\u00FC"} G{"\u00F6"}r
+                {t("seeAll")}
               </Link>
             </div>
             <div className="space-y-0.5">
@@ -516,10 +518,10 @@ export default function NotificationsPage() {
       <UserListModal
         open={!!followGroupNotif}
         onClose={() => setFollowGroupNotif(null)}
-        title="Takip Edenler"
-        infoText="Sizi takip etmeye başlayan kişiler"
+        title={t("followersTitle")}
+        infoText={t("followersInfoText")}
         fetchUrl={followGroupNotif ? `/api/notifications/actors?ids=${followGroupNotif.notification_ids.join(",")}` : ""}
-        emptyText="Kişi bulunamadı"
+        emptyText={t("noPersonFound")}
         filterTabs={[]}
       />
 
@@ -533,30 +535,31 @@ export default function NotificationsPage() {
   );
 }
 
-function getDefaultText(type: string): string {
-  switch (type) {
-    case "like": return "g\u00F6nderinizi be\u011Fendi";
-    case "comment": return "g\u00F6nderinize yorum yapt\u0131";
-    case "reply": return "yorumunuza yan\u0131t verdi";
-    case "mention": return "sizden bahsetti";
-    case "follow": return "sizi takip etmeye ba\u015Flad\u0131";
-    case "follow_request": return "sizi takip etmek istiyor";
-    case "follow_accepted": return "takip iste\u011Finizi kabul etti";
-    case "comment_like": return "yorumunuzu be\u011Fendi";
-    case "first_post": return "ilk g\u00F6nderisini yay\u0131nlad\u0131!";
-    case "comeback_post": return "uzun bir aradan sonra yeni g\u00F6nderi yay\u0131nlad\u0131!";
-    case "milestone": return "bir ba\u015Far\u0131ya ula\u015Ft\u0131n!";
-    case "view_milestone": return "g\u00F6sterime ula\u015Ft\u0131!";
-    case "coin_earned": return "Jeton kazand\u0131n";
-    case "gift_received": return "sana hediye g\u00F6nderdi";
-    case "premium_expired": return "premium \u00FCyeli\u011Finiz sona erdi";
-    case "system": return "sistem bildirimi";
-    case "device_login": return "yeni cihazdan giri\u015F yap\u0131ld\u0131";
-    case "moderation_review": return "i\u00E7eri\u011Finiz inceleniyor";
-    case "moderation_approved": return "i\u00E7eri\u011Finiz onayland\u0131";
-    case "moderation_rejected": return "i\u00E7eri\u011Finiz kald\u0131r\u0131ld\u0131";
-    case "account_moderation": return "hesab\u0131n\u0131z inceleme alt\u0131nda";
-    case "copyright_detected": return "i\u00E7eri\u011Finize benzer bir g\u00F6nderi tespit edildi";
-    default: return "";
-  }
+function getDefaultText(type: string, t: (key: string) => string): string {
+  const map: Record<string, string> = {
+    like: "liked",
+    comment: "commented",
+    reply: "replied",
+    mention: "mentioned",
+    follow: "followed",
+    follow_request: "followRequest",
+    follow_accepted: "followAccepted",
+    comment_like: "commentLiked",
+    first_post: "firstPost",
+    comeback_post: "comebackPost",
+    milestone: "milestone",
+    view_milestone: "viewMilestone",
+    coin_earned: "coinEarned",
+    gift_received: "giftReceived",
+    premium_expired: "premiumExpired",
+    system: "systemNotification",
+    device_login: "deviceLogin",
+    moderation_review: "moderationReview",
+    moderation_approved: "moderationApproved",
+    moderation_rejected: "moderationRejected",
+    account_moderation: "accountModeration",
+    copyright_detected: "copyrightDetected",
+  };
+  const key = map[type];
+  return key ? t(key) : "";
 }

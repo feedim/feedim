@@ -15,21 +15,23 @@ import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useUser } from "@/components/UserContext";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
-
-const contentNavItems = [
-  { href: "/posts", icon: BookOpen, label: "Gönderiler" },
-  { href: "/notes", icon: Users, label: "Topluluk Notları" },
-  { href: "/video", icon: Film, label: "Video" },
-  { href: "/moments", icon: Clapperboard, label: "Moments" },
-];
-
-const contentPaths = contentNavItems.map(i => i.href);
+import { useTranslations } from "next-intl";
 
 export default memo(function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
   const { user, isLoggedIn } = useUser();
+  const t = useTranslations();
+
+  const contentNavItems = [
+    { href: "/posts", icon: BookOpen, label: t("nav.posts") },
+    { href: "/notes", icon: Users, label: t("nav.communityNotes") },
+    { href: "/video", icon: Film, label: t("nav.video") },
+    { href: "/moments", icon: Clapperboard, label: t("nav.moments") },
+  ];
+
+  const contentPaths = contentNavItems.map(i => i.href);
 
   const [theme, setTheme] = useState("system");
   const [darkModeOpen, setDarkModeOpen] = useState(false);
@@ -81,18 +83,20 @@ export default memo(function Sidebar() {
   };
 
   const topNavItems = [
-    { href: "/", icon: Home, label: "Ana Sayfa" },
+    { href: "/", icon: Home, label: t("nav.home") },
   ];
 
   const afterContentNavItems = [
-    { href: "/notifications", icon: Bell, label: "Bildirimler" },
-    { href: "/bookmarks", icon: Bookmark, label: "Kaydedilenler" },
-    { href: "/analytics", icon: BarChart3, label: "Analitik" },
-    { href: "/coins", icon: Wallet, label: "Bakiye" },
+    { href: "/notifications", icon: Bell, label: t("nav.notifications") },
+    { href: "/bookmarks", icon: Bookmark, label: t("nav.bookmarks") },
+    { href: "/analytics", icon: BarChart3, label: t("nav.analytics") },
+    { href: "/coins", icon: Wallet, label: t("nav.balance") },
   ];
 
   const isActive = (href: string) => pathname === href;
   const publicPaths = ["/", "/explore", "/moments", "/video", "/notes", "/posts"];
+
+  const notificationsLabel = t("nav.notifications");
 
   const renderNavItem = (item: { href: string; icon: any; label: string }, indent?: boolean) => {
     const Icon = item.icon;
@@ -112,7 +116,7 @@ export default memo(function Sidebar() {
       >
         <div className="relative shrink-0">
           <Icon className="h-5 w-5" />
-          {item.label === "Bildirimler" && unreadCount > 0 && (
+          {item.label === notificationsLabel && unreadCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-error text-white text-[9px] font-bold flex items-center justify-center px-0.5">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
@@ -122,6 +126,8 @@ export default memo(function Sidebar() {
       </Link>
     );
   };
+
+  const themeLabel = theme === "system" ? t("theme.system") : theme === "light" ? t("theme.light") : theme === "dark" ? t("theme.dark") : t("theme.dim");
 
   return (
     <aside className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-40 w-[240px]">
@@ -135,13 +141,11 @@ export default memo(function Sidebar() {
 
       {/* Nav items */}
       <nav className="flex-1 px-2 py-2 space-y-[5px] overflow-y-auto">
-        {/* Ana Sayfa */}
         {topNavItems.map(item => renderNavItem(item))}
 
-        {/* Keşfet — standalone */}
-        {renderNavItem({ href: "/explore", icon: Search, label: "Keşfet" })}
+        {renderNavItem({ href: "/explore", icon: Search, label: t("nav.explore") })}
 
-        {/* İçerikler accordion */}
+        {/* Content accordion */}
         <button
           onClick={() => setContentExpanded(prev => !prev)}
           className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
@@ -151,7 +155,7 @@ export default memo(function Sidebar() {
           }`}
         >
           <LayoutGrid className="h-5 w-5 shrink-0" />
-          <span className="flex-1 text-left">Daha Fazla</span>
+          <span className="flex-1 text-left">{t("common.more")}</span>
           <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${contentExpanded ? "rotate-180" : ""}`} />
         </button>
         {contentExpanded && (
@@ -160,10 +164,8 @@ export default memo(function Sidebar() {
           </div>
         )}
 
-        {/* Bildirimler, Kaydedilenler, Analitik, Bakiye — only for logged-in users */}
         {isLoggedIn && afterContentNavItems.map(item => renderNavItem(item))}
 
-        {/* Ayarlar — only for logged-in users */}
         {isLoggedIn && (
           <Link
             href="/settings"
@@ -174,29 +176,28 @@ export default memo(function Sidebar() {
             }`}
           >
             <Settings className="h-5 w-5 shrink-0" />
-            <span>Ayarlar</span>
+            <span>{t("nav.settings")}</span>
           </Link>
         )}
 
-        {/* Profil — only for logged-in users */}
-        {isLoggedIn && renderNavItem({ href: "/profile", icon: User, label: "Profil" })}
+        {isLoggedIn && renderNavItem({ href: "/profile", icon: User, label: t("nav.profile") })}
 
-        {/* Sistem (Theme toggle) */}
+        {/* Theme toggle */}
         <button
           onClick={() => setDarkModeOpen(true)}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium"
         >
           {themeIcon()}
-          <span className="capitalize">{theme === "system" ? "Sistem" : theme === "light" ? "Açık" : theme === "dark" ? "Koyu" : "Dim"}</span>
+          <span className="capitalize">{themeLabel}</span>
         </button>
 
-        {/* Kısayollar */}
+        {/* Shortcuts */}
         <button
           onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium text-left"
         >
           <Keyboard className="h-5 w-5 shrink-0" />
-          <span>Kısayollar</span>
+          <span>{t("nav.shortcuts")}</span>
         </button>
       </nav>
 
@@ -211,7 +212,7 @@ export default memo(function Sidebar() {
             >
               <div className="flex items-center gap-2 w-full h-[44px] rounded-full bg-bg-inverse text-bg-primary justify-center font-semibold text-[0.91rem]">
                 <Plus className="shrink-0 h-4 w-4" />
-                <span>Oluştur</span>
+                <span>{t("common.create")}</span>
               </div>
             </button>
 
@@ -224,7 +225,7 @@ export default memo(function Sidebar() {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                  <p className="text-[0.87rem] font-semibold truncate">{user?.fullName || "Kullanıcı"}</p>
+                  <p className="text-[0.87rem] font-semibold truncate">{user?.fullName || t("common.user")}</p>
                   {(user?.role === "admin" || user?.isVerified) && (
                     <VerifiedBadge size="sm" variant={getBadgeVariant(user.premiumPlan)} role={user.role} />
                   )}
@@ -240,7 +241,7 @@ export default memo(function Sidebar() {
           >
             <div className="flex items-center gap-2 w-full h-[44px] rounded-full bg-accent-main text-white justify-center font-semibold text-[0.91rem]">
               <LogIn className="shrink-0 h-4 w-4" />
-              <span>Giriş Yap</span>
+              <span>{t("common.login")}</span>
             </div>
           </Link>
         )}

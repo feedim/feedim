@@ -490,10 +490,10 @@ export async function POST(request: NextRequest) {
               await admin.from('reports').delete().eq('content_type', 'post').eq('content_id', Number(target_id));
             } catch {}
             // Email
-            const email = await getEmailIfEnabled(approvedPost.author_id, 'moderation_approved');
-            if (email) {
-              const tpl = moderationApprovedEmail(approvedPost.title, approvedPost.slug);
-              await sendEmail({ to: email, ...tpl, template: 'moderation_approved', userId: approvedPost.author_id });
+            const emailResult = await getEmailIfEnabled(approvedPost.author_id, 'moderation_approved');
+            if (emailResult) {
+              const tpl = await moderationApprovedEmail(approvedPost.title, approvedPost.slug, emailResult.locale);
+              await sendEmail({ to: emailResult.email, ...tpl, template: 'moderation_approved', userId: approvedPost.author_id });
             }
           }
         } else if (target_type === 'comment') {
@@ -583,10 +583,10 @@ export async function POST(request: NextRequest) {
               }
             } catch {}
             // Email
-            const email = await getEmailIfEnabled(rejectedPost.author_id, 'moderation_rejected');
-            if (email) {
-              const tpl = moderationRejectedEmail(rejectedPost.title, reason || '', decisionCode);
-              await sendEmail({ to: email, ...tpl, template: 'moderation_rejected', userId: rejectedPost.author_id });
+            const emailResult = await getEmailIfEnabled(rejectedPost.author_id, 'moderation_rejected');
+            if (emailResult) {
+              const tpl = await moderationRejectedEmail(rejectedPost.title, reason || '', decisionCode, emailResult.locale);
+              await sendEmail({ to: emailResult.email, ...tpl, template: 'moderation_rejected', userId: rejectedPost.author_id });
             }
           }
         } else if (target_type === 'comment') {

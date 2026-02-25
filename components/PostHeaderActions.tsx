@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
 import PostMoreModal from "@/components/modals/PostMoreModal";
 import ShareModal from "@/components/modals/ShareModal";
 
@@ -22,6 +23,7 @@ interface PostHeaderActionsProps {
 }
 
 export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, authorUserId, authorName, isOwnPost, postSlug, portalToHeader, isVideo, contentType, onDeleteSuccess }: PostHeaderActionsProps) {
+  const t = useTranslations("common");
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -29,16 +31,27 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
 
   useEffect(() => {
     setMounted(true);
-    if (portalToHeader) {
-      setHeaderSlot(document.getElementById("header-right-slot"));
-    }
+    if (!portalToHeader) return;
+    // Try immediately
+    const el = document.getElementById("header-right-slot");
+    if (el) { setHeaderSlot(el); return; }
+    // Retry with rAF in case header hasn't rendered yet
+    let raf: number;
+    const tryFind = () => {
+      const slot = document.getElementById("header-right-slot");
+      if (slot) { setHeaderSlot(slot); return; }
+      raf = requestAnimationFrame(tryFind);
+    };
+    raf = requestAnimationFrame(tryFind);
+    const timeout = setTimeout(() => cancelAnimationFrame(raf), 2000);
+    return () => { cancelAnimationFrame(raf); clearTimeout(timeout); };
   }, [portalToHeader]);
 
   const button = (
     <button
       onClick={() => setMoreOpen(true)}
       className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
-      aria-label="Gönderi seçenekleri"
+      aria-label={t("postOptions")}
     >
       <MoreHorizontal className="h-[20px] w-[20px]" />
     </button>

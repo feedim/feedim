@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { Search, X, Hash, TrendingUp, ChevronRight, Music } from "lucide-react";
 import Link from "next/link";
@@ -81,10 +82,11 @@ interface SearchSound {
 type ExploreTab = "for_you" | "latest" | "moments" | "video" | "notes" | "sounds" | "users" | "tags";
 
 function SearchPrompt() {
+  const t = useTranslations("explore");
   return (
     <div className="py-16 text-center">
       <Search className="h-10 w-10 text-text-muted mx-auto mb-3" />
-      <p className="text-sm text-text-muted">Arama yapmak için yazmaya başlayın.</p>
+      <p className="text-sm text-text-muted">{t("searchPrompt")}</p>
     </div>
   );
 }
@@ -98,6 +100,7 @@ export default function ExplorePage() {
 }
 
 function ExploreContent() {
+  const t = useTranslations("explore");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -360,7 +363,7 @@ function ExploreContent() {
     if (!user) { setQuery(""); return; }
 
     setSearching(true);
-    const typeParam = forceType || (tab === "for_you" ? "all" : tab === "latest" ? "posts" : tab === "video" ? "posts" : tab === "notes" ? "posts" : tab);
+    const typeParam = forceType || (tab === "for_you" ? "all" : tab === "latest" ? "posts" : tab === "video" ? "posts" : tab === "notes" ? "posts" : tab === "moments" ? "posts" : tab);
     searchTimeout.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(cleanQuery)}&type=${typeParam}`);
@@ -429,6 +432,10 @@ function ExploreContent() {
     setSearchResults(null);
     setSearching(false);
     setFocused(false);
+    // Reset to a tab visible in non-search mode if current tab is search-only
+    if (activeTab !== "for_you" && activeTab !== "tags") {
+      setActiveTab("for_you");
+    }
     router.replace("/explore", { scroll: false });
     inputRef.current?.blur();
   };
@@ -437,15 +444,21 @@ function ExploreContent() {
   const hasPrefix = query.trim().startsWith("#") || query.trim().startsWith("@");
   const isSearchActive = hasPrefix ? query.trim().length >= 2 : query.trim().length >= 2;
 
-  const tabs: { key: ExploreTab; label: string }[] = [
-    { key: "for_you", label: "Senin İçin" },
-    { key: "users", label: "Kişiler" },
-    { key: "tags", label: "Etiketler" },
-    { key: "moments", label: "Moments" },
-    { key: "video", label: "Video" },
-    { key: "notes", label: "Notlar" },
-    { key: "sounds", label: "Sesler" },
-  ];
+  const tabs: { key: ExploreTab; label: string }[] = isSearchActive
+    ? [
+        { key: "for_you", label: t("all") },
+        { key: "users", label: t("users") },
+        { key: "tags", label: t("tags") },
+        { key: "latest", label: t("posts") },
+        { key: "moments", label: t("moments") },
+        { key: "video", label: t("video") },
+        { key: "notes", label: t("notes") },
+        { key: "sounds", label: t("sounds") },
+      ]
+    : [
+        { key: "for_you", label: t("forYou") },
+        { key: "tags", label: t("tags") },
+      ];
 
   const handleTagClick = (tag: SearchTag) => {
     emitNavigationStart();
@@ -487,7 +500,7 @@ function ExploreContent() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[0.9rem] font-semibold">#{tag.name}</p>
-          <p className="text-xs text-text-muted">{formatCount(tag.post_count || 0)} gönderi</p>
+          <p className="text-xs text-text-muted">{t("postCount", { count: formatCount(tag.post_count || 0) })}</p>
         </div>
       </Link>
     );
@@ -515,9 +528,9 @@ function ExploreContent() {
       <div className="flex-1 min-w-0">
         <p className="text-[0.9rem] font-semibold truncate">{sound.title}</p>
         <p className="text-xs text-text-muted truncate">
-          {sound.artist || "Orijinal ses"}
+          {sound.artist || t("originalSound")}
           {sound.duration ? ` · ${formatDuration(sound.duration)}` : ""}
-          {sound.usage_count ? ` · ${formatCount(sound.usage_count)} kullanım` : ""}
+          {sound.usage_count ? ` · ${t("usageCount", { count: formatCount(sound.usage_count) })}` : ""}
         </p>
       </div>
       <SoundPreviewButton audioUrl={sound.audio_url} />
@@ -545,17 +558,17 @@ function ExploreContent() {
       if (!hasAny) {
         return (
           <div className="py-16 text-center">
-            <p className="text-text-muted text-sm">&quot;{query}&quot; için sonuç bulunamadı.</p>
+            <p className="text-text-muted text-sm">{t("noResultsFor", { query })}</p>
           </div>
         );
       }
 
-      if (activeTab === "for_you" || activeTab === "latest") {
+      if (activeTab === "for_you") {
         return (
           <div className="space-y-6 mt-4 px-3 sm:px-4">
             {searchResults.users.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">Kişiler</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("users")}</h3>
                 <div className="space-y-0.5">
                   {searchResults.users.slice(0, 3).map(u => <UserListItem key={u.user_id} user={u} autoSubtitle />)}
                 </div>
@@ -563,7 +576,7 @@ function ExploreContent() {
             )}
             {searchResults.tags.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">Etiketler</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("tags")}</h3>
                 <div className="space-y-0.5">
                   {searchResults.tags.slice(0, 3).map(tag => <TagRow key={tag.id} tag={tag} />)}
                 </div>
@@ -571,7 +584,7 @@ function ExploreContent() {
             )}
             {searchResults.sounds.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">Sesler</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("sounds")}</h3>
                 <div className="space-y-0.5">
                   {searchResults.sounds.slice(0, 3).map(s => <SoundRow key={s.id} sound={s} />)}
                 </div>
@@ -579,11 +592,23 @@ function ExploreContent() {
             )}
             {searchResults.posts.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">Gönderiler</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("posts")}</h3>
                 <div className="flex flex-col gap-[40px]">
                 {searchResults.posts.map(post => <PostCard key={post.id} post={post} />)}
                 </div>
               </div>
+            )}
+          </div>
+        );
+      }
+
+      if (activeTab === "latest") {
+        return (
+          <div className="mt-1 flex flex-col gap-[40px]">
+            {searchResults.posts.length > 0 ? (
+              searchResults.posts.map(post => <PostCard key={post.id} post={post} />)
+            ) : (
+              <p className="text-sm text-text-muted text-center py-8 px-4">{t("noResults")}</p>
             )}
           </div>
         );
@@ -595,7 +620,7 @@ function ExploreContent() {
             {searchResults.users.length > 0 ? (
               searchResults.users.map(u => <UserListItem key={u.user_id} user={u} autoSubtitle />)
             ) : (
-              <p className="text-sm text-text-muted text-center py-8">Kullanıcı bulunamadı.</p>
+              <p className="text-sm text-text-muted text-center py-8">{t("noUsersFound")}</p>
             )}
           </div>
         );
@@ -607,7 +632,7 @@ function ExploreContent() {
             {searchResults.tags.length > 0 ? (
               searchResults.tags.map(tag => <TagRow key={tag.id} tag={tag} />)
             ) : (
-              <p className="text-sm text-text-muted text-center py-8">Etiket bulunamadı.</p>
+              <p className="text-sm text-text-muted text-center py-8">{t("noTagsFound")}</p>
             )}
           </div>
         );
@@ -619,23 +644,23 @@ function ExploreContent() {
             {searchResults.sounds.length > 0 ? (
               searchResults.sounds.map(s => <SoundRow key={s.id} sound={s} />)
             ) : (
-              <p className="text-sm text-text-muted text-center py-8">Ses bulunamadı.</p>
+              <p className="text-sm text-text-muted text-center py-8">{t("noSoundsFound")}</p>
             )}
           </div>
         );
       }
 
-      // video, notes — show posts search results
-      if (activeTab === "video" || activeTab === "notes") {
+      // video, notes, moments — show posts search results filtered by content type
+      if (activeTab === "video" || activeTab === "notes" || activeTab === "moments") {
         const filtered = searchResults.posts.filter(p =>
-          activeTab === "video" ? p.content_type === "video" : p.content_type === "note"
+          activeTab === "video" ? p.content_type === "video" : activeTab === "notes" ? p.content_type === "note" : p.content_type === "moment"
         );
         return (
           <div className="mt-1 flex flex-col gap-[40px]">
             {filtered.length > 0 ? (
               filtered.map(post => <PostCard key={post.id} post={post} />)
             ) : (
-              <p className="text-sm text-text-muted text-center py-8 px-4">Sonuç bulunamadı.</p>
+              <p className="text-sm text-text-muted text-center py-8 px-4">{t("noResults")}</p>
             )}
           </div>
         );
@@ -680,7 +705,7 @@ function ExploreContent() {
                     : "bg-bg-inverse text-bg-primary"
                 )}
               >
-                {isFollowingTag ? "Takipte" : "Takip Et"}
+                {isFollowingTag ? t("followingTag") : t("followTag")}
               </button>
             )}
             <button onClick={clearTag} className="ml-auto text-xs text-text-muted hover:text-text-primary transition">
@@ -699,7 +724,7 @@ function ExploreContent() {
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Bu etikette gönderi bulunamadı.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noPostsInTag")}</p>
           )}
         </div>
       );
@@ -721,7 +746,7 @@ function ExploreContent() {
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz gönderi yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noPostsYet")}</p>
           )}
         </div>
       );
@@ -742,7 +767,7 @@ function ExploreContent() {
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={latestHasMore} />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz gönderi yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noPostsYet")}</p>
           )}
         </div>
       );
@@ -771,7 +796,7 @@ function ExploreContent() {
               />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz moment yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noMomentsYet")}</p>
           )}
         </div>
       );
@@ -792,7 +817,7 @@ function ExploreContent() {
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={videoHasMore} />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz video yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noVideosYet")}</p>
           )}
         </div>
       );
@@ -813,7 +838,7 @@ function ExploreContent() {
               <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={noteHasMore} />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz not yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noNotesYet")}</p>
           )}
         </div>
       );
@@ -844,7 +869,7 @@ function ExploreContent() {
               />
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz ses yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noSoundsYet")}</p>
           )}
         </div>
       );
@@ -861,14 +886,14 @@ function ExploreContent() {
             <>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="h-4 w-4 text-accent-main" />
-                <span className="text-sm font-semibold text-text-muted">Gündemdekiler</span>
+                <span className="text-sm font-semibold text-text-muted">{t("trending")}</span>
               </div>
               <div className="space-y-0.5">
                 {trendingTags.map(tag => <TagRow key={tag.id} tag={tag} />)}
               </div>
             </>
           ) : (
-            <p className="text-sm text-text-muted py-8 text-center">Henüz etiket yok.</p>
+            <p className="text-sm text-text-muted py-8 text-center">{t("noTagsYet")}</p>
           )}
         </div>
       );
@@ -891,12 +916,12 @@ function ExploreContent() {
             onChange={(e) => handleSearch(e.target.value)}
             onFocus={async () => { const user = await requireAuth(); if (!user) { inputRef.current?.blur(); return; } setFocused(true); }}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearchSubmit(); } }}
-            placeholder="#etiket veya @kullanıcı ara..."
+            placeholder={t("searchPlaceholder")}
             className="input-modern w-full !pl-10 pr-9 py-2.5 text-[0.9rem]"
           />
           {query && (
             <button
-              onClick={() => { setQuery(""); setSearchResults(null); setSearching(false); inputRef.current?.focus(); }}
+              onClick={() => { setQuery(""); setSearchResults(null); setSearching(false); if (activeTab !== "for_you" && activeTab !== "tags") setActiveTab("for_you"); inputRef.current?.focus(); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-text-muted/30 flex items-center justify-center"
             >
               <X className="h-2.5 w-2.5 text-bg-primary" />
@@ -905,7 +930,7 @@ function ExploreContent() {
         </div>
         {isSearchMode && (
           <button onClick={clearSearch} className="text-[0.84rem] font-medium text-accent-main shrink-0 transition active:opacity-60">
-            Vazgeç
+            {t("cancel")}
           </button>
         )}
       </div>

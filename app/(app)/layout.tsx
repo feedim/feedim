@@ -12,7 +12,7 @@ async function getInitialUser(): Promise<InitialUser | null> {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("username, full_name, name, surname, avatar_url, account_type, is_premium, premium_plan, is_verified, role, status, copyright_eligible")
+      .select("username, full_name, name, surname, avatar_url, account_type, is_premium, premium_plan, is_verified, role, status, copyright_eligible, language")
       .eq("user_id", userId)
       .single();
 
@@ -30,6 +30,7 @@ async function getInitialUser(): Promise<InitialUser | null> {
       role: profile.role || "user",
       status: profile.status || "active",
       copyrightEligible: profile.copyright_eligible === true,
+      locale: profile.language || "tr",
     };
   } catch {
     return null;

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Search, Bookmark } from "lucide-react";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import NoImage from "@/components/NoImage";
-import { formatCount, formatRelativeDate } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { formatCount, formatRelativeDate, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import FollowButton from "@/components/FollowButton";
 import UserListItem from "@/components/UserListItem";
@@ -51,6 +52,7 @@ interface TrendingTag {
 }
 
 export default function SuggestionWidget() {
+  const t = useTranslations("follow");
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
   const [tags, setTags] = useState<TrendingTag[]>([]);
@@ -129,7 +131,7 @@ export default function SuggestionWidget() {
         setFollowing(reverted);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+          feedimAlert("error", data.error || t("followLimitReached"));
         }
       } else {
         const data = await res.json();
@@ -154,7 +156,7 @@ export default function SuggestionWidget() {
       if (!res.ok) {
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+          feedimAlert("error", data.error || t("followLimitReached"));
         }
         return;
       }
@@ -172,7 +174,7 @@ export default function SuggestionWidget() {
 
   const handleFollow = useCallback((username: string, userId: string) => {
     if (following.has(userId) || requested.has(userId)) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doUnfollow(username, userId) });
+      feedimAlert("question", t("unfollowConfirm"), { showYesNo: true, onYes: () => doUnfollow(username, userId) });
       return;
     }
     doFollow(username, userId);
@@ -200,7 +202,7 @@ export default function SuggestionWidget() {
           type="search"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Ara"
+          placeholder={t("search")}
           className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary rounded-[10px] text-[0.85rem] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-primary transition"
         />
       </form>
@@ -209,9 +211,9 @@ export default function SuggestionWidget() {
       {users.length > 0 && (
         <div className="rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
-            <span className="text-[0.95rem] font-bold">Kişileri Bul</span>
+            <span className="text-[0.95rem] font-bold">{t("findPeople")}</span>
             <Link href="/suggestions" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
-              Tümünü gör
+              {t("seeAll")}
             </Link>
           </div>
           <div className="space-y-0">
@@ -233,9 +235,9 @@ export default function SuggestionWidget() {
       {trendingPosts.length > 0 && (
         <div className="rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
-            <span className="text-[0.95rem] font-bold">Öne Çıkanlar</span>
+            <span className="text-[0.95rem] font-bold">{t("trending")}</span>
             <Link href="/explore" className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
-              Tümünü gör
+              {t("seeAll")}
             </Link>
           </div>
           <div className="space-y-0">
@@ -243,7 +245,7 @@ export default function SuggestionWidget() {
               <div key={post.id}>
                 {i > 0 && <div className="mx-2 h-px bg-border-primary/40" />}
                 <Link
-                  href={`/${post.slug}`}
+                  href={getPostUrl(post.slug, post.content_type)}
                   className="flex flex-col gap-2 px-3 py-3 my-[3px] rounded-lg hover:bg-bg-secondary transition"
                 >
                   <div className="flex items-center gap-[2px]" style={{ columnGap: "2px" }}>
@@ -273,10 +275,10 @@ export default function SuggestionWidget() {
                       </p>
                       <div className="flex items-center gap-3 mt-1.5 text-[0.72rem] text-text-muted">
                         <span className="flex items-center gap-0.5">
-                          {formatCount(post.view_count || 0)} görüntülenme
+                          {formatCount(post.view_count || 0)} {t("views")}
                         </span>
                         <span className="text-text-muted/60">
-                          {post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : "Gönderi"}
+                          {post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : t("post")}
                         </span>
                       </div>
                     </div>
@@ -302,7 +304,7 @@ export default function SuggestionWidget() {
       {tags.length > 0 && (
         <div className="rounded-[10px] p-2">
           <div className="px-2 py-2">
-            <span className="text-[0.95rem] font-bold">Popüler Etiketler</span>
+            <span className="text-[0.95rem] font-bold">{t("popularTags")}</span>
           </div>
           <div className="space-y-0">
             {tags.map(tag => (
@@ -312,7 +314,7 @@ export default function SuggestionWidget() {
                 className="block px-4 py-2 rounded-[12px] hover:bg-bg-secondary transition"
               >
                 <p className="text-[0.84rem] font-semibold">#{tag.name}</p>
-                <p className="text-[0.68rem] text-text-muted">{formatCount(tag.post_count || 0)} gönderi</p>
+                <p className="text-[0.68rem] text-text-muted">{formatCount(tag.post_count || 0)} {t("post")}</p>
               </Link>
             ))}
           </div>

@@ -19,16 +19,16 @@ export const READ_COOLDOWN_HOURS = 24;     // Aynı okuyucu aynı gönderi
 
 // Hediye tipleri
 export const GIFT_TYPES = {
-  rose: { name: 'Gul', coins: 1, emoji: '🌹' },
-  coffee: { name: 'Kahve', coins: 5, emoji: '☕' },
-  heart: { name: 'Kalp', coins: 10, emoji: '❤️' },
-  fire: { name: 'Ates', coins: 15, emoji: '🔥' },
-  star: { name: 'Yildiz', coins: 25, emoji: '⭐' },
-  crown: { name: 'Tac', coins: 50, emoji: '👑' },
-  diamond: { name: 'Elmas', coins: 100, emoji: '💎' },
-  rocket: { name: 'Roket', coins: 200, emoji: '🚀' },
-  unicorn: { name: 'Unicorn', coins: 500, emoji: '🦄' },
-  planet: { name: 'Gezegen', coins: 1000, emoji: '🪐' },
+  rose: { name: 'Gul', labelKey: 'gifts.rose', coins: 1, emoji: '🌹' },
+  coffee: { name: 'Kahve', labelKey: 'gifts.coffee', coins: 5, emoji: '☕' },
+  heart: { name: 'Kalp', labelKey: 'gifts.heart', coins: 10, emoji: '❤️' },
+  fire: { name: 'Ates', labelKey: 'gifts.fire', coins: 15, emoji: '🔥' },
+  star: { name: 'Yildiz', labelKey: 'gifts.star', coins: 25, emoji: '⭐' },
+  crown: { name: 'Tac', labelKey: 'gifts.crown', coins: 50, emoji: '👑' },
+  diamond: { name: 'Elmas', labelKey: 'gifts.diamond', coins: 100, emoji: '💎' },
+  rocket: { name: 'Roket', labelKey: 'gifts.rocket', coins: 200, emoji: '🚀' },
+  unicorn: { name: 'Unicorn', labelKey: 'gifts.unicorn', coins: 500, emoji: '🦄' },
+  planet: { name: 'Gezegen', labelKey: 'gifts.planet', coins: 1000, emoji: '🪐' },
 } as const;
 
 // Profil puanlama ağırlıkları (7 boyut)
@@ -135,7 +135,7 @@ export const ALLOWED_EMAIL_DOMAINS = [
 
 // Reklam (YouTube-style ad breaks)
 export const AD_SKIP_DELAY = 8;            // saniye — skip butonu gecikmesi
-export const AD_MOMENTS_INTERVAL = 20;     // her 20 moment'ta 1 reklam kartı
+export const AD_MOMENTS_INTERVAL = 7;      // her 7 moment'ta 1 reklam kartı
 export const AD_NO_MIDROLL_MAX = 180;      // < 3:00 = mid-roll yok (sadece post-roll)
 export const AD_ONE_MIDROLL_MAX = 600;     // 3:00–10:00 = 1 mid-roll; > 10:00 = 2 mid-roll
 
@@ -157,10 +157,10 @@ export const AUDIO_ALLOWED_TYPES = ['audio/mpeg','audio/mp4','audio/aac','audio/
 
 // İçerik tipleri
 export const CONTENT_TYPES = {
-  post: { label: 'Gönderi', icon: '📝' },
-  note: { label: 'Not', icon: '📌' },
-  video: { label: 'Video', icon: '🎥' },
-  moment: { label: 'Moment', icon: '🎬' },
+  post: { label: 'Gönderi', labelKey: 'contentTypes.post', icon: '📝' },
+  note: { label: 'Not', labelKey: 'contentTypes.note', icon: '📌' },
+  video: { label: 'Video', labelKey: 'contentTypes.video', icon: '🎥' },
+  moment: { label: 'Moment', labelKey: 'contentTypes.moment', icon: '🎬' },
 } as const;
 
 // Bildirim tipleri
@@ -196,14 +196,14 @@ export const NOTIFICATION_SYSTEM_TYPES = [
 
 // Paylaşım platformları
 export const SHARE_PLATFORMS = [
-  { id: 'copy', name: 'Kopyala' },
+  { id: 'copy', name: 'Kopyala', labelKey: 'share.copy' },
   { id: 'wa', name: 'WhatsApp' },
   { id: 'tw', name: 'X' },
   { id: 'fb', name: 'Facebook' },
   { id: 'lk', name: 'LinkedIn' },
   { id: 'pin', name: 'Pinterest' },
-  { id: 'em', name: 'Email' },
-  { id: 'native', name: 'Paylaş' },
+  { id: 'em', name: 'Email', labelKey: 'share.email' },
+  { id: 'native', name: 'Paylaş', labelKey: 'share.share' },
 ] as const;
 
 // Milestone eşikleri
@@ -215,27 +215,28 @@ export const COMMENTS_PAGE_SIZE = 10;
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 export const NOTIFICATION_CLEANUP_DAYS = 90;
 
+
 // Profesyonel hesap kategorileri
 export const PROFESSIONAL_CATEGORIES = {
   creator: [
-    { value: "kisisel_blog", label: "Kişisel Blog" },
-    { value: "dijital_icerik", label: "Dijital İçerik Üretici" },
-    { value: "sanatci", label: "Sanatçı" },
-    { value: "muzisyen", label: "Müzisyen" },
-    { value: "oyuncu", label: "Oyuncu" },
-    { value: "yazar", label: "Yazar" },
-    { value: "sporcu", label: "Sporcu" },
-    { value: "fotografci", label: "Fotoğrafçı" },
-    { value: "diger", label: "Diğer" },
+    { value: "kisisel_blog", label: "Kişisel Blog", labelKey: "professional.personalBlog" },
+    { value: "dijital_icerik", label: "Dijital İçerik Üretici", labelKey: "professional.digitalContent" },
+    { value: "sanatci", label: "Sanatçı", labelKey: "professional.artist" },
+    { value: "muzisyen", label: "Müzisyen", labelKey: "professional.musician" },
+    { value: "oyuncu", label: "Oyuncu", labelKey: "professional.actor" },
+    { value: "yazar", label: "Yazar", labelKey: "professional.writer" },
+    { value: "sporcu", label: "Sporcu", labelKey: "professional.athlete" },
+    { value: "fotografci", label: "Fotoğrafçı", labelKey: "professional.photographer" },
+    { value: "diger", label: "Diğer", labelKey: "professional.otherCreator" },
   ],
   business: [
-    { value: "yerel_isletme", label: "Yerel İşletme" },
-    { value: "marka", label: "Marka" },
-    { value: "e_ticaret", label: "E-ticaret" },
-    { value: "restoran_kafe", label: "Restoran/Kafe" },
-    { value: "saglik_guzellik", label: "Sağlık/Güzellik" },
-    { value: "egitim", label: "Eğitim" },
-    { value: "teknoloji", label: "Teknoloji" },
-    { value: "diger", label: "Diğer" },
+    { value: "yerel_isletme", label: "Yerel İşletme", labelKey: "professional.localBusiness" },
+    { value: "marka", label: "Marka", labelKey: "professional.brand" },
+    { value: "e_ticaret", label: "E-ticaret", labelKey: "professional.ecommerce" },
+    { value: "restoran_kafe", label: "Restoran/Kafe", labelKey: "professional.restaurant" },
+    { value: "saglik_guzellik", label: "Sağlık/Güzellik", labelKey: "professional.healthBeauty" },
+    { value: "egitim", label: "Eğitim", labelKey: "professional.education" },
+    { value: "teknoloji", label: "Teknoloji", labelKey: "professional.technology" },
+    { value: "diger", label: "Diğer", labelKey: "professional.otherBusiness" },
   ],
 } as const;

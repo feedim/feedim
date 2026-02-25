@@ -5,9 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { ArrowLeft } from "lucide-react";
 import MomentCard from "@/components/MomentCard";
+import MomentAdCard from "@/components/MomentAdCard";
 import { useDashboardShell } from "@/components/DashboardShell";
-import LoadingShell from "@/components/LoadingShell";
+import { AD_MOMENTS_INTERVAL } from "@/lib/constants";
+
 import { useUser } from "@/components/UserContext";
+import { useTranslations } from "next-intl";
+
+type DisplayItem =
+  | { type: "moment"; moment: Moment; realIndex: number }
+  | { type: "ad"; adIndex: number };
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
 const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
@@ -73,11 +80,12 @@ function MomentsContent() {
   const searchParams = useSearchParams();
   const { setMobileNavVisible } = useDashboardShell();
   const { isLoggedIn } = useUser();
+  const t = useTranslations("moments");
   const [moments, setMoments] = useState<Moment[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeDisplayIndex, setActiveDisplayIndex] = useState(0);
   const [likedSet, setLikedSet] = useState<Set<number>>(new Set());
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [globalMuted, setGlobalMuted] = useState(true);
@@ -93,6 +101,19 @@ function MomentsContent() {
   // Capture initial slug only on mount — ignore subsequent URL changes
   const startSlug = useMemo(() => searchParams.get("s"), []);
 
+  // Build display list with ad cards interleaved
+  const displayItems = useMemo(() => {
+    const items: DisplayItem[] = [];
+    let adCount = 0;
+    moments.forEach((m, i) => {
+      if (i > 0 && i % AD_MOMENTS_INTERVAL === 0) {
+        items.push({ type: "ad", adIndex: adCount++ });
+      }
+      items.push({ type: "moment", moment: m, realIndex: i });
+    });
+    return items;
+  }, [moments]);
+
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
     const next = `${window.location.pathname}${window.location.search}`;
@@ -100,10 +121,15 @@ function MomentsContent() {
     return false;
   }, [isLoggedIn]);
 
-  // Hide mobile bottom nav
+  // Hide mobile bottom nav + remove parent padding
   useEffect(() => {
     setMobileNavVisible(false);
-    return () => setMobileNavVisible(true);
+    const main = document.querySelector("main");
+    if (main) main.style.paddingBottom = "0";
+    return () => {
+      setMobileNavVisible(true);
+      if (main) main.style.paddingBottom = "";
+    };
   }, [setMobileNavVisible]);
 
   // Preload modals early to avoid first-open lag
@@ -194,7 +220,7 @@ function MomentsContent() {
 
   // IntersectionObserver
   useEffect(() => {
-    if (moments.length === 0) return;
+    if (displayItems.length === 0) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -202,7 +228,7 @@ function MomentsContent() {
           if (entry.isIntersecting) {
             const idx = Number(entry.target.getAttribute("data-index"));
             if (!isNaN(idx)) {
-              setActiveIndex((prev) => (prev === idx ? prev : idx));
+              setActiveDisplayIndex((prev) => (prev === idx ? prev : idx));
             }
           }
         });
@@ -214,20 +240,23 @@ function MomentsContent() {
     cards?.forEach((card) => observerRef.current?.observe(card));
 
     return () => observerRef.current?.disconnect();
-  }, [moments]);
+  }, [displayItems]);
 
   // Update browser URL as user scrolls through moments
   useEffect(() => {
-    const current = moments[activeIndex];
-    if (current) {
-      window.history.replaceState(null, "", `/moments?s=${current.slug}`);
+    const item = displayItems[activeDisplayIndex];
+    if (item?.type === "moment") {
+      window.history.replaceState(null, "", `/moments?s=${item.moment.slug}`);
     }
-  }, [activeIndex, moments]);
+  }, [activeDisplayIndex, displayItems]);
 
   // Infinite loading — guests redirected to login on loadMore
   useEffect(() => {
     if (!hasMore || loadingMore) return;
-    if (activeIndex >= moments.length - 2) {
+    // Check proximity to end using the active item's real index
+    const activeItem = displayItems[activeDisplayIndex];
+    const realIdx = activeItem?.type === "moment" ? activeItem.realIndex : (moments.length - 1);
+    if (realIdx >= moments.length - 2) {
       if (!isLoggedIn) {
         window.location.href = `/login?next=${encodeURIComponent('/moments')}`;
         return;
@@ -240,7 +269,7 @@ function MomentsContent() {
         setLoadingMore(false);
       });
     }
-  }, [activeIndex, moments.length, hasMore, loadingMore, isLoggedIn]);
+  }, [activeDisplayIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn]);
 
   const handleLike = useCallback((momentId: number) => {
     if (!requireAuth()) return;
@@ -323,33 +352,27 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <LoadingShell>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 px-3 sm:px-4 py-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="aspect-[9/16] bg-bg-tertiary rounded-xl" />
-          ))}
-        </div>
-      </LoadingShell>
+      <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
     );
   }
 
   if (moments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-text-primary">
-        <p className="text-lg font-semibold mb-2">Henüz moment yok</p>
-        <p className="text-sm text-text-muted mb-6">İlk momenti sen oluştur!</p>
+        <p className="text-lg font-semibold mb-2">{t("noMoments")}</p>
+        <p className="text-sm text-text-muted mb-6">{t("createFirst")}</p>
         <div className="flex flex-col items-center gap-3">
           <button onClick={() => { emitNavigationStart(); router.push("/create/moment"); }} className="t-btn accept !h-10 !px-6 !text-sm">
-            Moment Oluştur
+            {t("createMoment")}
           </button>
-          <button onClick={() => router.back()} className="text-sm text-text-muted underline">Geri dön</button>
+          <button onClick={() => router.back()} className="text-sm text-text-muted underline">{t("goBack")}</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex justify-center h-[100svh] md:h-screen md:-mt-0 -mb-20 md:mb-0">
+    <div className="flex justify-center h-[100svh] md:h-screen">
       {/* Centered Reels column */}
       <div
         className="relative w-full h-full"
@@ -377,24 +400,34 @@ function MomentsContent() {
           className="h-full snap-y snap-mandatory scrollbar-hide overscroll-contain overflow-y-auto touch-pan-y"
           style={{ backgroundColor: "#000" }}
         >
-      {moments.map((moment, index) => (
-        <React.Fragment key={moment.id}>
-          <div data-index={index}>
-                <MomentCard
-                  moment={moment}
-                  isActive={index === activeIndex}
-                  loadVideo={Math.abs(index - activeIndex) <= 1}
-                  liked={likedSet.has(moment.id)}
-                  saved={savedSet.has(moment.id)}
-                  muted={globalMuted}
-                  onToggleMute={handleToggleMute}
-                  onLike={() => handleLike(moment.id)}
-                  onLikesClick={() => handleLikesOpen(moment.id)}
-                  onComment={() => handleComment(moment)}
-                  onShare={() => handleShare(moment)}
-                  onSave={() => handleSave(moment.id)}
-                  onOptions={() => handleOptions(moment)}
-                />
+      {displayItems.map((item, displayIndex) => (
+        <React.Fragment key={item.type === "moment" ? `m-${item.moment.id}` : `ad-${item.adIndex}`}>
+          <div data-index={displayIndex}>
+                {item.type === "moment" ? (
+                  <MomentCard
+                    moment={item.moment}
+                    isActive={displayIndex === activeDisplayIndex}
+                    loadVideo={Math.abs(displayIndex - activeDisplayIndex) <= 1}
+                    liked={likedSet.has(item.moment.id)}
+                    saved={savedSet.has(item.moment.id)}
+                    muted={globalMuted}
+                    onToggleMute={handleToggleMute}
+                    onLike={() => handleLike(item.moment.id)}
+                    onLikesClick={() => handleLikesOpen(item.moment.id)}
+                    onComment={() => handleComment(item.moment)}
+                    onShare={() => handleShare(item.moment)}
+                    onSave={() => handleSave(item.moment.id)}
+                    onOptions={() => handleOptions(item.moment)}
+                  />
+                ) : (
+                  <MomentAdCard
+                    isActive={displayIndex === activeDisplayIndex}
+                    onSkip={() => {
+                      const next = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
+                      next?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  />
+                )}
               </div>
             </React.Fragment>
           ))}

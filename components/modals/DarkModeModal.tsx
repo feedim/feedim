@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Sun, Moon, Monitor } from "lucide-react";
 import Modal from "./Modal";
 
@@ -19,13 +20,14 @@ const DimIcon = ({ className }: { className?: string }) => (
 );
 
 const themes = [
-  { id: "light", label: "Acik", icon: Sun, desc: "Beyaz arka plan" },
-  { id: "dark", label: "Koyu", icon: Moon, desc: "Siyah arka plan" },
-  { id: "dim", label: "Dim", icon: DimIcon, desc: "Mavi tonlu koyu tema" },
-  { id: "system", label: "Sistem", icon: Monitor, desc: "Cihaz ayarina gore" },
+  { id: "light", tKey: "themeLight", descKey: "themeLightDesc", icon: Sun },
+  { id: "dark", tKey: "themeDark", descKey: "themeDarkDesc", icon: Moon },
+  { id: "dim", tKey: "themeDim", descKey: "themeDimDesc", icon: DimIcon },
+  { id: "system", tKey: "themeSystem", descKey: "themeSystemDesc", icon: Monitor },
 ] as const;
 
 export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
+  const t = useTranslations("modals");
   const [current, setCurrent] = useState("system");
 
   useEffect(() => {
@@ -50,15 +52,15 @@ export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Gorunum" size="sm" infoText="Uygulama gorunumunu acık, koyu veya sistem ayarına gore degistirebilirsin.">
+    <Modal open={open} onClose={onClose} title={t("appearanceTitle")} size="sm" infoText={t("appearanceInfoText")}>
       <div className="p-3 space-y-2">
-        {themes.map((t) => {
-          const Icon = t.icon;
-          const isActive = current === t.id;
+        {themes.map((theme) => {
+          const Icon = theme.icon;
+          const isActive = current === theme.id;
           return (
             <button
-              key={t.id}
-              onClick={() => applyTheme(t.id)}
+              key={theme.id}
+              onClick={() => applyTheme(theme.id)}
               className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-[10px] transition-all ${
                 isActive
                   ? "bg-accent-main/10 text-accent-main"
@@ -67,8 +69,8 @@ export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
             >
               <Icon className="h-5 w-5 shrink-0" />
               <div className="flex-1 text-left">
-                <p className="text-sm font-semibold">{t.label}</p>
-                <p className="text-xs text-text-muted">{t.desc}</p>
+                <p className="text-sm font-semibold">{t(theme.tKey)}</p>
+                <p className="text-xs text-text-muted">{t(theme.descKey)}</p>
               </div>
               {isActive && (
                 <div className="w-5 h-5 rounded-full bg-accent-main flex items-center justify-center">

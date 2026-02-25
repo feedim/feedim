@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import PostCard from "@/components/PostCard";
 
 interface PostItem {
@@ -36,7 +37,8 @@ interface RelatedPostsProps {
   authorUsername?: string;
 }
 
-export default function RelatedPosts({ posts, featuredPosts = [], authorUsername }: RelatedPostsProps) {
+export default async function RelatedPosts({ posts, featuredPosts = [], authorUsername }: RelatedPostsProps) {
+  const t = await getTranslations("relatedPosts");
   const hasAuthorContent = posts.length > 0;
   const hasFeatured = featuredPosts.length > 0;
 
@@ -44,8 +46,8 @@ export default function RelatedPosts({ posts, featuredPosts = [], authorUsername
 
   const items = hasAuthorContent ? posts : featuredPosts;
   const title = hasAuthorContent
-    ? `@${authorUsername} adlı kişiden daha fazla`
-    : "Öne Çıkanlar";
+    ? t("moreFromAuthor", { username: authorUsername || "" })
+    : t("featured");
 
   return (
     <section className="mt-6 pt-6">

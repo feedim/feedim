@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import { useTranslations } from "next-intl";
 
 interface MentionUser {
   user_id: string;
@@ -45,7 +46,9 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onSave, onPublish, placeholder = "Gönderiyi yazmaya başlayın..." }, ref) {
+const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onSave, onPublish, placeholder }, ref) {
+  const t = useTranslations("editor");
+  const resolvedPlaceholder = placeholder || t("defaultPlaceholder");
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
@@ -110,7 +113,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     },
     insertGif: (gifUrl: string) => {
       if (!editorRef.current) return;
-      const gifHtml = `<div class="image-wrapper" contenteditable="false"><img src="${escapeAttr(gifUrl)}" alt="GIF" /><div class="image-caption" contenteditable="true" data-placeholder="Açıklama ekleyin..."></div></div><p><br></p>`;
+      const gifHtml = `<div class="image-wrapper" contenteditable="false"><img src="${escapeAttr(gifUrl)}" alt="GIF" /><div class="image-caption" contenteditable="true" data-placeholder="${t("captionPlaceholder")}"></div></div><p><br></p>`;
       appendBlockAtEnd(gifHtml);
     },
     undo,
@@ -622,7 +625,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
   const handleTable = useCallback(() => {
     if (!editorRef.current) return;
     addToHistory();
-    const tableHtml = `<table><thead><tr><th>Başlık</th><th>Başlık</th></tr></thead><tbody><tr><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td></tr></tbody></table><p><br></p>`;
+    const tableHtml = `<table><thead><tr><th>${t("tableHeader")}</th><th>${t("tableHeader")}</th></tr></thead><tbody><tr><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td></tr></tbody></table><p><br></p>`;
     document.execCommand("insertHTML", false, tableHtml);
     isInternalUpdate.current = true;
     onChange(editorRef.current.innerHTML);
@@ -664,7 +667,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     // Max 20 satır (thead + tbody)
     const totalRows = ctx.table.querySelectorAll("tr").length;
     if (totalRows >= 20) {
-      import("@/components/FeedimAlert").then(({ feedimAlert }) => feedimAlert("error", "Maksimum 20 satır"));
+      import("@/components/FeedimAlert").then(({ feedimAlert }) => feedimAlert("error", t("maxRows")));
       return;
     }
     addToHistory();
@@ -689,14 +692,14 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     // Max 6 sütun
     const colCount = ctx.row.children.length;
     if (colCount >= 6) {
-      import("@/components/FeedimAlert").then(({ feedimAlert }) => feedimAlert("error", "Maksimum 6 sütun"));
+      import("@/components/FeedimAlert").then(({ feedimAlert }) => feedimAlert("error", t("maxColumns")));
       return;
     }
     addToHistory();
     ctx.table.querySelectorAll("tr").forEach(tr => {
       const isHead = tr.closest("thead");
       const cell = document.createElement(isHead ? "th" : "td");
-      cell.innerHTML = isHead ? "Başlık" : "<br>";
+      cell.innerHTML = isHead ? t("tableHeader") : "<br>";
       tr.appendChild(cell);
     });
     isInternalUpdate.current = true;
@@ -863,7 +866,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     const range = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
 
     const { feedimPrompt } = await import("@/components/FeedimAlert");
-    const url = await feedimPrompt("Bağlantı URL'si", "https://", "https://example.com");
+    const url = await feedimPrompt(t("linkUrl"), "https://", "https://example.com");
     if (!url) return;
     const normalizedUrl = normalizeUrl(url);
     if (!normalizedUrl) return;
@@ -905,11 +908,11 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       const { compressImage } = await import("@/lib/imageCompression");
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
       const url = await onImageUpload(compressed);
-      const imageHtml = `<div class="image-wrapper" contenteditable="false"><img src="${escapeAttr(url)}" alt="" /><div class="image-caption" contenteditable="true" data-placeholder="Açıklama ekleyin..."></div></div><p><br></p>`;
+      const imageHtml = `<div class="image-wrapper" contenteditable="false"><img src="${escapeAttr(url)}" alt="" /><div class="image-caption" contenteditable="true" data-placeholder="${t("captionPlaceholder")}"></div></div><p><br></p>`;
       appendBlockAtEnd(imageHtml);
     } catch {
       const { feedimAlert } = await import("@/components/FeedimAlert");
-      feedimAlert("error", "Görsel yüklenemedi");
+      feedimAlert("error", t("imageUploadFailed"));
     }
   }, [onImageUpload, appendBlockAtEnd]);
 
@@ -1328,9 +1331,9 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
 
   // Evrensel blok yönetim butonları (tüm toolbar'larda ortak)
   const blockManagementButtons: (ToolbarBtn | null)[] = [
-    { icon: DeleteBlockSvg, onClick: handleBlockDelete, title: "Bloğu Sil" },
-    { icon: MoveUpSvg, onClick: handleBlockMoveUp, title: "Yukarı Taşı" },
-    { icon: MoveDownSvg, onClick: handleBlockMoveDown, title: "Aşağı Taşı" },
+    { icon: DeleteBlockSvg, onClick: handleBlockDelete, title: t("deleteBlock") },
+    { icon: MoveUpSvg, onClick: handleBlockMoveUp, title: t("moveUp") },
+    { icon: MoveDownSvg, onClick: handleBlockMoveDown, title: t("moveDown") },
   ];
 
   // Normal formatting buttons
@@ -1338,97 +1341,97 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     ...blockManagementButtons,
     null,
     ...(onGifClick ? [{ icon: GifSvg, onClick: onGifClick, title: "GIF" }] : []),
-    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: "Emoji" }] : []),
-    { icon: ImageSvg, onClick: handleImageClick, title: "Görsel" },
+    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: t("emoji") }] : []),
+    { icon: ImageSvg, onClick: handleImageClick, title: t("image") },
     null,
-    { icon: BoldSvg, onClick: handleBold, title: `Kalın (${mod}+B)`, key: "bold" },
-    { icon: ItalicSvg, onClick: handleItalic, title: `İtalik (${mod}+I)`, key: "italic" },
-    { icon: UnderlineSvg, onClick: handleUnderline, title: `Altı Çizili (${mod}+U)`, key: "underline" },
+    { icon: BoldSvg, onClick: handleBold, title: `${t("bold")} (${mod}+B)`, key: "bold" },
+    { icon: ItalicSvg, onClick: handleItalic, title: `${t("italic")} (${mod}+I)`, key: "italic" },
+    { icon: UnderlineSvg, onClick: handleUnderline, title: `${t("underline")} (${mod}+U)`, key: "underline" },
     null,
-    { icon: LinkSvg, onClick: handleLink, title: `Bağlantı (${mod}+K)`, key: "link" },
+    { icon: LinkSvg, onClick: handleLink, title: `${t("link")} (${mod}+K)`, key: "link" },
     null,
-    { icon: H2Svg, onClick: handleH2, title: "Başlık 2", key: "h2" },
-    { icon: H3Svg, onClick: handleH3, title: "Başlık 3", key: "h3" },
+    { icon: H2Svg, onClick: handleH2, title: t("heading2"), key: "h2" },
+    { icon: H3Svg, onClick: handleH3, title: t("heading3"), key: "h3" },
     null,
-    { icon: ULSvg, onClick: handleUL, title: `Madde Listesi (${mod}+Shift+8)`, key: "ul" },
-    { icon: OLSvg, onClick: handleOL, title: `Numaralı Liste (${mod}+Shift+7)`, key: "ol" },
-    { icon: QuoteSvg, onClick: handleQuote, title: `Alıntı (${mod}+Shift+9)`, key: "blockquote" },
+    { icon: ULSvg, onClick: handleUL, title: `${t("bulletList")} (${mod}+Shift+8)`, key: "ul" },
+    { icon: OLSvg, onClick: handleOL, title: `${t("numberedList")} (${mod}+Shift+7)`, key: "ol" },
+    { icon: QuoteSvg, onClick: handleQuote, title: `${t("quote")} (${mod}+Shift+9)`, key: "blockquote" },
     null,
-    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: "Sola Hizala", key: "alignLeft" },
-    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: "Ortala", key: "alignCenter" },
-    { icon: AlignRightSvg, onClick: handleAlignRight, title: "Sağa Hizala", key: "alignRight" },
+    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: t("alignLeft"), key: "alignLeft" },
+    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: t("alignCenter"), key: "alignCenter" },
+    { icon: AlignRightSvg, onClick: handleAlignRight, title: t("alignRight"), key: "alignRight" },
     null,
-    { icon: HRSvg, onClick: handleHR, title: "Yatay Çizgi" },
-    { icon: TableSvg, onClick: handleTable, title: "Tablo" },
+    { icon: HRSvg, onClick: handleHR, title: t("horizontalRule") },
+    { icon: TableSvg, onClick: handleTable, title: t("table") },
   ];
 
   // Heading toolbar — başlık değiştirme, hizalama, emoji + blok yönetimi
   const headingButtons: (ToolbarBtn | null)[] = [
     ...blockManagementButtons,
     null,
-    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: "Emoji" }] : []),
+    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: t("emoji") }] : []),
     null,
-    { icon: H2Svg, onClick: handleH2, title: "Başlık 2", key: "h2" },
-    { icon: H3Svg, onClick: handleH3, title: "Başlık 3", key: "h3" },
+    { icon: H2Svg, onClick: handleH2, title: t("heading2"), key: "h2" },
+    { icon: H3Svg, onClick: handleH3, title: t("heading3"), key: "h3" },
     null,
-    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: "Sola Hizala", key: "alignLeft" },
-    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: "Ortala", key: "alignCenter" },
-    { icon: AlignRightSvg, onClick: handleAlignRight, title: "Sağa Hizala", key: "alignRight" },
+    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: t("alignLeft"), key: "alignLeft" },
+    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: t("alignCenter"), key: "alignCenter" },
+    { icon: AlignRightSvg, onClick: handleAlignRight, title: t("alignRight"), key: "alignRight" },
   ];
 
   // Blockquote toolbar — alıntı toggle, hizalama, emoji + blok yönetimi
   const blockquoteButtons: (ToolbarBtn | null)[] = [
     ...blockManagementButtons,
     null,
-    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: "Emoji" }] : []),
+    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: t("emoji") }] : []),
     null,
-    { icon: QuoteSvg, onClick: handleQuote, title: `Alıntı (${mod}+Shift+9)`, key: "blockquote" },
+    { icon: QuoteSvg, onClick: handleQuote, title: `${t("quote")} (${mod}+Shift+9)`, key: "blockquote" },
     null,
-    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: "Sola Hizala", key: "alignLeft" },
-    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: "Ortala", key: "alignCenter" },
-    { icon: AlignRightSvg, onClick: handleAlignRight, title: "Sağa Hizala", key: "alignRight" },
+    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: t("alignLeft"), key: "alignLeft" },
+    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: t("alignCenter"), key: "alignCenter" },
+    { icon: AlignRightSvg, onClick: handleAlignRight, title: t("alignRight"), key: "alignRight" },
   ];
 
   // Liste toolbar — B/I/U, liste toggle, hizalama, bağlantı, emoji + blok yönetimi
   const listButtons: (ToolbarBtn | null)[] = [
     ...blockManagementButtons,
     null,
-    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: "Emoji" }] : []),
+    ...(onEmojiClick ? [{ icon: EmojiSvg, onClick: onEmojiClick, title: t("emoji") }] : []),
     null,
-    { icon: BoldSvg, onClick: handleBold, title: `Kalın (${mod}+B)`, key: "bold" },
-    { icon: ItalicSvg, onClick: handleItalic, title: `İtalik (${mod}+I)`, key: "italic" },
-    { icon: UnderlineSvg, onClick: handleUnderline, title: `Altı Çizili (${mod}+U)`, key: "underline" },
+    { icon: BoldSvg, onClick: handleBold, title: `${t("bold")} (${mod}+B)`, key: "bold" },
+    { icon: ItalicSvg, onClick: handleItalic, title: `${t("italic")} (${mod}+I)`, key: "italic" },
+    { icon: UnderlineSvg, onClick: handleUnderline, title: `${t("underline")} (${mod}+U)`, key: "underline" },
     null,
-    { icon: LinkSvg, onClick: handleLink, title: `Bağlantı (${mod}+K)`, key: "link" },
+    { icon: LinkSvg, onClick: handleLink, title: `${t("link")} (${mod}+K)`, key: "link" },
     null,
-    { icon: ULSvg, onClick: handleUL, title: `Madde Listesi (${mod}+Shift+8)`, key: "ul" },
-    { icon: OLSvg, onClick: handleOL, title: `Numaralı Liste (${mod}+Shift+7)`, key: "ol" },
+    { icon: ULSvg, onClick: handleUL, title: `${t("bulletList")} (${mod}+Shift+8)`, key: "ul" },
+    { icon: OLSvg, onClick: handleOL, title: `${t("numberedList")} (${mod}+Shift+7)`, key: "ol" },
     null,
-    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: "Sola Hizala", key: "alignLeft" },
-    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: "Ortala", key: "alignCenter" },
-    { icon: AlignRightSvg, onClick: handleAlignRight, title: "Sağa Hizala", key: "alignRight" },
+    { icon: AlignLeftSvg, onClick: handleAlignLeft, title: t("alignLeft"), key: "alignLeft" },
+    { icon: AlignCenterSvg, onClick: handleAlignCenter, title: t("alignCenter"), key: "alignCenter" },
+    { icon: AlignRightSvg, onClick: handleAlignRight, title: t("alignRight"), key: "alignRight" },
   ];
 
   // Media management buttons — blok yönetimi + seçim kaldır
   const mediaButtons: (ToolbarBtn | null)[] = [
     ...blockManagementButtons,
     null,
-    { icon: DeselectSvg, onClick: deselectAllMedia, title: "Seçimi Kaldır" },
+    { icon: DeselectSvg, onClick: deselectAllMedia, title: t("deselect") },
   ];
 
   // Tablo toolbar — satır/sütun ekleme/silme, bold/italic/underline + blok yönetimi
   const tableButtons: (ToolbarBtn | null)[] = [
     ...blockManagementButtons,
     null,
-    { icon: BoldSvg, onClick: handleBold, title: `Kalın (${mod}+B)`, key: "bold" },
-    { icon: ItalicSvg, onClick: handleItalic, title: `İtalik (${mod}+I)`, key: "italic" },
-    { icon: UnderlineSvg, onClick: handleUnderline, title: `Altı Çizili (${mod}+U)`, key: "underline" },
+    { icon: BoldSvg, onClick: handleBold, title: `${t("bold")} (${mod}+B)`, key: "bold" },
+    { icon: ItalicSvg, onClick: handleItalic, title: `${t("italic")} (${mod}+I)`, key: "italic" },
+    { icon: UnderlineSvg, onClick: handleUnderline, title: `${t("underline")} (${mod}+U)`, key: "underline" },
     null,
-    { icon: TableAddRowSvg, onClick: handleTableAddRow, title: "Satır Ekle" },
-    { icon: TableAddColSvg, onClick: handleTableAddCol, title: "Sütun Ekle" },
+    { icon: TableAddRowSvg, onClick: handleTableAddRow, title: t("addRow") },
+    { icon: TableAddColSvg, onClick: handleTableAddCol, title: t("addColumn") },
     null,
-    { icon: TableRemoveRowSvg, onClick: handleTableRemoveRow, title: "Satır Sil" },
-    { icon: TableRemoveColSvg, onClick: handleTableRemoveCol, title: "Sütun Sil" },
+    { icon: TableRemoveRowSvg, onClick: handleTableRemoveRow, title: t("removeRow") },
+    { icon: TableRemoveColSvg, onClick: handleTableRemoveCol, title: t("removeColumn") },
   ];
 
   const isInHeading = activeFormats.has("h2") || activeFormats.has("h3");
@@ -1443,7 +1446,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       {/* Placeholder overlay */}
       {editorEmpty && (
         <div className="absolute top-4 left-4 text-text-muted/40 pointer-events-none text-[1.05rem] leading-[1.6] z-[1]">
-          {placeholder}
+          {resolvedPlaceholder}
         </div>
       )}
       {/* Editor area (WordPress birebir) */}
@@ -1712,43 +1715,44 @@ function cleanContentForSave(html: string): string {
 
 // --- Content validation (WordPress birebir) ---
 
-export function validatePostContent(html: string, maxWords = 5000): { ok: boolean; error?: string } {
+export function validatePostContent(html: string, maxWords = 5000, translations?: { contentRequired: string; minChars: string; maxWords: string; maxListItems: string; repetitiveContent: string; onlyNumbers: string }): { ok: boolean; error?: string } {
   const div = document.createElement("div");
   div.innerHTML = html;
   const text = (div.textContent || "").replace(/\s+/g, "").trim();
   const hasImage = div.querySelector("img") !== null;
+  const tr = translations || { contentRequired: "Post content is required", minChars: "Post must be at least 50 characters", maxWords: `Post cannot exceed ${maxWords.toLocaleString()} words`, maxListItems: "Post cannot contain more than 300 list items", repetitiveContent: "Repetitive content detected", onlyNumbers: "Post cannot consist of only numbers" };
 
   // Must have content (text or image)
   if (!text && !hasImage) {
-    return { ok: false, error: "Gönderi içeriği gerekli" };
+    return { ok: false, error: tr.contentRequired };
   }
 
   // Min 50 chars if no media
   if (!hasImage && text.length < 50) {
-    return { ok: false, error: "Gönderi en az 50 karakter olmalı" };
+    return { ok: false, error: tr.minChars };
   }
 
   // Max word limit (plan-based)
   const wordText = (div.textContent || "").replace(/\s+/g, " ").trim();
   const wordCount = wordText ? wordText.split(" ").length : 0;
   if (wordCount > maxWords) {
-    return { ok: false, error: `Gönderi en fazla ${maxWords.toLocaleString("tr-TR")} kelime olabilir` };
+    return { ok: false, error: tr.maxWords };
   }
 
   // Max 300 list items
   const listItems = div.querySelectorAll("li");
   if (listItems.length > 300) {
-    return { ok: false, error: "Gönderi en fazla 300 liste öğesi içerebilir" };
+    return { ok: false, error: tr.maxListItems };
   }
 
   // Spam: repetition detection
   if (hasRepetition(div.textContent || "")) {
-    return { ok: false, error: "Tekrarlayan içerik tespit edildi" };
+    return { ok: false, error: tr.repetitiveContent };
   }
 
   // Spam: only numbers
   if (text.length > 0 && /^\d+$/.test(text)) {
-    return { ok: false, error: "Gönderi sadece sayılardan oluşamaz" };
+    return { ok: false, error: tr.onlyNumbers };
   }
 
   return { ok: true };

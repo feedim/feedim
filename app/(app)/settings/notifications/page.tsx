@@ -3,11 +3,13 @@
 import { useSearchParams } from "next/navigation";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 
 export default function NotificationSettingsPage() {
   useSearchParams();
+  const t = useTranslations("settings");
   const [notifSettings, setNotifSettings] = useState<Record<string, boolean>>({});
   const [notifPaused, setNotifPaused] = useState(false);
   const [pausedUntil, setPausedUntil] = useState<string | null>(null);
@@ -80,20 +82,20 @@ export default function NotificationSettingsPage() {
   };
 
   const notifTypes = [
-    { type: "like", label: "Beğeni" },
-    { type: "comment", label: "Yorum" },
-    { type: "reply", label: "Yanıt" },
-    { type: "mention", label: "Bahsetme" },
-    { type: "follow", label: "Takip" },
-    { type: "follow_request", label: "Takip İsteği" },
-    { type: "milestone", label: "Başarı" },
-    { type: "coin_earned", label: "Jeton Kazanımı" },
-    { type: "gift_received", label: "Hediye" },
-    { type: "system", label: "Sistem" },
+    { type: "like", labelKey: "notifLike" as const },
+    { type: "comment", labelKey: "notifComment" as const },
+    { type: "reply", labelKey: "notifReply" as const },
+    { type: "mention", labelKey: "notifMention" as const },
+    { type: "follow", labelKey: "notifFollow" as const },
+    { type: "follow_request", labelKey: "notifFollowRequest" as const },
+    { type: "milestone", labelKey: "notifMilestone" as const },
+    { type: "coin_earned", labelKey: "notifCoinEarned" as const },
+    { type: "gift_received", labelKey: "notifGift" as const },
+    { type: "system", labelKey: "notifSystem" as const },
   ];
 
   return (
-    <AppLayout headerTitle="Bildirim Ayarları" hideRightSidebar>
+    <AppLayout headerTitle={t("notificationSettings")} hideRightSidebar>
       <div className="py-2">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
@@ -102,11 +104,11 @@ export default function NotificationSettingsPage() {
             {/* Pause toggle */}
             <div className="flex items-center justify-between px-4 py-3.5">
               <div>
-                <span className="text-sm font-medium">24 saat duraklatma</span>
+                <span className="text-sm font-medium">{t("pauseNotifications24h")}</span>
                 <p className="text-xs text-text-muted mt-0.5">
                   {notifPaused && pausedUntil
-                    ? `Duraklatıldı — ${new Date(pausedUntil).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} tarihine kadar`
-                    : "Tüm bildirimleri geçici olarak kapat"}
+                    ? t("pausedUntilTime", { time: new Date(pausedUntil).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) })
+                    : t("pauseAllDesc")}
                 </p>
               </div>
               <button
@@ -120,9 +122,9 @@ export default function NotificationSettingsPage() {
             <div className="h-px bg-border-primary mx-4 my-1" />
 
             {/* Notification type toggles */}
-            {notifTypes.map(({ type, label }) => (
+            {notifTypes.map(({ type, labelKey }) => (
               <div key={type} className="flex items-center justify-between px-4 py-3.5">
-                <span className="text-sm">{label}</span>
+                <span className="text-sm">{t(labelKey)}</span>
                 <button
                   onClick={() => toggleNotifType(type)}
                   className={`relative rounded-full transition-colors duration-200 shrink-0 ${notifSettings[type] !== false ? "bg-accent-main" : "bg-bg-tertiary"}`}

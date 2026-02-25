@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { Home, Search, Bell, User } from "lucide-react";
 import { useUser } from "@/components/UserContext";
 import CreateMenuModal from "@/components/modals/CreateMenuModal";
+import { useTranslations } from "next-intl";
 
 export default memo(function MobileBottomNav() {
   const pathname = usePathname();
   const { user, isLoggedIn } = useUser();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const t = useTranslations();
 
   useEffect(() => {
     if (sessionStorage.getItem("fdm-open-create-modal")) {
@@ -34,11 +36,13 @@ export default memo(function MobileBottomNav() {
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 
+  const notificationsLabel = t("nav.notifications");
+
   const navItems = [
-    { href: "/", icon: Home, label: "Ana Sayfa", active: pathname === "/" },
-    { href: "/explore", icon: Search, label: "Keşfet", active: pathname === "/explore" },
-    { href: "/notifications", icon: Bell, label: "Bildirimler", active: pathname === "/notifications" },
-    { href: "/profile", icon: User, label: "Profil", active: pathname === "/profile" },
+    { href: "/", icon: Home, label: t("nav.home"), active: pathname === "/" },
+    { href: "/explore", icon: Search, label: t("nav.explore"), active: pathname === "/explore" },
+    { href: "/notifications", icon: Bell, label: notificationsLabel, active: pathname === "/notifications" },
+    { href: "/profile", icon: User, label: t("nav.profile"), active: pathname === "/profile" },
   ];
 
   const publicPaths = ["/", "/explore", "/moments", "/video"];
@@ -68,7 +72,7 @@ export default memo(function MobileBottomNav() {
         <button
           onClick={() => isLoggedIn ? setCreateModalOpen(true) : window.location.href = "/login"}
           className="flex items-center justify-center flex-1 h-full transition-colors text-text-primary"
-          aria-label="Oluştur"
+          aria-label={t("common.create")}
         >
           <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 12H20M12 4V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -100,7 +104,7 @@ export default memo(function MobileBottomNav() {
                 ) : (
                   <Icon className="h-[26px] w-[26px]" strokeWidth={item.active ? 2.3 : 2} aria-hidden="true" />
                 )}
-                {item.label === "Bildirimler" && unreadCount > 0 && (
+                {item.label === notificationsLabel && unreadCount > 0 && (
                   <span className="absolute -top-1 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-error text-white text-[8px] font-bold flex items-center justify-center px-0.5">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>

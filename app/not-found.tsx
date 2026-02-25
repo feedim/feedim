@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
+import { useTranslations } from "next-intl";
 
 export default function NotFound() {
+  const t = useTranslations("errors");
+  const tNav = useTranslations("nav");
+
   return (
     <div className="min-h-screen text-text-primary flex flex-col">
       <header className="flex items-center justify-center py-8">
@@ -18,19 +22,19 @@ export default function NotFound() {
           <p className="text-[7rem] font-bold leading-none tracking-tight text-text-primary select-none mb-4">
             404
           </p>
-          <h1 className="text-xl font-semibold mb-2">Bu sayfa mevcut değil</h1>
+          <h1 className="text-xl font-semibold mb-2">{t("pageNotExist")}</h1>
           <p className="text-sm text-text-muted mb-8 leading-relaxed">
-            Aradığınız sayfa kaldırılmış, adı değiştirilmiş veya hiç var olmamış olabilir.
+            {t("pageNotExistDesc")}
           </p>
           <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
             <button
               onClick={() => window.history.back()}
               className="t-btn cancel"
             >
-              Geri Dön
+              {t("goBack")}
             </button>
             <Link href="/" className="t-btn accept">
-              Ana Sayfa
+              {tNav("home")}
             </Link>
           </div>
         </div>

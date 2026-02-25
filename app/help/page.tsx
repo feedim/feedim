@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import HelpContent from "./HelpContent";
 
-export const metadata: Metadata = {
-  title: "Yardım Merkezi - Feedim",
-  description: "Feedim nasıl kullanılır? Sık sorulan sorular ve yardım rehberi.",
-  keywords: ["feedim yardım", "nasıl kullanılır", "sss"],
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("help");
+  return {
+    title: t("helpCenter.title"),
+    description: t("helpCenter.description"),
+  };
+}
 
 export default function HelpPage() {
   return <HelpContent />;

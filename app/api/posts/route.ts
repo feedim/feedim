@@ -13,8 +13,10 @@ import { sendEmail, getEmailIfEnabled, moderationReviewEmail } from '@/lib/email
 import { revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import sanitizeHtml from 'sanitize-html';
+import { getTranslations } from 'next-intl/server';
 
 export async function POST(request: NextRequest) {
+  const tErrors = await getTranslations('apiErrors');
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (!postAllowed && !isAdmin) {
       logRateLimitHit(admin, user.id, 'post', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
       return NextResponse.json(
-        { error: `Saatlik gönderi limitine ulaştın (${postLimit}). Lütfen biraz bekle.` },
+        { error: tErrors('postRateLimit', { limit: postLimit }) },
         { status: 429 }
       );
     }
@@ -47,46 +49,46 @@ export async function POST(request: NextRequest) {
 
     // Validate title
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      return NextResponse.json({ error: 'Başlık gerekli' }, { status: 400 });
+      return NextResponse.json({ error: tErrors('titleRequired') }, { status: 400 });
     }
     const trimmedTitle = title.trim();
     if (!isNote && trimmedTitle.length < VALIDATION.postTitle.min) {
-      return NextResponse.json({ error: `Başlık en az ${VALIDATION.postTitle.min} karakter olmalı` }, { status: 400 });
+      return NextResponse.json({ error: tErrors('titleMinLength', { min: VALIDATION.postTitle.min }) }, { status: 400 });
     }
     if (trimmedTitle.length > VALIDATION.postTitle.max) {
-      return NextResponse.json({ error: `Başlık en fazla ${VALIDATION.postTitle.max} karakter olabilir` }, { status: 400 });
+      return NextResponse.json({ error: tErrors('titleMaxLength', { max: VALIDATION.postTitle.max }) }, { status: 400 });
     }
     if (/<[^>]+>/.test(trimmedTitle)) {
-      return NextResponse.json({ error: 'Başlıkta HTML etiketi kullanılamaz' }, { status: 400 });
+      return NextResponse.json({ error: tErrors('titleNoHtml') }, { status: 400 });
     }
     if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedTitle)) {
-      return NextResponse.json({ error: 'Başlık bir URL olamaz' }, { status: 400 });
+      return NextResponse.json({ error: tErrors('titleNoUrl') }, { status: 400 });
     }
 
     // Validate note content
     if (isNote) {
       const noteText = (content || '').replace(/<[^>]+>/g, '').trim();
       if (!noteText) {
-        return NextResponse.json({ error: 'Not içeriği gerekli' }, { status: 400 });
+        return NextResponse.json({ error: tErrors('noteContentRequired') }, { status: 400 });
       }
       if (noteText.length > VALIDATION.noteContent.max) {
-        return NextResponse.json({ error: `Not en fazla ${VALIDATION.noteContent.max} karakter olabilir` }, { status: 400 });
+        return NextResponse.json({ error: tErrors('noteMaxLength', { max: VALIDATION.noteContent.max }) }, { status: 400 });
       }
     }
 
     // Validate content (video posts can have empty content/description)
     if (!isVideo && !isNote && (!content || typeof content !== 'string' || content.trim().length === 0)) {
-      return NextResponse.json({ error: 'İçerik gerekli' }, { status: 400 });
+      return NextResponse.json({ error: tErrors('contentRequired') }, { status: 400 });
     }
 
     // Validate video fields
     if (isVideo && status === 'published' && !video_url) {
-      return NextResponse.json({ error: 'Video URL gerekli' }, { status: 400 });
+      return NextResponse.json({ error: tErrors('videoUrlRequired') }, { status: 400 });
     }
 
     // Moment: 60s duration limit
     if (isMoment && video_duration && video_duration > MOMENT_MAX_DURATION) {
-      return NextResponse.json({ error: `Moment en fazla ${MOMENT_MAX_DURATION} saniye olabilir` }, { status: 400 });
+      return NextResponse.json({ error: tErrors('momentMaxDuration', { max: MOMENT_MAX_DURATION }) }, { status: 400 });
     }
 
     // Generate slug
@@ -110,29 +112,29 @@ export async function POST(request: NextRequest) {
       const hasImage = /<img\s/i.test(sanitizedContent);
 
       if (!textContent && !hasImage) {
-        return NextResponse.json({ error: 'Gönderi içeriği gerekli' }, { status: 400 });
+        return NextResponse.json({ error: tErrors('postContentRequired') }, { status: 400 });
       }
       if (!hasImage && textContent.length < VALIDATION.postContent.minChars) {
-        return NextResponse.json({ error: `Gönderi en az ${VALIDATION.postContent.minChars} karakter olmalı` }, { status: 400 });
+        return NextResponse.json({ error: tErrors('postMinChars', { min: VALIDATION.postContent.minChars }) }, { status: 400 });
       }
       // Plan-based word limit: Max users get 15000, others get 5000
       const maxWords = plan === 'max' ? VALIDATION.postContent.maxWordsMax : VALIDATION.postContent.maxWords;
       const wordText = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const wCount = wordText ? wordText.split(' ').length : 0;
       if (wCount > maxWords) {
-        return NextResponse.json({ error: `Gönderi en fazla ${maxWords.toLocaleString('tr-TR')} kelime olabilir${plan !== 'max' ? '. Max abonelikle 15.000 kelimeye kadar yazabilirsin.' : '.'}` }, { status: 400 });
+        return NextResponse.json({ error: plan !== 'max' ? tErrors('postMaxWordsWithUpgrade', { max: maxWords.toLocaleString() }) : tErrors('postMaxWords', { max: maxWords.toLocaleString() }) }, { status: 400 });
       }
       const listItemCount = (sanitizedContent.match(/<li[\s>]/gi) || []).length;
       if (listItemCount > VALIDATION.postContent.maxListItems) {
-        return NextResponse.json({ error: `Gönderi en fazla ${VALIDATION.postContent.maxListItems} liste öğesi içerebilir` }, { status: 400 });
+        return NextResponse.json({ error: tErrors('postMaxListItems', { max: VALIDATION.postContent.maxListItems }) }, { status: 400 });
       }
       if (textContent.length > 0 && /^\d+$/.test(textContent)) {
-        return NextResponse.json({ error: 'Gönderi sadece sayılardan oluşamaz' }, { status: 400 });
+        return NextResponse.json({ error: tErrors('postOnlyNumbers') }, { status: 400 });
       }
       // Repetition detection
       const rawText = sanitizedContent.replace(/<[^>]+>/g, '');
       if (rawText.length >= 20 && /(.)\1{9,}/.test(rawText)) {
-        return NextResponse.json({ error: 'Tekrarlayan içerik tespit edildi' }, { status: 400 });
+        return NextResponse.json({ error: tErrors('repetitiveContent') }, { status: 400 });
       }
     }
 
@@ -285,10 +287,8 @@ export async function POST(request: NextRequest) {
         const { data: snd } = await admin.from('sounds').select('id, status').eq('id', sound_id).single();
         if (snd && snd.status === 'active') {
           resolvedSoundId = snd.id;
-          await admin.rpc('increment_field', { table_name: 'sounds', row_id: snd.id, field_name: 'usage_count', amount: 1 }).then(() => {}, () => {
-            // Fallback: direct update if rpc not available
-            admin.from('sounds').update({ usage_count: (snd as any).usage_count + 1 }).eq('id', snd.id).then(() => {}, () => {});
-          });
+          const { data: sndData } = await admin.from('sounds').select('usage_count').eq('id', snd.id).single();
+          await admin.from('sounds').update({ usage_count: ((sndData as any)?.usage_count || 0) + 1 }).eq('id', snd.id);
         }
       } else if (video_url && video_duration && video_duration > 0) {
         // No sound selected — auto-create "original sound" (skip if no duration = likely no audio)
@@ -505,7 +505,10 @@ export async function POST(request: NextRequest) {
         // Increment post_count for each tag
         if (postStatus === 'published') {
           for (const tagId of tagIds) {
-            await admin.rpc('increment_field', { table_name: 'tags', row_id: tagId, field_name: 'post_count', amount: 1 }).then(() => {}, () => {});
+            const { data: tag } = await admin.from('tags').select('post_count').eq('id', tagId).single();
+            if (tag) {
+              await admin.from('tags').update({ post_count: (tag.post_count || 0) + 1 }).eq('id', tagId);
+            }
           }
         }
       }
@@ -580,10 +583,10 @@ export async function POST(request: NextRequest) {
           content: 'İçeriğiniz inceleniyor. Detayları görmek için tıklayın.',
         });
         // Send moderation review email
-        const email = await getEmailIfEnabled(user.id, 'moderation_review');
-        if (email) {
-          const tpl = moderationReviewEmail(trimmedTitle, slug);
-          await sendEmail({ to: email, ...tpl, template: 'moderation_review', userId: user.id });
+        const emailResult = await getEmailIfEnabled(user.id, 'moderation_review');
+        if (emailResult) {
+          const tpl = await moderationReviewEmail(trimmedTitle, slug, emailResult.locale);
+          await sendEmail({ to: emailResult.email, ...tpl, template: 'moderation_review', userId: user.id });
         }
       } catch {}
       response.moderation = true;
@@ -649,6 +652,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response, { status: 201 });
   } catch {
-    return NextResponse.json({ error: 'Sunucu hatasi' }, { status: 500 });
+    return NextResponse.json({ error: tErrors('serverError') }, { status: 500 });
   }
 }

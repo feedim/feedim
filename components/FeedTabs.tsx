@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface FeedTabsProps {
@@ -10,7 +11,7 @@ interface FeedTabsProps {
   isLoggedIn?: boolean;
 }
 
-const authRequiredTabs = new Set(["followed", "bookmarks"]);
+const authRequiredTabs = new Set(["followed"]);
 
 export default memo(function FeedTabs({
   activeTab,
@@ -18,10 +19,10 @@ export default memo(function FeedTabs({
   followedTags = [],
   isLoggedIn = true,
 }: FeedTabsProps) {
+  const t = useTranslations("feed");
   const tabs = [
-    { id: "for-you", label: "Senin İçin" },
-    { id: "followed", label: "Takip" },
-    { id: "bookmarks", label: "Kaydedilenler" },
+    { id: "for-you", label: t("forYou") },
+    { id: "followed", label: t("following") },
     ...followedTags.map(tag => ({ id: `tag-${tag.slug}`, label: `#${tag.name}` })),
   ];
 

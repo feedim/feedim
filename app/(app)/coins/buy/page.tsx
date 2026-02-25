@@ -8,7 +8,8 @@ import { Coins, Sparkles, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
-import LoadingShell from "@/components/LoadingShell";
+import { useTranslations } from "next-intl";
+
 import { COIN_COMMISSION_RATE, COIN_TO_TRY_RATE } from "@/lib/constants";
 
 interface CoinPackage {
@@ -23,6 +24,7 @@ interface CoinPackage {
 
 export default function CoinsBuyPage() {
   useSearchParams();
+  const t = useTranslations("coins");
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function CoinsBuyPage() {
 
   const purchaseCoins = async () => {
     if (!selectedPkg) {
-      feedimAlert("error", "Paket seçilmedi");
+      feedimAlert("error", t("noPackageSelected"));
       return;
     }
 
@@ -80,30 +82,23 @@ export default function CoinsBuyPage() {
   };
 
   return (
-    <AppLayout headerTitle="Jeton Satın Al" hideRightSidebar>
+    <AppLayout headerTitle={t("buyTokens")} hideRightSidebar>
       <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto">
         {loading ? (
-          <LoadingShell>
-            <div className="space-y-4">
-              <div className="skeleton h-20 rounded-2xl" />
-              <div className="skeleton h-24 rounded-2xl" />
-              <div className="skeleton h-24 rounded-2xl" />
-              <div className="skeleton h-24 rounded-2xl" />
-            </div>
-          </LoadingShell>
+          <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : packages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-20 h-20 rounded-2xl bg-accent-main/10 flex items-center justify-center mb-5">
               <Coins className="h-10 w-10 text-accent-main" />
             </div>
-            <h2 className="text-xl font-bold mb-2">Paket Bulunamadı</h2>
-            <p className="text-text-muted mb-6 text-sm">Jeton paketleri henüz yapılandırılmamış.</p>
+            <h2 className="text-xl font-bold mb-2">{t("noPackagesFound")}</h2>
+            <p className="text-text-muted mb-6 text-sm">{t("packagesNotConfigured")}</p>
           </div>
         ) : (
           <div className="space-y-5">
             {/* Mevcut Bakiye */}
             <div className="bg-bg-secondary rounded-2xl p-5 text-center">
-              <p className="text-sm text-text-muted mb-2">Mevcut Bakiye</p>
+              <p className="text-sm text-text-muted mb-2">{t("currentBalance")}</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-7 w-7 text-accent-main" />
                 <span className="text-3xl font-bold text-accent-main">{balance.toLocaleString()}</span>
@@ -132,7 +127,7 @@ export default function CoinsBuyPage() {
                   >
                     {pkg.is_popular && (
                       <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 bg-accent-main text-white text-[11px] font-bold rounded-full flex items-center gap-1">
-                        <Sparkles className="h-3 w-3" /> Popüler
+                        <Sparkles className="h-3 w-3" /> {t("popular")}
                       </span>
                     )}
 
@@ -145,12 +140,12 @@ export default function CoinsBuyPage() {
                         </div>
                         <div>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-bold">{total.toLocaleString()} Jeton</span>
+                            <span className="text-lg font-bold">{total.toLocaleString()} {t("token")}</span>
                             {(pkg.bonus_coins || 0) > 0 && (
                               <span className="text-xs text-accent-main font-semibold">+{(pkg.bonus_coins || 0).toLocaleString()} bonus</span>
                             )}
                           </div>
-                          <p className="text-xs text-text-muted mt-0.5">{pkg.name}{pricePerCoin ? ` ₺${pricePerCoin}/jeton` : ""}</p>
+                          <p className="text-xs text-text-muted mt-0.5">{pkg.name}{pricePerCoin ? ` ₺${pricePerCoin}/${t("perToken")}` : ""}</p>
                         </div>
                       </div>
                       <span className="text-xl font-bold shrink-0">{pkg.price_try}₺</span>
@@ -165,21 +160,21 @@ export default function CoinsBuyPage() {
               onClick={purchaseCoins}
               disabled={!selectedPkg || purchasing}
               className="t-btn accept w-full"
-              aria-label="Jeton Satın Al"
+              aria-label={t("buyTokens")}
             >
-              {purchasing ? <span className="loader" /> : selectedPkg ? `${((selectedPkg.coins || 0) + (selectedPkg.bonus_coins || 0)).toLocaleString()} Jeton — ${selectedPkg.price_try}₺` : "Paket Seçin"}
+              {purchasing ? <span className="loader" /> : selectedPkg ? `${((selectedPkg.coins || 0) + (selectedPkg.bonus_coins || 0)).toLocaleString()} ${t("token")} — ${selectedPkg.price_try}₺` : t("selectPackage")}
             </button>
 
             {/* Komisyon Bilgisi */}
             <p className="text-xs text-text-muted text-center">
-              Jeton fiyatlarına %{COIN_COMMISSION_RATE * 100} Feedim komisyonu dahildir.
+              {t("commissionInfo", { rate: COIN_COMMISSION_RATE * 100 })}
             </p>
 
             {/* Alt Linkler */}
             <div className="flex flex-wrap gap-x-6 gap-y-2 justify-center text-xs text-text-muted pt-2">
-              <Link href="/help/terms" className="hover:text-text-primary transition">Koşullar</Link>
-              <Link href="/help/privacy" className="hover:text-text-primary transition">Gizlilik</Link>
-              <Link href="/help" className="hover:text-text-primary transition">Yardım Merkezi</Link>
+              <Link href="/help/terms" className="hover:text-text-primary transition">{t("terms")}</Link>
+              <Link href="/help/privacy" className="hover:text-text-primary transition">{t("privacy")}</Link>
+              <Link href="/help" className="hover:text-text-primary transition">{t("helpCenter")}</Link>
             </div>
           </div>
         )}

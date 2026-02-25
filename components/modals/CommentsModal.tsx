@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, memo, useLayoutEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Heart, Trash2, Smile, X, MoreHorizontal, User, Copy, Flag, Link2 } from "lucide-react";
 import { encodeId } from "@/lib/hashId";
 import { createClient } from "@/lib/supabase/client";
@@ -50,6 +51,8 @@ interface CommentsModalProps {
 }
 
 export default function CommentsModal({ open, onClose, postId, commentCount: initialCount, postSlug, targetCommentId }: CommentsModalProps) {
+  const t = useTranslations("modals");
+  const tc = useTranslations("common");
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -251,7 +254,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   // — Actions —
   const handleDeleteComment = useCallback((commentId: number) => {
-    feedimAlert("question", "Bu yorumu silmek istediğine emin misin?", {
+    feedimAlert("question", t("deleteCommentConfirm"), {
       showYesNo: true,
       onYes: () => {
         // Optimistic: immediately remove from UI
@@ -354,7 +357,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           setComments(prev => prev.filter(c => c.id !== tempId));
         }
         setTotalCount(c => Math.max(0, c - 1));
-        feedimAlert("error", data.error || "Yorum gönderilemedi");
+        feedimAlert("error", data.error || t("commentFailed"));
         return;
       }
 
@@ -392,7 +395,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         setComments(prev => prev.filter(c => c.id !== tempId));
       }
       setTotalCount(c => Math.max(0, c - 1));
-      feedimAlert("error", "Yorum gönderilemedi");
+      feedimAlert("error", t("commentFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -494,14 +497,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       {/* Reply indicator */}
       {replyTo && (
         <div className="flex items-center gap-2 py-[11px] px-[2px] ml-[5px] w-full border-b border-bg-tertiary text-[0.85rem]">
-          <span className="text-text-muted mr-[5px]">Yanıtlanan:</span>
+          <span className="text-text-muted mr-[5px]">{t("replyingTo")}</span>
           <span className="font-semibold text-text-primary">@{replyTo.name}</span>
           <button
             type="button"
             onClick={() => setReplyTo(null)}
             className="pl-[5px] text-[0.85rem] text-accent-main font-medium"
           >
-            İptal
+            {tc("cancel")}
           </button>
         </div>
       )}
@@ -568,7 +571,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             }}
             readOnly={!!pendingGif}
             maxLength={maxCommentLength}
-            placeholder={pendingGif ? "GIF seçili." : "Düşüncelerini paylaş..."}
+            placeholder={pendingGif ? t("gifSelected") : t("sharePlaceholder")}
             rows={1}
             className={cn(
               "comment-textarea flex-1 py-[13px] pl-[18px] pr-[10px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] placeholder:text-text-muted",
@@ -630,7 +633,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   return (
     <>
-    <Modal open={open} onClose={onClose} title={`Yorumlar (${totalCount})`} size="md" infoText="Düşüncelerini paylaş, emoji ve GIF gönder. Yorumları beğenebilir ve yanıtlayabilirsin." footer={commentFormFooter} fullHeight>
+    <Modal open={open} onClose={onClose} title={t("commentsTitle", { count: totalCount })} size="md" infoText={t("commentsInfoText")} footer={commentFormFooter} fullHeight>
         {/* Sort tabs - sticky */}
         {comments.length > 0 && (
           <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-1 px-4 py-1">
@@ -641,7 +644,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 sortBy === "smart" ? "bg-accent-main/10 text-accent-main" : "text-text-muted hover:text-text-primary"
               )}
             >
-              Senin için
+              {t("sortForYou")}
             </button>
             <button
               onClick={() => handleSortChange("newest")}
@@ -650,7 +653,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 sortBy === "newest" ? "bg-accent-main/10 text-accent-main" : "text-text-muted hover:text-text-primary"
               )}
             >
-              En son
+              {t("sortNewest")}
             </button>
             <button
               onClick={() => handleSortChange("popular")}
@@ -659,7 +662,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 sortBy === "popular" ? "bg-accent-main/10 text-accent-main" : "text-text-muted hover:text-text-primary"
               )}
             >
-              Popüler
+              {t("sortPopular")}
             </button>
           </div>
         )}
@@ -670,8 +673,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             /* Empty state */
             <div className="flex items-center justify-center min-h-[50vh]">
               <div className="flex flex-col items-center opacity-60 text-center">
-                <h6 className="font-semibold text-base mb-2">Düşüncelerini paylaş</h6>
-                <p className="text-[0.9rem] text-text-muted mt-[3px]">İlk yorumu siz yapın</p>
+                <h6 className="font-semibold text-base mb-2">{t("shareThoughts")}</h6>
+                <p className="text-[0.9rem] text-text-muted mt-[3px]">{t("beFirstToComment")}</p>
               </div>
             </div>
           ) : (
@@ -704,8 +707,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                       className="py-[7px] px-[29px] bg-transparent border-none text-[0.84rem] text-accent-main cursor-pointer font-medium hover:underline"
                     >
                       {showReplies.has(comment.id)
-                        ? `${comment.reply_count} yanıtı gizle`
-                        : `${comment.reply_count} yanıtı göster`
+                        ? t("hideReplies", { count: comment.reply_count })
+                        : t("showReplies", { count: comment.reply_count })
                       }
                     </button>
                   )}
@@ -763,7 +766,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                   className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                 >
                   <User className="h-[18px] w-[18px] text-text-muted" />
-                  Profile git
+                  {t("goToProfile")}
                 </button>
                 {postSlug && (
                   <button
@@ -771,12 +774,12 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                       const url = `${window.location.origin}/${postSlug}?comment=${encodeId(menuComment.id)}`;
                       navigator.clipboard.writeText(url);
                       setOpenMenuId(null);
-                      feedimAlert("success", "Yorum bağlantısı kopyalandı");
+                      feedimAlert("success", t("commentLinkCopied"));
                     }}
                     className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                   >
                     <Link2 className="h-[18px] w-[18px] text-text-muted" />
-                    Bağlantıyı kopyala
+                    {t("copyCommentLink")}
                   </button>
                 )}
                 {menuComment.content_type !== "gif" && menuComment.content && (
@@ -784,12 +787,12 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                     onClick={() => {
                       navigator.clipboard.writeText(menuComment.content);
                       setOpenMenuId(null);
-                      feedimAlert("success", "Metin kopyalandı");
+                      feedimAlert("success", t("textCopied"));
                     }}
                     className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                   >
                     <Copy className="h-[18px] w-[18px] text-text-muted" />
-                    Metni kopyala
+                    {t("copyText")}
                   </button>
                 )}
                 {currentUserId !== menuComment.author_id && (
@@ -798,7 +801,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                     className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
                   >
                     <Flag className="h-[18px] w-[18px]" />
-                    Şikayet et
+                    {t("reportComment")}
                   </button>
                 )}
               </>
@@ -809,7 +812,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
               >
                 <Trash2 className="h-[18px] w-[18px]" />
-                {ctxUser?.role === 'admin' && currentUserId !== menuComment.author_id ? 'Yorumu sil (Admin)' : 'Yorumu sil'}
+                {ctxUser?.role === 'admin' && currentUserId !== menuComment.author_id ? t("deleteCommentAdmin") : t("deleteComment")}
               </button>
             )}
           </div>
@@ -865,6 +868,7 @@ const COMMENT_TRUNCATE_LENGTH = 300;
 const COMMENT_TRUNCATE_LINES = 6;
 
 const CommentCard = memo(function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, postSlug, onToggleMenu, onLike, onReply, onDelete, onReport, renderMentionContent }: CommentCardProps) {
+  const t = useTranslations("modals");
   const [expanded, setExpanded] = useState(false);
   const displayName = comment.profiles?.username ? `@${comment.profiles.username}` : "Anonim";
   const profileUsername = comment.profiles?.username || "anonim";
@@ -915,7 +919,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
         {/* Comment body */}
         {comment.is_nsfw && (
           <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold bg-accent-main/10 text-accent-main">
-            Yorumunuz denetleniyor
+            {t("commentUnderReview")}
           </div>
         )}
         {comment.content_type === "gif" && comment.gif_url ? (
@@ -952,14 +956,14 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
                 )}
               >
                 <Heart className={cn("h-[14px] w-[14px]", likedComments.has(comment.id) && "fill-current")} />
-                <span>{comment.like_count > 0 ? formatCount(comment.like_count) : "Beğen"}</span>
+                <span>{comment.like_count > 0 ? formatCount(comment.like_count) : t("like")}</span>
               </button>
               {!isReply && onReply && (
                 <button
                   onClick={() => onReply(comment.id, profileUsername)}
                   className="text-[0.84rem] text-text-muted hover:text-text-primary transition font-medium"
                 >
-                  Yanıtla
+                  {t("reply")}
                 </button>
               )}
             </div>

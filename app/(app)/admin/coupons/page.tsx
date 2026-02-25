@@ -6,7 +6,7 @@ import { ArrowLeft, Ticket, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import LoadingShell from "@/components/LoadingShell";
+
 
 const ITEMS_PER_PAGE = 10;
 
@@ -119,11 +119,7 @@ export default function AdminCouponsPage() {
 
       <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-16 max-w-2xl">
         {loading ? (
-          <LoadingShell>
-            <div className="space-y-4">
-              <div className="skeleton rounded-2xl h-60" />
-            </div>
-          </LoadingShell>
+          <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <div className="rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-4">

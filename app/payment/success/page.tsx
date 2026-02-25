@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, Coins, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslations } from "next-intl";
 
 export default function PaymentSuccessPage() {
+  const t = useTranslations("payment");
   const [authorized, setAuthorized] = useState(false);
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
@@ -115,27 +117,27 @@ export default function PaymentSuccessPage() {
           {verified ? (
             <>
               <h1 className="text-4xl font-bold text-accent-main">
-                Ödeme Başarılı!
+                {t("paymentSuccessful")}
               </h1>
               {isPremium ? (
                 <>
                   <p className="text-base text-text-muted">
-                    Premium {planName} planınız aktif edildi
+                    {t("premiumPlanActivated", { plan: planName || "" })}
                   </p>
                   <p className="text-sm text-text-muted">
-                    Tüm premium özelliklere artık erişebilirsiniz.
+                    {t("premiumFeaturesAccess")}
                   </p>
                 </>
               ) : (
                 <>
                   <p className="text-base text-text-muted">
                     {coinsAdded != null
-                      ? `${coinsAdded.toLocaleString("tr-TR")} jeton hesabınıza eklendi`
-                      : "Jetonlarınız hesabınıza eklendi"}
+                      ? t("tokensAdded", { amount: coinsAdded.toLocaleString("tr-TR") })
+                      : t("tokensAddedGeneric")}
                   </p>
                   {coinBalance != null && (
                     <p className="text-sm text-text-muted">
-                      Güncel bakiyeniz: <span className="text-accent-main font-semibold">{coinBalance.toLocaleString("tr-TR")} jeton</span>
+                      {t("currentBalanceLabel")}: <span className="text-accent-main font-semibold">{coinBalance.toLocaleString("tr-TR")} {t("token")}</span>
                     </p>
                   )}
                 </>
@@ -144,20 +146,19 @@ export default function PaymentSuccessPage() {
           ) : verifying ? (
             <>
               <h1 className="text-3xl font-bold text-accent-main">
-                Ödeme Doğrulanıyor...
+                {t("paymentVerifying")}
               </h1>
               <p className="text-base text-text-muted">
-                Ödemeniz işleniyor, lütfen bekleyin
+                {t("paymentProcessing")}
               </p>
             </>
           ) : (
             <>
               <h1 className="text-3xl font-bold text-error">
-                Doğrulama Zaman Aşımı
+                {t("verificationTimeout")}
               </h1>
               <p className="text-base text-text-muted">
-                Ödemeniz işleniyor olabilir. Hesabınız birkaç dakika içinde güncellenecektir.
-                Sorun devam ederse destek ile iletişime geçin.
+                {t("verificationTimeoutDesc")}
               </p>
             </>
           )}
@@ -169,7 +170,7 @@ export default function PaymentSuccessPage() {
             href="/"
             className="t-btn accept w-full block text-center"
           >
-            Ana Sayfaya Dön
+            {t("goHome")}
           </Link>
 
           {isPremium ? (
@@ -177,14 +178,14 @@ export default function PaymentSuccessPage() {
               href="/premium"
               className="t-btn cancel w-full block text-center"
             >
-              Premium Özellikleri Gör
+              {t("viewPremiumFeatures")}
             </Link>
           ) : (
             <Link
               href="/coins"
               className="t-btn cancel w-full block text-center"
             >
-              Bakiyemi Görüntüle
+              {t("viewBalance")}
             </Link>
           )}
         </div>

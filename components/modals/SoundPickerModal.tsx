@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Search, TrendingUp, Upload, Music, X } from "lucide-react";
 import Modal from "./Modal";
 import SoundPreviewButton from "@/components/SoundPreviewButton";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { AUDIO_MAX_SIZE_MB, AUDIO_MAX_DURATION } from "@/lib/constants";
 import { formatCount } from "@/lib/utils";
-import LoadingShell from "@/components/LoadingShell";
+
 
 export interface SoundItem {
   id: number;
@@ -30,6 +31,7 @@ interface SoundPickerModalProps {
 type Tab = "popular" | "search" | "upload";
 
 export default function SoundPickerModal({ open, onClose, onSelect }: SoundPickerModalProps) {
+  const t = useTranslations("modals");
   const [tab, setTab] = useState<Tab>("popular");
   const [sounds, setSounds] = useState<SoundItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,14 +92,14 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
       audio.onloadedmetadata = () => {
         URL.revokeObjectURL(url);
         if (audio.duration > AUDIO_MAX_DURATION) {
-          reject(new Error(`Ses en fazla ${AUDIO_MAX_DURATION} saniye olabilir`));
+          reject(new Error(t("soundMaxDurationError", { duration: AUDIO_MAX_DURATION })));
         } else {
           resolve(Math.round(audio.duration));
         }
       };
       audio.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("Ses dosyası okunamadı"));
+        reject(new Error(t("soundReadError")));
       };
       audio.src = url;
     });
@@ -119,11 +121,11 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
     e.target.value = "";
 
     if (!file.type.startsWith("audio/")) {
-      feedimAlert("error", "Desteklenmeyen format. Ses dosyası seçin.");
+      feedimAlert("error", t("soundUnsupportedFormat"));
       return;
     }
     if (file.size > AUDIO_MAX_SIZE_MB * 1024 * 1024) {
-      feedimAlert("error", `Ses dosyası en fazla ${AUDIO_MAX_SIZE_MB}MB olabilir`);
+      feedimAlert("error", t("soundMaxSizeError", { size: AUDIO_MAX_SIZE_MB }));
       return;
     }
 
@@ -154,7 +156,7 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
         }),
       });
       const initData = await initRes.json();
-      if (!initRes.ok) throw new Error(initData.error || "Upload başlatılamadı");
+      if (!initRes.ok) throw new Error(initData.error || t("soundUploadInitFailed"));
 
       const { uploadUrl, publicUrl } = initData;
 
@@ -168,9 +170,9 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
         };
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Yükleme başarısız (${xhr.status})`));
+          else reject(new Error(t("soundUploadFailed")));
         };
-        xhr.onerror = () => reject(new Error("Ses yüklenemedi"));
+        xhr.onerror = () => reject(new Error(t("soundUploadFailed")));
         xhr.send(uploadFile);
       });
 
@@ -193,18 +195,18 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
         }),
       });
       const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Ses oluşturulamadı");
+      if (!createRes.ok) throw new Error(createData.error || t("soundCreateFailed"));
 
       setUploadProgress(100);
 
       if (createData.deduplicated) {
-        feedimAlert("info", "Bu ses zaten mevcut, mevcut kayıt kullanılıyor");
+        feedimAlert("info", t("soundAlreadyExists"));
       }
 
       onSelect(createData.sound);
       onClose();
     } catch (err) {
-      feedimAlert("error", (err as Error).message || "Ses yüklenemedi");
+      feedimAlert("error", (err as Error).message || t("soundUploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -219,28 +221,28 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
   };
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "popular", label: "Popüler", icon: <TrendingUp className="h-4 w-4" /> },
-    { key: "search", label: "Ara", icon: <Search className="h-4 w-4" /> },
-    { key: "upload", label: "Yükle", icon: <Upload className="h-4 w-4" /> },
+    { key: "popular", label: t("soundPopular"), icon: <TrendingUp className="h-4 w-4" /> },
+    { key: "search", label: t("soundSearch"), icon: <Search className="h-4 w-4" /> },
+    { key: "upload", label: t("soundUpload"), icon: <Upload className="h-4 w-4" /> },
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title="Ses Seç" size="md" fullHeight infoText="Momentine eklemek istediğin sesi arayabilir veya listeden seçebilirsin.">
+    <Modal open={open} onClose={onClose} title={t("soundPickerTitle")} size="md" fullHeight infoText={t("soundPickerInfoText")}>
       <div className="flex flex-col h-full">
         {/* Tab bar */}
         <div className="flex border-b border-border-primary px-4 gap-1">
-          {tabs.map(t => (
+          {tabs.map(tb => (
             <button
-              key={t.key}
-              onClick={() => { setTab(t.key); if (t.key === "upload") resetUpload(); }}
+              key={tb.key}
+              onClick={() => { setTab(tb.key); if (tb.key === "upload") resetUpload(); }}
               className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-bold transition border-b-[2.5px] -mb-px ${
-                tab === t.key
+                tab === tb.key
                   ? "border-accent-main text-text-primary"
                   : "border-transparent text-text-muted opacity-60 hover:opacity-100 hover:text-text-primary"
               }`}
             >
-              {t.icon}
-              {t.label}
+              {tb.icon}
+              {tb.label}
             </button>
           ))}
         </div>
@@ -254,7 +256,7 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Ses ara..."
+                placeholder={t("soundSearchPlaceholder")}
                 className="input-modern w-full !pl-10"
                 autoFocus
               />
@@ -266,10 +268,10 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
         {(tab === "popular" || tab === "search") && (
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <LoadingShell />
+              <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : sounds.length === 0 ? (
               <div className="text-center py-12 text-text-muted text-sm">
-                {tab === "search" && searchQuery ? "Sonuç bulunamadı" : "Henüz ses yok"}
+                {tab === "search" && searchQuery ? t("soundNoResults") : t("soundNoSounds")}
               </div>
             ) : (
               <div className="divide-y divide-border-primary">
@@ -296,7 +298,7 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
                       <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
                         {sound.artist && <span className="truncate">{sound.artist}</span>}
                         {sound.duration ? <span>{fmtDuration(sound.duration)}</span> : null}
-                        <span>{formatCount(sound.usage_count || 0)} kullanım</span>
+                        <span>{t("soundUsageCount", { count: formatCount(sound.usage_count || 0) })}</span>
                       </div>
                     </div>
 
@@ -315,9 +317,9 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
             {!uploadFile ? (
               <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
                 <Upload className="h-8 w-8 text-text-muted mb-2" />
-                <p className="text-sm font-medium">Ses dosyası seçin</p>
+                <p className="text-sm font-medium">{t("soundSelectFile")}</p>
                 <p className="text-xs text-text-muted mt-1">
-                  Maks {AUDIO_MAX_SIZE_MB}MB, {AUDIO_MAX_DURATION}sn
+                  {t("soundMaxSize", { size: AUDIO_MAX_SIZE_MB, duration: AUDIO_MAX_DURATION })}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -345,24 +347,24 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
                 </div>
 
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5">Başlık *</label>
+                  <label className="block text-xs text-text-muted mb-1.5">{t("soundTitle")}</label>
                   <input
                     type="text"
                     value={uploadTitle}
                     onChange={e => setUploadTitle(e.target.value)}
-                    placeholder="Ses başlığı..."
+                    placeholder={t("soundTitlePlaceholder")}
                     maxLength={100}
                     className="input-modern w-full"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-text-muted mb-1.5">Sanatçı</label>
+                  <label className="block text-xs text-text-muted mb-1.5">{t("soundArtist")}</label>
                   <input
                     type="text"
                     value={uploadArtist}
                     onChange={e => setUploadArtist(e.target.value)}
-                    placeholder="Sanatçı adı (opsiyonel)"
+                    placeholder={t("soundArtistPlaceholder")}
                     maxLength={100}
                     className="input-modern w-full"
                   />
@@ -384,12 +386,12 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
                   onClick={handleUploadAndCreate}
                   disabled={uploading || !uploadTitle.trim()}
                   className="t-btn accept w-full !h-10 !text-sm disabled:opacity-40"
-                  aria-label="Sesi Yükle ve Kullan"
+                  aria-label={t("soundUploadAndUse")}
                 >
                   {uploading ? (
                     <span className="loader" style={{ width: 16, height: 16 }} />
                   ) : (
-                    "Yükle ve Kullan"
+                    t("soundUploadAndUse")
                   )}
                 </button>
               </>

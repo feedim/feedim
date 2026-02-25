@@ -14,6 +14,7 @@ export interface InitialUser {
   role: string;
   status?: string;
   copyrightEligible?: boolean;
+  locale?: string;
 }
 
 interface UserContextValue {

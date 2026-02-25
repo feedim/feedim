@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AccountHealthPage() {
   useSearchParams();
+  const t = useTranslations("settings");
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [health, setHealth] = useState<any>(null);
@@ -45,10 +47,10 @@ export default function AccountHealthPage() {
   const trustScore = Math.round(rawScore * 10) / 10;
 
   const categories = [
-    { label: "Telifli İçerik", count: health?.copyright_strikes ?? (profile?.copyright_strike_count || 0), max: 10, description: "Telif hakkı korumalı içeriklerin izinsiz kullanımı" },
-    { label: "Kopya İçerik", count: health?.copy_content_strikes ?? 0, max: 10, description: "Başka kullanıcıların içeriklerinin kopyalanması" },
-    { label: "Cinsel İçerik", count: health?.nsfw_strikes ?? 0, max: 10, description: "Topluluk kurallarına aykırı cinsel içerik paylaşımı" },
-    { label: "Spam", count: health?.spam_strikes ?? 0, max: 10, description: "Tekrarlayan, yanıltıcı veya istenmeyen içerik paylaşımı" },
+    { labelKey: "healthCopyright" as const, count: health?.copyright_strikes ?? (profile?.copyright_strike_count || 0), max: 10, descKey: "healthCopyrightDesc" as const },
+    { labelKey: "healthCopyContent" as const, count: health?.copy_content_strikes ?? 0, max: 10, descKey: "healthCopyContentDesc" as const },
+    { labelKey: "healthNsfw" as const, count: health?.nsfw_strikes ?? 0, max: 10, descKey: "healthNsfwDesc" as const },
+    { labelKey: "healthSpam" as const, count: health?.spam_strikes ?? 0, max: 10, descKey: "healthSpamDesc" as const },
   ];
 
   const totalStrikes = categories.reduce((sum, c) => sum + c.count, 0);
@@ -66,45 +68,45 @@ export default function AccountHealthPage() {
   };
 
   return (
-    <AppLayout headerTitle="Hesap Sağlığı" hideRightSidebar>
+    <AppLayout headerTitle={t("healthTitle")} hideRightSidebar>
       <div className="px-4 py-4 space-y-5">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
-            {/* Güven Puanı */}
-            <div className="bg-bg-secondary rounded-xl p-5">
+            {/* Trust Score */}
+            <div className="bg-bg-secondary rounded-[15px] p-5">
               <div className="flex flex-col items-center text-center space-y-2">
                 <span className="text-5xl font-bold text-text-primary">%{trustScore}</span>
-                <p className="text-sm font-medium text-text-primary">Profil Güven Puanı</p>
+                <p className="text-sm font-medium text-text-primary">{t("healthTrustScore")}</p>
                 <p className="text-[0.72rem] text-text-muted">
                   {trustScore >= 70
-                    ? "Hesabınız sağlıklı durumda. Topluluk kurallarına uygun davranmaya devam edin."
+                    ? t("healthScoreHealthy")
                     : trustScore >= 40
-                      ? "Hesabınız orta düzeyde. Kuralları takip ederek puanınızı yükseltebilirsiniz."
-                      : "Hesabınız risk altında. Topluluk kurallarına uymanız önemle tavsiye edilir."}
+                      ? t("healthScoreMedium")
+                      : t("healthScoreRisk")}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border-primary">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-success" /><span className="text-[0.65rem] text-text-muted">70-100 Sağlıklı</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-accent-main" /><span className="text-[0.65rem] text-text-muted">40-69 Orta</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-error" /><span className="text-[0.65rem] text-text-muted">0-39 Riskli</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-success" /><span className="text-[0.65rem] text-text-muted">{t("healthLabelHealthy")}</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-accent-main" /><span className="text-[0.65rem] text-text-muted">{t("healthLabelMedium")}</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-error" /><span className="text-[0.65rem] text-text-muted">{t("healthLabelRisk")}</span></div>
               </div>
             </div>
 
-            {/* İhlal Hakları */}
-            <div className="bg-bg-secondary rounded-xl p-4 space-y-4">
+            {/* Strike Rights */}
+            <div className="bg-bg-secondary rounded-[15px] p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-text-primary">İhlal Hakları</p>
+                <p className="text-sm font-medium text-text-primary">{t("healthStrikeRights")}</p>
                 {totalStrikes > 0 && (
-                  <span className="text-xs text-error font-medium">Toplam {totalStrikes} ihlal</span>
+                  <span className="text-xs text-error font-medium">{t("healthTotalStrikes", { count: totalStrikes })}</span>
                 )}
               </div>
 
               {categories.map((item) => (
-                <div key={item.label} className="space-y-1.5">
+                <div key={item.labelKey} className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-text-primary">{item.label}</p>
+                    <p className="text-xs font-medium text-text-primary">{t(item.labelKey)}</p>
                     <span className={`text-xs ${item.count > 0 ? "text-error font-medium" : "text-text-muted"}`}>{item.count}/{item.max}</span>
                   </div>
                   <div className="flex gap-1">
@@ -115,31 +117,31 @@ export default function AccountHealthPage() {
                       />
                     ))}
                   </div>
-                  <p className="text-[0.65rem] text-text-muted">{item.description}</p>
+                  <p className="text-[0.65rem] text-text-muted">{t(item.descKey)}</p>
                 </div>
               ))}
             </div>
 
-            {/* Kurallar */}
-            <div className="bg-bg-secondary rounded-xl p-4 space-y-2">
-              <p className="text-xs font-medium text-text-primary">Nasıl çalışır?</p>
+            {/* Rules */}
+            <div className="bg-bg-secondary rounded-[15px] p-4 space-y-2">
+              <p className="text-xs font-medium text-text-primary">{t("healthHowItWorks")}</p>
               <ul className="space-y-1.5 text-[0.72rem] text-text-muted">
-                <li>Her ihlal tespitinde ilgili kategoriye 1 ihlal hakkı eklenir.</li>
-                <li>10 ihlal hakkına ulaşıldığında hesabınız moderasyona alınır ve inceleme sonrasında kapatılabilir.</li>
-                <li>Topluluk kurallarına uygun davranarak ihlal almaktan kaçınabilirsiniz.</li>
+                <li>{t("healthRule1")}</li>
+                <li>{t("healthRule2")}</li>
+                <li>{t("healthRule3")}</li>
               </ul>
             </div>
 
-            {/* Linkler */}
+            {/* Links */}
             <div className="space-y-2">
               <Link href="/settings/copyright" className="block text-xs text-accent-main hover:underline">
-                Telif hakkı koruması hakkında daha fazla bilgi &rarr;
+                {t("healthCopyrightLink")} &rarr;
               </Link>
               <Link href="/help/community-guidelines" className="block text-xs text-accent-main hover:underline">
-                Topluluk kuralları &rarr;
+                {t("healthGuidelinesLink")} &rarr;
               </Link>
               <Link href="/help/contact" className="block text-xs text-accent-main hover:underline">
-                Destek için iletişime geçin &rarr;
+                {t("healthSupportLink")} &rarr;
               </Link>
             </div>
           </>

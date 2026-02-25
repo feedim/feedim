@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import UserListItem from "@/components/UserListItem";
 import FollowButton from "@/components/FollowButton";
 import { feedimAlert } from "@/components/FeedimAlert";
+import { useTranslations } from "next-intl";
 
 interface SuggestedUser {
   user_id: string;
@@ -26,6 +27,8 @@ interface SuggestedUser {
 const FOLLOW_COOLDOWN = 3000;
 
 export default function SuggestionsPage() {
+  const t = useTranslations("explore");
+  const tProfile = useTranslations("profile");
   useSearchParams();
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +144,7 @@ export default function SuggestionsPage() {
 
   const handleFollow = (username: string, userId: string) => {
     if (following.has(userId) || requested.has(userId)) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      feedimAlert("question", tProfile("unfollowConfirm"), { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
       return;
     }
     doFollowToggle(username, userId);
@@ -152,7 +155,7 @@ export default function SuggestionsPage() {
       onClick={handleRefresh}
       disabled={refreshing}
       className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary disabled:opacity-40"
-      title="Yenile"
+      title={t("refresh")}
     >
       <svg
         width="20"
@@ -172,15 +175,15 @@ export default function SuggestionsPage() {
   );
 
   return (
-    <AppLayout hideRightSidebar headerTitle="Kişileri Bul" headerRightAction={refreshButton}>
+    <AppLayout hideRightSidebar headerTitle={t("findPeople")} headerRightAction={refreshButton}>
       <div className="px-3 sm:px-4 py-4">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : users.length === 0 ? (
           <div className="text-center py-16">
             <Users className="h-12 w-12 text-text-muted mx-auto mb-3" />
-            <h2 className="text-lg font-bold mb-2">Öneri bulunamadı</h2>
-            <p className="text-sm text-text-muted">Daha fazla kişiyi takip ettikçe öneriler gelişecek.</p>
+            <h2 className="text-lg font-bold mb-2">{t("noSuggestionsFound")}</h2>
+            <p className="text-sm text-text-muted">{t("suggestionsWillImprove")}</p>
           </div>
         ) : (
           <div className="space-y-1">

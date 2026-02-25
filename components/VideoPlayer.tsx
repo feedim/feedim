@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect, memo, forwardRef, useImperativeHandle } from "react";
+import { useTranslations } from "next-intl";
 import { useHlsPlayer, type QualityLevel } from "@/lib/useHlsPlayer";
 
 /* ── Helpers (outside component to avoid re-creation) ── */
@@ -37,6 +38,7 @@ interface VideoPlayerProps {
 }
 
 const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function VideoPlayer({ src, hlsUrl, poster, onEnded, autoStart, disabled, moment, externalMuted, externalPaused, loop, videoClassName }, fwdRef) {
+  const t = useTranslations("video");
   // Compute saved position ONCE on mount — must be stable across re-renders.
   // If recomputed every render, effectiveSrc changes (video.mp4 → video.mp4#t=X)
   // which reloads the <video> element and flashes the poster every few seconds.
@@ -319,6 +321,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
     // Exit real fullscreen if active
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      // Unlock orientation when exiting fullscreen
+      try { (screen.orientation as any)?.unlock?.(); } catch {}
       if (document.exitFullscreen) await document.exitFullscreen();
       else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
       return;
@@ -326,6 +330,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
     // Exit fake fullscreen if active
     if (fakeFullscreen) {
+      try { (screen.orientation as any)?.unlock?.(); } catch {}
       setFakeFullscreen(false);
       return;
     }
@@ -338,10 +343,13 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       try {
         if (c.requestFullscreen) {
           await c.requestFullscreen();
+          // Lock orientation to landscape in fullscreen
+          try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
           return;
         }
         if ((c as any).webkitRequestFullscreen) {
           (c as any).webkitRequestFullscreen();
+          try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
           return;
         }
       } catch {}
@@ -349,6 +357,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
     // Fallback: CSS fullscreen (iOS Safari etc.)
     setFakeFullscreen(true);
+    try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
   }, [fakeFullscreen]);
 
   const changeSpeed = useCallback((rate: number) => {
@@ -463,7 +472,11 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     const onCanPlay = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onLoadedData = () => { if (waitingTimer.current) clearTimeout(waitingTimer.current); setLoading(false); };
     const onError = () => setError(true);
-    const onFsChange = () => setFullscreen(fakeFullscreenRef.current || !!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
+    const onFsChange = () => {
+      const isFs = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
+      if (!isFs) { try { (screen.orientation as any)?.unlock?.(); } catch {} }
+      setFullscreen(fakeFullscreenRef.current || isFs);
+    };
     const onVideoEnded = () => { stopRAF(); onEndedRef.current?.(); };
     const onPipEnter = () => setPipActive(true);
     const onPipLeave = () => setPipActive(false);
@@ -636,7 +649,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       const v = videoRef.current;
       if (!v) return;
       // Escape exits fake fullscreen
-      if (e.key === "Escape" && fakeFullscreen) { setFakeFullscreen(false); e.preventDefault(); return; }
+      if (e.key === "Escape" && fakeFullscreen) { try { (screen.orientation as any)?.unlock?.(); } catch {} setFakeFullscreen(false); e.preventDefault(); return; }
       // Block save / view-source shortcuts inside player
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "u")) { e.preventDefault(); return; }
       const dur = v.duration || 0;
@@ -666,15 +679,34 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [togglePlay, toggleMute, toggleFullscreen, changeVolume, showControls, toggleCinema, updateProgress, changeSpeed, fakeFullscreen]);
 
-  // ── Moment mode: external play/pause control ──
+  // ── Moment mode: external play/pause control + retry on load ──
   useEffect(() => {
     if (!moment) return;
     const v = videoRef.current;
     if (!v) return;
+
     if (externalPaused) {
       v.pause();
     } else {
-      v.play().catch(() => {});
+      // Reset error when becoming active
+      setError(false);
+      setLoading(true);
+
+      const tryPlay = () => {
+        if (v.paused && !externalPaused) {
+          v.play().catch(() => {});
+        }
+      };
+
+      // Try immediately + retry on loadeddata/canplay
+      tryPlay();
+      v.addEventListener("loadeddata", tryPlay);
+      v.addEventListener("canplay", tryPlay);
+
+      return () => {
+        v.removeEventListener("loadeddata", tryPlay);
+        v.removeEventListener("canplay", tryPlay);
+      };
     }
   }, [moment, externalPaused]);
 
@@ -692,18 +724,33 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     const v = videoRef.current;
     if (!v) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    // Timeout: if video doesn't start within 15s, show error
-    let loadTimeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
-      if (loading) setError(true);
-    }, 15000);
-    const onWaiting = () => { timer = setTimeout(() => setLoading(true), 300); };
+    let loadTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    const resetLoadTimeout = () => {
+      clearTimeout(loadTimeout);
+      loadTimeout = setTimeout(() => {
+        // Only error if still loading and not paused
+        if (!v.paused && v.readyState < 2) setError(true);
+      }, 15000);
+    };
+
+    resetLoadTimeout();
+
+    const onWaiting = () => { timer = setTimeout(() => setLoading(true), 300); resetLoadTimeout(); };
     const onPlaying = () => { clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false); setError(false); };
     const onCanPlay = () => { clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false); };
-    const onError = () => { clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false); setError(true); };
+    const onLoadedData = () => { clearTimeout(loadTimeout); };
+    const onError = () => {
+      clearTimeout(timer); clearTimeout(loadTimeout); setLoading(false);
+      // Only set error if we actually have a src
+      if (v.src && v.src !== window.location.href) setError(true);
+    };
     const onEnded = () => { onEndedRef.current?.(); };
+
     v.addEventListener("waiting", onWaiting);
     v.addEventListener("playing", onPlaying);
     v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("loadeddata", onLoadedData);
     v.addEventListener("error", onError);
     v.addEventListener("ended", onEnded);
     return () => {
@@ -712,6 +759,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       v.removeEventListener("waiting", onWaiting);
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("loadeddata", onLoadedData);
       v.removeEventListener("error", onError);
       v.removeEventListener("ended", onEnded);
     };
@@ -797,7 +845,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60">
             <div className="text-center">
               <svg className="h-8 w-8 mx-auto mb-2 text-white/50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-              <p className="text-white/60 text-xs">Yüklenemedi</p>
+              <p className="text-white/60 text-xs">{t("couldNotLoad")}</p>
             </div>
           </div>
         )}
@@ -854,7 +902,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 <rect x="7" y="7" width="10" height="10" rx="1.5" />
                 <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
               </svg>
-              <span className="text-white/80 text-sm font-medium">Pencerede oynatılıyor</span>
+              <span className="text-white/80 text-sm font-medium">{t("playingInPip")}</span>
             </button>
           </div>
         )}
@@ -871,7 +919,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="text-center">
               <svg className="h-10 w-10 text-white/40 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
-              <p className="text-white/60 text-sm">Video oynatılamadı</p>
+              <p className="text-white/60 text-sm">{t("couldNotPlay")}</p>
             </div>
           </div>
         )}
@@ -887,7 +935,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
             className="absolute bottom-20 left-3 z-30 flex items-center gap-2 bg-black/70 hover:bg-black/80 text-white rounded-full px-3.5 py-2 text-[0.78rem] font-medium transition-all cursor-pointer"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
-            Sesi Aç
+            {t("unmute")}
           </button>
         )}
 
@@ -956,7 +1004,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
             {/* Buttons row */}
               <div className="flex items-center gap-2 text-white">
                 {/* Play/Pause */}
-                <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={playing ? "Duraklat (k)" : "Oynat (k)"} title={playing ? "Duraklat (k)" : "Oynat (k)"}>
+                <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={playing ? `${t("pause")} (k)` : `${t("play")} (k)`} title={playing ? `${t("pause")} (k)` : `${t("play")} (k)`}>
                   {playing ? (
                     <svg className="h-6 w-6" fill="white" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
                   ) : (
@@ -966,7 +1014,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
                 {/* Volume */}
                 <div className="flex items-center gap-0.5 group/vol">
-                  <button onClick={toggleMute} aria-label={muted ? "Sesi aç (m)" : "Sesi kapat (m)"} title={muted ? "Sesi aç (m)" : "Sesi kapat (m)"} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <button onClick={toggleMute} aria-label={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} title={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                     {muted || volume === 0 ? (
                       <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
                     ) : volume < 0.5 ? (
@@ -975,7 +1023,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                       <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
                     )}
                   </button>
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="vp-volume-slider w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100" aria-label="Ses seviyesi" />
+                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="vp-volume-slider w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100" aria-label={t("volumeLevel")} />
                 </div>
 
                 <span ref={timeRef} className="text-[0.8rem] tabular-nums ml-1 text-white/90 font-medium">0:00 / 0:00</span>
@@ -983,7 +1031,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
                 {/* Settings (speed + cinema mode) */}
                 <div className="relative" ref={settingsMenuRef}>
-                  <button onClick={() => { const next = !settingsMenu; setSettingsMenu(next); settingsOpenRef.current = next; setSettingsTab("main"); if (next) showControls(true); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Ayarlar">
+                  <button onClick={() => { const next = !settingsMenu; setSettingsMenu(next); settingsOpenRef.current = next; setSettingsTab("main"); if (next) showControls(true); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" title={t("settings")}>
                     {speed !== 1 ? (
                       <span className="text-[0.8rem] font-semibold min-w-[36px]">{speed}x</span>
                     ) : (
@@ -999,7 +1047,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                         <>
                           {/* Cinema mode toggle — hidden on mobile */}
                           <div className="hidden sm:flex px-3.5 py-2.5 items-center justify-between border-b border-white/10">
-                            <span className="text-[0.82rem] text-white font-medium">Sinema Modu</span>
+                            <span className="text-[0.82rem] text-white font-medium">{t("cinemaMode")}</span>
                             <button
                               onClick={toggleCinema}
                               className="relative w-9 h-5 rounded-full transition-colors"
@@ -1010,25 +1058,25 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                           </div>
                           {/* Speed — navigate to sub-tab */}
                           <button onClick={() => setSettingsTab("speed")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors border-b border-white/10">
-                            <span className="text-[0.82rem] text-white font-medium">Hız</span>
+                            <span className="text-[0.82rem] text-white font-medium">{t("speed")}</span>
                             <span className="text-[0.78rem] text-white/50 flex items-center gap-1">
-                              {speed === 1 ? "Normal" : `${speed}x`}
+                              {speed === 1 ? t("normal") : `${speed}x`}
                               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
                             </span>
                           </button>
                           {/* Quality — navigate to sub-tab (only when HLS streams available) */}
                           {qualities.length > 0 && (
                             <button onClick={() => setSettingsTab("quality")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors border-b border-white/10">
-                              <span className="text-[0.82rem] text-white font-medium">Kalite</span>
+                              <span className="text-[0.82rem] text-white font-medium">{t("quality")}</span>
                               <span className="text-[0.78rem] text-white/50 flex items-center gap-1">
-                                {currentQuality === -1 ? "Otomatik" : qualities[currentQuality]?.name || "Otomatik"}
+                                {currentQuality === -1 ? t("auto") : qualities[currentQuality]?.name || t("auto")}
                                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
                               </span>
                             </button>
                           )}
                           {/* Shortcuts — navigate to sub-tab (hidden on mobile) */}
                           <button onClick={() => setSettingsTab("shortcuts")} className="hidden sm:flex w-full px-3.5 py-2.5 items-center justify-between hover:bg-white/10 transition-colors">
-                            <span className="text-[0.82rem] text-white font-medium">Kısayollar</span>
+                            <span className="text-[0.82rem] text-white font-medium">{t("shortcuts")}</span>
                             <svg className="h-3.5 w-3.5 text-white/50" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
                           </button>
                         </>
@@ -1037,12 +1085,12 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                           {/* Speed sub-tab — back + options */}
                           <button onClick={() => setSettingsTab("main")} className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors border-b border-white/10">
                             <svg className="h-3.5 w-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
-                            <span className="text-[0.82rem] text-white font-medium">Hız</span>
+                            <span className="text-[0.82rem] text-white font-medium">{t("speed")}</span>
                           </button>
                           <div className="py-1">
                             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
                               <button key={rate} onClick={() => { changeSpeed(rate); setSettingsTab("main"); }} className={`w-full px-3.5 py-1.5 text-[0.78rem] text-left hover:bg-white/10 transition-colors ${speed === rate ? "font-semibold" : "text-white/70"}`} style={speed === rate ? { color: "var(--accent-color)" } : undefined}>
-                                {rate === 1 ? "Normal" : `${rate}x`}
+                                {rate === 1 ? t("normal") : `${rate}x`}
                               </button>
                             ))}
                           </div>
@@ -1052,11 +1100,11 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                           {/* Quality sub-tab — back + auto + levels */}
                           <button onClick={() => setSettingsTab("main")} className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors border-b border-white/10">
                             <svg className="h-3.5 w-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
-                            <span className="text-[0.82rem] text-white font-medium">Kalite</span>
+                            <span className="text-[0.82rem] text-white font-medium">{t("quality")}</span>
                           </button>
                           <div className="py-1">
                             <button onClick={() => { setQuality(-1); setSettingsTab("main"); }} className={`w-full px-3.5 py-1.5 text-[0.78rem] text-left hover:bg-white/10 transition-colors ${currentQuality === -1 ? "font-semibold" : "text-white/70"}`} style={currentQuality === -1 ? { color: "var(--accent-color)" } : undefined}>
-                              Otomatik
+                              {t("auto")}
                             </button>
                             {qualities.map((q, i) => (
                               <button key={i} onClick={() => { setQuality(i); setSettingsTab("main"); }} className={`w-full px-3.5 py-1.5 text-[0.78rem] text-left hover:bg-white/10 transition-colors ${currentQuality === i ? "font-semibold" : "text-white/70"}`} style={currentQuality === i ? { color: "var(--accent-color)" } : undefined}>
@@ -1070,24 +1118,24 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                           {/* Shortcuts sub-tab */}
                           <button onClick={() => setSettingsTab("main")} className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors border-b border-white/10">
                             <svg className="h-3.5 w-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
-                            <span className="text-[0.82rem] text-white font-medium">Kısayollar</span>
+                            <span className="text-[0.82rem] text-white font-medium">{t("shortcuts")}</span>
                           </button>
                           <div className="py-1.5 max-h-[200px] sm:max-h-[260px] overflow-y-auto vp-shortcuts-scroll">
                             {[
-                              ["Boşluk / K", "Oynat / Duraklat"],
-                              ["J", "10 sn geri"],
-                              ["L", "10 sn ileri"],
-                              ["\u2190", "5 sn geri"],
-                              ["\u2192", "5 sn ileri"],
-                              ["\u2191 / \u2193", "Ses seviyesi"],
-                              ["M", "Sesi kapat/aç"],
-                              ["F", "Tam ekran"],
-                              ["T", "Sinema modu"],
-                              ["P", "Pencerede oynat"],
-                              ["0\u20139", "Videoda atla (%)"],
-                              ["< / >", "Hızı azalt/artır"],
-                              ["Home", "Başa dön"],
-                              ["End", "Sona git"],
+                              ["\u2423 / K", t("playPause")],
+                              ["J", t("skipBack10")],
+                              ["L", t("skipForward10")],
+                              ["\u2190", t("skipBack5")],
+                              ["\u2192", t("skipForward5")],
+                              ["\u2191 / \u2193", t("volumeLevel")],
+                              ["M", t("muteUnmute")],
+                              ["F", t("fullscreen")],
+                              ["T", t("cinemaMode")],
+                              ["P", t("pip")],
+                              ["0\u20139", t("jumpToPercent")],
+                              ["< / >", t("decreaseIncreaseSpeed")],
+                              ["Home", t("goToStart")],
+                              ["End", t("goToEnd")],
                             ].map(([key, desc]) => (
                               <div key={key} className="flex items-center justify-between gap-2 px-3.5 py-[5px]">
                                 <span className="text-[0.75rem] text-white/50 shrink-0">{desc}</span>
@@ -1103,7 +1151,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 </div>
 
                 {/* PiP — float above all windows */}
-                <button onClick={togglePiP} className="flex p-2 hover:bg-white/10 rounded-full transition-colors items-center justify-center" title="Pencerede oynat (p)">
+                <button onClick={togglePiP} className="flex p-2 hover:bg-white/10 rounded-full transition-colors items-center justify-center" title={`${t("pip")} (p)`}>
                   <svg className="h-[21px] w-[21px]" fill="none" stroke="white" strokeWidth={1.8} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="7" y="7" width="10" height="10" rx="1.5" />
                     <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
@@ -1111,7 +1159,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 </button>
 
                 {/* Fullscreen — h-5 w-5 */}
-                <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={fullscreen ? "Tam ekrandan çık (f)" : "Tam ekran (f)"} title={fullscreen ? "Tam ekrandan çık (f)" : "Tam ekran (f)"}>
+                <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={fullscreen ? `${t("exitFullscreen")} (f)` : `${t("fullscreen")} (f)`} title={fullscreen ? `${t("exitFullscreen")} (f)` : `${t("fullscreen")} (f)`}>
                   {fullscreen ? (
                     <svg className="h-5 w-5" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" /></svg>
                   ) : (

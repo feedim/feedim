@@ -6,8 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
 import { Shield } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function VerifyMfaPage() {
+  const t = useTranslations('auth');
+  const te = useTranslations('errors');
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(true);
@@ -47,14 +50,14 @@ export default function VerifyMfaPage() {
         options: { shouldCreateUser: false },
       });
       if (error) {
-        feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", t('mfaCodeSendFailed'));
         if (process.env.NODE_ENV === "development") console.log("OTP error:", error.message);
       } else {
-        feedimAlert("success", "Doğrulama kodu e-postanıza gönderildi");
+        feedimAlert("success", t('mfaCodeSent'));
         setCooldown(60);
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", te('generic'));
     } finally {
       setSending(false);
     }
@@ -63,7 +66,7 @@ export default function VerifyMfaPage() {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length < 6) {
-      feedimAlert("error", "Doğrulama kodunu girin");
+      feedimAlert("error", t('mfaEnterCode'));
       return;
     }
 
@@ -76,7 +79,7 @@ export default function VerifyMfaPage() {
       });
 
       if (error) {
-        feedimAlert("error", "Kod geçersiz veya süresi dolmuş");
+        feedimAlert("error", t('mfaCodeInvalidOrExpired'));
         if (process.env.NODE_ENV === "development") console.log("Verify error:", error.message);
         return;
       }
@@ -95,7 +98,7 @@ export default function VerifyMfaPage() {
 
       window.location.href = "/";
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", te('generic'));
     } finally {
       setLoading(false);
     }
@@ -108,13 +111,13 @@ export default function VerifyMfaPage() {
 
   return (
     <AuthLayout
-      title="Doğrulama Kodu"
-      subtitle={email ? `${email} adresine gönderilen 8 haneli kodu girin.` : "Doğrulama kodu bekleniyor..."}
+      title={t('mfaCode')}
+      subtitle={email ? t('mfaEmailHint', { email }) : t('mfaWaiting')}
     >
       <form onSubmit={handleVerify} className="space-y-4">
         <div className="flex items-center justify-center gap-2 text-accent-main mb-2">
           <Shield className="h-5 w-5" />
-          <span className="text-sm font-semibold">İki Faktörlü Doğrulama</span>
+          <span className="text-sm font-semibold">{t('mfaTitle')}</span>
         </div>
 
         <div>
@@ -137,15 +140,15 @@ export default function VerifyMfaPage() {
           type="submit"
           className="t-btn accept w-full relative"
           disabled={loading || code.length < 6}
-          aria-label="MFA Kodunu Doğrula"
+          aria-label={t('mfaVerify')}
         >
-          {loading ? <span className="loader" /> : "Doğrula"}
+          {loading ? <span className="loader" /> : t('mfaVerify')}
         </button>
       </form>
 
       <div className="text-center mt-4">
         {sending ? (
-          <p className="text-sm text-text-muted">Kod gönderiliyor...</p>
+          <p className="text-sm text-text-muted">{t('mfaSending')}</p>
         ) : (
           <button
             onClick={handleResend}
@@ -153,16 +156,16 @@ export default function VerifyMfaPage() {
             className="text-sm text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cooldown > 0
-              ? `Tekrar gönder (${cooldown}s)`
-              : "Kodu Tekrar Gönder"}
+              ? t('mfaResendCountdown', { seconds: cooldown })
+              : t('mfaResend')}
           </button>
         )}
       </div>
 
       <p className="text-center text-text-muted text-xs mt-4">
-        E-postanızı kontrol edin. Kod 60 saniye geçerlidir.
+        {t('mfaEmailExpiry')}
         <br />
-        Spam/gereksiz klasörünü de kontrol etmeyi unutmayın.
+        {t('mfaCheckSpam')}
       </p>
     </AuthLayout>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, Link as LinkIcon, ChevronRight, Code2 } from "lucide-react";
 import Modal from "./Modal";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -25,6 +26,7 @@ const platforms = [
 ];
 
 export default function ShareModal({ open, onClose, url, title, postId, isVideo, postSlug, contentType }: ShareModalProps) {
+  const t = useTranslations("modals");
   const [copied, setCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
@@ -50,7 +52,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
         });
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük paylaşım limitine ulaştın");
+          feedimAlert("error", data.error || t("shareLimitReached"));
         }
       } catch {}
     }
@@ -132,7 +134,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Paylaş" size="sm" infoText="Gönderiyi sosyal medya veya bağlantı ile paylaşabilirsin.">
+      <Modal open={open} onClose={onClose} title={t("share")} size="sm" infoText={t("shareInfoText")}>
         <div className="p-2 space-y-1">
           {/* Platform buttons */}
           {platforms.map((p) => (
@@ -145,7 +147,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
                 <PlatformIcon id={p.icon} />
               </div>
               <span className="flex-1 text-[0.84rem] font-medium text-text-primary">
-                {p.name}
+                {p.id === "native" ? t("other") : p.name}
               </span>
               <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
             </button>
@@ -161,7 +163,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
                 <Code2 className="h-4 w-4 text-text-muted" />
               </div>
               <span className="flex-1 text-[0.84rem] font-medium text-text-primary">
-                Yerleşik Kod
+                {t("embedCode")}
               </span>
               <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
             </button>
@@ -177,7 +179,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[0.82rem] font-medium text-text-primary">
-                {copied ? "Kopyalandı!" : "Bağlantıyı Kopyala"}
+                {copied ? t("copied") : t("copyLink")}
               </p>
               <p className="text-[0.72rem] text-text-muted truncate">{fullUrl}</p>
             </div>
@@ -186,9 +188,9 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
       </Modal>
 
       {/* Embed Code Modal */}
-      <Modal open={showEmbed} onClose={() => setShowEmbed(false)} title="Yerleşik Kod" size="sm" infoText="Bu kodu web sitenize yapıştırarak içeriği gömebilirsiniz.">
+      <Modal open={showEmbed} onClose={() => setShowEmbed(false)} title={t("embedCode")} size="sm" infoText={t("embedInfoText")}>
         <div className="p-4 space-y-3">
-          <p className="text-[0.82rem] text-text-muted">Bu kodu web sitenize yapıştırarak içeriği gömebilirsiniz.</p>
+          <p className="text-[0.82rem] text-text-muted">{t("embedInfoText")}</p>
           <div className="bg-bg-primary rounded-xl p-3 text-[0.72rem] text-text-muted font-mono break-all leading-relaxed select-all border border-border-primary">
             {embedCode}
           </div>
@@ -198,7 +200,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
             style={embedCopied ? { backgroundColor: "var(--accent-color)", color: "#fff" } : { backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)" }}
           >
             {embedCopied ? <Check className="h-4 w-4" /> : <Code2 className="h-4 w-4" />}
-            {embedCopied ? "Kopyalandı!" : "Kodu Kopyala"}
+            {embedCopied ? t("copied") : t("copyCode")}
           </button>
         </div>
       </Modal>

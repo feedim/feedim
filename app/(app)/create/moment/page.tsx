@@ -13,7 +13,8 @@ import {
   MOMENT_MAX_DURATION,
   MOMENT_MAX_SIZE_MB,
 } from "@/lib/constants";
-import { formatCount } from "@/lib/utils";
+import { formatCount, getPostUrl } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import CropModal from "@/components/modals/CropModal";
@@ -49,6 +50,7 @@ function MomentWriteContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   const { user } = useUser();
+  const t = useTranslations("create");
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +158,7 @@ function MomentWriteContent() {
         }
       }
     } catch {
-      feedimAlert("error", "Taslak yüklenemedi");
+      feedimAlert("error", t("draftLoadError"));
     } finally {
       setLoadingDraft(false);
     }
@@ -265,7 +267,7 @@ function MomentWriteContent() {
         settled = true;
         URL.revokeObjectURL(url);
         if (dur && isFinite(dur) && dur > MOMENT_MAX_DURATION) {
-          reject(new Error(`Moment en fazla ${MOMENT_MAX_DURATION} saniye olabilir`));
+          reject(new Error(t("momentMaxDuration", { seconds: MOMENT_MAX_DURATION })));
         } else {
           const isVertical = h >= w;
           resolve({ duration: dur && isFinite(dur) ? Math.round(dur) : 0, isVertical });
@@ -282,7 +284,7 @@ function MomentWriteContent() {
       video.onloadedmetadata = () => finish(video.duration, video.videoWidth, video.videoHeight);
       video.onloadeddata = () => { if (!settled) finish(video.duration, video.videoWidth, video.videoHeight); };
       video.oncanplay = () => { if (!settled) finish(video.duration, video.videoWidth, video.videoHeight); };
-      video.onerror = () => fail("Video dosyası okunamadı");
+      video.onerror = () => fail(t("videoFileReadError"));
       setTimeout(() => { if (!settled) finish(0, 0, 0); }, 20000);
 
       video.src = url;
@@ -326,7 +328,7 @@ function MomentWriteContent() {
           resolve(dataUrl);
         } catch {
           cleanup();
-          reject(new Error("Thumbnail oluşturulamadı"));
+          reject(new Error(t("thumbnailCreateFailed")));
         }
       };
 
@@ -340,7 +342,7 @@ function MomentWriteContent() {
       video.onloadeddata = onFrameReady;
       video.oncanplay = () => { if (!settled) onFrameReady(); };
       video.onseeked = () => tryCapture();
-      video.onerror = () => { if (!settled) { settled = true; cleanup(); reject(new Error("Video okunamadı")); } };
+      video.onerror = () => { if (!settled) { settled = true; cleanup(); reject(new Error(t("videoFileReadError"))); } };
       setTimeout(() => { if (!settled) { settled = true; cleanup(); reject(new Error("Timeout")); } }, 20000);
 
       video.src = url;
@@ -350,11 +352,11 @@ function MomentWriteContent() {
 
   const handleVideoSelect = async (file: File) => {
     if (!file.type.startsWith("video/")) {
-      feedimAlert("error", "Desteklenmeyen format. Geçerli bir video dosyası seçin");
+      feedimAlert("error", t("videoUnsupportedFormat"));
       return;
     }
     if (file.size > MOMENT_MAX_SIZE_MB * 1024 * 1024) {
-      feedimAlert("error", `Video en fazla ${MOMENT_MAX_SIZE_MB}MB olabilir`);
+      feedimAlert("error", t("videoMaxSize", { size: MOMENT_MAX_SIZE_MB }));
       return;
     }
 
@@ -367,7 +369,7 @@ function MomentWriteContent() {
     }
 
     if (!result.isVertical && result.duration > 0) {
-      feedimAlert("error", "Moment için dikey (9:16) video gerekli. Lütfen dikey formatta bir video seçin");
+      feedimAlert("error", t("momentVerticalRequired"));
       return;
     }
 
@@ -423,7 +425,7 @@ function MomentWriteContent() {
         signal: abort.signal,
       });
       const initData = await initRes.json();
-      if (!initRes.ok) throw new Error(initData.error || "Upload başlatılamadı");
+      if (!initRes.ok) throw new Error(initData.error || t("uploadInitFailed"));
 
       const { uploadUrl, publicUrl } = initData;
 
@@ -441,11 +443,11 @@ function MomentWriteContent() {
 
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Yükleme başarısız (${xhr.status})`));
+          else reject(new Error(t("uploadFailed", { status: xhr.status })));
         };
 
-        xhr.onerror = () => reject(new Error("Video yüklenemedi"));
-        xhr.onabort = () => reject(new DOMException("Upload iptal edildi", "AbortError"));
+        xhr.onerror = () => reject(new Error(t("videoUploadFailed")));
+        xhr.onabort = () => reject(new DOMException(t("uploadCancelled"), "AbortError"));
 
         abort.signal.addEventListener("abort", () => xhr.abort());
         xhr.send(file);
@@ -455,7 +457,7 @@ function MomentWriteContent() {
       setUploadProgress(100);
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
-      feedimAlert("error", (err as Error).message || "Video yüklenemedi");
+      feedimAlert("error", (err as Error).message || t("videoUploadFailed"));
       setVideoFile(null);
       setVideoPreviewUrl("");
       setVideoDuration(0);
@@ -528,16 +530,16 @@ function MomentWriteContent() {
   const createAndAddTag = async () => {
     const trimmed = tagSearch.trim().replace(/\s+/g, " ");
     if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
-    if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", `Etiket en az ${VALIDATION.tagName.min} karakter olmalı`); return; }
-    if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", `Etiket en fazla ${VALIDATION.tagName.max} karakter olabilir`); return; }
+    if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min })); return; }
+    if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max })); return; }
     setTagCreating(true);
     await new Promise(r => setTimeout(r, 1000));
     try {
       const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
       const data = await res.json();
       if (res.ok && data.tag) addTag(data.tag);
-      else feedimAlert("error", data.error || "Etiket oluşturulamadı");
-    } catch { feedimAlert("error", "Etiket oluşturulamadı"); } finally { setTagCreating(false); }
+      else feedimAlert("error", data.error || t("tagCreateFailed"));
+    } catch { feedimAlert("error", t("tagCreateFailed")); } finally { setTagCreating(false); }
   };
 
   const removeTag = (tagId: number | string) => setTags(tags.filter(t => t.id !== tagId));
@@ -557,26 +559,26 @@ function MomentWriteContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      if (!file.type.startsWith("image/")) throw new Error("Geçersiz dosya");
-      if (file.size > 5 * 1024 * 1024) throw new Error("Maks 5MB");
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
       const { compressImage } = await import("@/lib/imageCompression");
       const compressed = await compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Dosya okunamadı"));
+        reader.onerror = () => reject(new Error(t("fileReadError")));
         reader.readAsDataURL(compressed);
       });
       setCropSrc(dataUrl);
-    } catch { feedimAlert("error", "Görsel yüklenemedi"); }
+    } catch { feedimAlert("error", t("imageUploadFailed")); }
     e.target.value = "";
   };
 
   const savePost = async (status: "draft" | "published") => {
-    if (!title.trim()) { feedimAlert("error", "Başlık gerekli"); return; }
-    if (title.trim().length < 3) { feedimAlert("error", "Başlık en az 3 karakter olmalı"); return; }
-    if (status === "published" && !videoUrl) { feedimAlert("error", "Video yüklenmeden yayınlanamaz"); return; }
-    if (status === "published" && uploading) { feedimAlert("error", "Video hala yükleniyor, lütfen bekleyin"); return; }
+    if (!title.trim()) { feedimAlert("error", t("titleRequired")); return; }
+    if (title.trim().length < 3) { feedimAlert("error", t("titleMinLength")); return; }
+    if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
+    if (status === "published" && uploading) { feedimAlert("error", t("videoStillUploading")); return; }
 
     setSavingAs(status);
     try {
@@ -630,16 +632,16 @@ function MomentWriteContent() {
       const data = await res.json();
       if (res.ok) {
         setHasUnsavedChanges(false);
-        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(`/moments?s=${data.post.slug}`); }
+        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(getPostUrl(data.post.slug, "moment")); }
         else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/"); }
       } else {
-        feedimAlert("error", data.error || "Bir hata oluştu");
+        feedimAlert("error", data.error || t("genericError"));
       }
-    } catch { feedimAlert("error", "Bir hata oluştu"); } finally { setSavingAs(null); }
+    } catch { feedimAlert("error", t("genericError")); } finally { setSavingAs(null); }
   };
 
   const goToStep2 = () => {
-    if (!videoFile && !videoUrl) { feedimAlert("error", "Video seçilmedi"); return; }
+    if (!videoFile && !videoUrl) { feedimAlert("error", t("videoNotSelected")); return; }
     setStep(2);
   };
 
@@ -664,7 +666,7 @@ function MomentWriteContent() {
           disabled={!canGoNext || uploading}
           className="t-btn accept !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
         >
-          İleri
+          {t("nextStep")}
         </button>
       ) : (
         <>
@@ -673,15 +675,15 @@ function MomentWriteContent() {
             disabled={savingAs !== null || !title.trim()}
             className="t-btn cancel relative !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
           >
-            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
+            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
           </button>
           <button
             onClick={() => savePost("published")}
             disabled={savingAs !== null || !title.trim() || !videoUrl || uploading}
             className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
-            aria-label="Yayınla"
+            aria-label={t("publishBtn")}
           >
-            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Yayınla"}
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("publishBtn")}
           </button>
         </>
       )}
@@ -693,7 +695,7 @@ function MomentWriteContent() {
       hideMobileNav
       hideRightSidebar
       headerRightAction={headerRight}
-      headerTitle={step === 1 ? "Moment" : "Detaylar"}
+      headerTitle={step === 1 ? "Moment" : t("headerDetails")}
       headerOnBack={() => { if (step === 2) setStep(1); else router.back(); }}
     >
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
@@ -711,15 +713,15 @@ function MomentWriteContent() {
                   <Film className="h-8 w-8 text-accent-main" />
                 </div>
                 <p className="text-base font-semibold text-text-primary mb-1">
-                  Moment yüklemek için tıklayın
+                  {t("momentUploadClick")}
                 </p>
                 <p className="text-sm text-text-muted mb-3 hidden sm:block">
-                  veya buraya sürükleyin
+                  {t("orDragHere")}
                 </p>
                 <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 text-xs text-text-muted/70 mt-2 sm:mt-0">
-                  <span>Dikey (9:16) video</span>
+                  <span>{t("verticalVideo")}</span>
                   <span className="hidden sm:inline">&middot;</span>
-                  <span>Maks {MOMENT_MAX_SIZE_MB}MB &middot; Maks {MOMENT_MAX_DURATION} saniye</span>
+                  <span>{t("maxSize", { size: MOMENT_MAX_SIZE_MB })} &middot; {t("maxSeconds", { seconds: MOMENT_MAX_DURATION })}</span>
                 </div>
                 <input
                   ref={videoInputRef}
@@ -777,7 +779,7 @@ function MomentWriteContent() {
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition mx-auto"
                       >
                         <Music className="h-4 w-4 text-text-muted" />
-                        <span className="text-sm text-text-muted">Ses ekle...</span>
+                        <span className="text-sm text-text-muted">{t("addSound")}</span>
                       </button>
                     )}
                   </div>
@@ -790,18 +792,23 @@ function MomentWriteContent() {
                       src={videoPreviewUrl || videoUrl}
                       poster={thumbnail || undefined}
                       disabled={uploading}
+                      moment
+                      loop
+                      externalMuted={false}
+                      externalPaused={uploading}
+                      videoClassName="absolute inset-0 w-full h-full object-cover"
                     />
                   )}
 
                   {uploading && (
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
                       <span className="loader mb-3" style={{ width: 28, height: 28, borderTopColor: "var(--accent-color)" }} />
-                      <p className="text-white/80 text-[0.82rem] font-medium">{uploadProgress > 0 ? `%${uploadProgress}` : "İşleniyor..."}</p>
+                      <p className="text-white/80 text-[0.82rem] font-medium">{uploadProgress > 0 ? `%${uploadProgress}` : t("processing")}</p>
                       <div className="w-48 h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, backgroundColor: "var(--accent-color)" }} />
                       </div>
                       <button onClick={removeVideo} className="text-xs text-error hover:underline mt-3">
-                        İptal Et
+                        {t("cancelUpload")}
                       </button>
                     </div>
                   )}
@@ -828,7 +835,7 @@ function MomentWriteContent() {
         {step === 2 && loadingDraft && (
           <div className="flex flex-col items-center justify-center flex-1 py-16">
             <span className="loader" style={{ width: 28, height: 28 }} />
-            <p className="text-sm text-text-muted mt-3">Yükleniyor...</p>
+            <p className="text-sm text-text-muted mt-3">{t("loading")}</p>
           </div>
         )}
         {step === 2 && !loadingDraft && (
@@ -840,7 +847,7 @@ function MomentWriteContent() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={VALIDATION.postTitle.max}
-                placeholder="Moment açıklaması..."
+                placeholder={t("momentDescPlaceholder")}
                 rows={3}
                 className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px] pt-3"
                 autoFocus
@@ -856,17 +863,17 @@ function MomentWriteContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Thumbnail */}
             <div className="md:order-2">
-              <label className="block text-sm font-semibold mb-1">Küçük Resim</label>
-              <p className="text-[0.68rem] text-text-muted/70 mb-2">Önerilen: 1080×1920px (9:16), maks 5MB</p>
+              <label className="block text-sm font-semibold mb-1">{t("thumbnail")}</label>
+              <p className="text-[0.68rem] text-text-muted/70 mb-2">{t("thumbnailRecommended9by16")}</p>
               {thumbnail ? (
                 <div className="relative rounded-xl overflow-hidden max-w-[200px]">
-                  <img src={thumbnail} alt="Küçük resim" className="w-full aspect-[9/16] object-cover" />
+                  <img src={thumbnail} alt={t("thumbnail")} className="w-full aspect-[9/16] object-cover" />
                   <div className="absolute top-2 right-2 flex gap-1.5">
-                    <label className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition cursor-pointer" aria-label="Küçük resim değiştir">
+                    <label className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition cursor-pointer" aria-label={t("thumbnailChange")}>
                       <Upload className="h-4 w-4" />
                       <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
                     </label>
-                    <button onClick={() => setThumbnail("")} className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label="Küçük resmi kaldır">
+                    <button onClick={() => setThumbnail("")} className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -874,7 +881,7 @@ function MomentWriteContent() {
               ) : (
                 <label className="flex flex-col items-center justify-center h-36 max-w-[200px] border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition">
                   <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
-                  <p className="text-sm text-text-muted">Küçük resim yükleyin</p>
+                  <p className="text-sm text-text-muted">{t("thumbnailUpload")}</p>
                   <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
                 </label>
               )}
@@ -882,7 +889,7 @@ function MomentWriteContent() {
 
             {/* Tags */}
             <div className="md:order-1">
-              <label className="block text-sm font-semibold mb-2">Etiketler</label>
+              <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {tags.map(tag => (
@@ -900,7 +907,7 @@ function MomentWriteContent() {
                     value={tagSearch}
                     onChange={e => setTagSearch(e.target.value)}
                     onKeyDown={handleTagKeyDown}
-                    placeholder="Etiket ara veya yeni oluştur..."
+                    placeholder={t("tagSearchPlaceholder")}
                     className="input-modern w-full"
                   />
                   {tagSuggestions.length > 0 && (
@@ -913,7 +920,7 @@ function MomentWriteContent() {
                         >
                           <span className="text-text-muted">#</span>
                           {s.name}
-                          {s.post_count !== undefined && <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} gönderi</span>}
+                          {s.post_count !== undefined && <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} {t("postsCount")}</span>}
                         </button>
                       ))}
                     </div>
@@ -927,16 +934,16 @@ function MomentWriteContent() {
                       {tagCreating ? (
                         <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
                       ) : (
-                        <><Plus className="h-3.5 w-3.5" /> Oluştur</>
+                        <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
                       )}
                     </button>
                   )}
                 </div>
               )}
-              <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} etiket</p>
+              <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
               {tags.length < VALIDATION.postTags.max && !tagSearch && popularTags.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs text-text-muted mb-2">Popüler etiketler</p>
+                  <p className="text-xs text-text-muted mb-2">{t("popularTags")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {popularTags.filter(pt => !tags.some(t => t.id === pt.id)).slice(0, 6).map(pt => (
                       <button key={pt.id} onClick={() => addTag(pt)} className="text-xs px-2.5 py-1.5 rounded-full border border-border-primary text-text-muted hover:text-accent-main hover:border-accent-main/50 transition">
@@ -951,15 +958,15 @@ function MomentWriteContent() {
 
             {/* Settings */}
             <div>
-              <label className="block text-sm font-semibold mb-3">Ayarlar</label>
+              <label className="block text-sm font-semibold mb-3">{t("settingsLabel")}</label>
               <div className="space-y-1">
                 <button
                   onClick={() => setAllowComments(!allowComments)}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
-                    <p className="text-sm font-medium">Yorumlara izin ver</p>
-                    <p className="text-xs text-text-muted mt-0.5">İzleyiciler yorum yapabilir</p>
+                    <p className="text-sm font-medium">{t("allowComments")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDescViewers")}</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
@@ -970,8 +977,8 @@ function MomentWriteContent() {
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
-                    <p className="text-sm font-medium">Çocuklara özel</p>
-                    <p className="text-xs text-text-muted mt-0.5">Bu içerik çocuklara yönelik</p>
+                    <p className="text-sm font-medium">{t("forKids")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
@@ -987,15 +994,15 @@ function MomentWriteContent() {
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition text-left ${!user?.copyrightEligible || (isEditMode && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
                 >
                   <div>
-                    <p className="text-sm font-medium">Telif hakkı koruması</p>
-                    <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? "Telif hakkı koruması etkin içeriklerde kapatılamaz." : !user?.copyrightEligible ? "Düzenli özgün içerik üretiminde sistem tarafından otomatik olarak etkinleşir." : "Açıldığında içeriğiniz telif hakkıyla korunur."}</p>
+                    <p className="text-sm font-medium">{t("copyrightProtection")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
                   </div>
                 </button>
                 {!user?.copyrightEligible && (
-                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">Otomatik etkinleştirme hakkında daha fazla bilgi &rarr;</a>
+                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
               </div>

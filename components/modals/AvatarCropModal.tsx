@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 import Modal from "./Modal";
 
@@ -12,6 +13,7 @@ interface AvatarCropModalProps {
 }
 
 export default function AvatarCropModal({ open, onClose, file, onCrop }: AvatarCropModalProps) {
+  const t = useTranslations("modals");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const areaRef = useRef<HTMLDivElement>(null);
@@ -225,7 +227,7 @@ export default function AvatarCropModal({ open, onClose, file, onCrop }: AvatarC
     <Modal
       open={open}
       onClose={onClose}
-      title="Fotoğrafı Kırp"
+      title={t("cropTitle")}
       size="sm"
       zIndex="z-[10000]"
       rightAction={
@@ -234,7 +236,7 @@ export default function AvatarCropModal({ open, onClose, file, onCrop }: AvatarC
           disabled={!imageLoaded}
           className="t-btn accept !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
         >
-          Uygula
+          {t("cropApply")}
         </button>
       }
     >

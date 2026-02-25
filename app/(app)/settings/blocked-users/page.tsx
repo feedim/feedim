@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
@@ -13,6 +14,7 @@ const PAGE_SIZE = 20;
 
 export default function BlockedUsersPage() {
   useSearchParams();
+  const t = useTranslations("settings");
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -78,23 +80,23 @@ export default function BlockedUsersPage() {
       ]);
       if (res.ok) {
         setBlockedUsers(prev => prev.filter(b => b.id !== blockId));
-        feedimAlert("success", `@${username} engeli kaldırıldı`);
+        feedimAlert("success", t("unblockSuccess", { username }));
       }
     } catch {
-      feedimAlert("error", "Engel kaldırılamadı, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("unblockFailed"));
     } finally {
       setUnblockingId(null);
     }
   };
 
   return (
-    <AppLayout headerTitle="Engellenen Kullanıcılar" hideRightSidebar>
+    <AppLayout headerTitle={t("blockedUsersTitle")} hideRightSidebar>
       <div className="py-2">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : blockedUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
-            <p className="text-sm text-text-muted">Engellenen kullanıcı yok</p>
+            <p className="text-sm text-text-muted">{t("noBlockedUsers")}</p>
           </div>
         ) : (
           <div className="px-4">
@@ -120,9 +122,9 @@ export default function BlockedUsersPage() {
                     onClick={() => handleUnblock(b.profile?.username, b.id)}
                     disabled={unblockingId === b.id}
                     className="t-btn cancel !h-[32px] !text-xs !px-3 shrink-0 min-w-[90px]"
-                    aria-label="Engeli Kaldır"
+                    aria-label={t("unblockUser")}
                   >
-                    {unblockingId === b.id ? <span className="loader" style={{ width: 14, height: 14 }} /> : "Engeli Kaldır"}
+                    {unblockingId === b.id ? <span className="loader" style={{ width: 14, height: 14 }} /> : t("unblockUser")}
                   </button>
                 </div>
               ))}

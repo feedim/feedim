@@ -1,37 +1,41 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 interface PublicFooterProps {
   variant?: "default" | "compact" | "inline" | "minimal";
 }
 
-const links = [
-  { href: "/help", label: "Yardım Merkezi", short: "Yardım Merkezi" },
-  { href: "/help/about", label: "Hakkımızda", short: "Hakkımızda" },
-  { href: "/help/terms", label: "Kullanım Koşulları", short: "Koşullar" },
-  { href: "/help/privacy", label: "Gizlilik", short: "Gizlilik" },
-  { href: "/help/privacy", label: "KVKK", short: "KVKK" },
-  { href: "/help/community-guidelines", label: "Topluluk Kuralları", short: "Topluluk Kuralları" },
-  { href: "/help/contact", label: "İletişim", short: "İletişim" },
-  { href: "/help/copyright", label: "Telif Hakkı Koruması", short: "Telif Hakkı" },
-  { href: "/help/moderation", label: "Moderasyon Sistemi", short: "Moderasyon" },
-  { href: "/help/ai", label: "Feedim AI", short: "Feedim AI" },
-  { href: "/help/content-types", label: "İçerik Türleri", short: "İçerik Türleri" },
-  { href: "/help/coins", label: "Jeton Sistemi", short: "Jeton Sistemi" },
-  { href: "/help/earning", label: "Para Kazanma", short: "Para Kazanma" },
-  { href: "/help/analytics", label: "Analitik", short: "Analitik" },
-  { href: "/help/data-sharing", label: "Veri Paylaşımı", short: "Veri Paylaşımı" },
-  { href: "/help/access-restrictions", label: "Erişim Kısıtlamaları", short: "Erişim Kısıtlamaları" },
-  { href: "/help/accessibility", label: "Erişilebilirlik", short: "Erişilebilirlik" },
-  { href: "/help/disclaimer", label: "Sorumluluk Reddi", short: "Sorumluluk Reddi" },
-  { href: "/help/distance-sales-contract", label: "Mesafeli Satış Sözleşmesi", short: "Satış Sözleşmesi" },
-  { href: "/help/refund-policy", label: "İade Politikası", short: "İade Politikası" },
-  { href: "/help/payment-security", label: "Ödeme Güvenliği", short: "Ödeme Güvenliği" },
-];
-
 export default function PublicFooter({ variant = "default" }: PublicFooterProps) {
+  const t = useTranslations("footer");
   const year = new Date().getFullYear();
 
-  // Minimal — sadece copyright (error sayfası)
+  const links = [
+    { href: "/help", label: t("help"), short: t("help") },
+    { href: "/help/about", label: t("about"), short: t("about") },
+    { href: "/help/terms", label: t("termsLong"), short: t("terms") },
+    { href: "/help/privacy", label: t("privacy"), short: t("privacy") },
+    { href: "/help/privacy", label: t("kvkk"), short: t("kvkk") },
+    { href: "/help/community-guidelines", label: t("communityGuidelines"), short: t("communityGuidelines") },
+    { href: "/help/contact", label: t("contact"), short: t("contact") },
+    { href: "/help/copyright", label: t("copyright"), short: t("copyright") },
+    { href: "/help/moderation", label: t("moderationSystem"), short: t("moderationSystem") },
+    { href: "/help/ai", label: t("feedimAi"), short: t("feedimAi") },
+    { href: "/help/content-types", label: t("contentTypesHelp"), short: t("contentTypesHelp") },
+    { href: "/help/coins", label: t("tokenSystem"), short: t("tokenSystem") },
+    { href: "/help/earning", label: t("earning"), short: t("earning") },
+    { href: "/help/analytics", label: t("analyticsHelp"), short: t("analyticsHelp") },
+    { href: "/help/data-sharing", label: t("dataSharing"), short: t("dataSharing") },
+    { href: "/help/access-restrictions", label: t("accessRestrictions"), short: t("accessRestrictions") },
+    { href: "/help/accessibility", label: t("accessibility"), short: t("accessibility") },
+    { href: "/help/disclaimer", label: t("disclaimer"), short: t("disclaimer") },
+    { href: "/help/distance-sales-contract", label: t("distanceSales"), short: t("distanceSales") },
+    { href: "/help/refund-policy", label: t("refundPolicy"), short: t("refundPolicy") },
+    { href: "/help/payment-security", label: t("paymentSecurity"), short: t("paymentSecurity") },
+  ];
+
+  // Minimal — just copyright (error page)
   if (variant === "minimal") {
     return (
       <footer className="py-6 text-center">
@@ -40,19 +44,21 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
     );
   }
 
+  const goPremiumLabel = useTranslations("common")("goPremium");
+
   const paymentLogo = (
-    <img alt="Ödeme yöntemleri" height="25" src="/logo_band_white.svg" style={{ height: 25, width: "auto", opacity: 0.7 }} />
+    <img alt={t("paymentMethods")} height="25" src="/logo_band_white.svg" style={{ height: 25, width: "auto", opacity: 0.7 }} />
   );
 
   // Compact — sidebar footer
   if (variant === "compact") {
     const compactLinks = [
-      { href: "/help", label: "Yardım" },
-      { href: "/help/about", label: "Hakkımızda" },
-      { href: "/help/terms", label: "Koşullar" },
-      { href: "/help/privacy", label: "Gizlilik" },
-      { href: "/help/community-guidelines", label: "Topluluk Kuralları" },
-      { href: "/help/contact", label: "İletişim" },
+      { href: "/help", label: t("help") },
+      { href: "/help/about", label: t("about") },
+      { href: "/help/terms", label: t("terms") },
+      { href: "/help/privacy", label: t("privacy") },
+      { href: "/help/community-guidelines", label: t("communityGuidelines") },
+      { href: "/help/contact", label: t("contact") },
     ];
     return (
       <nav className="px-4 pb-3 pt-1">
@@ -60,9 +66,9 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
           {compactLinks.map((link) => (
             <Link key={link.href} href={link.href} className="hover:underline">{link.label}</Link>
           ))}
-          <Link href="/premium" className="hover:underline">Premium ol</Link>
+          <Link href="/premium" className="hover:underline">{goPremiumLabel}</Link>
         </div>
-        <p className="text-[0.6rem] text-text-muted/60 mt-1.5">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
+        <p className="text-[0.6rem] text-text-muted/60 mt-1.5">&copy; {year} Feedim. {t("allRightsReserved")}</p>
       </nav>
     );
   }
@@ -75,15 +81,15 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
           {links.map((link) => (
             <Link key={link.href + link.label} href={link.href} className="hover:underline">{link.label}</Link>
           ))}
-          <Link href="/premium" className="hover:underline">Premium ol</Link>
-          <span>&copy; {year} Feedim. Tüm hakları saklıdır.</span>
+          <Link href="/premium" className="hover:underline">{goPremiumLabel}</Link>
+          <span>&copy; {year} Feedim. {t("allRightsReserved")}</span>
         </nav>
         <div className="flex justify-center mt-2">{paymentLogo}</div>
       </footer>
     );
   }
 
-  // Default — full footer (help, premium, not-found sayfaları)
+  // Default — full footer (help, premium, not-found pages)
   return (
     <footer className="mt-auto border-t border-border-primary py-8 px-4 sm:px-6">
       <div className="container mx-auto">
@@ -92,11 +98,11 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
             {links.map((link) => (
               <Link key={link.href + link.label} href={link.href} className="text-text-muted hover:text-text-primary transition">{link.label}</Link>
             ))}
-            <Link href="/premium" className="text-text-muted hover:text-text-primary transition">Premium ol</Link>
+            <Link href="/premium" className="text-text-muted hover:text-text-primary transition">{goPremiumLabel}</Link>
           </div>
           <div className="flex flex-col items-center sm:items-end gap-2 shrink-0">
             {paymentLogo}
-            <p className="text-xs text-text-muted">&copy; {year} Feedim. Tüm hakları saklıdır.</p>
+            <p className="text-xs text-text-muted">&copy; {year} Feedim. {t("allRightsReserved")}</p>
           </div>
         </div>
       </div>

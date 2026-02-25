@@ -21,6 +21,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
 import { formatCount } from "@/lib/utils";
 
+import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
@@ -48,6 +49,7 @@ function WritePageContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   const { user } = useUser();
+  const t = useTranslations("create");
   const maxWords = user?.premiumPlan === "max" ? VALIDATION.postContent.maxWordsMax : VALIDATION.postContent.maxWords;
   const editorRef = useRef<RichTextEditorHandle>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +152,7 @@ function WritePageContent() {
         setTags(postTags);
       }
     } catch {
-      feedimAlert("error", "Taslak yüklenemedi, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("draftLoadError"));
     } finally {
       setLoadingDraft(false);
     }
@@ -242,19 +244,19 @@ function WritePageContent() {
     const trimmed = tagSearch.trim().replace(/\s+/g, ' ');
     if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
     if (trimmed.length < VALIDATION.tagName.min) {
-      feedimAlert("error", `Etiket en az ${VALIDATION.tagName.min} karakter olmalı`);
+      feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
       return;
     }
     if (trimmed.length > VALIDATION.tagName.max) {
-      feedimAlert("error", `Etiket en fazla ${VALIDATION.tagName.max} karakter olabilir`);
+      feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max }));
       return;
     }
     if (!VALIDATION.tagName.pattern.test(trimmed)) {
-      feedimAlert("error", "Etiket adı geçersiz karakterler içeriyor");
+      feedimAlert("error", t("tagInvalidChars"));
       return;
     }
     if (/^\d+$/.test(trimmed)) {
-      feedimAlert("error", "Etiket sadece sayılardan oluşamaz");
+      feedimAlert("error", t("tagOnlyNumbers"));
       return;
     }
     setTagCreating(true);
@@ -269,10 +271,10 @@ function WritePageContent() {
       if (res.ok && data.tag) {
         addTag(data.tag);
       } else {
-        feedimAlert("error", data.error || "Etiket oluşturulamadı");
+        feedimAlert("error", data.error || t("tagCreateFailed"));
       }
     } catch {
-      feedimAlert("error", "Etiket oluşturulamadı, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("tagCreateFailedRetry"));
     } finally {
       setTagCreating(false);
     }
@@ -313,8 +315,8 @@ function WritePageContent() {
   const handleImageUpload = async (file: File): Promise<string> => {
     setImageUploading(true);
     try {
-      if (!file.type.startsWith("image/")) throw new Error("Geçersiz dosya");
-      if (file.size > 5 * 1024 * 1024) throw new Error("Dosya çok büyük (maks 5MB)");
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
 
       // Compress before storing (strip metadata, convert to JPEG, max 2MB)
       const { compressImage } = await import("@/lib/imageCompression");
@@ -323,7 +325,7 @@ function WritePageContent() {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Dosya okunamadı"));
+        reader.onerror = () => reject(new Error(t("fileReadError")));
         reader.readAsDataURL(compressed);
       });
 
@@ -345,7 +347,7 @@ function WritePageContent() {
       formData.append('fileName', uploadFile.name);
       const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
       const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || 'Görsel yüklenemedi');
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
 
       return uploadData.url;
     } finally {
@@ -357,8 +359,8 @@ function WritePageContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      if (!file.type.startsWith("image/")) throw new Error("Geçersiz dosya");
-      if (file.size > 5 * 1024 * 1024) throw new Error("Dosya çok büyük (maks 5MB)");
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
 
       setImageUploading(true);
       const { compressImage } = await import("@/lib/imageCompression");
@@ -367,7 +369,7 @@ function WritePageContent() {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Dosya okunamadı"));
+        reader.onerror = () => reject(new Error(t("fileReadError")));
         reader.readAsDataURL(compressed);
       });
 
@@ -380,7 +382,7 @@ function WritePageContent() {
       setImageUploading(false);
     } catch {
       setImageUploading(false);
-      feedimAlert("error", "Görsel yüklenemedi, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("imageUploadFailedRetry"));
     }
     e.target.value = "";
   };
@@ -398,7 +400,7 @@ function WritePageContent() {
     const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("image/"));
     if (!file) return;
     try {
-      if (file.size > 5 * 1024 * 1024) throw new Error("Dosya çok büyük");
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
 
       setImageUploading(true);
       const { compressImage } = await import("@/lib/imageCompression");
@@ -407,7 +409,7 @@ function WritePageContent() {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Dosya okunamadı"));
+        reader.onerror = () => reject(new Error(t("fileReadError")));
         reader.readAsDataURL(compressed);
       });
 
@@ -420,7 +422,7 @@ function WritePageContent() {
       setImageUploading(false);
     } catch {
       setImageUploading(false);
-      feedimAlert("error", "Görsel yüklenemedi, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("imageUploadFailedRetry"));
     }
   };
 
@@ -436,22 +438,22 @@ function WritePageContent() {
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle) {
-      feedimAlert("error", "Başlık gerekli");
+      feedimAlert("error", t("titleRequired"));
       return;
     }
 
     // Title validation (WordPress birebir)
     if (trimmedTitle.length < 3) {
-      feedimAlert("error", "Başlık en az 3 karakter olmalı");
+      feedimAlert("error", t("titleMinLength"));
       return;
     }
     if (/<[^>]+>/.test(trimmedTitle)) {
-      feedimAlert("error", "Başlıkta HTML etiketi kullanılamaz");
+      feedimAlert("error", t("titleNoHtml"));
       return;
     }
     // Domain detection
     if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedTitle)) {
-      feedimAlert("error", "Başlık bir URL olamaz");
+      feedimAlert("error", t("titleNoUrl"));
       return;
     }
 
@@ -459,7 +461,14 @@ function WritePageContent() {
     if (status === "published") {
       const cleanedContent = editorRef.current?.cleanContentForSave() || content;
       const { validatePostContent } = await import("@/components/RichTextEditor");
-      const validation = validatePostContent(cleanedContent, maxWords);
+      const validation = validatePostContent(cleanedContent, maxWords, {
+        contentRequired: t("contentRequired"),
+        minChars: t("postMinChars"),
+        maxWords: t("postMaxWords", { max: maxWords.toLocaleString() }),
+        maxListItems: t("postMaxListItems"),
+        repetitiveContent: t("repetitiveContent"),
+        onlyNumbers: t("postOnlyNumbers"),
+      });
       if (!validation.ok) {
         feedimAlert("error", validation.error!);
         return;
@@ -511,10 +520,10 @@ function WritePageContent() {
           router.push("/");
         }
       } else {
-        feedimAlert("error", data.error || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", data.error || t("genericErrorRetry"));
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("genericErrorRetry"));
     } finally {
       setSavingAs(null);
     }
@@ -526,7 +535,7 @@ function WritePageContent() {
     // Temizlenmiş içerik kontrolü — boş HTML'leri yakala
     const cleaned = editorRef.current?.cleanContentForSave() || "";
     if (!cleaned.trim()) {
-      feedimAlert("error", "Gönderi içeriği gerekli");
+      feedimAlert("error", t("contentRequired"));
       return;
     }
     if (!featuredImage) {
@@ -553,20 +562,20 @@ function WritePageContent() {
 
   const headerRight = (
     <div className="flex items-center gap-2">
-      {autoSaving && <span className="text-xs text-text-muted">Kaydediliyor...</span>}
+      {autoSaving && <span className="text-xs text-text-muted">{t("autoSaving")}</span>}
       {step === 1 && (
         <>
           <button
             onClick={() => editorRef.current?.undo()}
             className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
-            title="Geri Al"
+            title={t("undo")}
           >
             <Undo2 className="h-[18px] w-[18px]" />
           </button>
           <button
             onClick={() => editorRef.current?.redo()}
             className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
-            title="İleri Al"
+            title={t("redo")}
           >
             <Redo2 className="h-[18px] w-[18px]" />
           </button>
@@ -578,7 +587,7 @@ function WritePageContent() {
           disabled={!canGoNextRaw}
           className="t-btn accept !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
         >
-          İleri
+          {t("nextStep")}
         </button>
       ) : (
         <>
@@ -587,15 +596,15 @@ function WritePageContent() {
             disabled={savingAs !== null || !title.trim()}
             className="t-btn cancel !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
           >
-            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
+            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
           </button>
           <button
             onClick={() => savePost("published")}
             disabled={savingAs !== null || !title.trim() || !content.trim()}
             className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
-            aria-label="Yayınla"
+            aria-label={t("publishBtn")}
           >
-            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Yayınla"}
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("publishBtn")}
           </button>
         </>
       )}
@@ -607,7 +616,7 @@ function WritePageContent() {
       hideMobileNav
       hideRightSidebar
       headerRightAction={headerRight}
-      headerTitle={step === 1 ? "Gönderi" : "Detaylar"}
+      headerTitle={step === 1 ? t("headerPost") : t("headerDetails")}
       headerOnBack={() => { if (step === 2) setStep(1); else router.back(); }}
     >
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
@@ -615,7 +624,7 @@ function WritePageContent() {
         {step === 1 && loadingDraft && (
           <div className="flex flex-col items-center justify-center flex-1 py-16">
             <span className="loader" style={{ width: 28, height: 28 }} />
-            <p className="text-sm text-text-muted mt-3">Gönderi yükleniyor...</p>
+            <p className="text-sm text-text-muted mt-3">{t("postLoading")}</p>
           </div>
         )}
         {step === 1 && !loadingDraft && (
@@ -636,13 +645,13 @@ function WritePageContent() {
                   el.setSelectionRange(len, len);
                 }}
                 maxLength={VALIDATION.postTitle.max}
-                placeholder="Başlık..."
+                placeholder={t("titlePlaceholder")}
                 className="title-input"
                 autoFocus
               />
               {imageUploading && (
                 <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
-                  <span className="loader" style={{ width: 14, height: 14 }} /> Görsel yükleniyor...
+                  <span className="loader" style={{ width: 14, height: 14 }} /> {t("imageUploading")}
                 </div>
               )}
             </div>
@@ -656,7 +665,7 @@ function WritePageContent() {
               onGifClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowGifPicker(true); }}
               onSave={() => savePost("draft")}
               onPublish={() => savePost("published")}
-              placeholder="Aklınızda ne var?"
+              placeholder={t("whatsOnYourMind")}
             />
           </div>
         )}
@@ -668,7 +677,7 @@ function WritePageContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tags */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Etiketler</label>
+                <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {tags.map(tag => (
@@ -688,7 +697,7 @@ function WritePageContent() {
                       value={tagSearch}
                       onChange={e => setTagSearch(e.target.value)}
                       onKeyDown={handleTagKeyDown}
-                      placeholder="Etiket ara veya yeni oluştur..."
+                      placeholder={t("tagSearchPlaceholder")}
                       className="input-modern w-full"
                     />
                     {/* Suggestions dropdown */}
@@ -704,7 +713,7 @@ function WritePageContent() {
                           >
                             <span className="text-text-muted">#</span>{s.name}
                             {s.post_count !== undefined && (
-                              <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} gönderi</span>
+                              <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} {t("postsCount")}</span>
                             )}
                           </button>
                         ))}
@@ -720,18 +729,18 @@ function WritePageContent() {
                         {tagCreating ? (
                           <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
                         ) : (
-                          <><Plus className="h-3.5 w-3.5" /> Oluştur</>
+                          <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
                         )}
                       </button>
                     )}
                   </div>
                 )}
-                <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} etiket</p>
+                <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
 
                 {/* Popular tags */}
                 {tags.length < VALIDATION.postTags.max && !tagSearch && popularTags.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs text-text-muted mb-2">Popüler etiketler</p>
+                    <p className="text-xs text-text-muted mb-2">{t("popularTags")}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {popularTags
                         .filter(pt => !tags.some(t => t.id === pt.id))
@@ -752,10 +761,10 @@ function WritePageContent() {
 
               {/* Cover Image with drag & drop */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Kapak Görseli</label>
+                <label className="block text-sm font-semibold mb-2">{t("coverImage")}</label>
                 {featuredImage ? (
                   <div className="relative rounded-xl overflow-hidden">
-                    <img src={featuredImage} alt="Kapak" className="w-full h-48 object-cover" />
+                    <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-cover" />
                     <button
                       onClick={() => setFeaturedImage("")}
                       className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
@@ -780,7 +789,7 @@ function WritePageContent() {
                       ) : (
                         <>
                           <Upload className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                          <p>Görsel yüklemek için tıklayın veya sürükleyin</p>
+                          <p>{t("coverUploadHint")}</p>
                         </>
                       )}
                     </div>
@@ -793,23 +802,23 @@ function WritePageContent() {
                     />
                   </label>
                 )}
-              <p className="text-[0.68rem] text-text-muted/70 mt-1.5">Önerilen: 1280×720px (16:9), maks 5MB</p>
-              <p className="text-[0.68rem] text-text-muted/70 mt-0.5 italic">Görseller telif hakkına tabi olabilir.</p>
+              <p className="text-[0.68rem] text-text-muted/70 mt-1.5">{t("coverRecommended")}</p>
+              <p className="text-[0.68rem] text-text-muted/70 mt-0.5 italic">{t("coverCopyrightNote")}</p>
               </div>
             </div>
 
             {/* Visibility */}
             <div>
-              <label className="block text-sm font-semibold mb-2">Kimler görebilir</label>
+              <label className="block text-sm font-semibold mb-2">{t("visibilityLabel")}</label>
               <div className="relative">
                 <select
                   value={visibility}
                   onChange={e => setVisibility(e.target.value)}
                   className="input-modern w-full appearance-none pr-10 cursor-pointer"
                 >
-                  <option value="public">Herkese Açık — Herkes görebilir</option>
-                  <option value="followers">Takipçiler — Sadece takipçileriniz görebilir</option>
-                  <option value="only_me">Sadece Ben — Yalnızca siz görebilirsiniz</option>
+                  <option value="public">{t("visibilityPublic")}</option>
+                  <option value="followers">{t("visibilityFollowers")}</option>
+                  <option value="only_me">{t("visibilityOnlyMe")}</option>
                 </select>
                 <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
               </div>
@@ -817,15 +826,15 @@ function WritePageContent() {
 
             {/* Settings */}
             <div>
-              <label className="block text-sm font-semibold mb-3">Ayarlar</label>
+              <label className="block text-sm font-semibold mb-3">{t("settingsLabel")}</label>
               <div className="space-y-1">
                 <button
                   onClick={() => setAllowComments(!allowComments)}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
-                    <p className="text-sm font-medium">Yorumlara izin ver</p>
-                    <p className="text-xs text-text-muted mt-0.5">Okuyucular yorum yapabilir</p>
+                    <p className="text-sm font-medium">{t("allowComments")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDesc")}</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
@@ -836,8 +845,8 @@ function WritePageContent() {
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
-                    <p className="text-sm font-medium">Çocuklara özel</p>
-                    <p className="text-xs text-text-muted mt-0.5">Bu içerik çocuklara yönelik</p>
+                    <p className="text-sm font-medium">{t("forKids")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
@@ -855,8 +864,8 @@ function WritePageContent() {
                 >
                   <div className="flex items-start gap-2">
                     <div>
-                      <p className="text-sm font-medium">Telif hakkı koruması</p>
-                      <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? "Telif hakkı koruması etkin içeriklerde kapatılamaz." : !user?.copyrightEligible ? "Düzenli özgün içerik üretiminde sistem tarafından otomatik olarak etkinleşir." : "Açıldığında içeriğiniz telif hakkıyla korunur."}</p>
+                      <p className="text-sm font-medium">{t("copyrightProtection")}</p>
+                      <p className="text-xs text-text-muted mt-0.5">{isEditMode && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}</p>
                     </div>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
@@ -864,7 +873,7 @@ function WritePageContent() {
                   </div>
                 </button>
                 {!user?.copyrightEligible && (
-                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">Otomatik etkinleştirme hakkında daha fazla bilgi &rarr;</a>
+                  <a href="/help/copyright" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
               </div>

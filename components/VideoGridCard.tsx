@@ -2,7 +2,7 @@ import Link from "next/link";
 import NoImage from "@/components/NoImage";
 import BlurImage from "@/components/BlurImage";
 import WatchProgressBar from "@/components/WatchProgressBar";
-import { formatRelativeDate, formatCount } from "@/lib/utils";
+import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 export interface VideoGridItem {
@@ -15,6 +15,7 @@ export interface VideoGridItem {
   video_duration?: number;
   view_count?: number;
   published_at?: string;
+  content_type?: string;
   profiles?: {
     user_id?: string;
     username: string;
@@ -35,7 +36,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
   const author = video.profiles;
 
   return (
-    <Link href={`/${video.slug}`} className="group block">
+    <Link href={getPostUrl(video.slug, video.content_type)} className="group block">
       <div className="relative aspect-video min-h-[120px] rounded-xl overflow-hidden bg-bg-tertiary mb-3">
         {(video.video_thumbnail || video.featured_image) ? (
           <BlurImage

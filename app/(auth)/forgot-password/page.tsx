@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
 
 type Step = "email" | "code";
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations("auth");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -39,7 +41,7 @@ export default function ForgotPasswordPage() {
       if (elapsed < 3000) await new Promise((r) => setTimeout(r, 3000 - elapsed));
 
       if (error) {
-        feedimAlert("error", "Kod gönderilemedi, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", t("mfaCodeSendFailed"));
         if (process.env.NODE_ENV === "development") console.log("OTP error:", error.message);
         return;
       }
@@ -49,7 +51,7 @@ export default function ForgotPasswordPage() {
     } catch {
       const elapsed = Date.now() - start;
       if (elapsed < 3000) await new Promise((r) => setTimeout(r, 3000 - elapsed));
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("forgotGenericError"));
     } finally {
       setLoading(false);
     }
@@ -69,7 +71,7 @@ export default function ForgotPasswordPage() {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length < 6) {
-      feedimAlert("error", "Doğrulama kodunu girin");
+      feedimAlert("error", t("mfaEnterCode"));
       return;
     }
 
@@ -82,14 +84,14 @@ export default function ForgotPasswordPage() {
       });
 
       if (error) {
-        feedimAlert("error", "Kod geçersiz veya süresi dolmuş");
+        feedimAlert("error", t("mfaCodeInvalidOrExpired"));
         if (process.env.NODE_ENV === "development") console.log("Verify error:", error.message);
         return;
       }
 
       router.push("/reset-password");
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("forgotGenericError"));
     } finally {
       setLoading(false);
     }
@@ -97,16 +99,16 @@ export default function ForgotPasswordPage() {
 
   const subtitle =
     step === "email"
-      ? "E-postanızı girin, doğrulama kodu göndereceğiz."
-      : `${email} adresine gönderilen 8 haneli kodu girin.`;
+      ? t("forgotSubtitle")
+      : t("mfaEmailHint", { email });
 
   return (
-    <AuthLayout title="Şifre Sıfırlama" subtitle={subtitle}>
+    <AuthLayout title={t("forgotTitle")} subtitle={subtitle}>
       {step === "email" ? (
         <form onSubmit={handleSendCode} className="space-y-4">
           <input
             type="email"
-            placeholder="E-posta"
+            placeholder={t("email")}
             value={email}
             onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))}
             required
@@ -117,16 +119,16 @@ export default function ForgotPasswordPage() {
             type="submit"
             className="t-btn accept w-full relative"
             disabled={loading}
-            aria-label="Doğrulama Kodu Gönder"
+            aria-label={t("forgotSendCode")}
           >
-            {loading ? <span className="loader" /> : "Kod Gönder"}
+            {loading ? <span className="loader" /> : t("forgotSendCode")}
           </button>
           <div className="text-center">
             <Link
               href="/login"
               className="text-sm text-text-muted hover:text-text-primary transition font-semibold"
             >
-              Giriş sayfasına dön
+              {t("backToLogin")}
             </Link>
           </div>
         </form>
@@ -153,9 +155,9 @@ export default function ForgotPasswordPage() {
             type="submit"
             className="t-btn accept w-full relative"
             disabled={loading || code.length < 6}
-            aria-label="Kodu Doğrula"
+            aria-label={t("mfaVerify")}
           >
-            {loading ? <span className="loader" /> : "Doğrula"}
+            {loading ? <span className="loader" /> : t("mfaVerify")}
           </button>
 
           <div className="text-center">
@@ -166,8 +168,8 @@ export default function ForgotPasswordPage() {
               className="text-sm text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cooldown > 0
-                ? `Tekrar gönder (${cooldown}s)`
-                : "Kodu Tekrar Gönder"}
+                ? t("mfaResendCountdown", { seconds: cooldown })
+                : t("mfaResend")}
             </button>
           </div>
 
@@ -180,21 +182,21 @@ export default function ForgotPasswordPage() {
               }}
               className="text-text-muted hover:text-text-primary transition font-semibold"
             >
-              Farklı e-posta
+              {t("forgotDifferentEmail")}
             </button>
             <span className="text-border-main">|</span>
             <Link
               href="/login"
               className="text-text-muted hover:text-text-primary transition font-semibold"
             >
-              Giriş sayfasına dön
+              {t("backToLogin")}
             </Link>
           </div>
 
           <p className="text-center text-text-muted text-xs mt-2">
-            E-postanızı kontrol edin. Kod 60 saniye geçerlidir.
+            {t("mfaEmailExpiry")}
             <br />
-            Spam/gereksiz klasörünü de kontrol etmeyi unutmayın.
+            {t("mfaCheckSpam")}
           </p>
         </form>
       )}

@@ -8,13 +8,14 @@ import NoImage from "@/components/NoImage";
 import BlurImage from "@/components/BlurImage";
 import VideoPlayer from "@/components/VideoPlayer";
 import WatchProgressBar from "@/components/WatchProgressBar";
-import { formatRelativeDate, formatCount } from "@/lib/utils";
+import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import ModerationBadge from "@/components/ModerationBadge";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import PostInteractionBar from "@/components/PostInteractionBar";
 import { useUser } from "@/components/UserContext";
 import { useAuthModal } from "@/components/AuthModal";
+import { useTranslations, useLocale } from "next-intl";
 
 // Global: follow status cache per username
 const followCache = new Map<string, boolean | "loading">();
@@ -31,6 +32,8 @@ const NOTE_TRUNCATE_LENGTH = 280;
 const NOTE_TRUNCATE_LINES = 5;
 
 function NoteContent({ text, viewCount }: { text: string; viewCount?: number }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const [expanded, setExpanded] = useState(false);
   const isLong = (text?.length || 0) > NOTE_TRUNCATE_LENGTH || (text?.split("\n").length || 0) > NOTE_TRUNCATE_LINES;
   return (
@@ -43,11 +46,11 @@ function NoteContent({ text, viewCount }: { text: string; viewCount?: number }) 
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(true); }}
           className="text-[0.78rem] text-text-muted hover:text-text-primary transition font-medium relative z-[1] pointer-events-auto"
         >
-          devamını oku...
+          {t('common.readMore')}
         </button>
       )}
       {(viewCount ?? 0) > 0 && (
-        <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(viewCount!)} görüntülenme</span>
+        <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(viewCount!, locale)} {t('common.views')}</span>
       )}
     </>
   );
@@ -91,6 +94,8 @@ interface PostCardProps {
 }
 
 export default memo(function PostCard({ post, initialLiked, initialSaved, onDelete }: PostCardProps) {
+  const t = useTranslations();
+  const locale = useLocale();
   const author = post.profiles;
   const hasThumbnail = !!(post.video_thumbnail || post.featured_image);
   const isMoment = post.content_type === "moment";
@@ -98,7 +103,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   const isNote = post.content_type === "note";
   const canPreview = isVideo && !!post.video_url;
   const router = useRouter();
-  const postHref = isMoment ? `/moments?s=${post.slug}` : `/${post.slug}`;
+  const postHref = getPostUrl(post.slug, post.content_type);
   const { user: ctxUser } = useUser();
   const { requireAuth } = useAuthModal();
 
@@ -218,7 +223,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
 
   return (
     <div>
-    <article className="pt-[4px] pb-[9px] pl-3 pr-3.5 mx-[3px] sm:mx-[12px] hover:bg-bg-secondary rounded-[24px] transition-colors overflow-hidden">
+    <article className="pt-[4px] pb-[9px] pl-3 pr-3.5 mx-[10px] hover:bg-bg-secondary rounded-[24px] transition-colors overflow-hidden">
       <div className="flex gap-2 items-stretch">
         {/* Avatar — fixed left column with timeline line */}
         <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
@@ -238,30 +243,33 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           {/* Name row */}
           <div className="flex items-center justify-between relative z-[1] pointer-events-none mb-0.5">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-[0.84rem] font-semibold truncate">@{author?.username || "Anonim"}</span>
+              <span className="text-[0.84rem] font-semibold truncate">@{author?.username || t('common.anonymous')}</span>
               {author?.is_verified && <VerifiedBadge variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
+              {!isSelf && isFollowing !== undefined && isFollowing !== ("loading" as any) && !isFollowing && (
+                <>
+                  <span className="text-text-muted/40 text-xs">·</span>
+                  <button
+                    onClick={handleFollow}
+                    className="text-[0.75rem] font-semibold text-accent-main hover:text-accent-main/80 transition pointer-events-auto shrink-0"
+                  >
+                    {t('common.follow')}
+                  </button>
+                </>
+              )}
               {post.published_at && (
                 <>
                   <span className="text-text-muted/40 text-xs">·</span>
-                  <span className="text-[0.62rem] text-text-muted shrink-0">{formatRelativeDate(post.published_at)}</span>
+                  <span className="text-[0.62rem] text-text-muted shrink-0">{formatRelativeDate(post.published_at, locale)}</span>
                 </>
               )}
               <span className="text-text-muted/40 text-xs">·</span>
-              <span className="text-[0.62rem] text-text-muted shrink-0">{post.content_type === "moment" ? "Moment" : post.content_type === "video" ? "Video" : post.content_type === "note" ? "Not" : "Gönderi"}</span>
+              <span className="text-[0.62rem] text-text-muted shrink-0">{post.content_type === "moment" ? t('contentTypes.moment') : post.content_type === "video" ? t('contentTypes.video') : post.content_type === "note" ? t('contentTypes.note') : t('contentTypes.post')}</span>
             </div>
-            <div className="pointer-events-auto shrink-0 flex items-center gap-1 -mr-2">
-              {!isSelf && isFollowing !== undefined && isFollowing !== ("loading" as any) && !isFollowing && (
-                <button
-                  onClick={handleFollow}
-                  className="text-[0.75rem] font-semibold text-accent-main hover:text-accent-main/80 transition"
-                >
-                  Takip Et
-                </button>
-              )}
+            <div className="pointer-events-auto shrink-0 flex items-center -mr-2">
               <div className="[&_button]:!w-7 [&_button]:!h-7 [&_svg]:!h-4 [&_svg]:!w-4">
                 <PostHeaderActions
                   postId={post.id}
-                  postUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/${post.slug}`}
+                  postUrl={`${typeof window !== "undefined" ? window.location.origin : ""}${getPostUrl(post.slug, post.content_type)}`}
                   postTitle={post.title}
                   authorUsername={author?.username}
                   authorUserId={author?.user_id}
@@ -329,12 +337,12 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                           {muted ? (
                             <>
                               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
-                              <span>Sesi Aç</span>
+                              <span>{t('post.unmute')}</span>
                             </>
                           ) : (
                             <>
                               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
-                              <span>Sesi Kapat</span>
+                              <span>{t('post.mute')}</span>
                             </>
                           )}
                         </button>
@@ -350,7 +358,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                             }}
                             className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-full hover:bg-white/90 transition-colors relative z-[4] pointer-events-auto"
                           >
-                            İzlemeye Devam Et
+                            {t('post.continueWatching')}
                           </button>
                         </div>
                       )}
@@ -372,13 +380,13 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                       className="absolute bottom-2.5 right-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto hover:bg-black/80 transition"
                     >
                       <svg className="h-3.5 w-3.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      <span>İzle</span>
+                      <span>{t('post.watch')}</span>
                     </button>
                   )}
                   {/* Duration badge */}
                   {isVideo && !inView && (
                     <div className="absolute top-2 right-2 bg-black/70 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
-                      {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : (post.content_type === "moment" ? "Moment" : "Video")}
+                      {post.video_duration ? `${Math.floor(post.video_duration / 60)}:${(post.video_duration % 60).toString().padStart(2, "0")}` : (post.content_type === "moment" ? t('contentTypes.moment') : t('contentTypes.video'))}
                     </div>
                   )}
                   {/* Watch progress bar */}
@@ -390,42 +398,43 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
 
           {/* View count (non-note posts) */}
           {!isNote && (post.view_count ?? 0) > 0 && (
-            <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!)} görüntülenme</span>
+            <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
           )}
 
           {/* NSFW moderation badge */}
           {post.is_nsfw && (
-            <ModerationBadge label="Gönderi incelemede..." className="mt-2" />
+            <ModerationBadge label={t('post.underReview')} className="mt-2" />
           )}
 
           {/* Copyright badge */}
           {!post.is_nsfw && (post.moderation_category === 'copyright' || post.moderation_category === 'kopya_icerik') && (
             <div className="flex items-center gap-1 text-warning text-xs mt-1">
               <Copyright size={12} />
-              <span>{post.moderation_category === 'kopya_icerik' ? 'Kopya içerik bildirimi' : 'Telif hakkı bildirimi'}</span>
+              <span>{post.moderation_category === 'kopya_icerik' ? t('post.duplicateContent') : t('post.copyrightNotice')}</span>
             </div>
           )}
+
+          {/* Actions — inside content column, below view count */}
+          <div className="mt-1.5">
+            <PostInteractionBar
+              postId={post.id}
+              postUrl={postHref}
+              postTitle={post.title}
+              postSlug={post.slug}
+              likeCount={post.like_count || 0}
+              commentCount={post.comment_count || 0}
+              saveCount={post.save_count || 0}
+              initialLiked={initialLiked ?? false}
+              initialSaved={initialSaved ?? false}
+              isVideo={isVideo}
+              contentType={post.content_type}
+              compact={isVideo || isNote ? "full" : "no-like"}
+            />
+          </div>
         </div>
       </div>
 
     </article>
-    {/* Actions — outside article */}
-    <div className="px-3 mx-[3px] sm:mx-[12px] mt-1.5">
-      <PostInteractionBar
-        postId={post.id}
-        postUrl={postHref}
-        postTitle={post.title}
-        postSlug={post.slug}
-        likeCount={post.like_count || 0}
-        commentCount={post.comment_count || 0}
-        saveCount={post.save_count || 0}
-        initialLiked={initialLiked ?? false}
-        initialSaved={initialSaved ?? false}
-        isVideo={isVideo}
-        contentType={post.content_type}
-        compact={isVideo || isNote ? "full" : "no-like"}
-      />
-    </div>
     </div>
   );
 });

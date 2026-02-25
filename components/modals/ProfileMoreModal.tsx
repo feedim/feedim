@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Link as LinkIcon, Ban, Flag, Check, Shield, ShieldOff, Snowflake, Sun, Trash2, AlertTriangle, Eye, ImageOff, MessageCircleOff, HeartOff, UserX } from "lucide-react";
 import ShareIcon from "@/components/ShareIcon";
 import VerifiedBadge from "@/components/VerifiedBadge";
@@ -33,6 +34,7 @@ export default function ProfileMoreModal({
   onVisitors,
   isOwn,
 }: ProfileMoreModalProps) {
+  const t = useTranslations("modals");
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -98,20 +100,20 @@ export default function ProfileMoreModal({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        feedimAlert("success", data.message || "İşlem başarılı");
+        feedimAlert("success", data.message || t("operationSuccess"));
         onClose();
       } else {
-        feedimAlert("error", data.error || "Hata oluştu");
+        feedimAlert("error", data.error || t("operationError"));
       }
     } catch {
-      feedimAlert("error", "Sunucu hatası");
+      feedimAlert("error", t("serverError"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const confirmAction = (action: string, label: string) => {
-    feedimAlert("question", `${username} için "${label}" işlemini onaylıyor musunuz?`, {
+    feedimAlert("question", t("confirmOperation", { label }), {
       showYesNo: true,
       onYes: () => doModAction(action, label),
     });
@@ -123,22 +125,22 @@ export default function ProfileMoreModal({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size="sm" title="Daha Fazla" infoText="Profil bağlantısını kopyalayabilir, paylaşabilir veya uygunsuz hesapları şikayet edebilirsin.">
+      <Modal open={open} onClose={onClose} size="sm" title={t("profileMoreTitle")} infoText={t("profileMoreInfoText")}>
         <div className="py-2 px-2.5">
           <button onClick={handleCopyUrl} className={btnClass}>
             {copied ? <Check className={`${iconClass} text-text-primary`} /> : <LinkIcon className={`${iconClass} text-text-muted`} />}
-            <span className={labelClass}>{copied ? "Kopyalandı!" : "Profil URL'sini kopyala"}</span>
+            <span className={labelClass}>{copied ? t("copied") : t("copyProfileUrl")}</span>
           </button>
 
           <button onClick={handleShare} className={btnClass}>
             <ShareIcon className={`${iconClass} text-text-muted`} />
-            <span className={labelClass}>Profili paylaş</span>
+            <span className={labelClass}>{t("shareProfile")}</span>
           </button>
 
           {isOwn && currentUser?.premiumPlan === "max" && (
             <button onClick={handleVisitors} className={btnClass}>
               <Eye className={`${iconClass} text-text-muted`} />
-              <span className={labelClass}>Profil ziyaretçileri</span>
+              <span className={labelClass}>{t("profileVisitorsLink")}</span>
             </button>
           )}
 
@@ -148,13 +150,13 @@ export default function ProfileMoreModal({
               <button onClick={handleBlock} className={btnClass}>
                 <Ban className={`${iconClass} ${isBlocked ? "text-text-muted" : "text-error"}`} />
                 <span className={`${labelClass} ${isBlocked ? "" : "text-error"}`}>
-                  {isBlocked ? "Engeli kaldır" : "Engelle"}
+                  {isBlocked ? t("unblock") : t("block")}
                 </span>
               </button>
 
               <button onClick={handleReport} className={btnClass}>
                 <Flag className={`${iconClass} text-error`} />
-                <span className={`${labelClass} text-error`}>Şikayet et</span>
+                <span className={`${labelClass} text-error`}>{t("reportProfile")}</span>
               </button>
             </>
           )}
@@ -167,40 +169,40 @@ export default function ProfileMoreModal({
                 {isAdmin ? "Admin" : "Moderator"}
               </p>
 
-              <button onClick={() => confirmAction("warn_user", "Uyar")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("warn_user", t("warnUser"))} disabled={actionLoading} className={btnClass}>
                 <Shield className={`${iconClass} text-warning`} />
-                <span className={labelClass}>Uyar (+20 spam puan)</span>
+                <span className={labelClass}>{t("warnUser")}</span>
               </button>
 
-              <button onClick={() => confirmAction("ban_user", "Hesabı kapat")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("ban_user", t("closeAccount"))} disabled={actionLoading} className={btnClass}>
                 <ShieldOff className={`${iconClass} text-error`} />
-                <span className={`${labelClass} text-error`}>Hesabı kapat</span>
+                <span className={`${labelClass} text-error`}>{t("closeAccount")}</span>
               </button>
 
-              <button onClick={() => confirmAction("unban_user", "Hesabı aç")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("unban_user", t("openAccount"))} disabled={actionLoading} className={btnClass}>
                 <ShieldOff className={`${iconClass} text-text-muted`} />
-                <span className={labelClass}>Hesabı aç</span>
+                <span className={labelClass}>{t("openAccount")}</span>
               </button>
 
-              <button onClick={() => doModAction("freeze_user", "Hesap donduruldu")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => doModAction("freeze_user", t("freezeAccount"))} disabled={actionLoading} className={btnClass}>
                 <Snowflake className={`${iconClass} text-info`} />
-                <span className={labelClass}>Hesabı dondur</span>
+                <span className={labelClass}>{t("freezeAccount")}</span>
               </button>
 
-              <button onClick={() => doModAction("unfreeze_user", "Dondurma kaldırıldı")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => doModAction("unfreeze_user", t("unfreezeAccount"))} disabled={actionLoading} className={btnClass}>
                 <Sun className={`${iconClass} text-warning`} />
-                <span className={labelClass}>Dondurmayı kaldır</span>
+                <span className={labelClass}>{t("unfreezeAccount")}</span>
               </button>
 
 
-              <button onClick={() => confirmAction("moderation_user", "Hesap incelemesi")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("moderation_user", t("moderateAccount"))} disabled={actionLoading} className={btnClass}>
                 <AlertTriangle className={`${iconClass} text-warning`} />
-                <span className={labelClass}>Moderasyona al</span>
+                <span className={labelClass}>{t("moderateAccount")}</span>
               </button>
 
-              <button onClick={() => doModAction("activate_user", "Moderasyon kaldırıldı")} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => doModAction("activate_user", t("removeModerationLabel"))} disabled={actionLoading} className={btnClass}>
                 <Check className={`${iconClass} text-success`} />
-                <span className={labelClass}>Moderasyonu kaldır</span>
+                <span className={labelClass}>{t("removeModerationLabel")}</span>
               </button>
 
               {isAdmin && (
@@ -209,7 +211,7 @@ export default function ProfileMoreModal({
                     <button
                       key={plan}
                       onClick={() => {
-                        feedimAlert("question", `${username} için "${plan.charAt(0).toUpperCase() + plan.slice(1)}" planı (30 gün) hediye edilsin mi?`, {
+                        feedimAlert("question", t("grantPremiumConfirm", { username, plan: plan.charAt(0).toUpperCase() + plan.slice(1) }), {
                           showYesNo: true,
                           onYes: async () => {
                             setActionLoading(true);
@@ -221,12 +223,12 @@ export default function ProfileMoreModal({
                               });
                               const data = await res.json();
                               if (res.ok && data.success) {
-                                feedimAlert("success", `${plan.charAt(0).toUpperCase() + plan.slice(1)} planı hediye edildi`);
+                                feedimAlert("success", t("premiumGranted", { plan: plan.charAt(0).toUpperCase() + plan.slice(1) }));
                                 onClose();
                               } else {
-                                feedimAlert("error", data.error || "Hata oluştu");
+                                feedimAlert("error", data.error || t("operationError"));
                               }
-                            } catch { feedimAlert("error", "Sunucu hatası"); } finally { setActionLoading(false); }
+                            } catch { feedimAlert("error", t("serverError")); } finally { setActionLoading(false); }
                           },
                         });
                       }}
@@ -234,46 +236,46 @@ export default function ProfileMoreModal({
                       className={btnClass}
                     >
                       <VerifiedBadge size="md" variant={plan === "max" || plan === "business" ? "max" : "default"} />
-                      <span className={labelClass}>{plan.charAt(0).toUpperCase() + plan.slice(1)} ver (30 gün)</span>
+                      <span className={labelClass}>{t("grantPremium", { plan: plan.charAt(0).toUpperCase() + plan.slice(1) })}</span>
                     </button>
                   ))}
 
-                  <button onClick={() => confirmAction("revoke_premium", "Premium kaldır")} disabled={actionLoading} className={btnClass}>
+                  <button onClick={() => confirmAction("revoke_premium", t("revokePremium"))} disabled={actionLoading} className={btnClass}>
                     <VerifiedBadge size="md" className="opacity-40" />
-                    <span className={labelClass}>Premium kaldır</span>
+                    <span className={labelClass}>{t("revokePremium")}</span>
                   </button>
 
                   <div className="border-t border-border-primary mx-4 my-1" />
 
-                  <button onClick={() => confirmAction("remove_avatar", "Avatarı kaldır")} disabled={actionLoading} className={btnClass}>
+                  <button onClick={() => confirmAction("remove_avatar", t("removeAvatarAdmin"))} disabled={actionLoading} className={btnClass}>
                     <ImageOff className={`${iconClass} text-warning`} />
-                    <span className={labelClass}>Avatarı kaldır</span>
+                    <span className={labelClass}>{t("removeAvatarAdmin")}</span>
                   </button>
 
-                  <button onClick={() => confirmAction("restrict_follow", "Takip engeli")} disabled={actionLoading} className={btnClass}>
+                  <button onClick={() => confirmAction("restrict_follow", t("restrictFollow"))} disabled={actionLoading} className={btnClass}>
                     <UserX className={`${iconClass} text-warning`} />
-                    <span className={labelClass}>Takip engeli at/kaldır</span>
+                    <span className={labelClass}>{t("restrictFollow")}</span>
                   </button>
 
-                  <button onClick={() => confirmAction("restrict_like", "Beğeni engeli")} disabled={actionLoading} className={btnClass}>
+                  <button onClick={() => confirmAction("restrict_like", t("restrictLike"))} disabled={actionLoading} className={btnClass}>
                     <HeartOff className={`${iconClass} text-warning`} />
-                    <span className={labelClass}>Beğeni engeli at/kaldır</span>
+                    <span className={labelClass}>{t("restrictLike")}</span>
                   </button>
 
-                  <button onClick={() => confirmAction("restrict_comment", "Yorum engeli")} disabled={actionLoading} className={btnClass}>
+                  <button onClick={() => confirmAction("restrict_comment", t("restrictComment"))} disabled={actionLoading} className={btnClass}>
                     <MessageCircleOff className={`${iconClass} text-warning`} />
-                    <span className={labelClass}>Yorum engeli at/kaldır</span>
+                    <span className={labelClass}>{t("restrictComment")}</span>
                   </button>
 
                   <div className="border-t border-border-primary mx-4 my-1" />
 
                   <button
-                    onClick={() => confirmAction("delete_user", "Hesabı sil")}
+                    onClick={() => confirmAction("delete_user", t("deleteAccount"))}
                     disabled={actionLoading}
                     className={btnClass}
                   >
                     <Trash2 className={`${iconClass} text-error`} />
-                    <span className={`${labelClass} text-error`}>Hesabı sil</span>
+                    <span className={`${labelClass} text-error`}>{t("deleteAccount")}</span>
                   </button>
                 </>
               )}

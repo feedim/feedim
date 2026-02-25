@@ -8,7 +8,7 @@ import PostHeaderActions from "@/components/PostHeaderActions";
 import RelatedPosts from "@/components/RelatedPosts";
 import Link from "next/link";
 
-import { formatRelativeDate, formatCount } from "@/lib/utils";
+import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
 import sanitizeHtml from "sanitize-html";
 import PostContentClient from "@/components/PostContentClient";
@@ -26,6 +26,7 @@ import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 import ModerationBadge from "@/components/ModerationBadge";
+import { getTranslations } from "next-intl/server";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -127,7 +128,7 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: authorVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
+      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
     .in("content_type", ["video", "moment"])
@@ -141,7 +142,7 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: otherVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id,
+      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
     .in("content_type", ["video", "moment"])
@@ -191,12 +192,13 @@ async function getUserInteractions(postId: number) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getCachedPost(slug);
-  if (!post) return { title: "Post bulunamadı" };
+  const tp = await getTranslations("post");
+  if (!post) return { title: tp("postNotFound") };
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
   const title = post.meta_title || post.title;
   const description = post.meta_description || post.excerpt || "";
-  const url = `${baseUrl}/${encodeURIComponent(post.slug)}`;
+  const url = `${baseUrl}${getPostUrl(encodeURIComponent(post.slug), post.content_type)}`;
   const authorName = post.profiles?.full_name || post.profiles?.username || "Feedim";
 
   const keywords = post.meta_keywords
@@ -243,6 +245,11 @@ export default async function PostPage({ params }: PageProps) {
   const { slug } = await params;
   const post = await getCachedPost(slug);
   if (!post) notFound();
+
+  // Redirect typed content to their canonical URLs
+  if (post.content_type === "video" || post.content_type === "note" || post.content_type === "moment") {
+    redirect(getPostUrl(post.slug, post.content_type));
+  }
 
   const currentUserId = await getAuthUserId();
 
@@ -327,8 +334,11 @@ export default async function PostPage({ params }: PageProps) {
     getCachedFeaturedContent(post.id, post.author_id),
   ]);
 
+  const t = await getTranslations("post");
+  const tCommon = await getTranslations("common");
+
   const author = post.profiles;
-  const authorName = author?.full_name || [author?.name, author?.surname].filter(Boolean).join(" ") || author?.username || "Anonim";
+  const authorName = author?.full_name || [author?.name, author?.surname].filter(Boolean).join(" ") || author?.username || tCommon("anonymous");
   const isOwnPost = currentUserId === author?.user_id;
   const tags = (post.post_tags || []).map((pt: { tags: { id: number; name: string; slug: string } }) => pt.tags).filter(Boolean);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
@@ -390,8 +400,8 @@ export default async function PostPage({ params }: PageProps) {
         {/* NSFW moderation banner */}
         {post.is_nsfw && isOwnPost && (
           <Link href={`/${post.slug}/moderation`} className="block mx-3 sm:mx-4 mb-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
-            <ModerationBadge label="Gönderiniz moderatörler tarafından inceleniyor" />
-            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">İnceleme tamamlanana kadar sadece siz görebilirsiniz. Detaylar &rarr;</p>
+            <ModerationBadge label={t("moderationBanner")} />
+            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">{t("moderationBannerDesc")} &rarr;</p>
           </Link>
         )}
         <PostHeaderActions
@@ -426,7 +436,7 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Stats row */}
           <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
-            <span>{formatCount(post.view_count || 0)} görüntülenme</span>
+            <span>{t("viewCount", { count: formatCount(post.view_count || 0) })}</span>
             {post.published_at && (
               <>
                 <span>{formatRelativeDate(post.published_at)}</span>
@@ -451,7 +461,7 @@ export default async function PostPage({ params }: PageProps) {
                 {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
               </div>
               {author?.follower_count !== undefined && (
-                <p className="text-[0.72rem] text-text-muted">{formatCount(author.follower_count)} takipçi</p>
+                <p className="text-[0.72rem] text-text-muted">{t("followers", { count: formatCount(author.follower_count) })}</p>
               )}
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
@@ -466,9 +476,9 @@ export default async function PostPage({ params }: PageProps) {
           {post.copyright_protected && (
             <div className="flex items-center gap-1 mt-2 mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-              <span className="text-xs text-text-muted">Telif hakkı koruması altında</span>
+              <span className="text-xs text-text-muted">{t("copyrightProtected")}</span>
               <span className="text-text-muted/40 mx-0.5">·</span>
-              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">Daha fazla bilgi</Link>
+              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">{t("moreInfo")}</Link>
             </div>
           )}
 
@@ -508,7 +518,7 @@ export default async function PostPage({ params }: PageProps) {
           {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
           {nextVideos.length > 0 && (
             <div className="xl:hidden mb-6 pt-3.5">
-              <h3 className="text-[1.1rem] font-bold mb-4">Sonraki videolar</h3>
+              <h3 className="text-[1.1rem] font-bold mb-4">{t("nextVideos")}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
                 {nextVideos.map(video => (
                   <VideoGridCard key={video.id} video={video} />
@@ -534,14 +544,14 @@ export default async function PostPage({ params }: PageProps) {
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
         />
-        <HeaderTitle title="Not" />
+        <HeaderTitle title={t("note")} />
         <PostViewTracker postId={post.id} />
 
         {/* NSFW moderation banner */}
         {post.is_nsfw && isOwnPost && (
           <Link href={`/${post.slug}/moderation`} className="block mx-4 sm:mx-5 mt-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
-            <ModerationBadge label="Gönderiniz moderatörler tarafından inceleniyor" />
-            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">İnceleme tamamlanana kadar sadece siz görebilirsiniz. Detaylar &rarr;</p>
+            <ModerationBadge label={t("moderationBanner")} />
+            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">{t("moderationBannerDesc")} &rarr;</p>
           </Link>
         )}
 
@@ -585,7 +595,7 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* View count — below content */}
           {(post.view_count || 0) > 0 && (
-            <p className="text-[0.75rem] text-text-muted mb-5">{formatCount(post.view_count || 0)} görüntülenme</p>
+            <p className="text-[0.75rem] text-text-muted mb-5">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}
 
           {/* Interaction bar + tags */}
@@ -640,14 +650,14 @@ export default async function PostPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
       />
       {post.featured_image && <AmbientLight imageSrc={post.featured_image} />}
-      <HeaderTitle title="Gönderi" />
+      <HeaderTitle title={t("post")} />
       <PostViewTracker postId={post.id} />
 
         {/* NSFW moderation banner */}
         {post.is_nsfw && isOwnPost && (
           <Link href={`/${post.slug}/moderation`} className="block mx-4 sm:mx-5 mt-3 bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-xl p-4 hover:bg-[var(--accent-color)]/10 transition">
-            <ModerationBadge label="Gönderiniz moderatörler tarafından inceleniyor" />
-            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">İnceleme tamamlanana kadar sadece siz görebilirsiniz. Detaylar &rarr;</p>
+            <ModerationBadge label={t("moderationBanner")} />
+            <p className="text-[var(--accent-color)]/70 text-xs mt-1.5">{t("moderationBannerDesc")} &rarr;</p>
           </Link>
         )}
 
@@ -730,7 +740,7 @@ export default async function PostPage({ params }: PageProps) {
               "[&_td]:px-3 [&_td]:py-2.5 [&_td]:border [&_td]:border-border-primary",
               // Code
               "[&_code]:text-[0.85em] [&_code]:bg-bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:font-mono",
-              "[&_pre]:my-5 [&_pre]:bg-bg-secondary [&_pre]:rounded-xl [&_pre]:px-5 [&_pre]:py-4 [&_pre]:overflow-x-auto [&_pre]:text-[0.85rem] [&_pre]:leading-[1.6]",
+              "[&_pre]:my-5 [&_pre]:bg-bg-secondary [&_pre]:rounded-[15px] [&_pre]:px-5 [&_pre]:py-4 [&_pre]:overflow-x-auto [&_pre]:text-[0.85rem] [&_pre]:leading-[1.6]",
               "[&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0",
               // HR
               "[&_hr]:my-6 [&_hr]:border-border-primary",
@@ -749,9 +759,9 @@ export default async function PostPage({ params }: PageProps) {
           {post.copyright_protected && (
             <div className="flex items-center gap-1 mt-2 mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-              <span className="text-xs text-text-muted">Telif hakkı koruması altında</span>
+              <span className="text-xs text-text-muted">{t("copyrightProtected")}</span>
               <span className="text-text-muted/40 mx-0.5">·</span>
-              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">Daha fazla bilgi</Link>
+              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">{t("moreInfo")}</Link>
             </div>
           )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Check, PenLine, Trash2, BarChart3, Shield, ShieldOff, Archive, Eye } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -27,6 +28,8 @@ interface PostMoreModalProps {
 }
 
 export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug, contentType, onDeleteSuccess }: PostMoreModalProps) {
+  const t = useTranslations("modals");
+  const tc = useTranslations("common");
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -81,12 +84,12 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   };
 
   const handleDelete = async () => {
-    feedimAlert("question", "Bu gönderiyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.", {
+    feedimAlert("question", t("deletePostConfirm"), {
       showYesNo: true,
       onYes: () => {
         // Optimistic: immediately close and show success
         onClose();
-        feedimAlert("success", "Gönderi silindi");
+        feedimAlert("success", t("postDeleted"));
         // Mark as deleted in sessionStorage so feed hides it immediately
         try {
           const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
@@ -121,21 +124,21 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        feedimAlert("success", data.message || "İşlem başarılı");
+        feedimAlert("success", data.message || t("operationSuccess"));
         onClose();
         router.refresh();
       } else {
-        feedimAlert("error", data.error || "Hata oluştu");
+        feedimAlert("error", data.error || t("operationError"));
       }
     } catch {
-      feedimAlert("error", "Sunucu hatası");
+      feedimAlert("error", t("serverError"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const confirmModAction = (action: string, label: string) => {
-    feedimAlert("question", `"${label}" işlemini onaylıyor musunuz?`, {
+    feedimAlert("question", t("confirmOperation", { label }), {
       showYesNo: true,
       onYes: () => doModAction(action, label),
     });
@@ -147,10 +150,10 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size="sm" title="Daha Fazla" infoText="Gönderi bağlantısını kopyalayabilir, paylaşabilir veya uygunsuz içerikleri şikayet edebilirsin.">
+      <Modal open={open} onClose={onClose} size="sm" title={t("postMore")} infoText={t("postMoreInfoText")}>
         <div className="py-2 px-2.5">
           <button onClick={handleCopyUrl} className={btnClass}>
-            <span className={labelClass}>{copied ? "Kopyalandı!" : "Bağlantıyı kopyala"}</span>
+            <span className={labelClass}>{copied ? t("copied") : t("copyLink")}</span>
             {copied ? (
               <Check className="h-5 w-5 text-text-primary" />
             ) : (
@@ -159,13 +162,13 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
           </button>
 
           <button onClick={handleShare} className={btnClass}>
-            <span className={labelClass}>Paylaş</span>
+            <span className={labelClass}>{t("share")}</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M16 7L12 3M12 3L8 7M12 3V15M21 11V17.8C21 18.92 21 19.48 20.782 19.907C20.59 20.284 20.284 20.59 19.908 20.782C19.48 21 18.92 21 17.8 21H6.2C5.08 21 4.52 21 4.092 20.782C3.716 20.59 3.41 20.284 3.218 19.908C3 19.48 3 18.92 3 17.8V11"/></svg>
           </button>
 
           {authorUsername && !isOwn && (
             <button onClick={handleVisitAuthor} className={btnClass}>
-              <span className={labelClass}>Profili ziyaret et</span>
+              <span className={labelClass}>{t("visitProfile")}</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 21V19C20 16.79 18.21 15 16 15H8C5.79 15 4 16.79 4 19V21"/><circle cx="12" cy="7" r="4"/></svg>
             </button>
           )}
@@ -177,15 +180,15 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
                 onClick={() => { onClose(); setTimeout(() => setStatsOpen(true), 250); }}
                 className={btnClass}
               >
-                <span className={labelClass}>İstatistikler</span>
+                <span className={labelClass}>{t("statistics")}</span>
                 <BarChart3 className={iconClass} />
               </button>
               <button onClick={handleEdit} className={btnClass}>
-                <span className={labelClass}>Düzenle</span>
+                <span className={labelClass}>{t("edit")}</span>
                 <PenLine className={iconClass} />
               </button>
               <button onClick={handleDelete} disabled={deleting} className={btnClass}>
-                <span className={`${labelClass} text-error`}>{deleting ? "Siliniyor..." : "Sil"}</span>
+                <span className={`${labelClass} text-error`}>{deleting ? t("deleting") : tc("delete")}</span>
                 <Trash2 className="h-5 w-5 text-error" />
               </button>
             </>
@@ -195,7 +198,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             <>
               <div className="border-t border-border-primary mx-4 my-1" />
               <button onClick={handleReport} className={btnClass}>
-                <span className={`${labelClass} text-error`}>Şikayet et</span>
+                <span className={`${labelClass} text-error`}>{t("reportComment")}</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-error"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
               </button>
             </>
@@ -209,18 +212,18 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
                 {isAdmin ? "Admin" : "Moderator"}
               </p>
 
-              <button onClick={() => confirmModAction("approve_post", "Onayla")} disabled={actionLoading} className={btnClass}>
-                <span className={labelClass}>Gönderiyi onayla</span>
+              <button onClick={() => confirmModAction("approve_post", t("approvePost"))} disabled={actionLoading} className={btnClass}>
+                <span className={labelClass}>{t("approvePost")}</span>
                 <Shield className="h-5 w-5 text-success" />
               </button>
 
-              <button onClick={() => confirmModAction("remove_post", "Kaldır")} disabled={actionLoading} className={btnClass}>
-                <span className={`${labelClass} text-error`}>Gönderiyi kaldır</span>
+              <button onClick={() => confirmModAction("remove_post", t("removePost"))} disabled={actionLoading} className={btnClass}>
+                <span className={`${labelClass} text-error`}>{t("removePost")}</span>
                 <ShieldOff className="h-5 w-5 text-error" />
               </button>
 
-              <button onClick={() => confirmModAction("archive_post", "Arşivle")} disabled={actionLoading} className={btnClass}>
-                <span className={labelClass}>Arşivle</span>
+              <button onClick={() => confirmModAction("archive_post", t("archive"))} disabled={actionLoading} className={btnClass}>
+                <span className={labelClass}>{t("archive")}</span>
                 <Archive className={iconClass} />
               </button>
 
@@ -228,7 +231,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
                 onClick={() => { onClose(); setTimeout(() => setStatsOpen(true), 250); }}
                 className={btnClass}
               >
-                <span className={labelClass}>İstatistikleri gör</span>
+                <span className={labelClass}>{t("viewStats")}</span>
                 <Eye className={iconClass} />
               </button>
             </>

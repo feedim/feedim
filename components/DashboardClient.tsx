@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
-import { Bookmark, PenLine, Search, Smile } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { PenLine, Search, Smile } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
@@ -56,6 +57,7 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialMoments }: DashboardClientProps) {
+  const t = useTranslations("dashboard");
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [activeTab, setActiveTab] = useState("for-you");
@@ -161,44 +163,6 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
         endpoint = "/api/posts/explore?page=" + pageNum;
       } else if (tab === "followed") {
         endpoint = "/api/posts/feed?page=" + pageNum;
-      } else if (tab === "bookmarks") {
-        // Load bookmarks via Supabase client
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const from = (pageNum - 1) * 12;
-          const { data: bookmarks } = await supabase
-            .from("bookmarks")
-            .select("post_id")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .range(from, from + 12);
-
-          if (bookmarks && bookmarks.length > 0) {
-            const { data: bookmarkedPosts } = await supabase
-              .from("posts")
-              .select(`
-                id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash,
-                profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan)
-              `)
-              .in("id", bookmarks.map(b => b.post_id))
-              .eq("status", "published");
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const mapped = (bookmarkedPosts || []).map((p: any) => ({
-              ...p,
-              profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
-            }));
-            const filtered = filterBlockedWords(mapped);
-            setPosts(pageNum === 1 ? filtered : prev => [...prev, ...filtered]);
-            setHasMore((bookmarks?.length || 0) > 12);
-          } else {
-            if (pageNum === 1) setPosts([]);
-            setHasMore(false);
-          }
-          setPage(pageNum);
-          setLoading(false);
-          return;
-        }
       }
 
       // Handle tag tabs
@@ -207,17 +171,15 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
         endpoint = `/api/posts/explore?page=${pageNum}&tag=${encodeURIComponent(tagSlug)}`;
       }
 
-      if (tab !== "bookmarks") {
-        const data = await fetchWithCache(endpoint, { ttlSeconds: 30, forceRefresh: true }) as any;
-        const filtered = filterBlockedWords(data.posts || []);
-        if (pageNum === 1) {
-          setPosts(filtered);
-        } else {
-          setPosts(prev => [...prev, ...filtered]);
-        }
-        setHasMore(data.hasMore || false);
-        setPage(pageNum);
+      const data = await fetchWithCache(endpoint, { ttlSeconds: 30, forceRefresh: true }) as any;
+      const filtered = filterBlockedWords(data.posts || []);
+      if (pageNum === 1) {
+        setPosts(filtered);
+      } else {
+        setPosts(prev => [...prev, ...filtered]);
       }
+      setHasMore(data.hasMore || false);
+      setPage(pageNum);
     } catch {
       // Silent
     } finally {
@@ -263,7 +225,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
               <PenLine className="h-4 w-4" />
             </div>
           )}
-          <span className="flex-1 text-left text-[0.95rem] text-text-muted">Aklınızda ne var?</span>
+          <span className="flex-1 text-left text-[0.95rem] text-text-muted">{t("whatsOnYourMind")}</span>
           <div className="flex items-center gap-[2px] shrink-0">
             <span className="flex items-center justify-center h-[32px] w-[32px] rounded-full text-text-muted">
               <Smile className="h-[18px] w-[18px]" />
@@ -294,24 +256,22 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
         </>
       ) : (
         <EmptyState
-          icon={activeTab === "bookmarks" ? <Bookmark className="h-12 w-12" /> : <Search className="h-12 w-12" />}
+          icon={<Search className="h-12 w-12" />}
           title={
-            activeTab === "for-you" ? "Henüz gönderi yok" :
-            activeTab === "followed" ? "Henüz gönderi yok" :
-            activeTab.startsWith("tag-") ? "Henüz gönderi yok" :
-            "Henüz gönderi yok"
+            activeTab === "for-you" ? t("emptyForYouTitle") :
+            activeTab === "followed" ? t("emptyFollowedTitle") :
+            t("emptyTagTitle")
           }
           description={
-            activeTab === "for-you" ? "İlk gönderinizi yazarak başlayın veya keşfet sayfasına göz atın." :
-            activeTab === "followed" ? "Kullanıcıları takip etmeye başladığınızda gönderileri burada görünecek." :
-            activeTab.startsWith("tag-") ? "Bu etiketle ilgili içerikler yayınlandığında burada görünecek." :
-            "Beğendiğiniz gönderileri kaydedin, buradan kolayca ulaşın."
+            activeTab === "for-you" ? t("emptyForYouDesc") :
+            activeTab === "followed" ? t("emptyFollowedDesc") :
+            t("emptyTagDesc")
           }
           action={
             activeTab === "for-you"
-              ? { label: "Keşfet", href: "/explore" }
+              ? { label: t("explore"), href: "/explore" }
               : activeTab === "followed"
-              ? { label: "Keşfet", href: "/explore" }
+              ? { label: t("explore"), href: "/explore" }
               : undefined
           }
         />

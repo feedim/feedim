@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/UserContext";
 import { useAuthModal } from "@/components/AuthModal";
 import FollowButton from "@/components/FollowButton";
+import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 
 interface PostFollowButtonProps {
@@ -13,6 +14,7 @@ interface PostFollowButtonProps {
 }
 
 export default function PostFollowButton({ authorUsername, authorUserId }: PostFollowButtonProps) {
+  const t = useTranslations("follow");
   const [following, setFollowing] = useState(false);
   const [requested, setRequested] = useState(false);
   const [ready, setReady] = useState(false);
@@ -44,7 +46,7 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
         setFollowing(false);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+          feedimAlert("error", data.error || t("followLimitReached"));
         }
         return;
       }
@@ -63,7 +65,7 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
       if (!res.ok) {
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+          feedimAlert("error", data.error || t("followLimitReached"));
         }
         return;
       }
@@ -79,7 +81,7 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
     if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
 
     if (following || requested) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: doUnfollow });
+      feedimAlert("question", t("unfollowConfirm"), { showYesNo: true, onYes: doUnfollow });
       return;
     }
     doFollow();

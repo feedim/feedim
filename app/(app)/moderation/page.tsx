@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, Trash2, ShieldOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { formatRelativeDate } from "@/lib/utils";
@@ -14,6 +15,7 @@ import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 export default function AdminPage() {
   useSearchParams();
+  const t = useTranslations("moderation");
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"review" | "withdrawals" | "panel">("review");
   const [subTab, setSubTab] = useState<"contents" | "comments" | "profiles" | "copyright" | "applications">("contents");
@@ -173,12 +175,12 @@ export default function AdminPage() {
         body: JSON.stringify({ action, target_type: targetType, target_id: targetId, reason }),
       });
       if (!res.ok) {
-        feedimAlert("error", "İşlem başarısız oldu");
+        feedimAlert("error", t("actionFailed"));
         // Re-fetch to restore the card
         loadData(tab, 1, subTab);
       }
     } catch {
-      feedimAlert("error", "İşlem başarısız oldu");
+      feedimAlert("error", t("actionFailed"));
       loadData(tab, 1, subTab);
     }
   };
@@ -196,10 +198,10 @@ export default function AdminPage() {
         body: JSON.stringify({ slug }),
       });
       const data = await res.json();
-      if (!res.ok) { setScanError(data.error || "Hata"); return; }
+      if (!res.ok) { setScanError(data.error || t("error")); return; }
       setScanResults(data.results || []);
-      if ((data.results || []).length === 0) setScanError("Benzer içerik bulunamadı");
-    } catch { setScanError("İstek başarısız"); } finally { setScanLoading(false); }
+      if ((data.results || []).length === 0) setScanError(t("noSimilarContent"));
+    } catch { setScanError(t("requestFailed")); } finally { setScanLoading(false); }
   };
 
   const loadCopyrightClaims = useCallback(async (p = 1, append = false) => {
@@ -223,11 +225,11 @@ export default function AdminPage() {
         body: JSON.stringify({ action, claim_id: claimId, reason }),
       });
       if (!res.ok) {
-        feedimAlert('error', 'İşlem başarısız oldu');
+        feedimAlert('error', t("actionFailed"));
         loadCopyrightClaims(1);
       }
     } catch {
-      feedimAlert('error', 'İşlem başarısız oldu');
+      feedimAlert('error', t("actionFailed"));
       loadCopyrightClaims(1);
     } finally { setClaimActionLoading(null); }
   };
@@ -251,11 +253,11 @@ export default function AdminPage() {
         body: JSON.stringify({ application_id: applicationId, action, note }),
       });
       if (!res.ok) {
-        feedimAlert('error', 'Islem basarisiz oldu');
+        feedimAlert('error', t("actionFailed"));
         loadCopyrightApps();
       }
     } catch {
-      feedimAlert('error', 'Islem basarisiz oldu');
+      feedimAlert('error', t("actionFailed"));
       loadCopyrightApps();
     } finally { setAppActionLoading(null); }
   };
@@ -271,9 +273,9 @@ export default function AdminPage() {
   }, [tab, subTab, loadCopyrightClaims, loadCopyrightApps]);
 
   const tabs = [
-    { id: "review", label: "İnceleme", icon: Shield },
-    { id: "panel", label: "Yönetim", icon: ShieldCheck },
-    { id: "withdrawals", label: "Çekim", icon: Wallet },
+    { id: "review", label: t("review"), icon: Shield },
+    { id: "panel", label: t("management"), icon: ShieldCheck },
+    { id: "withdrawals", label: t("withdrawals"), icon: Wallet },
   ] as const;
 
   const POST_APPROVE_REASONS = [
@@ -326,8 +328,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <Shield className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-sm font-medium">Reklamlar</span>
-                  <p className="text-xs text-text-muted mt-0.5">AdSense yüklemesi açık/kapalı</p>
+                  <span className="text-sm font-medium">{t("ads")}</span>
+                  <p className="text-xs text-text-muted mt-0.5">{t("adsDesc")}</p>
                 </div>
               </div>
               <button
@@ -369,7 +371,7 @@ export default function AdminPage() {
                   panelTab === "recent_users" ? "bg-text-primary text-bg-primary" : "text-text-muted hover:text-text-primary"
                 }`}
               >
-                <span className="inline-flex items-center leading-none h-4">Kullanıcılar</span>
+                <span className="inline-flex items-center leading-none h-4">{t("users")}</span>
               </button>
               <button
                 onClick={() => setPanelTab("recent_posts")}
@@ -377,7 +379,7 @@ export default function AdminPage() {
                   panelTab === "recent_posts" ? "bg-text-primary text-bg-primary" : "text-text-muted hover:text-text-primary"
                 }`}
               >
-                <span className="inline-flex items-center leading-none h-4">İçerikler</span>
+                <span className="inline-flex items-center leading-none h-4">{t("contents")}</span>
               </button>
               <button
                 onClick={() => setPanelTab("reports")}
@@ -385,7 +387,7 @@ export default function AdminPage() {
                   panelTab === "reports" ? "bg-text-primary text-bg-primary" : "text-text-muted hover:text-text-primary"
                 }`}
               >
-                <span className="inline-flex items-center leading-none h-4">Raporlar</span>
+                <span className="inline-flex items-center leading-none h-4">{t("reports")}</span>
               </button>
             </div>
             {(panelTab === "recent_users" || panelTab === "recent_posts") && (
@@ -394,18 +396,16 @@ export default function AdminPage() {
                   type="text"
                   value={panelTab === "recent_users" ? panelUserQuery : panelPostQuery}
                   onChange={e => panelTab === "recent_users" ? setPanelUserQuery(e.target.value) : setPanelPostQuery(e.target.value)}
-                  placeholder={panelTab === "recent_users" ? "Kullanıcı ara (username/isim)..." : "İçerik ara (başlık/slug)..."}
+                  placeholder={panelTab === "recent_users" ? t("searchUsers") : t("searchPosts")}
                   className="input-modern w-full !py-2 !text-[0.78rem]"
                 />
               </div>
             )}
             {panelLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="skeleton h-5 w-5 rounded-full" />
-              </div>
+              <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : panelTab === "recent_users" ? (
               panelUsers.length === 0 ? (
-                <div className="py-16 text-center text-text-muted text-sm">Kullanıcı bulunamadı</div>
+                <div className="py-16 text-center text-text-muted text-sm">{t("noUsersFound")}</div>
               ) : (
                 <>
                   <div className="divide-y divide-border-primary">
@@ -454,7 +454,7 @@ export default function AdminPage() {
                         disabled={panelLoading}
                         className="px-3 py-1.5 rounded-lg text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
                       >
-                        Daha fazla yükle
+                        {t("loadMore")}
                       </button>
                     </div>
                   )}
@@ -462,7 +462,7 @@ export default function AdminPage() {
               )
             ) : panelTab === "recent_posts" ? (
               panelPosts.length === 0 ? (
-                <div className="py-16 text-center text-text-muted text-sm">İçerik bulunamadı</div>
+                <div className="py-16 text-center text-text-muted text-sm">{t("noPostsFound")}</div>
               ) : (
                 <>
                   <div className="divide-y divide-border-primary">
@@ -507,7 +507,7 @@ export default function AdminPage() {
                         disabled={panelLoading}
                         className="px-3 py-1.5 rounded-lg text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
                       >
-                        Daha fazla yükle
+                        {t("loadMore")}
                       </button>
                     </div>
                   )}
@@ -515,7 +515,7 @@ export default function AdminPage() {
               )
             ) : (
               panelReports.length === 0 ? (
-                <div className="py-16 text-center text-text-muted text-sm">Bekleyen rapor yok</div>
+                <div className="py-16 text-center text-text-muted text-sm">{t("noPendingReports")}</div>
               ) : (
                 <div className="divide-y divide-border-primary">
                   {panelReports.map((r: any) => {
@@ -533,8 +533,8 @@ export default function AdminPage() {
                           }`}>{r.content_type}</span>
                         </div>
                         <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
-                          <span>Raporlayan: @{reporter?.username || "?"}</span>
-                          <span>Hedef: @{contentAuthor?.username || "?"}</span>
+                          <span>{t("reporter")}: @{reporter?.username || "?"}</span>
+                          <span>{t("target")}: @{contentAuthor?.username || "?"}</span>
                           <span className="ml-auto">{new Date(r.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
                         </div>
                         {r.description && <p className="text-[0.72rem] text-text-muted mt-1 line-clamp-2">{r.description}</p>}
@@ -551,9 +551,9 @@ export default function AdminPage() {
           {(['contents','comments','profiles','copyright','applications'] as const).map(s => (
             <button key={s} onClick={() => { setSubTab(s); setPage(1); }}
               className={`px-3 py-1.5 rounded-full text-[0.78rem] font-semibold ${subTab===s?'bg-text-primary text-bg-primary':'text-text-muted hover:text-text-primary'}`}
-            >{s==='contents'?'Icerikler':s==='comments'?'Yorumlar':s==='profiles'?'Profiller':s==='copyright'?'Telif':'Basvurular'}</button>
+            >{s==='contents'?t("contents"):s==='comments'?t("comments"):s==='profiles'?t("profiles"):s==='copyright'?t("copyright"):t("applications")}</button>
           ))}
-          <button onClick={() => loadData('review', page, subTab)} className="ml-auto px-3 py-1.5 rounded-full text-[0.78rem] font-semibold bg-bg-secondary hover:bg-bg-tertiary">Yenile</button>
+          <button onClick={() => loadData('review', page, subTab)} className="ml-auto px-3 py-1.5 rounded-full text-[0.78rem] font-semibold bg-bg-secondary hover:bg-bg-tertiary">{t("refresh")}</button>
         </div>
 
             {/* Copyright scan tool */}
@@ -567,7 +567,7 @@ export default function AdminPage() {
                       value={scanSlug}
                       onChange={e => setScanSlug(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && runCopyrightScan()}
-                      placeholder="Post slug veya linki girin..."
+                      placeholder={t("copyrightScanPlaceholder")}
                       className="input-modern w-full !py-2 !pl-9 !text-[0.78rem]"
                     />
                   </div>
@@ -575,7 +575,7 @@ export default function AdminPage() {
                     onClick={runCopyrightScan}
                     disabled={scanLoading || !scanSlug.trim()}
                     className="px-3 py-2 rounded-lg text-[0.78rem] font-medium bg-warning/15 text-warning hover:bg-warning/25 disabled:opacity-50 transition whitespace-nowrap"
-                  >{scanLoading ? "Taranıyor..." : "Tara"}</button>
+                  >{scanLoading ? t("scanning") : t("scan")}</button>
                 </div>
                 {scanError && !scanResults.length && (
                   <p className="text-[0.72rem] text-text-muted mt-2">{scanError}</p>
@@ -611,9 +611,9 @@ export default function AdminPage() {
             {subTab === 'contents' ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">İnceleme bekleyen gönderi yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingPosts")}</div>
             ) : items.map((p: any) => (
-              <div key={p.id} className="bg-bg-secondary rounded-xl p-4 space-y-3">
+              <div key={p.id} className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -700,7 +700,7 @@ export default function AdminPage() {
                     }}
                     disabled={actionLoading === String(p.id)}
                     className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Onayla</button>
+                  >{t("approve")}</button>
                 </div>
                 {/* Reject with preset reasons */}
                 <div className="flex flex-wrap gap-1.5">
@@ -725,12 +725,12 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       const reasons = (postReasons[p.id] || []).filter(r => POST_REJECT_REASONS.includes(r));
-                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
+                      if (!reasons.length) return feedimAlert("error", t("selectAtLeastOneReason"));
                       takeAction("reject_content", "post", p.id, reasons.join(', '));
                     }}
                     disabled={actionLoading === String(p.id)}
                     className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Kaldır</button>
+                  >{t("remove")}</button>
                 </div>
               </div>
             ))}
@@ -740,7 +740,7 @@ export default function AdminPage() {
                   onClick={() => { const next = page + 1; setPage(next); loadData(tab, next, subTab, true); }}
                   disabled={loadMoreLoading}
                   className="px-4 py-2 rounded-lg text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
-                >{loadMoreLoading ? "Yükleniyor..." : "Daha fazla yükle"}</button>
+                >{loadMoreLoading ? t("loading") : t("loadMore")}</button>
               </div>
             )}
           </div>
@@ -749,7 +749,7 @@ export default function AdminPage() {
             {copyrightClaimsLoading ? (
               <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : copyrightClaims.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Bekleyen telif hakkı talebi yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingCopyrightClaims")}</div>
             ) : copyrightClaims.map((claim: any) => {
               const post = Array.isArray(claim.post) ? claim.post[0] : claim.post;
               const claimant = Array.isArray(claim.claimant) ? claim.claimant[0] : claim.claimant;
@@ -757,7 +757,7 @@ export default function AdminPage() {
               const matchedAuthor = Array.isArray(claim.matched_author) ? claim.matched_author[0] : claim.matched_author;
               const hasProof = !!claim.proof_description;
               return (
-                <div key={claim.id} className="bg-bg-secondary rounded-xl p-4 space-y-3">
+                <div key={claim.id} className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -776,7 +776,7 @@ export default function AdminPage() {
                           <span className="px-1.5 py-0.5 text-[0.6rem] font-bold bg-success/20 text-success rounded">Kanıt var</span>
                         )}
                       </div>
-                      <p className="text-[0.82rem] font-medium line-clamp-2">{post?.title || "İçerik bulunamadı"}</p>
+                      <p className="text-[0.82rem] font-medium line-clamp-2">{post?.title || t("contentNotFound")}</p>
                       <div className="flex items-center gap-2 mt-1">
                         {claimant?.avatar_url && (
                           <img src={claimant.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover" />
@@ -854,13 +854,13 @@ export default function AdminPage() {
                       onClick={() => {
                         const reason = (claimRejectReasons[claim.id] || []).join(', ');
                         if (!reason) {
-                          return feedimAlert('error', 'En az bir sebep seçin');
+                          return feedimAlert('error', t("selectAtLeastOneReason"));
                         }
                         takeCopyrightAction('reject', claim.id, reason);
                       }}
                       disabled={claimActionLoading === claim.id}
                       className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                    >Reddet ve Kaldır</button>
+                    >{t("rejectAndRemove")}</button>
                   </div>
                 </div>
               );
@@ -875,7 +875,7 @@ export default function AdminPage() {
                   }}
                   disabled={copyrightClaimsLoading}
                   className="px-4 py-2 rounded-lg text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
-                >{copyrightClaimsLoading ? "Yükleniyor..." : "Daha fazla yükle"}</button>
+                >{copyrightClaimsLoading ? t("loading") : t("loadMore")}</button>
               </div>
             )}
           </div>
@@ -884,11 +884,11 @@ export default function AdminPage() {
             {copyrightAppsLoading ? (
               <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : copyrightApps.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Bekleyen basvuru yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingApplications")}</div>
             ) : copyrightApps.map((app: any) => {
               const profile = Array.isArray(app.profiles) ? app.profiles[0] : app.profiles;
               return (
-                <div key={app.id} className="bg-bg-secondary rounded-xl p-4 space-y-3">
+                <div key={app.id} className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
@@ -937,17 +937,17 @@ export default function AdminPage() {
                       onClick={() => takeCopyrightAppAction('approve', app.id)}
                       disabled={appActionLoading === app.id}
                       className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium"
-                    >Onayla</button>
+                    >{t("approve")}</button>
                     <button
                       onClick={() => {
-                        feedimAlert("question", "Basvuruyu reddetmek istediginize emin misiniz?", {
+                        feedimAlert("question", t("confirmRejectApplication"), {
                           showYesNo: true,
-                          onYes: () => takeCopyrightAppAction('reject', app.id, 'Basvuru kriterleri karsilanmadi'),
+                          onYes: () => takeCopyrightAppAction('reject', app.id, t("applicationCriteriaNotMet")),
                         });
                       }}
                       disabled={appActionLoading === app.id}
                       className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium"
-                    >Reddet</button>
+                    >{t("reject")}</button>
                   </div>
                 </div>
               );
@@ -956,7 +956,7 @@ export default function AdminPage() {
             ) : subTab === 'profiles' ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">İncelemede hesap yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">{t("noAccountsUnderReview")}</div>
             ) : items.map((u: any, idx: number) => {
               const isBlocked = u.status === 'blocked';
               const isDeleted = u.status === 'deleted';
@@ -964,7 +964,7 @@ export default function AdminPage() {
               const statusLabel = isDeleted ? `silindi (${remainingDays} gün kaldı)` : isBlocked ? 'kapatıldı' : 'incelemede';
               const statusColor = (isDeleted || isBlocked) ? 'text-error' : 'text-warning';
               return (
-              <div key={`${u.user_id || u.username || 'spam-user'}-${idx}`} className="bg-bg-secondary rounded-xl p-4">
+              <div key={`${u.user_id || u.username || 'spam-user'}-${idx}`} className="bg-bg-secondary rounded-[15px] p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <img src={u.avatar_url || "/imgs/default-avatar.jpg"} alt="" className="w-10 h-10 rounded-full object-cover" />
@@ -1009,7 +1009,7 @@ export default function AdminPage() {
                     }}
                     disabled={actionLoading === u.user_id}
                     className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Onayla</button>
+                  >{t("approve")}</button>
                 </div>
                 {/* Reject reasons */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1033,27 +1033,27 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       const reasons = (userReasons[u.user_id] || []).filter(r => PROFILE_REJECT_REASONS.includes(r));
-                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
-                      feedimAlert("question", `${u.username} hesabını kapatmak istediğinize emin misiniz?`, {
+                      if (!reasons.length) return feedimAlert("error", t("selectAtLeastOneReason"));
+                      feedimAlert("question", t("confirmCloseAccount", { username: u.username }), {
                         showYesNo: true,
                         onYes: () => takeAction("ban_user", "user", u.user_id, reasons.join(', ')),
                       });
                     }}
                     disabled={actionLoading === u.user_id}
                     className="px-3 py-1.5 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Kapat</button>
+                  >{t("closeAccount")}</button>
                   <button
                     onClick={() => {
                       const reasons = (userReasons[u.user_id] || []).filter(r => PROFILE_REJECT_REASONS.includes(r));
-                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
-                      feedimAlert("question", `${u.username} hesabını silmek istediğinize emin misiniz?`, {
+                      if (!reasons.length) return feedimAlert("error", t("selectAtLeastOneReason"));
+                      feedimAlert("question", t("confirmDeleteAccount", { username: u.username }), {
                         showYesNo: true,
                         onYes: () => takeAction("delete_user", "user", u.user_id, reasons.join(', ')),
                       });
                     }}
                     disabled={actionLoading === u.user_id}
                     className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Sil</button>
+                  >{t("deleteAccount")}</button>
                 </div>
                 </>
                 )}
@@ -1064,9 +1064,9 @@ export default function AdminPage() {
             ) : (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">İnceleme bekleyen yorum yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingComments")}</div>
             ) : items.map((c: any) => (
-              <div key={c.id} className="bg-bg-secondary rounded-xl p-4 space-y-3">
+              <div key={c.id} className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-[0.72rem] text-text-muted mb-1">
@@ -1128,7 +1128,7 @@ export default function AdminPage() {
                     }}
                     disabled={actionLoading === String(c.id)}
                     className="px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Onayla</button>
+                  >{t("approve")}</button>
                 </div>
                 {/* Reject with preset reasons */}
                 <div className="flex flex-wrap gap-1.5">
@@ -1152,12 +1152,12 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       const reasons = (commentReasons[c.id] || []).filter(r => COMMENT_REJECT_REASONS.includes(r));
-                      if (!reasons.length) return feedimAlert("error", "En az bir sebep seçin");
+                      if (!reasons.length) return feedimAlert("error", t("selectAtLeastOneReason"));
                       takeAction("reject_content", "comment", String(c.id), reasons.join(', '));
                     }}
                     disabled={actionLoading === String(c.id)}
                     className="px-3 py-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
-                  >Kaldır</button>
+                  >{t("remove")}</button>
                 </div>
               </div>
             ))}
@@ -1167,7 +1167,7 @@ export default function AdminPage() {
                   onClick={() => { const next = page + 1; setPage(next); loadData(tab, next, subTab, true); }}
                   disabled={loadMoreLoading}
                   className="px-4 py-2 rounded-lg text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
-                >{loadMoreLoading ? "Yükleniyor..." : "Daha fazla yükle"}</button>
+                >{loadMoreLoading ? t("loading") : t("loadMore")}</button>
               </div>
             )}
           </div>
@@ -1176,9 +1176,9 @@ export default function AdminPage() {
         ) : tab === "withdrawals" ? (
           <div className="px-4 space-y-2 py-2">
             {items.length === 0 ? (
-              <div className="py-16 text-center text-text-muted text-sm">Bekleyen çekim talebi yok</div>
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingWithdrawals")}</div>
             ) : items.map((w: any) => (
-              <div key={w.id} className="bg-bg-secondary rounded-xl p-4">
+              <div key={w.id} className="bg-bg-secondary rounded-[15px] p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -1229,7 +1229,7 @@ function StatCard({ icon: Icon, label, value, color, onClick }: {
   icon: any; label: string; value: number; color: string; onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-bg-tertiary transition w-full">
+    <button onClick={onClick} className="bg-bg-secondary rounded-[15px] p-4 text-left hover:bg-bg-tertiary transition w-full">
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`h-4 w-4 ${color}`} />
         <span className="text-[0.72rem] text-text-muted">{label}</span>

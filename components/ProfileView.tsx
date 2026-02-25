@@ -4,6 +4,7 @@ import { useState, useEffect, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, Lock, Briefcase, Mail, Phone, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { formatCount } from "@/lib/utils";
 import EditableAvatar from "@/components/EditableAvatar";
 import PostListSection from "@/components/PostListSection";
@@ -62,6 +63,7 @@ interface Profile {
 }
 
 export default function ProfileView({ profile: initialProfile }: { profile: Profile }) {
+  const t = useTranslations("profile");
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [following, setFollowing] = useState(initialProfile.is_following || false);
@@ -135,7 +137,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const { user: currentUser } = useUser();
   const isAnyBlocked = isBlocked || isBlockedBy;
   const statsDisabled = isAnyBlocked || (profile.account_private && !profile.is_own && !following);
-  const displayName = isAnyBlocked ? "Kullanıcı" : (profile.full_name || [profile.name, profile.surname].filter(Boolean).join(" ") || profile.username);
+  const displayName = isAnyBlocked ? t("blockedUser") : (profile.full_name || [profile.name, profile.surname].filter(Boolean).join(" ") || profile.username);
   const initials = ((profile.name?.[0] || "") + (profile.surname?.[0] || "")).toUpperCase() || profile.username[0]?.toUpperCase() || "U";
 
   // Track profile visit
@@ -368,7 +370,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     if (!user) return;
 
     if (following || requested) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: doUnfollow });
+      feedimAlert("question", t("unfollowConfirm"), { showYesNo: true, onYes: doUnfollow });
       return;
     }
 
@@ -396,14 +398,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       }
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
-        feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+        feedimAlert("error", data.error || t("followLimitReached"));
       }
     }
   }, [profile.username, profile.account_private, following, requested, requireAuth]);
 
   const handleBlock = useCallback(() => {
     if (!isBlocked) {
-      feedimAlert("warning", `@${profile.username} adlı kullanıcıyı engellemek istediğinize emin misiniz? Engellediğinizde aranızdaki takip ilişkisi kaldırılır ve birbirinizin içeriklerini göremezsiniz.`, {
+      feedimAlert("warning", t("blockConfirm", { username: profile.username }), {
         showYesNo: true,
         onYes: () => {
           const prevFollowing = following;
@@ -438,7 +440,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         },
       });
     } else {
-      feedimAlert("question", `@${profile.username} adlı kullanıcının engelini kaldırmak istediğinize emin misiniz?`, {
+      feedimAlert("question", t("unblockConfirm", { username: profile.username }), {
         showYesNo: true,
         onYes: () => {
           setIsBlocked(false);
@@ -463,22 +465,22 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             <button
               onClick={() => router.back()}
               className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
-              aria-label="Geri"
+              aria-label={t("back")}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <span className="text-[1.1rem] font-semibold">{isBlockedBy ? "Kullanıcı" : `@${profile.username}`}</span>
+            <span className="text-[1.1rem] font-semibold">{isBlockedBy ? t("blockedUser") : `@${profile.username}`}</span>
           </div>
           <div className="flex items-center gap-1">
             {profile.is_own && (
-              <Link href="/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center" aria-label="Ayarlar">
+              <Link href="/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center" aria-label={t("settings")}>
                 <Settings className="h-5 w-5" />
               </Link>
             )}
             <button
               onClick={() => setMoreOpen(true)}
               className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
-              aria-label="Daha fazla seçenek"
+              aria-label={t("moreOptions")}
             >
               <MoreHorizontal className="h-5 w-5" />
             </button>
@@ -505,15 +507,15 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           <div className="flex-1 flex items-center justify-around pt-2">
             <div className="text-center">
               <p className="text-[1.05rem] font-bold">{isAnyBlocked ? "0" : formatCount(profile.post_count || 0)}</p>
-              <p className="text-[0.78rem] text-text-muted">Gönderi</p>
+              <p className="text-[0.78rem] text-text-muted">{t("posts")}</p>
             </div>
             <button onClick={statsDisabled ? undefined : () => setFollowersOpen(true)} className={`text-center ${statsDisabled ? "cursor-default" : ""}`}>
               <p className="text-[1.05rem] font-bold">{isAnyBlocked ? "0" : formatCount(followerCount)}</p>
-              <p className="text-[0.78rem] text-text-muted">Takipçi</p>
+              <p className="text-[0.78rem] text-text-muted">{t("followers")}</p>
             </button>
             <button onClick={statsDisabled ? undefined : () => setFollowingOpen(true)} className={`text-center ${statsDisabled ? "cursor-default" : ""}`}>
               <p className="text-[1.05rem] font-bold">{isAnyBlocked ? "0" : formatCount(profile.following_count || 0)}</p>
-              <p className="text-[0.78rem] text-text-muted">Takip</p>
+              <p className="text-[0.78rem] text-text-muted">{t("following")}</p>
             </button>
           </div>
         </div>
@@ -543,7 +545,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               )}
               {profile.created_at && (
                 <span className="flex items-center gap-1 text-[0.78rem] text-text-muted">
-                  <Calendar className="h-3 w-3" /> {new Date(profile.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinde katıldı
+                  <Calendar className="h-3 w-3" /> {t("joinedAt", { date: new Date(profile.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) })}
                 </span>
               )}
               {isProfessional(profile.account_type) && profile.professional_category && (
@@ -559,7 +561,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                       href={`mailto:${profile.contact_email}`}
                       className="inline-flex items-center gap-1.5 text-[0.78rem] font-medium text-accent-main bg-accent-main/10 px-3 py-1.5 rounded-full hover:bg-accent-main/20 transition"
                     >
-                      <Mail className="h-3.5 w-3.5" /> E-posta
+                      <Mail className="h-3.5 w-3.5" /> {t("email")}
                     </a>
                   )}
                   {profile.contact_phone && (
@@ -567,7 +569,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                       href={`tel:${profile.contact_phone}`}
                       className="inline-flex items-center gap-1.5 text-[0.78rem] font-medium text-accent-main bg-accent-main/10 px-3 py-1.5 rounded-full hover:bg-accent-main/20 transition"
                     >
-                      <Phone className="h-3.5 w-3.5" /> Ara
+                      <Phone className="h-3.5 w-3.5" /> {t("call")}
                     </a>
                   )}
                 </div>
@@ -589,10 +591,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               </div>
               <span className="text-[0.82rem] text-text-muted">
                 {profile.mutual_followers.length === 1
-                  ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> takip ediyor</>
+                  ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> {t("mutualFollowsVerb")}</>
                   : profile.mutual_followers.length === 2
-                    ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> ve <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> takip ediyor</>
-                    : <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span>, <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> ve <span className="font-semibold text-text-primary">diğerleri</span> takip ediyor</>
+                    ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> {t("and")} <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> {t("mutualFollowsVerb")}</>
+                    : <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span>, <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> {t("and")} <span className="font-semibold text-text-primary">{t("others")}</span> {t("mutualFollowsVerb")}</>
                 }
               </span>
             </button>
@@ -605,13 +607,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             href="/analytics"
             className="flex flex-col w-full mb-3 py-3 px-4 rounded-[15px] bg-bg-tertiary hover:opacity-90 transition"
           >
-            <span className="text-[0.88rem] font-bold">İstatistikler</span>
+            <span className="text-[0.88rem] font-bold">{t("statistics")}</span>
             {totalViews === null ? (
-              <div className="skeleton h-3.5 w-40 rounded mt-1.5" />
+              <></>
             ) : (
               <span className="flex items-center gap-1 text-[0.78rem] text-text-muted mt-0.5">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-primary"><path d="M21 21H6.2C5.08 21 4.52 21 4.09 20.782C3.72 20.59 3.41 20.284 3.22 19.908C3 19.48 3 18.92 3 17.8V3" /><path d="M7 15l4-6 4 4 6-8" /></svg>
-                Son 30 günde {formatCount(totalViews)} görüntülenme
+                {t("last30DaysViews", { count: formatCount(totalViews) })}
               </span>
             )}
           </Link>
@@ -627,10 +629,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                 </svg>
-                Profili Düzenle
+                {t("editProfile")}
               </button>
               <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
-                <ShareIcon className="h-4 w-4" /> Profili Paylaş
+                <ShareIcon className="h-4 w-4" /> {t("shareProfile")}
               </button>
             </>
           ) : isBlockedBy ? (
@@ -641,10 +643,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 onClick={handleBlock}
                 className="flex-1 t-btn cancel text-error"
               >
-                Engeli Kaldır
+                {t("unblockUser")}
               </button>
               <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
-                <ShareIcon className="h-4 w-4" /> Paylaş
+                <ShareIcon className="h-4 w-4" /> {t("share")}
               </button>
             </>
           ) : requested ? (
@@ -653,17 +655,17 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 onClick={handleFollow}
                 className="flex-1 t-btn cancel"
               >
-                <Clock className="h-4 w-4" /> İstek
+                <Clock className="h-4 w-4" /> {t("requestSent")}
               </button>
               <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
-                <ShareIcon className="h-4 w-4" /> Paylaş
+                <ShareIcon className="h-4 w-4" /> {t("share")}
               </button>
             </>
           ) : (
             <>
               <FollowButton following={following} onClick={handleFollow} variant="profile" className="flex-1" />
               <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
-                <ShareIcon className="h-4 w-4" /> Paylaş
+                <ShareIcon className="h-4 w-4" /> {t("share")}
               </button>
             </>
           )}
@@ -680,8 +682,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         {!profile.is_own && profile.account_private && !following && !isAnyBlocked && (
           <div className="border-t border-border-primary py-10 text-center">
             <Lock className="h-10 w-10 text-text-muted mx-auto mb-3" />
-            <p className="font-semibold text-[0.95rem] mb-1">Bu Hesap Gizli</p>
-            <p className="text-sm text-text-muted">Gönderileri görmek için bu hesabı takip edin.</p>
+            <p className="font-semibold text-[0.95rem] mb-1">{t("privateAccount")}</p>
+            <p className="text-sm text-text-muted">{t("privateAccountFollow")}</p>
           </div>
         )}
 
@@ -693,8 +695,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           >
             <VerifiedBadge size="md" className="shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[0.82rem] font-semibold text-text-primary leading-snug">Premium'a geç, farkını göster</p>
-              <p className="text-[0.78rem] text-accent-main font-medium">Onaylı rozet, analitik ve daha fazlası</p>
+              <p className="text-[0.82rem] font-semibold text-text-primary leading-snug">{t("premiumPromoTitle")}</p>
+              <p className="text-[0.78rem] text-accent-main font-medium">{t("premiumPromoDesc")}</p>
             </div>
             <svg className="h-4 w-4 text-text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </Link>
@@ -706,13 +708,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           <>
             <div className="flex gap-[10px] border-b border-border-primary overflow-x-auto scrollbar-hide">
               {([
-                { id: "all", label: "Hepsi" },
-                { id: "posts", label: "Gönderiler" },
-                { id: "notes", label: "Notlar" },
-                { id: "moments", label: "Moments" },
-                { id: "video", label: "Video" },
-                { id: "likes", label: "Beğeniler" },
-                { id: "comments", label: "Yorumlar" },
+                { id: "all", label: t("tabAll") },
+                { id: "posts", label: t("tabPosts") },
+                { id: "notes", label: t("tabNotes") },
+                { id: "moments", label: t("tabMoments") },
+                { id: "video", label: t("tabVideo") },
+                { id: "likes", label: t("tabLikes") },
+                { id: "comments", label: t("tabComments") },
               ] as const).map(tab => (
                 <button
                   key={tab.id}
@@ -737,8 +739,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     loading={allLoading}
                     hasMore={allHasMore}
                     onLoadMore={() => { setAllPage(p => p + 1); loadAll(allPage + 1); }}
-                    emptyTitle="Henüz gönderi yok"
-                    emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
+                    emptyTitle={t("noPostsYet")}
+                    emptyDescription={profile.is_own ? t("emptyPostsOwn") : t("emptyPostsOther")}
                   />
                 ) : null}
               </div>
@@ -753,8 +755,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     loading={articlesLoading}
                     hasMore={articlesHasMore}
                     onLoadMore={() => { setArticlesPage(p => p + 1); loadArticles(articlesPage + 1); }}
-                    emptyTitle="Henüz gönderi yok"
-                    emptyDescription={profile.is_own ? "İlk gönderinizi yazmaya başlayın!" : "Bu kullanıcı henüz gönderi yazmamış."}
+                    emptyTitle={t("noPostsYet")}
+                    emptyDescription={profile.is_own ? t("emptyPostsOwn") : t("emptyPostsOther")}
                   />
                 ) : null}
               </div>
@@ -769,8 +771,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     loading={notesLoading}
                     hasMore={notesHasMore}
                     onLoadMore={() => { setNotesPage(p => p + 1); loadNotes(notesPage + 1); }}
-                    emptyTitle="Henüz not yok"
-                    emptyDescription={profile.is_own ? "İlk notunuzu paylaşmaya başlayın!" : "Bu kullanıcı henüz not paylaşmamış."}
+                    emptyTitle={t("noNotesYet")}
+                    emptyDescription={profile.is_own ? t("emptyNotesOwn") : t("emptyNotesOther")}
                   />
                 ) : null}
               </div>
@@ -783,9 +785,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                   <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
                 ) : momentPosts.length === 0 ? (
                   <div className="text-center py-12 sm:py-20">
-                    <h2 className="text-lg sm:text-xl font-bold mb-2">Henüz moment yok</h2>
+                    <h2 className="text-lg sm:text-xl font-bold mb-2">{t("noMomentsYet")}</h2>
                     <p className="text-[13px] text-text-muted mb-5 sm:mb-6 px-4 max-w-[300px] mx-auto">
-                      {profile.is_own ? "İlk momentinizi oluşturun!" : "Bu kullanıcı henüz moment paylaşmamış."}
+                      {profile.is_own ? t("emptyMomentsOwn") : t("emptyMomentsOther")}
                     </p>
                   </div>
                 ) : (
@@ -802,7 +804,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                           disabled={momentsLoading}
                           className="text-sm text-accent-main font-medium hover:underline disabled:opacity-50"
                         >
-                          {momentsLoading ? "Yükleniyor..." : "Daha fazla"}
+                          {momentsLoading ? t("loading") : t("loadMore")}
                         </button>
                       </div>
                     )}
@@ -820,8 +822,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     loading={videosLoading}
                     hasMore={videosHasMore}
                     onLoadMore={() => { setVideosPage(p => p + 1); loadVideos(videosPage + 1); }}
-                    emptyTitle="Henüz video yok"
-                    emptyDescription={profile.is_own ? "İlk videonuzu paylaşmaya başlayın!" : "Bu kullanıcı henüz video paylaşmamış."}
+                    emptyTitle={t("noVideosYet")}
+                    emptyDescription={profile.is_own ? t("emptyVideosOwn") : t("emptyVideosOther")}
                   />
                 ) : null}
               </div>
@@ -836,8 +838,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     loading={likesLoading}
                     hasMore={likesHasMore}
                     onLoadMore={() => { setLikesPage(p => p + 1); loadLikes(likesPage + 1); }}
-                    emptyTitle="Henüz beğeni yok"
-                    emptyDescription={profile.is_own ? "Beğendikleriniz burada görünecek." : "Bu kullanıcı henüz bir gönderi beğenmemiş."}
+                    emptyTitle={t("noLikesYet")}
+                    emptyDescription={profile.is_own ? t("emptyLikesOwn") : t("emptyLikesOther")}
                   />
                 ) : null}
               </div>
@@ -852,8 +854,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                     loading={commentsLoading}
                     hasMore={commentsHasMore}
                     onLoadMore={() => { setCommentsPage(p => p + 1); loadComments(commentsPage + 1); }}
-                    emptyTitle="Henüz yorum yok"
-                    emptyDescription={profile.is_own ? "Yorum yaptığınız gönderiler burada görünecek." : "Bu kullanıcı henüz bir gönderiye yorum yapmamış."}
+                    emptyTitle={t("noCommentsYet")}
+                    emptyDescription={profile.is_own ? t("emptyCommentsOwn") : t("emptyCommentsOther")}
                   />
                 ) : null}
               </div>
@@ -867,13 +869,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             <Lock className="h-10 w-10 text-text-muted mx-auto mb-3" />
             {isBlockedBy ? (
               <>
-                <p className="font-semibold text-[0.95rem] mb-1">Bu içerik kullanılamıyor</p>
-                <p className="text-sm text-text-muted">Bu kullanıcının profilini görüntüleyemezsiniz.</p>
+                <p className="font-semibold text-[0.95rem] mb-1">{t("contentUnavailable")}</p>
+                <p className="text-sm text-text-muted">{t("cannotViewProfile")}</p>
               </>
             ) : (
               <>
-                <p className="font-semibold text-[0.95rem] mb-1">Kullanıcı engellendi</p>
-                <p className="text-sm text-text-muted">Bu kullanıcıyı engellediniz. İçeriklerini göremezsiniz.</p>
+                <p className="font-semibold text-[0.95rem] mb-1">{t("userBlocked")}</p>
+                <p className="text-sm text-text-muted">{t("userBlockedDesc")}</p>
               </>
             )}
           </div>

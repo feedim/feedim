@@ -13,17 +13,23 @@ export function safePage(raw: string | null, max = 500): number {
 }
 
 /**
- * Türkçe sayı formatı: 1B, 10.5B, 100B, 1Mn vb.
- * B = Bin (thousand), Mn = Milyon (million)
+ * Locale-aware count formatter: 1B/1K, 10.5B/10.5K, 1Mn/1M etc.
  */
-export function formatCount(n: number): string {
+const COUNT_LABELS: Record<string, { k: string; m: string }> = {
+  tr: { k: 'B', m: 'Mn' },
+  en: { k: 'K', m: 'M' },
+  az: { k: 'K', m: 'Mln' },
+};
+
+export function formatCount(n: number, locale: string = 'tr'): string {
   if (n < 1000) return String(n);
+  const labels = COUNT_LABELS[locale] || COUNT_LABELS.tr;
   if (n < 1_000_000) {
     const k = n / 1000;
-    return k % 1 === 0 ? `${k}B` : `${parseFloat(k.toFixed(1))}B`;
+    return k % 1 === 0 ? `${k}${labels.k}` : `${parseFloat(k.toFixed(1))}${labels.k}`;
   }
   const m = n / 1_000_000;
-  return m % 1 === 0 ? `${m}Mn` : `${parseFloat(m.toFixed(1))}Mn`;
+  return m % 1 === 0 ? `${m}${labels.m}` : `${parseFloat(m.toFixed(1))}${labels.m}`;
 }
 
 const TR_MAP: Record<string, string> = {
@@ -124,22 +130,42 @@ export function formatTagName(name: string): string {
     .substring(0, 50);
 }
 
-export function formatRelativeDate(dateStr: string): string {
+const TIME_LABELS: Record<string, { justNow: string; m: string; h: string; d: string; w: string; mo: string; y: string }> = {
+  tr: { justNow: 'az önce', m: 'dk', h: 'sa', d: 'g', w: 'h', mo: 'ay', y: 'y' },
+  en: { justNow: 'just now', m: 'm', h: 'h', d: 'd', w: 'w', mo: 'mo', y: 'y' },
+  az: { justNow: 'indicə', m: 'dq', h: 'st', d: 'g', w: 'h', mo: 'ay', y: 'il' },
+};
+
+export function formatRelativeDate(dateStr: string, locale: string = 'tr'): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = Math.floor((now - then) / 1000);
+  const l = TIME_LABELS[locale] || TIME_LABELS.tr;
 
-  if (diff < 60) return 'az önce';
+  if (diff < 60) return l.justNow;
   const mins = Math.floor(diff / 60);
-  if (diff < 3600) return `${mins}dk`;
+  if (diff < 3600) return `${mins}${l.m}`;
   const hours = Math.floor(diff / 3600);
-  if (diff < 86400) return `${hours}sa`;
+  if (diff < 86400) return `${hours}${l.h}`;
   const days = Math.floor(diff / 86400);
-  if (days < 7) return `${days}g`;
+  if (days < 7) return `${days}${l.d}`;
   const weeks = Math.floor(days / 7);
-  if (days < 30) return `${weeks}h`;
+  if (days < 30) return `${weeks}${l.w}`;
   const months = Math.floor(days / 30);
-  if (days < 365) return `${months}ay`;
+  if (days < 365) return `${months}${l.mo}`;
   const years = Math.floor(days / 365);
-  return `${years}y`;
+  return `${years}${l.y}`;
+}
+
+export function getDateLocale(locale: string): string {
+  return ({ tr: 'tr-TR', az: 'az-AZ', en: 'en-US' } as Record<string, string>)[locale] || 'tr-TR';
+}
+
+export function getPostUrl(slug: string, contentType?: string) {
+  switch (contentType) {
+    case "video": return `/video/${slug}`;
+    case "moment": return `/moments/${slug}`;
+    case "note": return `/note/${slug}`;
+    default: return `/${slug}`;
+  }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { Check, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 
@@ -20,6 +21,7 @@ export default function CropModal({
   aspectRatio = 16 / 9,
   onCrop,
 }: CropModalProps) {
+  const t = useTranslations("modals");
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -265,16 +267,16 @@ export default function CropModal({
           onClick={onClose}
           className="text-sm text-text-muted hover:text-text-primary transition font-medium"
         >
-          İptal
+          {t("cropCancel")}
         </button>
-        <span className="text-sm text-text-primary font-semibold">Kırp</span>
+        <span className="text-sm text-text-primary font-semibold">{t("cropLabel")}</span>
         <button
           onClick={handleCrop}
           disabled={!imgLoaded}
           className="flex items-center gap-1.5 text-sm text-accent-main font-semibold disabled:opacity-40 transition"
         >
           <Check className="h-4 w-4" />
-          Uygula
+          {t("cropApply")}
         </button>
       </div>
 
@@ -397,7 +399,7 @@ export default function CropModal({
         <button
           onClick={() => { setZoom(1); setPos({ x: 0, y: 0 }); }}
           className="p-2 text-text-muted hover:text-text-primary transition"
-          title="Sıfırla"
+          title={t("cropReset")}
         >
           <RotateCcw className="h-4 w-4" />
         </button>

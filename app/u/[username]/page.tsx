@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
 import ProfileView from "@/components/ProfileView";
+import { getTranslations } from "next-intl/server";
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -25,28 +26,28 @@ async function getProfile(username: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { username } = await params;
   const profile = await getProfile(username);
-  if (!profile) return { title: "Kullanici bulunamadi" };
+  const t = await getTranslations("profile");
+  if (!profile) return { title: t("userNotFound") };
 
   const displayName = profile.full_name || profile.username;
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
+  const profileDesc = profile.bio || t("viewProfile", { name: displayName });
 
   return {
     title: `${displayName} (@${profile.username}) | Feedim`,
-    description: profile.bio || `${displayName} Feedim profilini inceleyin.`,
-    keywords: [displayName, profile.username, "feedim", "profil", "içerik", "yazar"],
+    description: profileDesc,
     openGraph: {
       title: `${displayName} (@${profile.username})`,
-      description: profile.bio || `${displayName} Feedim profilini inceleyin.`,
+      description: profileDesc,
       type: "profile",
       url: `${baseUrl}/u/${profile.username}`,
       images: profile.avatar_url ? [{ url: profile.avatar_url, width: 200, height: 200 }] : undefined,
       siteName: "Feedim",
-      locale: "tr_TR",
     },
     twitter: {
       card: "summary",
       title: `${displayName} (@${profile.username})`,
-      description: profile.bio || `${displayName} Feedim profilini inceleyin.`,
+      description: profileDesc,
     },
     alternates: {
       canonical: `${baseUrl}/u/${profile.username}`,

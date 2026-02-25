@@ -655,20 +655,6 @@ a .loader {
 .vp-shortcuts-scroll::-webkit-scrollbar-track { background: transparent; }
 .vp-shortcuts-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
-/* ── Skeleton Loading ── */
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 0.15; }
-}
-
-.skeleton {
-  background: var(--bg-tertiary);
-  animation: skeleton-pulse 1.6s ease-in-out infinite;
-}
-
-html[data-skeletons-off="1"] .skeleton {
-  display: none !important;
-}
 
 /* ── Gift Celebration (sequential) ── */
 .gift-celebration-backdrop {

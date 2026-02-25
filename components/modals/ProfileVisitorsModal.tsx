@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import Modal from "./Modal";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -27,6 +28,7 @@ interface ProfileVisitorsModalProps {
 }
 
 export default function ProfileVisitorsModal({ open, onClose, username }: ProfileVisitorsModalProps) {
+  const t = useTranslations("modals");
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -59,14 +61,14 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Profil Ziyaretçileri" size="sm" infoText="Profilini son ziyaret eden kişiler burada gösterilir." centerOnDesktop>
+    <Modal open={open} onClose={onClose} title={t("profileVisitors")} size="sm" infoText={t("profileVisitorsInfoText")} centerOnDesktop>
       <div className="px-4 py-3">
-        <p className="text-xs text-text-muted mb-3">Son 30 gün</p>
+        <p className="text-xs text-text-muted mb-3">{t("last30DaysLabel")}</p>
 
         {loading && visitors.length === 0 ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : visitors.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">Henüz ziyaretçi yok</p>
+          <p className="text-center text-text-muted text-sm py-8">{t("noVisitors")}</p>
         ) : (
           <div className="space-y-3">
             {visitors.map(v => {

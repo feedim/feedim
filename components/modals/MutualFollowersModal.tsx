@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import UserListModal from "./UserListModal";
 
 interface MutualFollowersModalProps {
@@ -9,17 +10,18 @@ interface MutualFollowersModalProps {
 }
 
 export default function MutualFollowersModal({ open, onClose, username }: MutualFollowersModalProps) {
+  const t = useTranslations("modals");
   return (
     <UserListModal
       open={open}
       onClose={onClose}
-      title="Ortak Takipçiler"
-      infoText="Her ikinizin de takip ettiği kişiler burada listelenir."
+      title={t("mutualFollowers")}
+      infoText={t("mutualFollowersInfoText")}
       fetchUrl={`/api/users/${username}/mutual-followers`}
-      emptyText="Ortak takipçi yok"
+      emptyText={t("noMutualFollowers")}
       filterTabs={[
-        { key: "verified", label: "Doğrulanmış" },
-        { key: "all", label: "Tümü" },
+        { key: "verified", label: t("filterVerified") },
+        { key: "all", label: t("filterAll") },
       ]}
     />
   );

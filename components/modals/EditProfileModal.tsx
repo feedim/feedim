@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { Trash2 } from "lucide-react";
 import EditableAvatar from "@/components/EditableAvatar";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +25,9 @@ interface EditProfileModalProps {
 }
 
 export default function EditProfileModal({ open, onClose, onSave, openAvatarPicker }: EditProfileModalProps) {
+  const t = useTranslations("modals");
+  const tc = useTranslations("common");
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -123,7 +127,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
           const sevenDays = 7 * 24 * 60 * 60 * 1000;
           const unlockTime = lastChange + sevenDays;
           if (Date.now() < unlockTime) {
-            setUsernameLockedUntil(new Date(unlockTime).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }));
+            setUsernameLockedUntil(new Date(unlockTime).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" }));
           } else {
             setUsernameLockedUntil(null);
           }
@@ -153,7 +157,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      feedimAlert("error", "Dosya boyutu 10MB'dan küçük olmalı");
+      feedimAlert("error", t("fileSizeLimit"));
       return;
     }
     setCropFile(file);
@@ -195,10 +199,10 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
           if (res.ok) {
             newAvatarUrl = data.url;
           } else {
-            feedimAlert("error", data.error || "Yükleme hatası");
+            feedimAlert("error", data.error || t("uploadError"));
           }
         } catch {
-          feedimAlert("error", "Bir hata oluştu");
+          feedimAlert("error", t("errorOccurred"));
         } finally {
           const elapsed = Date.now() - avatarLoadStartRef.current;
           const remain = Math.max(0, 2000 - elapsed);
@@ -235,10 +239,10 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
         setPendingAvatarPreview(null);
         onSave({ ...data.profile, avatar_url: newAvatarUrl });
       } else {
-        feedimAlert("error", data.error || "Güncelleme hatası");
+        feedimAlert("error", data.error || t("updateError"));
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", t("errorOccurred"));
     } finally {
       setSaving(false);
     }
@@ -251,17 +255,17 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
     <Modal
       open={open}
       onClose={onClose}
-      title="Profili Düzenle"
+      title={t("editProfile")}
       size="md"
-      infoText="Profil bilgilerini, fotoğrafını ve biyografini buradan düzenleyebilirsin."
+      infoText={t("editProfileInfoText")}
       rightAction={
         <button
           onClick={handleSave}
           disabled={saving || loading}
           className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
-          aria-label="Profili Kaydet"
+          aria-label={t("editProfile")}
         >
-          {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
+          {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : tc("save")}
         </button>
       }
     >
@@ -287,12 +291,12 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1">
-                  <p className="text-[1.1rem] font-bold">{username || "kullanıcı"}</p>
+                  <p className="text-[1.1rem] font-bold">{username || tc("user")}</p>
                   {isVerified && <VerifiedBadge variant={getBadgeVariant(premiumPlan)} role={role} />}
                 </div>
                 {avatarUrl && (
                   <button onClick={handleRemoveAvatar} className="text-xs text-error font-semibold flex items-center gap-1 mt-1 hover:underline">
-                    Avatarı kaldır
+                    {t("removeAvatar")}
                   </button>
                 )}
               </div>
@@ -301,18 +305,18 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
             {/* Name fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-text-muted mb-1">Ad</label>
-                <input type="text" value={name} onChange={e => setName(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} className="input-modern w-full" placeholder="Ad" />
+                <label className="block text-xs text-text-muted mb-1">{t("firstName")}</label>
+                <input type="text" value={name} onChange={e => setName(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} className="input-modern w-full" placeholder={t("firstName")} />
               </div>
               <div>
-                <label className="block text-xs text-text-muted mb-1">Soyad</label>
-                <input type="text" value={surname} onChange={e => setSurname(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} className="input-modern w-full" placeholder="Soyad" />
+                <label className="block text-xs text-text-muted mb-1">{t("lastName")}</label>
+                <input type="text" value={surname} onChange={e => setSurname(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} className="input-modern w-full" placeholder={t("lastName")} />
               </div>
             </div>
 
             {/* Username */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Kullanıcı Adı</label>
+              <label className="block text-xs text-text-muted mb-1">{t("usernameLabel")}</label>
               <div className="relative">
                 <input
                   type="text"
@@ -320,7 +324,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                   onChange={e => setUsername(normalizeUsername(e.target.value))}
                   maxLength={VALIDATION.username.max}
                   className={`input-modern w-full ${usernameLockedUntil ? "opacity-60 cursor-not-allowed" : ""}`}
-                  placeholder="kullanıcı_adı"
+                  placeholder={t("usernamePlaceholder")}
                   readOnly={!!usernameLockedUntil}
                 />
                 {!usernameLockedUntil && usernameAvailable !== null && username !== originalUsername && (
@@ -334,29 +338,29 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                 )}
               </div>
               {usernameLockedUntil ? (
-                <p className="text-xs text-text-muted mt-1">{usernameLockedUntil} tarihinde değiştirebileceksiniz</p>
+                <p className="text-xs text-text-muted mt-1">{t("usernameLockedUntil", { date: usernameLockedUntil })}</p>
               ) : (
-                <p className="text-xs text-text-muted mt-1">{VALIDATION.username.min}-{VALIDATION.username.max} karakter, harf, rakam, nokta ve alt çizgi</p>
+                <p className="text-xs text-text-muted mt-1">{t("usernameHint", { min: VALIDATION.username.min, max: VALIDATION.username.max })}</p>
               )}
             </div>
 
             {/* Bio */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Biyografi</label>
+              <label className="block text-xs text-text-muted mb-1">{t("bio")}</label>
               <textarea
                 value={bio}
                 onChange={e => setBio(e.target.value)}
                 maxLength={VALIDATION.bio.max}
                 rows={3}
                 className="input-modern w-full resize-none !pt-3"
-                placeholder="Kendinizi kısaca anlatın..."
+                placeholder={t("bioPlaceholder")}
               />
               <p className="text-xs text-text-muted mt-1 text-right">{bio.length}/{VALIDATION.bio.max}</p>
             </div>
 
             {/* Website */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Website</label>
+              <label className="block text-xs text-text-muted mb-1">{t("websiteLabel")}</label>
               <input
                 type="url"
                 value={website}
@@ -369,24 +373,24 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
 
             {/* Birth date */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Doğum Tarihi</label>
+              <label className="block text-xs text-text-muted mb-1">{t("birthDate")}</label>
               <BirthDateSelect value={birthDate} onChange={setBirthDate} />
             </div>
 
             {/* Gender */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Cinsiyet</label>
+              <label className="block text-xs text-text-muted mb-1">{t("genderLabel")}</label>
               <select value={gender} onChange={e => setGender(e.target.value)} className="select-modern w-full">
-                <option value="">Belirtmek istemiyorum</option>
-                <option value="male">Erkek</option>
-                <option value="female">Kadın</option>
-                <option value="other">Diğer</option>
+                <option value="">{t("genderNone")}</option>
+                <option value="male">{t("genderMale")}</option>
+                <option value="female">{t("genderFemale")}</option>
+                <option value="other">{t("genderOther")}</option>
               </select>
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">Telefon</label>
+              <label className="block text-xs text-text-muted mb-1">{t("phoneLabel")}</label>
               <input
                 type="tel"
                 value={phone}
@@ -407,11 +411,11 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
                     <Briefcase className="h-4 w-4 text-accent-main" />
-                    Profesyonel Hesap
+                    {t("professionalAccountLabel")}
                   </h4>
                   {professionalCategory && (
                     <div>
-                      <label className="block text-xs text-text-muted mb-1">Kategori</label>
+                      <label className="block text-xs text-text-muted mb-1">{t("category")}</label>
                       <button
                         onClick={() => setProModalOpen(true)}
                         className="w-full text-left text-sm text-text-secondary py-2 px-3 bg-bg-tertiary rounded-lg hover:bg-bg-tertiary transition flex items-center justify-between"
@@ -425,7 +429,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                     <>
                       <div>
                         <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1">
-                          <Mail className="h-3 w-3" /> İletişim E-postası
+                          <Mail className="h-3 w-3" /> {t("contactEmail")}
                         </label>
                         <input
                           type="email"
@@ -437,7 +441,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                       </div>
                       <div>
                         <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1">
-                          <Phone className="h-3 w-3" /> İletişim Telefonu
+                          <Phone className="h-3 w-3" /> {t("contactPhone")}
                         </label>
                         <input
                           type="tel"
@@ -456,7 +460,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                   )}
                   <button
                     onClick={() => {
-                      feedimAlert("warning", "Kişisel hesaba geçerseniz profesyonel hesap özellikleri (istatistikler, kategori, iletişim butonları) kaldırılacak.", {
+                      feedimAlert("warning", t("switchToPersonalWarning"), {
                         showYesNo: true,
                         onYes: async () => {
                           try {
@@ -475,17 +479,17 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                               setContactPhone("");
                               // silent
                             } else {
-                              feedimAlert("error", "Hesap türü değiştirilemedi");
+                              feedimAlert("error", t("accountTypeChangeFailed"));
                             }
                           } catch {
-                            feedimAlert("error", "Bir hata oluştu");
+                            feedimAlert("error", t("errorOccurred"));
                           }
                         },
                       });
                     }}
                     className="w-full text-center text-sm text-error font-medium py-2 hover:opacity-70 transition"
                   >
-                    Kişisel hesaba geç
+                    {t("switchToPersonal")}
                   </button>
                 </div>
               ) : (
@@ -495,7 +499,7 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
                 >
                   <div className="flex items-center gap-2">
                     <Briefcase className="h-4 w-4 text-accent-main" />
-                    <span className="text-sm font-medium text-accent-main">Profesyonel hesaba geç</span>
+                    <span className="text-sm font-medium text-accent-main">{t("switchToProfessional")}</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-accent-main" />
                 </button>
@@ -545,6 +549,8 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
 }
 
 function BirthDateSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useTranslations("modals");
+  const locale = useLocale();
   const today = new Date();
   const minYear = today.getFullYear() - 120;
   const maxYear = today.getFullYear() - 13;
@@ -575,27 +581,26 @@ function BirthDateSelect({ value, onChange }: { value: string; onChange: (v: str
 
   const daysInMonth = selYear && selMonth ? new Date(Number(selYear), Number(selMonth), 0).getDate() : 31;
 
-  const months = [
-    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
-  ];
+  const months = Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleDateString(locale, { month: "long" })
+  );
 
   return (
     <div className="grid grid-cols-3 gap-2">
       <select value={selDay} onChange={(e) => updateDate(selYear, selMonth, e.target.value)} className="select-modern w-full">
-        <option value="">Gün</option>
+        <option value="">{t("dayLabel")}</option>
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
           <option key={d} value={String(d)}>{d}</option>
         ))}
       </select>
       <select value={selMonth} onChange={(e) => updateDate(selYear, e.target.value, selDay)} className="select-modern w-full">
-        <option value="">Ay</option>
+        <option value="">{t("monthLabel")}</option>
         {months.map((m, i) => (
           <option key={i + 1} value={String(i + 1)}>{m}</option>
         ))}
       </select>
       <select value={selYear} onChange={(e) => updateDate(e.target.value, selMonth, selDay)} className="select-modern w-full">
-        <option value="">Yıl</option>
+        <option value="">{t("yearLabel")}</option>
         {Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i).map((y) => (
           <option key={y} value={String(y)}>{y}</option>
         ))}

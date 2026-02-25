@@ -9,11 +9,12 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import { Check } from "lucide-react";
 import FollowButton from "@/components/FollowButton";
 import { Spinner } from "@/components/FeedimLoader";
+import { useTranslations } from "next-intl";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import AvatarCropModal from "@/components/modals/AvatarCropModal";
 import EditableAvatar from "@/components/EditableAvatar";
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 10;
 const MIN_TOPIC_TAGS = 1;
 const MAX_TOPIC_TAGS = 5;
 
@@ -45,6 +46,9 @@ interface Suggestion {
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
+  const t = useTranslations("onboarding");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<false | "next" | "skip" | "prev">(false);
@@ -57,6 +61,8 @@ export default function OnboardingPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const avatarLoadStartRef = useRef<number>(0);
+  const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
   const [bio, setBio] = useState("");
@@ -72,17 +78,23 @@ export default function OnboardingPage() {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
 
-  // Load profile and tags on mount
+  // Load suggested tags when reaching interests step
+  useEffect(() => {
+    if (step === 8 && !tagsLoaded) {
+      const lang = selectedLanguage || document.cookie.match(/fdm-locale=(\w+)/)?.[1] || "tr";
+      fetch(`/api/tags/suggested?lang=${lang}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setAvailableTags(d.tags || []);
+          setTagsLoaded(true);
+        })
+        .catch(() => {});
+    }
+  }, [step, tagsLoaded, selectedLanguage]);
+
+  // Load profile on mount
   useEffect(() => {
     loadProfile();
-    // En popüler 50 etiketi çek
-    fetch("/api/tags?limit=50")
-      .then((r) => r.json())
-      .then((d) => {
-        setAvailableTags(d.tags || []);
-        setTagsLoaded(true);
-      })
-      .catch(() => {});
 
     // Başka sekmede giriş/çıkış yapıldığında algıla ve sayfayı yenile
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -116,8 +128,8 @@ export default function OnboardingPage() {
       setProfile(data);
       let currentStep = data.onboarding_step || 1;
       // Skip email verify step if already verified
-      if (currentStep === 5 && !!user.email_confirmed_at) {
-        currentStep = 6; // Jump to Topics
+      if (currentStep === 7 && !!user.email_confirmed_at) {
+        currentStep = 8; // Jump to Topics
       }
       setStep(currentStep);
       setAvatarPreview(data.avatar_url || null);
@@ -130,7 +142,7 @@ export default function OnboardingPage() {
 
   // Resolve next step (skip email verify if already verified)
   const resolveStep = useCallback((s: number) => {
-    if (s === 5 && emailVerified) s = 6;
+    if (s === 7 && emailVerified) s = 8;
     return s;
   }, [emailVerified]);
 
@@ -151,13 +163,13 @@ export default function OnboardingPage() {
       const data = await res.json();
       await waitMin();
       if (!res.ok) {
-        feedimAlert("error", data.error || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", data.error || tErrors("generic"));
         return;
       }
       setStep(resolveStep(data.next));
     } catch {
       await waitMin();
-      feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", tErrors("connection"));
     } finally {
       setProcessing(false);
     }
@@ -180,13 +192,13 @@ export default function OnboardingPage() {
       const data = await res.json();
       await waitMin();
       if (!res.ok) {
-        feedimAlert("error", data.error || "Bu adım atlanamaz");
+        feedimAlert("error", data.error || t("cannotSkip"));
         return;
       }
       setStep(resolveStep(data.next));
     } catch {
       await waitMin();
-      feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", tErrors("connection"));
     } finally {
       setProcessing(false);
     }
@@ -208,24 +220,38 @@ export default function OnboardingPage() {
       });
       await waitMin();
       emitNavigationStart();
-      router.push("/");
+      router.push("/profile");
     } catch {
       await waitMin();
-      feedimAlert("error", "Bağlantı hatası, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", tErrors("connection"));
     } finally {
       setProcessing(false);
     }
-  }, [router]);
+  }, [router, tErrors]);
 
   // Handle next
   const handleNext = useCallback(async () => {
     if (processing) return;
 
     switch (step) {
-      case 1:
+      case 1: {
+        // Country
+        await saveStep(selectedCountry ? { country: selectedCountry } : {});
+        break;
+      }
+      case 2: {
+        // Language — save and reload if language changed
+        await saveStep(selectedLanguage ? { language: selectedLanguage } : {});
+        if (selectedLanguage) {
+          document.cookie = `fdm-locale=${selectedLanguage};path=/;max-age=${365 * 24 * 60 * 60}`;
+          window.location.reload();
+          return;
+        }
+        break;
+      }
+      case 3:
         // Upload pending avatar if exists (same flow as EditProfileModal)
         if (pendingAvatarFile) {
-          setProcessing("next");
           setAvatarUploading(true);
           setAvatarLoading(true);
           avatarLoadStartRef.current = Date.now();
@@ -238,15 +264,13 @@ export default function OnboardingPage() {
               setAvatarPreview(data.url);
               setPendingAvatarFile(null);
             } else {
-              feedimAlert("error", data.error || "Avatar yüklenemedi.");
-              setProcessing(false);
+              feedimAlert("error", data.error || t("avatarUploadFailed"));
               setAvatarLoading(false);
               setAvatarUploading(false);
               return;
             }
           } catch {
-            feedimAlert("error", "Avatar yüklenemedi.");
-            setProcessing(false);
+            feedimAlert("error", t("avatarUploadFailed"));
             setAvatarLoading(false);
             setAvatarUploading(false);
             return;
@@ -256,28 +280,27 @@ export default function OnboardingPage() {
           await new Promise(r => setTimeout(r, remain));
           setAvatarLoading(false);
           setAvatarUploading(false);
-          setProcessing(false);
         }
         await saveStep();
         break;
-      case 2:
-        if (!birthDate) { feedimAlert("error", "Doğum tarihi gerekli"); return; }
+      case 4:
+        if (!birthDate) { feedimAlert("error", t("birthDateRequired")); return; }
         await saveStep({ birth_date: birthDate });
         break;
-      case 3:
-        if (!gender) { feedimAlert("error", "Cinsiyet seçimi gerekli"); return; }
+      case 5:
+        if (!gender) { feedimAlert("error", t("genderRequired")); return; }
         await saveStep({ gender });
         break;
-      case 4:
+      case 6:
         await saveStep({ bio });
         break;
-      case 5:
+      case 7:
         await saveStep();
         break;
-      case 6:
+      case 8:
         // Topics — must select at least 1
         if (selectedTagIds.size < MIN_TOPIC_TAGS) {
-          feedimAlert("error", `En az ${MIN_TOPIC_TAGS} konu seçmelisiniz`);
+          feedimAlert("error", t("minTopics", { min: MIN_TOPIC_TAGS }));
           return;
         }
         // Follow selected tags in background (fire and forget)
@@ -286,14 +309,14 @@ export default function OnboardingPage() {
         }
         await saveStep();
         break;
-      case 7:
+      case 9:
         await saveStep();
         break;
-      case 8:
+      case 10:
         await completeOnboarding();
         break;
     }
-  }, [step, processing, pendingAvatarFile, birthDate, gender, bio, selectedTagIds, saveStep, completeOnboarding]);
+  }, [step, processing, pendingAvatarFile, selectedLanguage, selectedCountry, birthDate, gender, bio, selectedTagIds, saveStep, completeOnboarding]);
 
   // Handle prev
   const handlePrev = useCallback(async () => {
@@ -301,7 +324,7 @@ export default function OnboardingPage() {
     setProcessing("prev");
     await new Promise(r => setTimeout(r, 1000));
     let prev = step - 1;
-    if (prev === 5 && emailVerified) prev = 4; // Skip email verify going back
+    if (prev === 7 && emailVerified) prev = 6; // Skip email verify going back
     setStep(prev);
     setProcessing(false);
   }, [step, processing, emailVerified]);
@@ -311,7 +334,7 @@ export default function OnboardingPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      feedimAlert("error", "Dosya boyutu 10MB'dan küçük olmalı");
+      feedimAlert("error", tErrors("fileTooLarge"));
       return;
     }
     setCropFile(file);
@@ -328,9 +351,9 @@ export default function OnboardingPage() {
     setAvatarPreview(URL.createObjectURL(croppedFile));
   };
 
-  // Load suggestions when reaching step 7
+  // Load suggestions when reaching step 9
   useEffect(() => {
-    if (step === 7 && !suggestionsLoaded) {
+    if (step === 9 && !suggestionsLoaded) {
       fetch("/api/onboarding")
         .then((r) => r.json())
         .then((d) => setSuggestions(d.suggestions || []))
@@ -339,9 +362,9 @@ export default function OnboardingPage() {
     }
   }, [step, suggestionsLoaded]);
 
-  // Step 8 reached
+  // Step 10 reached
   useEffect(() => {
-    if (step === 8) setCelebrated(true);
+    if (step === 10) setCelebrated(true);
   }, [step]);
 
   // Toggle follow
@@ -374,7 +397,7 @@ export default function OnboardingPage() {
   }
 
   const progress = (step / TOTAL_STEPS) * 100;
-  const canSkip = [1, 4, 5, 6, 7].includes(step) && step < 8;
+  const canSkip = [3, 6, 7, 8, 9].includes(step) && step < 10;
 
   return (
     <div className="min-h-screen text-text-primary">
@@ -397,6 +420,18 @@ export default function OnboardingPage() {
         {/* Step content */}
         <div className="mb-[10px]" style={{ animation: "fadeUp 0.3s ease" }} key={step}>
           {step === 1 && (
+            <StepCountry
+              country={selectedCountry}
+              onCountryChange={setSelectedCountry}
+            />
+          )}
+          {step === 2 && (
+            <StepLanguage
+              language={selectedLanguage}
+              onLanguageChange={setSelectedLanguage}
+            />
+          )}
+          {step === 3 && (
             <StepProfilePhoto
               avatarPreview={avatarPreview}
               onAvatarClick={() => { if (!avatarUploading && !avatarLoading) fileInputRef.current?.click(); }}
@@ -404,33 +439,33 @@ export default function OnboardingPage() {
               uploading={avatarUploading}
             />
           )}
-          {step === 2 && <StepBirthDate value={birthDate} onChange={setBirthDate} />}
-          {step === 3 && <StepGender value={gender} onChange={setGender} />}
-          {step === 4 && <StepBiography value={bio} onChange={setBio} />}
-          {step === 5 && <StepEmailVerify />}
-          {step === 6 && <StepTopicTags tags={availableTags} selectedIds={selectedTagIds} onToggle={(id) => {
+          {step === 4 && <StepBirthDate value={birthDate} onChange={setBirthDate} />}
+          {step === 5 && <StepGender value={gender} onChange={setGender} />}
+          {step === 6 && <StepBiography value={bio} onChange={setBio} />}
+          {step === 7 && <StepEmailVerify />}
+          {step === 8 && <StepTopicTags tags={availableTags} selectedIds={selectedTagIds} onToggle={(id) => {
             const newSet = new Set(selectedTagIds);
             if (newSet.has(id)) { newSet.delete(id); } else if (newSet.size < MAX_TOPIC_TAGS) { newSet.add(id); }
             setSelectedTagIds(newSet);
           }} loaded={tagsLoaded} minRequired={MIN_TOPIC_TAGS} maxAllowed={MAX_TOPIC_TAGS} />}
-          {step === 7 && <StepSuggestions suggestions={suggestions} followedIds={followedIds} onToggle={toggleFollow} loaded={suggestionsLoaded} />}
-          {step === 8 && <StepWelcome profile={profile} avatarPreview={avatarPreview} />}
+          {step === 9 && <StepSuggestions suggestions={suggestions} followedIds={followedIds} onToggle={toggleFollow} loaded={suggestionsLoaded} />}
+          {step === 10 && <StepWelcome profile={profile} avatarPreview={avatarPreview} />}
         </div>
 
         {/* Navigation */}
         <div className="flex items-center gap-[10px] mt-[15px]">
           {step > 1 && (
-            <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" style={{ background: "var(--bg-elevated)" }} aria-label="Geri">
-              {processing === "prev" ? <Spinner size={18} /> : "Geri"}
+            <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" style={{ background: "var(--bg-elevated)" }} aria-label={tCommon("back")}>
+              {processing === "prev" ? <Spinner size={18} /> : tCommon("back")}
             </button>
           )}
           <button
             onClick={handleNext}
-            disabled={!!processing || (step === 6 && selectedTagIds.size < MIN_TOPIC_TAGS)}
+            disabled={!!processing || avatarUploading || (step === 8 && selectedTagIds.size < MIN_TOPIC_TAGS)}
             className="t-btn accept flex-1 relative"
-            aria-label="İleri"
+            aria-label={tCommon("next")}
           >
-            {processing === "next" ? <Spinner size={18} /> : step === 8 ? "Bitir" : "İleri"}
+            {processing === "next" ? <Spinner size={18} /> : step === 10 ? tCommon("finish") : tCommon("next")}
           </button>
         </div>
 
@@ -441,9 +476,9 @@ export default function OnboardingPage() {
               onClick={skipStep}
               disabled={!!processing}
               className="t-btn cancel relative w-full min-h-[38px]"
-              aria-label="Bu Adımı Atla"
+              aria-label={tCommon("skip")}
             >
-              {processing === "skip" ? <Spinner size={16} /> : "Bu adımı atla"}
+              {processing === "skip" ? <Spinner size={16} /> : tCommon("skip")}
             </button>
           </div>
         )}
@@ -470,17 +505,82 @@ export default function OnboardingPage() {
 
 // ── Step Components ──
 
+function StepCountry({ country, onCountryChange }: {
+  country: string;
+  onCountryChange: (v: string) => void;
+}) {
+  const t = useTranslations("onboarding");
+  const [countries, setCountries] = useState<{ code: string; name_tr: string; name_en: string; name_az: string }[]>([]);
+  const [locale, setLocale] = useState("tr");
+
+  useEffect(() => {
+    import("@/lib/countries").then((m) => setCountries(m.COUNTRIES as any));
+    const match = document.cookie.match(/fdm-locale=(\w+)/);
+    if (match) setLocale(match[1]);
+  }, []);
+
+  const nameKey = `name_${locale}` as "name_tr" | "name_en" | "name_az";
+
+  return (
+    <div>
+      <div className="mb-5">
+        <h2 className="text-xl font-bold mb-2">{t("country")}</h2>
+        <p className="text-sm text-text-muted">{t("countryDesc")}</p>
+      </div>
+      <select
+        value={country}
+        onChange={(e) => onCountryChange(e.target.value)}
+        className="select-modern w-full"
+      >
+        <option value="">{t("selectCountry")}</option>
+        {countries.map((c) => (
+          <option key={c.code} value={c.code}>
+            {c[nameKey] || c.name_en}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function StepLanguage({ language, onLanguageChange }: {
+  language: string;
+  onLanguageChange: (v: string) => void;
+}) {
+  const t = useTranslations("onboarding");
+
+  return (
+    <div>
+      <div className="mb-5">
+        <h2 className="text-xl font-bold mb-2">{t("language")}</h2>
+        <p className="text-sm text-text-muted">{t("languageDesc")}</p>
+      </div>
+      <select
+        value={language}
+        onChange={(e) => onLanguageChange(e.target.value)}
+        className="select-modern w-full"
+      >
+        <option value="">—</option>
+        <option value="tr">Türkçe</option>
+        <option value="en">English</option>
+        <option value="az">Azərbaycanca</option>
+      </select>
+    </div>
+  );
+}
+
 function StepProfilePhoto({ avatarPreview, onAvatarClick, loading, uploading }: {
   avatarPreview: string | null;
   onAvatarClick: () => void;
   loading: boolean;
   uploading: boolean;
 }) {
+  const t = useTranslations("onboarding");
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold mb-2">Profil fotoğrafı ekle</h2>
-        <p className="text-sm text-text-muted">Başkalarının sizi tanıması için bir profil resmi ekleyin.</p>
+        <h2 className="text-xl font-bold mb-2">{t("addPhoto")}</h2>
+        <p className="text-sm text-text-muted">{t("addPhotoDesc")}</p>
       </div>
       <div className="flex justify-center">
         <EditableAvatar
@@ -497,6 +597,8 @@ function StepProfilePhoto({ avatarPreview, onAvatarClick, loading, uploading }: 
 }
 
 function StepBirthDate({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useTranslations("onboarding");
+  const tMonths = useTranslations("months");
   const today = new Date();
   const minYear = today.getFullYear() - 120;
   const maxYear = today.getFullYear() - 13;
@@ -518,32 +620,29 @@ function StepBirthDate({ value, onChange }: { value: string; onChange: (v: strin
 
   const daysInMonth = selYear && selMonth ? new Date(Number(selYear), Number(selMonth), 0).getDate() : 31;
 
-  const months = [
-    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
-  ];
+  const months = Array.from({ length: 12 }, (_, i) => tMonths(String(i + 1)));
 
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold mb-2">Doğum tarihiniz nedir?</h2>
-        <p className="text-sm text-text-muted">Deneyiminizi kişiselleştirmemize yardımcı olur.</p>
+        <h2 className="text-xl font-bold mb-2">{t("birthDate")}</h2>
+        <p className="text-sm text-text-muted">{t("birthDateDesc")}</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         <select value={selDay} onChange={(e) => updateDate(selYear, selMonth, e.target.value)} className="select-modern w-full">
-          <option value="">Gün</option>
+          <option value="">{t("day")}</option>
           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
             <option key={d} value={String(d)}>{d}</option>
           ))}
         </select>
         <select value={selMonth} onChange={(e) => updateDate(selYear, e.target.value, selDay)} className="select-modern w-full">
-          <option value="">Ay</option>
+          <option value="">{t("month")}</option>
           {months.map((m, i) => (
             <option key={i + 1} value={String(i + 1)}>{m}</option>
           ))}
         </select>
         <select value={selYear} onChange={(e) => updateDate(e.target.value, selMonth, selDay)} className="select-modern w-full">
-          <option value="">Yıl</option>
+          <option value="">{t("year")}</option>
           {Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i).map((y) => (
             <option key={y} value={String(y)}>{y}</option>
           ))}
@@ -554,38 +653,40 @@ function StepBirthDate({ value, onChange }: { value: string; onChange: (v: strin
 }
 
 function StepGender({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useTranslations("onboarding");
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold mb-2">Cinsiyetiniz nedir?</h2>
-        <p className="text-sm text-text-muted">Deneyiminizi kişiselleştirmemize yardımcı olur.</p>
+        <h2 className="text-xl font-bold mb-2">{t("gender")}</h2>
+        <p className="text-sm text-text-muted">{t("birthDateDesc")}</p>
       </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="select-modern w-full"
       >
-        <option value="">Cinsiyet seçin</option>
-        <option value="male">Erkek</option>
-        <option value="female">Kadın</option>
-        <option value="other">Diğer</option>
+        <option value="">{t("selectGender")}</option>
+        <option value="male">{t("male")}</option>
+        <option value="female">{t("female")}</option>
+        <option value="other">{t("other")}</option>
       </select>
     </div>
   );
 }
 
 function StepBiography({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useTranslations("onboarding");
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold mb-2">Kendinizi tanıtmak ister misiniz?</h2>
-        <p className="text-sm text-text-muted">Kısa bir biyografi yazın, başkaları sizi daha iyi tanısın.</p>
+        <h2 className="text-xl font-bold mb-2">{t("bio")}</h2>
+        <p className="text-sm text-text-muted">{t("bioDesc")}</p>
       </div>
       <div className="relative">
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value.slice(0, 150))}
-          placeholder="Kendiniz hakkında bir şeyler yazın..."
+          placeholder={t("bioPlaceholder")}
           rows={4}
           maxLength={150}
           className="input-modern w-full !h-auto !py-[10px] !px-[11px]"
@@ -597,18 +698,19 @@ function StepBiography({ value, onChange }: { value: string; onChange: (v: strin
 }
 
 function StepEmailVerify() {
+  const t = useTranslations("onboarding");
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold mb-2">E-posta doğrulaması</h2>
-        <p className="text-sm text-text-muted">E-posta adresiniz Supabase tarafından otomatik doğrulanmıştır.</p>
+        <h2 className="text-xl font-bold mb-2">{t("emailVerification")}</h2>
+        <p className="text-sm text-text-muted">{t("emailAutoVerified")}</p>
       </div>
       <div className="bg-bg-secondary rounded-2xl p-5 text-center">
         <div className="w-12 h-12 rounded-full bg-success/20 text-success flex items-center justify-center mx-auto mb-3">
           <Check className="h-6 w-6" />
         </div>
-        <p className="text-sm font-medium">E-posta adresiniz doğrulandı.</p>
-        <p className="text-xs text-text-muted mt-1">Devam etmek için İleri butonuna basın.</p>
+        <p className="text-sm font-medium">{t("emailVerified")}</p>
+        <p className="text-xs text-text-muted mt-1">{t("pressNext")}</p>
       </div>
     </div>
   );
@@ -622,12 +724,13 @@ function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired, maxAl
   minRequired: number;
   maxAllowed: number;
 }) {
+  const t = useTranslations("onboarding");
   return (
     <div>
       <div className="mb-3">
-        <h2 className="text-xl font-bold mb-2">İlgi alanlarını seç</h2>
+        <h2 className="text-xl font-bold mb-2">{t("interests")}</h2>
         <p className="text-sm text-text-muted">
-          Sana özel içerikler önerebilmemiz için en az {minRequired}, en fazla {maxAllowed} etiket seç.
+          {t("interestsDesc", { min: minRequired, max: maxAllowed })}
         </p>
       </div>
       {!loaded ? (
@@ -636,13 +739,13 @@ function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired, maxAl
         </div>
       ) : tags.length === 0 ? (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-sm text-text-muted">Henüz etiket yok.</p>
+          <p className="text-sm text-text-muted">{t("noTags")}</p>
         </div>
       ) : (
         <>
           <div className="mb-3">
             <span className="text-xs text-text-muted">
-              {selectedIds.size}/{maxAllowed} seçildi
+              {selectedIds.size}/{maxAllowed} {t("selected")}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -675,11 +778,12 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
   onToggle: (id: string) => void;
   loaded: boolean;
 }) {
+  const t = useTranslations("onboarding");
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold mb-2">Tanıdıklarınızı bulun</h2>
-        <p className="text-sm text-text-muted">Akışınızda gönderileri görmek için kişileri takip edin.</p>
+        <h2 className="text-xl font-bold mb-2">{t("findPeople")}</h2>
+        <p className="text-sm text-text-muted">{t("findPeopleDesc")}</p>
       </div>
       {!loaded ? (
         <div className="flex items-center justify-center min-h-[200px]">
@@ -687,7 +791,7 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
         </div>
       ) : suggestions.length === 0 ? (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-sm text-text-muted">Henüz önerilecek kullanıcı yok.</p>
+          <p className="text-sm text-text-muted">{t("noSuggestions")}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -718,7 +822,9 @@ function StepSuggestions({ suggestions, followedIds, onToggle, loaded }: {
 }
 
 function StepWelcome({ profile, avatarPreview }: { profile: Profile; avatarPreview: string | null }) {
-  const name = (profile.name || profile.username || "Kullanıcı").trim();
+  const t = useTranslations("onboarding");
+  const tCommon = useTranslations("common");
+  const name = (profile.name || profile.username || tCommon("user")).trim();
 
   return (
     <div className="text-center py-6">
@@ -729,8 +835,8 @@ function StepWelcome({ profile, avatarPreview }: { profile: Profile; avatarPrevi
           <img className="default-avatar-auto w-[120px] h-[120px] rounded-full object-cover" alt="" />
         )}
       </div>
-      <h2 className="text-2xl font-bold mb-2">Hoş geldin, {name}!</h2>
-      <p className="text-sm text-text-muted">Her şey hazır! İnsanlarla bağlantı kurmaya ve içeriklerini paylaşmaya başlayabilirsin.</p>
+      <h2 className="text-2xl font-bold mb-2">{t("welcome", { name })}</h2>
+      <p className="text-sm text-text-muted">{t("welcomeDesc")}</p>
     </div>
   );
 }

@@ -10,9 +10,10 @@ import {
 import { feedimAlert } from "@/components/FeedimAlert";
 import { COIN_MIN_WITHDRAWAL, COIN_TO_TRY_RATE, COIN_COMMISSION_RATE } from "@/lib/constants";
 import AppLayout from "@/components/AppLayout";
-import LoadingShell from "@/components/LoadingShell";
+
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUser } from "@/components/UserContext";
+import { useTranslations } from "next-intl";
 
 interface WithdrawalRequest {
   id: number;
@@ -39,6 +40,7 @@ const ALLOWED_PLANS = ["pro", "max", "business"];
 
 export default function WithdrawalPage() {
   useSearchParams();
+  const t = useTranslations("withdrawal");
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function WithdrawalPage() {
 
   const handleSaveIban = async () => {
     if (!iban.trim() || !holderName.trim()) {
-      feedimAlert("error", "IBAN ve ad soyad gerekli");
+      feedimAlert("error", t("ibanAndNameRequired"));
       return;
     }
     setSavingIban(true);
@@ -116,26 +118,26 @@ export default function WithdrawalPage() {
       ]);
       const data = await res.json();
       if (!res.ok) {
-        feedimAlert("error", data.error || "Kaydedilemedi, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", data.error || t("saveFailed"));
         return;
       }
-      feedimAlert("success", "IBAN bilgileri kaydedildi");
+      feedimAlert("success", t("ibanSaved"));
       setIbanSaved(true);
       setTimeout(() => setIbanSaved(false), 3000);
       loadData();
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("genericError"));
     } finally { setSavingIban(false); }
   };
 
   const handleSubmitWithdrawal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (amountNum < COIN_MIN_WITHDRAWAL) {
-      feedimAlert("error", `Minimum ${COIN_MIN_WITHDRAWAL} jeton gerekli`);
+      feedimAlert("error", t("minimumTokensRequired", { amount: COIN_MIN_WITHDRAWAL }));
       return;
     }
     if (amountNum > balance) {
-      feedimAlert("error", "Yetersiz bakiye");
+      feedimAlert("error", t("insufficientBalance"));
       return;
     }
     setSubmitting(true);
@@ -150,35 +152,29 @@ export default function WithdrawalPage() {
       ]);
       const data = await res.json();
       if (res.ok && data.success) {
-        feedimAlert("success", `${amountNum} jeton çekim talebi oluşturuldu!`);
+        feedimAlert("success", t("withdrawalRequestCreated", { amount: amountNum }));
         setAmount("");
         loadData();
       } else {
-        feedimAlert("error", data.error || "İşlem başarısız, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", data.error || t("operationFailed"));
       }
     } catch {
-      feedimAlert("error", "Sunucu hatası, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("serverError"));
     } finally { setSubmitting(false); }
   };
 
   const hasPendingRequest = requests.some(r => r.status === "pending" || r.status === "processing");
 
   return (
-    <AppLayout headerTitle="Ödeme Alma" hideRightSidebar>
+    <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
         {loading ? (
-          <LoadingShell>
-            <div className="space-y-4">
-              <div className="skeleton h-32 rounded-2xl" />
-              <div className="skeleton h-48 rounded-2xl" />
-              <div className="skeleton h-32 rounded-2xl" />
-            </div>
-          </LoadingShell>
+          <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : (
           <>
             {/* Mevcut Bakiye */}
             <div className="bg-bg-secondary rounded-2xl p-5 text-center">
-              <p className="text-sm text-text-muted mb-2">Mevcut Bakiye</p>
+              <p className="text-sm text-text-muted mb-2">{t("currentBalance")}</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-7 w-7 text-accent-main" />
                 <span className="text-3xl font-bold text-accent-main">{balance.toLocaleString()}</span>
@@ -193,16 +189,16 @@ export default function WithdrawalPage() {
               <div className="bg-bg-secondary rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <VerifiedBadge size="md" />
-                  <h3 className="font-semibold">Premium Gerekli</h3>
+                  <h3 className="font-semibold">{t("premiumRequired")}</h3>
                 </div>
                 <p className="text-sm text-text-muted mb-4">
-                  Ödeme almak için Pro veya üzeri bir plan gereklidir. Premium'a yükselterek jetonlarınızı nakde çevirebilirsiniz.
+                  {t("premiumRequiredDesc")}
                 </p>
                 <Link
                   href="/settings/premium"
                   className="w-full py-3 flex items-center justify-center bg-accent-main text-white font-bold rounded-2xl transition hover:opacity-90"
                 >
-                  Premium'a Geç
+                  {t("goPremium")}
                 </Link>
               </div>
             )}
@@ -212,17 +208,17 @@ export default function WithdrawalPage() {
               <div className="bg-bg-secondary rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="h-5 w-5 text-accent-main" />
-                  <h3 className="font-semibold">İki Faktörlü Doğrulama Zorunlu</h3>
+                  <h3 className="font-semibold">{t("mfaRequired")}</h3>
                 </div>
                 <p className="text-sm text-text-muted mb-4">
-                  IBAN bilgisi eklemek ve ödeme talebi oluşturmak için iki faktörlü doğrulamayı etkinleştirmeniz gerekmektedir.
+                  {t("mfaRequiredDesc")}
                 </p>
                 <Link
                   href="/security"
                   className="w-full py-3 flex items-center justify-center gap-2 bg-accent-main text-white font-bold rounded-2xl transition hover:opacity-90"
                 >
                   <Shield className="h-4 w-4" />
-                  İki Faktörlü Doğrulamayı Etkinleştir
+                  {t("enableMfa")}
                 </Link>
               </div>
             )}
@@ -231,12 +227,12 @@ export default function WithdrawalPage() {
             <div className={`bg-bg-secondary rounded-2xl p-5 ${(!isPremiumAllowed || !isMfaEnabled) ? "opacity-50 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-2 mb-1">
                 <Wallet className="h-5 w-5 text-accent-main" />
-                <h2 className="font-semibold text-lg">IBAN Bilgileri</h2>
+                <h2 className="font-semibold text-lg">{t("ibanDetails")}</h2>
               </div>
-              <p className="text-xs text-text-muted mb-5">Kazançlarınız bu hesaba aktarılacaktır.</p>
+              <p className="text-xs text-text-muted mb-5">{t("ibanDetailsDesc")}</p>
               {hasPendingRequest && (
                 <div className="bg-warning/10 text-warning text-xs font-medium px-3 py-2 rounded-xl mb-4">
-                  Bekleyen çekim talebi varken IBAN bilgileri güncellenemez.
+                  {t("ibanLockedPending")}
                 </div>
               )}
 
@@ -254,12 +250,12 @@ export default function WithdrawalPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">Hesap Sahibi (Ad Soyad)</label>
+                  <label className="block text-sm text-text-muted mb-1.5">{t("accountHolder")}</label>
                   <input
                     type="text"
                     value={holderName}
                     onChange={(e) => setHolderName(e.target.value)}
-                    placeholder="Ad Soyad"
+                    placeholder={t("fullName")}
                     maxLength={100}
                     className="input-modern w-full"
                   />
@@ -270,8 +266,8 @@ export default function WithdrawalPage() {
                   className="w-full py-3 flex items-center justify-center gap-2 bg-accent-main text-white font-bold rounded-2xl transition hover:opacity-90 disabled:opacity-50"
                 >
                   {savingIban ? <span className="loader" /> : ibanSaved ? (
-                    <><Check className="h-5 w-5" /> Kaydedildi</>
-                  ) : "IBAN Kaydet"}
+                    <><Check className="h-5 w-5" /> {t("saved")}</>
+                  ) : t("saveIban")}
                 </button>
               </div>
             </div>
@@ -280,15 +276,15 @@ export default function WithdrawalPage() {
             <div className={`bg-bg-secondary rounded-2xl p-5 ${(!isPremiumAllowed || !isMfaEnabled || !hasIban) ? "opacity-50 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-2 mb-1">
                 <Send className="h-5 w-5 text-accent-main" />
-                <h2 className="font-semibold text-lg">Cekim Talebi</h2>
+                <h2 className="font-semibold text-lg">{t("withdrawalRequest")}</h2>
               </div>
               <p className="text-xs text-text-muted mb-5">
-                Minimum {COIN_MIN_WITHDRAWAL} jeton ({(COIN_MIN_WITHDRAWAL * COIN_TO_TRY_RATE).toFixed(0)} TL)
+                {t("minimumWithdrawal", { amount: COIN_MIN_WITHDRAWAL, amountTry: (COIN_MIN_WITHDRAWAL * COIN_TO_TRY_RATE).toFixed(0) })}
               </p>
 
               <form onSubmit={handleSubmitWithdrawal} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">Cekim Miktari (jeton)</label>
+                  <label className="block text-sm text-text-muted mb-1.5">{t("withdrawalAmount")}</label>
                   <input
                     type="number"
                     value={amount}
@@ -302,15 +298,15 @@ export default function WithdrawalPage() {
                   {amountNum > 0 && (
                     <div className="mt-2 space-y-1 text-sm">
                       <div className="flex justify-between text-text-muted">
-                        <span>Brüt tutar</span>
+                        <span>{t("grossAmount")}</span>
                         <span>{grossTry.toFixed(2)} TL</span>
                       </div>
                       <div className="flex justify-between text-text-muted">
-                        <span>Feedim komisyonu (%{COIN_COMMISSION_RATE * 100})</span>
+                        <span>{t("feedimCommission", { rate: COIN_COMMISSION_RATE * 100 })}</span>
                         <span>-{commissionTry.toFixed(2)} TL</span>
                       </div>
                       <div className="flex justify-between font-semibold text-text-primary pt-1 border-t border-border-primary">
-                        <span>Net ödeme</span>
+                        <span>{t("netPayment")}</span>
                         <span>{netTry.toFixed(2)} TL</span>
                       </div>
                     </div>
@@ -324,7 +320,7 @@ export default function WithdrawalPage() {
                     onClick={() => setAmount(String(balance))}
                     className="text-xs text-accent-main font-medium hover:underline"
                   >
-                    Tumunu cek ({balance.toLocaleString()} jeton)
+                    {t("withdrawAll", { amount: balance.toLocaleString() })}
                   </button>
                 )}
 
@@ -338,7 +334,7 @@ export default function WithdrawalPage() {
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      {amountNum > 0 ? `${netTry.toFixed(2)} TL Çek` : "Çek"}
+                      {amountNum > 0 ? `${netTry.toFixed(2)} TL ${t("withdrawBtn")}` : t("withdrawBtn")}
                     </>
                   )}
                 </button>
@@ -349,16 +345,16 @@ export default function WithdrawalPage() {
             <div className="bg-bg-secondary rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="h-5 w-5 text-accent-main" />
-                <h3 className="font-semibold">Ödeme Bilgilendirmesi</h3>
+                <h3 className="font-semibold">{t("paymentInfo")}</h3>
               </div>
               <ul className="space-y-2 text-sm text-text-muted">
-                <li>• Ödeme almak için en az Pro plan gereklidir.</li>
-                <li>• Minimum çekim miktarı {COIN_MIN_WITHDRAWAL} jetondur ({(COIN_MIN_WITHDRAWAL * COIN_TO_TRY_RATE).toFixed(0)} TL).</li>
-                <li>• Çekim işlemlerinde %{COIN_COMMISSION_RATE * 100} Feedim komisyonu uygulanır.</li>
-                <li>• İki faktörlü doğrulama zorunludur.</li>
-                <li>• Ödemeler {COIN_MIN_WITHDRAWAL} jeton üzerinde, 1-5 iş günü içinde yapılır.</li>
-                <li>• IBAN bilginizin doğru olduğundan emin olun.</li>
-                <li>• Bekleyen çekim talebi varken IBAN bilgilerinizi güncelleyemezsiniz. Önce mevcut talebi iptal etmeniz gerekir.</li>
+                <li>• {t("infoProPlan")}</li>
+                <li>• {t("infoMinWithdrawal", { amount: COIN_MIN_WITHDRAWAL, amountTry: (COIN_MIN_WITHDRAWAL * COIN_TO_TRY_RATE).toFixed(0) })}</li>
+                <li>• {t("infoCommission", { rate: COIN_COMMISSION_RATE * 100 })}</li>
+                <li>• {t("infoMfaRequired")}</li>
+                <li>• {t("infoProcessingTime", { amount: COIN_MIN_WITHDRAWAL })}</li>
+                <li>• {t("infoCorrectIban")}</li>
+                <li>• {t("infoPendingIban")}</li>
               </ul>
             </div>
           </>

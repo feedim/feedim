@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Heart, MessageCircle, Bookmark, Gift, BookOpen } from "lucide-react";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import ShareIcon from "@/components/ShareIcon";
 import { decodeId } from "@/lib/hashId";
 import { useAuthModal } from "@/components/AuthModal";
@@ -85,6 +86,8 @@ export default function PostInteractionBar({
   const { requireAuth } = useAuthModal();
   const { user: currentUser } = useUser();
   const searchParams = useSearchParams();
+  const t = useTranslations();
+  const locale = useLocale();
 
   // Preload most common modals after idle — eliminates first-open delay
   useEffect(() => {
@@ -173,7 +176,7 @@ export default function PostInteractionBar({
         setLiked(!newLiked);
         setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
         if (res.status === 429) {
-          res.json().then(data => feedimAlert("error", data.error || "Günlük beğeni limitine ulaştın")).catch(() => {});
+          res.json().then(data => feedimAlert("error", data.error || t('errors.likeLimitReached'))).catch(() => {});
         }
       }
     }).catch(() => {});
@@ -193,7 +196,7 @@ export default function PostInteractionBar({
         setSaved(!newSaved);
         setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
         if (res.status === 429) {
-          res.json().then(data => feedimAlert("error", data.error || "Günlük kaydetme limitine ulaştın")).catch(() => {});
+          res.json().then(data => feedimAlert("error", data.error || t('errors.saveLimitReached'))).catch(() => {});
         }
       }
     }).catch(() => {});
@@ -226,10 +229,10 @@ export default function PostInteractionBar({
             </div>
             <span>
               {likeCount === 1
-                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> beğendi</>
+                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
                 : likeCount === 2 && likedByUsers.length >= 2
-                  ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> beğendi</>
-                  : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1)} kişi</strong> beğendi</>
+                  ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
+                  : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
               }
             </span>
           </button>
@@ -238,25 +241,25 @@ export default function PostInteractionBar({
           {noLike ? (
             <Link href={postUrl} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
               <BookOpen className="h-[18px] w-[18px]" />
-              <span>Devamı</span>
+              <span>{t('interaction.seeMore')}</span>
             </Link>
           ) : (
             <button onClick={handleLike} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error")}>
               <Heart className={cn("h-[18px] w-[18px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
-              <span>{formatCount(likeCount)}</span>
+              <span>{formatCount(likeCount, locale)}</span>
             </button>
           )}
           <button onClick={openComments} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
             <MessageCircle className="h-[18px] w-[18px]" />
-            <span>{formatCount(commentCount)}</span>
+            <span>{formatCount(commentCount, locale)}</span>
           </button>
           <button onClick={handleSave} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main")}>
             <Bookmark className={cn("h-[18px] w-[18px]", saved && "fill-current")} />
-            <span>{formatCount(saveCount)}</span>
+            <span>{formatCount(saveCount, locale)}</span>
           </button>
           <button onClick={() => { setShareMounted(true); setShareOpen(true); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
             <ShareIcon className="h-[18px] w-[18px]" />
-            <span>{formatCount(shareCount)}</span>
+            <span>{formatCount(shareCount, locale)}</span>
           </button>
         </div>
         {commentsMounted && (
@@ -288,7 +291,7 @@ export default function PostInteractionBar({
         <button
           onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
           className="flex items-center gap-1.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
-          aria-label="Beğenen kişileri gör"
+          aria-label={t('interaction.seeLikers')}
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
@@ -301,10 +304,10 @@ export default function PostInteractionBar({
           </div>
           <span>
             {likeCount === 1
-              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> beğendi</>
+              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
               : likeCount === 2 && likedByUsers.length >= 2
-                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> beğendi</>
-                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1)} kişi</strong> beğendi</>
+                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
+                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
             }
           </span>
         </button>
@@ -319,15 +322,15 @@ export default function PostInteractionBar({
           onClick={() => { setStatsMounted(true); setStatsOpen(true); }}
           className="flex flex-col w-full mt-4 py-3 px-4 rounded-[15px] bg-bg-secondary hover:opacity-90 transition text-left"
         >
-          <span className="text-[0.88rem] font-bold">İstatistikler</span>
+          <span className="text-[0.88rem] font-bold">{t('interaction.stats')}</span>
           <span className="flex items-center gap-1 text-[0.72rem] text-text-muted mt-0.5">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-primary"><path d="M21 21H6.2C5.08 21 4.52 21 4.09 20.782C3.72 20.59 3.41 20.284 3.22 19.908C3 19.48 3 18.92 3 17.8V3" /><path d="M7 15l4-6 4 4 6-8" /></svg>
             {avgDuration !== null
-              ? `Ort. Süre ${avgDuration > 60 ? `${Math.round(avgDuration / 60)}dk` : `${avgDuration}sn`}`
-              : "Ort. Süre —"
+              ? `${t('interaction.avgDuration')} ${avgDuration > 60 ? `${Math.round(avgDuration / 60)}${t('interaction.min')}` : `${avgDuration}${t('interaction.sec')}`}`
+              : `${t('interaction.avgDuration')} —`
             }
-            {engagementRate !== null ? ` %${Math.min(engagementRate, 99)} etkileşim` : ""}
-            {` ${formatCount(commentCount)} yorum`}
+            {engagementRate !== null ? ` %${Math.min(engagementRate, 99)} ${t('interaction.engagement')}` : ""}
+            {` ${formatCount(commentCount, locale)} ${t('interaction.comment')}`}
           </span>
         </button>
       ) : contentType !== "note" ? (
@@ -336,7 +339,7 @@ export default function PostInteractionBar({
           className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
         >
           <Gift className="h-[18px] w-[18px]" />
-          <span>Hediye Gonder</span>
+          <span>{t('interaction.sendGift')}</span>
         </button>
       ) : null}
 
@@ -353,7 +356,7 @@ export default function PostInteractionBar({
           )}
         >
           <Heart className={cn("h-[18px] w-[18px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
-          <span>{formatCount(likeCount)}</span>
+          <span>{formatCount(likeCount, locale)}</span>
         </button>
 
         {/* Comments */}
@@ -363,7 +366,7 @@ export default function PostInteractionBar({
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <MessageCircle className="h-[18px] w-[18px]" />
-          <span>{formatCount(commentCount)}</span>
+          <span>{formatCount(commentCount, locale)}</span>
         </button>
 
         {/* Save */}
@@ -376,7 +379,7 @@ export default function PostInteractionBar({
           )}
         >
           <Bookmark className={cn("h-[18px] w-[18px]", saved && "fill-current")} />
-          <span>{formatCount(saveCount)}</span>
+          <span>{formatCount(saveCount, locale)}</span>
         </button>
 
         {/* Share */}
@@ -386,7 +389,7 @@ export default function PostInteractionBar({
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <ShareIcon className="h-[18px] w-[18px]" />
-          <span>{formatCount(shareCount)}</span>
+          <span>{formatCount(shareCount, locale)}</span>
         </button>
         </div>
       </div>
@@ -399,7 +402,7 @@ export default function PostInteractionBar({
         <button
           onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
           className="flex items-center gap-2.5 py-2 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
-          aria-label="Beğenen kişileri gör"
+          aria-label={t('interaction.seeLikers')}
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
@@ -412,10 +415,10 @@ export default function PostInteractionBar({
           </div>
           <span>
             {likeCount === 1
-              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> beğendi</>
+              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
               : likeCount === 2 && likedByUsers.length >= 2
-                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> beğendi</>
-                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> ve <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1)} kişi</strong> beğendi</>
+                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
+                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">{formatCount(likeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
             }
           </span>
         </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, memo } from "react";
 import { Send, Heart, MessageCircle, AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthModal } from "@/components/AuthModal";
 import { useUser } from "@/components/UserContext";
@@ -36,6 +37,8 @@ interface CommentsSectionProps {
 }
 
 export default function CommentsSection({ postId, commentCount: initialCount }: CommentsSectionProps) {
+  const t = useTranslations("comments");
+  const tCommon = useTranslations("common");
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -153,7 +156,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
           setComments(prev => prev.filter(c => c.id !== tempId));
         }
         setTotalCount(c => Math.max(0, c - 1));
-        feedimAlert("error", data.error || "Yorum gönderilemedi");
+        feedimAlert("error", data.error || t("commentFailed"));
         return;
       }
 
@@ -186,7 +189,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
         setComments(prev => prev.filter(c => c.id !== tempId));
       }
       setTotalCount(c => Math.max(0, c - 1));
-      feedimAlert("error", "Yorum gönderilemedi");
+      feedimAlert("error", t("commentFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -236,20 +239,20 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 
   const getAuthorName = (comment: Comment) => {
     const p = comment.profiles;
-    if (!p) return "Anonim";
+    if (!p) return tCommon("anonymous");
     return p.username;
   };
 
   return (
     <section id="comments-section" className="mt-8">
-      <h3 className="text-lg font-bold mb-6">Yorumlar ({totalCount})</h3>
+      <h3 className="text-lg font-bold mb-6">{t("commentsCount", { count: totalCount })}</h3>
 
       {/* Comment form */}
       <form onSubmit={handleSubmit} className="mb-6">
         {replyTo && (
           <div className="flex items-center gap-2 text-xs text-text-muted mb-2">
-            <span>{replyTo.name} kullanıcısına yanıt veriyorsunuz</span>
-            <button type="button" onClick={() => setReplyTo(null)} className="text-accent-main hover:underline">İptal</button>
+            <span>{t("replyingTo", { username: replyTo.name })}</span>
+            <button type="button" onClick={() => setReplyTo(null)} className="text-accent-main hover:underline">{tCommon("cancel")}</button>
           </div>
         )}
         <div className="flex gap-2">
@@ -275,7 +278,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
                 }
               }}
               maxLength={maxCommentLength}
-              placeholder="Yorumunuzu yazın..."
+              placeholder={t("writeComment")}
               rows={1}
               className="input-modern comment-textarea w-full pr-14 resize-none overflow-hidden"
             />
@@ -335,6 +338,7 @@ interface CommentItemProps {
 }
 
 const CommentItem = memo(function CommentItem({ comment, isReply = false, likedComments, onLike, onReply, getAuthorName }: CommentItemProps) {
+  const t = useTranslations("comments");
   return (
     <div className={cn("flex gap-3", isReply && "ml-10 mt-3")}>
       {comment.profiles?.avatar_url ? (
@@ -350,7 +354,7 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
         <p className="text-sm text-text-secondary mt-0.5 break-words">{comment.content}</p>
         {comment.is_nsfw && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold bg-accent-main/10 text-accent-main mt-0.5">
-            <AlertTriangle className="h-3 w-3" /> Yorumunuz denetleniyor
+            <AlertTriangle className="h-3 w-3" /> {t("commentUnderReview")}
           </span>
         )}
         <div className="flex items-center gap-3 mt-1.5">
@@ -369,7 +373,7 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
               onClick={() => onReply(comment.id, getAuthorName(comment))}
               className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition"
             >
-              <MessageCircle className="h-3.5 w-3.5" /> Yanıtla
+              <MessageCircle className="h-3.5 w-3.5" /> {t("reply")}
             </button>
           )}
         </div>

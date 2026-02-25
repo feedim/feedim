@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 export interface UserListItemUser {
@@ -18,7 +19,7 @@ export interface UserListItemUser {
 
 interface UserListItemProps {
   user: UserListItemUser;
-  /** Subtitle text (e.g. "2 ortak takip", relative date, bio) */
+  /** Subtitle text (e.g. mutual follow count, relative date, bio) */
   subtitle?: string;
   /** Show mutual count or bio automatically */
   autoSubtitle?: boolean;
@@ -50,6 +51,7 @@ export default function UserListItem({
   onNavigate,
   size = "md",
 }: UserListItemProps) {
+  const t = useTranslations("profile");
   const displayName = user.full_name || user.name || user.username;
   const avatarSize = avatarSizes[size];
   const nameSize = nameSizes[size];
@@ -58,7 +60,7 @@ export default function UserListItem({
     ? subtitle
     : autoSubtitle
       ? user.mutual_count && user.mutual_count > 0
-        ? `${user.mutual_count} ortak takip`
+        ? t("mutualFollowCount", { count: user.mutual_count })
         : user.bio || undefined
       : undefined;
 

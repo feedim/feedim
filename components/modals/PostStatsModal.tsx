@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Eye, Heart, MessageCircle, Bookmark,
   Activity, Clock, BarChart3, BookOpen, Play, CheckCircle,
@@ -41,6 +42,8 @@ function fmtDuration(seconds: number): string {
 }
 
 export default function PostStatsModal({ open, onClose, postId }: PostStatsModalProps) {
+  const t = useTranslations("modals");
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
   const [postTitle, setPostTitle] = useState("");
   const [isVideo, setIsVideo] = useState(false);
@@ -74,7 +77,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
   }, [open, loadStats]);
 
   return (
-    <Modal open={open} onClose={onClose} size="md" title="İstatistikler" infoText="Gönderinin görüntülenme, beğeni, yorum ve paylaşım istatistiklerini buradan görebilirsin.">
+    <Modal open={open} onClose={onClose} size="md" title={t("statsTitle")} infoText={t("statsInfoText")}>
       <div className="px-4 pb-6">
         {/* Post title */}
         {postTitle && (
@@ -89,38 +92,38 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
             <div className="bg-gradient-to-br from-accent-main/12 via-accent-main/5 to-transparent rounded-xl p-4 mb-3 text-center">
               <Eye className="h-5 w-5 text-accent-main mx-auto mb-1" />
               <p className="text-[2rem] font-extrabold leading-none">{formatCount(totals.views)}</p>
-              <p className="text-[0.68rem] text-text-muted mt-1">Toplam Görüntülenme</p>
+              <p className="text-[0.68rem] text-text-muted mt-1">{t("totalViews")}</p>
             </div>
 
             {/* Interactions — 2 column grid */}
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <StatBox icon={Heart} label="Beğeni" value={totals.likes} />
-              <StatBox icon={MessageCircle} label="Yorum" value={totals.comments} />
-              <StatBox icon={Bookmark} label="Kaydetme" value={totals.saves} />
-              <StatBox icon={ShareIcon} label="Paylaşım" value={totals.shares} />
+              <StatBox icon={Heart} label={t("likeLabel")} value={totals.likes} />
+              <StatBox icon={MessageCircle} label={t("commentLabel")} value={totals.comments} />
+              <StatBox icon={Bookmark} label={t("saveLabel")} value={totals.saves} />
+              <StatBox icon={ShareIcon} label={t("shareLabel")} value={totals.shares} />
             </div>
 
             {/* Video-specific stats */}
             {isVideo && videoStats ? (
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="bg-bg-secondary rounded-xl p-3">
+                <div className="bg-bg-secondary rounded-[15px] p-3">
                   <div className="flex items-center gap-1 mb-1.5">
                     <Clock className="h-3 w-3 text-text-muted" />
-                    <span className="text-[0.62rem] text-text-muted">Ort. İzlenme</span>
+                    <span className="text-[0.62rem] text-text-muted">{t("avgWatch")}</span>
                   </div>
                   <p className="text-lg font-bold">{fmtDuration(videoStats.avgWatchDuration)}</p>
                 </div>
-                <div className="bg-bg-secondary rounded-xl p-3">
+                <div className="bg-bg-secondary rounded-[15px] p-3">
                   <div className="flex items-center gap-1 mb-1.5">
                     <Play className="h-3 w-3 text-text-muted" />
-                    <span className="text-[0.62rem] text-text-muted">Ort. İzlenme %</span>
+                    <span className="text-[0.62rem] text-text-muted">{t("avgWatchPercent")}</span>
                   </div>
                   <p className="text-lg font-bold">%{videoStats.avgWatchPercentage}</p>
                 </div>
-                <div className="bg-bg-secondary rounded-xl p-3">
+                <div className="bg-bg-secondary rounded-[15px] p-3">
                   <div className="flex items-center gap-1 mb-1.5">
                     <CheckCircle className="h-3 w-3 text-text-muted" />
-                    <span className="text-[0.62rem] text-text-muted">Tamamlama</span>
+                    <span className="text-[0.62rem] text-text-muted">{t("completion")}</span>
                   </div>
                   <p className="text-lg font-bold">%{videoStats.completionRate}</p>
                 </div>
@@ -128,24 +131,24 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
             ) : (
               /* Regular post stats */
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="bg-bg-secondary rounded-xl p-3">
+                <div className="bg-bg-secondary rounded-[15px] p-3">
                   <div className="flex items-center gap-1 mb-1.5">
                     <Activity className="h-3 w-3 text-text-muted" />
-                    <span className="text-[0.62rem] text-text-muted">Etkileşim</span>
+                    <span className="text-[0.62rem] text-text-muted">{t("engagement")}</span>
                   </div>
                   <p className="text-lg font-bold">%{Math.min(engagementRate, 99)}</p>
                 </div>
-                <div className="bg-bg-secondary rounded-xl p-3">
+                <div className="bg-bg-secondary rounded-[15px] p-3">
                   <div className="flex items-center gap-1 mb-1.5">
                     <Clock className="h-3 w-3 text-text-muted" />
-                    <span className="text-[0.62rem] text-text-muted">Ort. Süre</span>
+                    <span className="text-[0.62rem] text-text-muted">{t("avgDuration")}</span>
                   </div>
                   <p className="text-lg font-bold">{fmtDuration(readStats.avgReadDuration)}</p>
                 </div>
-                <div className="bg-bg-secondary rounded-xl p-3">
+                <div className="bg-bg-secondary rounded-[15px] p-3">
                   <div className="flex items-center gap-1 mb-1.5">
                     <BookOpen className="h-3 w-3 text-text-muted" />
-                    <span className="text-[0.62rem] text-text-muted">Ort. Okuma</span>
+                    <span className="text-[0.62rem] text-text-muted">{t("avgRead")}</span>
                   </div>
                   <p className="text-lg font-bold">%{readStats.avgReadPercentage}</p>
                 </div>
@@ -158,17 +161,17 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
                 <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
                   <Activity className="h-3.5 w-3.5 text-text-muted" />
                   <span className="text-[0.72rem] font-bold whitespace-nowrap">%{Math.min(engagementRate, 99)}</span>
-                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">Etkileşim</span>
+                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">{t("engagement")}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
                   <Clock className="h-3.5 w-3.5 text-text-muted" />
                   <span className="text-[0.72rem] font-bold whitespace-nowrap">{videoStats.totalWatchHours}sa</span>
-                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">Toplam İzlenme</span>
+                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">{t("totalWatch")}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-bg-secondary rounded-full px-3.5 py-2 shrink-0">
                   <CheckCircle className="h-3.5 w-3.5 text-text-muted" />
                   <span className="text-[0.72rem] font-bold whitespace-nowrap">{formatCount(videoStats.completedCount)}</span>
-                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">Tamamlayan</span>
+                  <span className="text-[0.65rem] text-text-muted whitespace-nowrap">{t("completedBy")}</span>
                 </div>
               </div>
             )}
@@ -180,23 +183,23 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
 
             {/* Mini chart */}
             {viewsByDay.length > 0 && viewsByDay.some(d => d.count > 0) && (
-              <div className="bg-bg-secondary rounded-xl p-4 mb-3">
+              <div className="bg-bg-secondary rounded-[15px] p-4 mb-3">
                 <p className="text-[0.68rem] text-text-muted mb-3 font-medium uppercase tracking-wider flex items-center gap-1">
-                  <BarChart3 className="h-3 w-3" /> Son 30 Gün
+                  <BarChart3 className="h-3 w-3" /> {t("last30Days")}
                 </p>
-                <MiniChart data={viewsByDay} />
+                <MiniChart data={viewsByDay} locale={locale} />
               </div>
             )}
 
             {/* Peak Hours */}
             {peakHours.some(h => h.count > 0) && (
-              <div className="bg-bg-secondary rounded-xl p-4 mb-3">
+              <div className="bg-bg-secondary rounded-[15px] p-4 mb-3">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> Aktif Saatler
+                    <Clock className="h-3 w-3" /> {t("activeHours")}
                   </p>
                   <span className="text-[0.65rem] text-text-muted">
-                    En yoğun: {String(peakHours.reduce((a, b) => a.count > b.count ? a : b).hour).padStart(2, "0")}:00
+                    {t("peakHour")}: {String(peakHours.reduce((a, b) => a.count > b.count ? a : b).hour).padStart(2, "0")}:00
                   </span>
                 </div>
                 <div className="grid grid-cols-12 gap-0.5">
@@ -225,9 +228,9 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
 
             {/* Recent comments */}
             {recentComments.length > 0 && (
-              <div className="bg-bg-secondary rounded-xl p-4">
+              <div className="bg-bg-secondary rounded-[15px] p-4">
                 <p className="text-[0.68rem] text-text-muted mb-3 font-medium uppercase tracking-wider flex items-center gap-1">
-                  <MessageCircle className="h-3 w-3" /> Son Yorumlar
+                  <MessageCircle className="h-3 w-3" /> {t("recentComments")}
                 </p>
                 <div className="space-y-2.5">
                   {recentComments.map(c => (
@@ -259,7 +262,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
 /* ── StatBox ── */
 function StatBox({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
   return (
-    <div className="bg-bg-secondary rounded-xl p-3.5">
+    <div className="bg-bg-secondary rounded-[15px] p-3.5">
       <div className="flex items-center gap-1.5 mb-2">
         <Icon className="h-3.5 w-3.5 text-text-muted" />
         <span className="text-[0.72rem] text-text-muted">{label}</span>
@@ -271,13 +274,14 @@ function StatBox({ icon: Icon, label, value }: { icon: any; label: string; value
 
 /* ── Retention Chart (video only) ── */
 function RetentionChart({ buckets }: { buckets: number[] }) {
+  const t = useTranslations("modals");
   if (buckets.length === 0) return null;
   const labels = ["0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%"];
 
   return (
-    <div className="bg-bg-secondary rounded-xl p-4 mb-3">
+    <div className="bg-bg-secondary rounded-[15px] p-4 mb-3">
       <p className="text-[0.68rem] text-text-muted mb-3 font-medium uppercase tracking-wider flex items-center gap-1">
-        <BarChart3 className="h-3 w-3" /> İzleyici Tutma
+        <BarChart3 className="h-3 w-3" /> {t("viewerRetention")}
       </p>
       <div className="flex items-end gap-[2px] h-20">
         {buckets.map((pct, i) => (
@@ -302,7 +306,7 @@ function RetentionChart({ buckets }: { buckets: number[] }) {
 }
 
 /* ── MiniChart ── */
-function MiniChart({ data }: { data: { date: string; count: number }[] }) {
+function MiniChart({ data, locale }: { data: { date: string; count: number }[]; locale: string }) {
   const maxCount = Math.max(...data.map(d => d.count), 1);
   return (
     <div>
@@ -324,8 +328,8 @@ function MiniChart({ data }: { data: { date: string; count: number }[] }) {
         })}
       </div>
       <div className="flex justify-between mt-1.5">
-        <span className="text-[9px] text-text-muted">{data.length > 0 && new Date(data[0].date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
-        <span className="text-[9px] text-text-muted">{data.length > 0 && new Date(data[data.length - 1].date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
+        <span className="text-[9px] text-text-muted">{data.length > 0 && new Date(data[0].date).toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>
+        <span className="text-[9px] text-text-muted">{data.length > 0 && new Date(data[data.length - 1].date).toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>
       </div>
     </div>
   );

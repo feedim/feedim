@@ -7,15 +7,18 @@ import { emitNavigationStart } from "@/lib/navigationProgress";
 import { ArrowLeft } from "lucide-react";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslations } from "next-intl";
 
 interface PublicHeaderProps {
   variant?: "home" | "back";
   backLabel?: string;
 }
 
-export default function PublicHeader({ variant = "back", backLabel = "Geri" }: PublicHeaderProps) {
+export default function PublicHeader({ variant = "back", backLabel }: PublicHeaderProps) {
   const router = useRouter();
   const [userInfo, setUserInfo] = useState<{ username: string; avatarUrl: string | null } | null>(null);
+  const t = useTranslations();
+  const resolvedBackLabel = backLabel || t("common.back");
 
   useEffect(() => {
     const supabase = createClient();
@@ -31,16 +34,16 @@ export default function PublicHeader({ variant = "back", backLabel = "Geri" }: P
   return (
     <header>
       <nav className="container mx-auto px-6 py-6 flex items-center justify-between">
-        <Link href="/" aria-label="Feedim Ana Sayfa" className="flex items-center gap-3">
+        <Link href="/" aria-label={`Feedim ${t("nav.home")}`} className="flex items-center gap-3">
           <FeedimIcon className="h-14 w-14" />
           <span className="w-px h-7 bg-border-primary" />
-          <span className="text-lg font-semibold">Yardım Merkezi</span>
+          <span className="text-lg font-semibold">{t("nav.helpCenter")}</span>
         </Link>
         <div className="flex items-center gap-3">
           {variant === "home" ? (
             !userInfo && (
               <Link href="/login" className="t-btn cancel text-sm h-10 px-5">
-                Giriş Yap
+                {t("common.login")}
               </Link>
             )
           ) : (
@@ -52,7 +55,7 @@ export default function PublicHeader({ variant = "back", backLabel = "Geri" }: P
               className="flex items-center gap-2 text-text-muted hover:text-text-primary transition"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span>{backLabel}</span>
+              <span>{resolvedBackLabel}</span>
             </button>
           )}
           {userInfo && (

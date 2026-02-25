@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Modal from "@/components/modals/Modal";
 
 interface HotkeysHelpModalProps {
@@ -34,87 +35,88 @@ function Section({ title, items }: { title: string; items: [string, string][] })
 }
 
 export default function HotkeysHelpModal({ open, onClose }: HotkeysHelpModalProps) {
+  const t = useTranslations("hotkeys");
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Klavye Kısayolları"
+      title={t("title")}
       size="md"
       centerOnDesktop
       animationType={3}
-      infoText="Uygulamayı daha hızlı kullanmak için klavye kısayollarını kullanabilirsin."
+      infoText={t("infoText")}
     >
       <div className="px-4 pb-4 space-y-5">
         <p className="text-[0.86rem] text-text-muted">
-          Yazı alanlarında çalışmaz. Video oynatıcı açıksa kısayollar önceliklidir.
+          {t("disclaimer")}
         </p>
 
         <Section
-          title="Genel"
+          title={t("general")}
           items={[
-            ["/", "Arama"],
-            ["Shift+/", "Kısayolları göster"],
-            ["Esc", "Modal/menü kapat"],
+            ["/", t("search")],
+            ["Shift+/", t("showShortcuts")],
+            ["Esc", t("closeModal")],
           ]}
         />
 
         <Section
-          title="Gezinme"
+          title={t("navigation")}
           items={[
-            ["g h", "Ana sayfa"],
-            ["g e", "Keşfet"],
-            ["g m", "Moments"],
-            ["g p", "Profil"],
-            ["g s", "Ayarlar"],
-            ["g n", "Bildirimler"],
+            ["g h", t("home")],
+            ["g e", t("explore")],
+            ["g m", t("moments")],
+            ["g p", t("profile")],
+            ["g s", t("settings")],
+            ["g n", t("notifications")],
           ]}
         />
 
         <Section
-          title="Etkileşim"
+          title={t("interaction")}
           items={[
-            ["c", "Yorumlar"],
-            ["l", "Beğen"],
-            ["b", "Kaydet"],
-            ["s", "Paylaş"],
-            ["e", "Profili düzenle (profil sayfası)"],
+            ["c", t("comments")],
+            ["l", t("like")],
+            ["b", t("save")],
+            ["s", t("share")],
+            ["e", t("editProfileShortcut")],
           ]}
         />
 
         <Section
-          title="Video Oynatıcı"
+          title={t("videoPlayer")}
           items={[
-            ["Space", "Oynat / Duraklat"],
-            ["k", "Oynat / Duraklat"],
-            ["j", "10 sn geri"],
-            ["l", "10 sn ileri"],
-            ["←", "5 sn geri"],
-            ["→", "5 sn ileri"],
-            ["↑", "Sesi artır"],
-            ["↓", "Sesi azalt"],
-            ["m", "Sesi aç/kapat"],
-            ["f", "Tam ekran"],
-            ["t", "Sinema modu"],
-            ["p", "Pencerede oynat"],
-            ["0", "Başa git"],
-            ["1", "%10'a git"],
-            ["9", "%90'a git"],
-            ["Home", "Başa git"],
-            ["End", "Sona git"],
+            ["Space", t("playPause")],
+            ["k", t("playPause")],
+            ["j", t("back10s")],
+            ["l", t("forward10s")],
+            ["←", t("back5s")],
+            ["→", t("forward5s")],
+            ["↑", t("volumeUp")],
+            ["↓", t("volumeDown")],
+            ["m", t("muteToggle")],
+            ["f", t("fullscreen")],
+            ["t", t("cinemaMode")],
+            ["p", t("pip")],
+            ["0", t("goToStart")],
+            ["1", t("goTo10")],
+            ["9", t("goTo90")],
+            ["Home", t("goToStart")],
+            ["End", t("goToEnd")],
           ]}
         />
 
         <Section
-          title="Moments"
+          title={t("momentsSection")}
           items={[
-            ["Space", "Oynat / Duraklat"],
-            ["k", "Oynat / Duraklat"],
-            ["j", "5 sn geri"],
-            ["l", "5 sn ileri"],
-            ["↑", "Sesi artır"],
-            ["↓", "Sesi azalt"],
-            ["m", "Sesi aç/kapat"],
-            ["f", "Tam ekran"],
+            ["Space", t("playPause")],
+            ["k", t("playPause")],
+            ["j", t("back5s")],
+            ["l", t("forward5s")],
+            ["↑", t("volumeUp")],
+            ["↓", t("volumeDown")],
+            ["m", t("muteToggle")],
+            ["f", t("fullscreen")],
           ]}
         />
       </div>

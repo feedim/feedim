@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useState, useEffect } from "react";
 import { Smartphone, Monitor, Shield, ShieldCheck, ShieldOff, LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import { getDeviceHash } from "@/lib/deviceHash";
@@ -22,6 +23,7 @@ interface Session {
 
 export default function SessionsPage() {
   useSearchParams();
+  const t = useTranslations("settings");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDeviceHash, setCurrentDeviceHash] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function SessionsPage() {
       });
       if (!res.ok) {
         setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, is_trusted: currentTrust } : s));
-        feedimAlert("error", "Güven durumu güncellenemedi, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", t("trustStatusFailed"));
       } else {
         // silent
       }
@@ -64,7 +66,7 @@ export default function SessionsPage() {
 
   const endSession = async (sessionId: number) => {
     const confirmed = await new Promise<boolean>((resolve) => {
-      feedimAlert("question", "Bu cihazdan çıkış yapmak istiyor musunuz?", {
+      feedimAlert("question", t("endSessionConfirm"), {
         showYesNo: true,
         onYes: () => resolve(true),
         onNo: () => resolve(false),
@@ -75,7 +77,7 @@ export default function SessionsPage() {
     setSessions(prev => prev.filter(s => s.id !== sessionId));
     try {
       await fetch(`/api/account/sessions?id=${sessionId}`, { method: "DELETE" });
-      feedimAlert("success", "Oturum sonlandırıldı");
+      feedimAlert("success", t("sessionEnded"));
     } catch {
       loadSessions();
     }
@@ -83,7 +85,7 @@ export default function SessionsPage() {
 
   const endAllSessions = async () => {
     const confirmed = await new Promise<boolean>((resolve) => {
-      feedimAlert("question", "Tüm diğer oturumları sonlandırmak istiyor musunuz? Bu cihazdaki oturumunuz etkilenmez.", {
+      feedimAlert("question", t("endAllConfirm"), {
         showYesNo: true,
         onYes: () => resolve(true),
         onNo: () => resolve(false),
@@ -94,16 +96,16 @@ export default function SessionsPage() {
     try {
       await fetch("/api/account/sessions?all=true", { method: "DELETE" });
       setSessions(prev => prev.filter(s => s.device_hash === currentDeviceHash));
-      feedimAlert("success", "Tüm oturumlar sonlandırıldı");
+      feedimAlert("success", t("allSessionsEnded"));
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", t("genericError"));
     }
   };
 
   const parseUserAgent = (ua: string | null) => {
-    if (!ua) return { device: "Bilinmeyen Cihaz", browser: "", os: "", isMobile: false };
+    if (!ua) return { device: t("unknownDevice"), browser: "", os: "", isMobile: false };
     const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
-    let browser = "Tarayıcı";
+    let browser = t("browserLabel");
     if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
     else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
     else if (ua.includes("Firefox")) browser = "Firefox";
@@ -114,7 +116,7 @@ export default function SessionsPage() {
     else if (ua.includes("Linux")) os = "Linux";
     else if (ua.includes("Android")) os = "Android";
     else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-    return { device: isMobile ? "Mobil" : "Masaüstü", browser, os, isMobile };
+    return { device: isMobile ? t("mobile") : t("desktop"), browser, os, isMobile };
   };
 
   const activeSessions = sessions.filter(s => s.is_active);
@@ -122,26 +124,26 @@ export default function SessionsPage() {
   const otherDevices = activeSessions.filter(s => s.device_hash !== currentDeviceHash);
 
   return (
-    <AppLayout headerTitle="Aktif Oturumlar" hideRightSidebar>
+    <AppLayout headerTitle={t("activeSessionsTitle")} hideRightSidebar>
       <div className="py-2">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : activeSessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <Smartphone className="h-10 w-10 text-text-muted/40 mb-3" />
-            <p className="text-sm text-text-muted">Aktif oturum yok</p>
+            <p className="text-sm text-text-muted">{t("noActiveSessions")}</p>
           </div>
         ) : (
           <div className="px-4 space-y-5">
             {/* Info text */}
             <p className="text-xs text-text-muted">
-              Hesabınıza giriş yapılan cihazları burada görebilirsiniz. Güvenilir cihazlar ek doğrulama gerektirmez.
+              {t("sessionInfo")}
             </p>
 
             {/* This device */}
             {thisDevice && (
               <div>
-                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Bu cihaz</h3>
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">{t("thisDevice")}</h3>
                 <SessionCard
                   session={thisDevice}
                   isCurrentDevice
@@ -155,7 +157,7 @@ export default function SessionsPage() {
             {/* Other devices */}
             {otherDevices.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Diğer cihazlar</h3>
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">{t("otherDevices")}</h3>
                 <div className="space-y-2">
                   {otherDevices.map(s => (
                     <SessionCard
@@ -176,7 +178,7 @@ export default function SessionsPage() {
                 onClick={endAllSessions}
                 className="w-full t-btn cancel text-error"
               >
-                Diğer tüm oturumları sonlandır
+                {t("endAllOtherSessions")}
               </button>
             )}
           </div>
@@ -199,6 +201,7 @@ function SessionCard({
   onToggleTrust: () => void;
   onEndSession: () => void;
 }) {
+  const t = useTranslations("settings");
   const { device, browser, os, isMobile } = parseUserAgent(session.user_agent);
 
   return (
@@ -216,14 +219,14 @@ function SessionCard({
               {device}
               {isCurrentDevice && (
                 <span className="ml-1.5 text-[0.7rem] font-semibold text-accent-main bg-accent-main/10 px-1.5 py-0.5 rounded-full">
-                  Bu cihaz
+                  {t("thisDevice")}
                 </span>
               )}
             </p>
           </div>
           <p className="text-xs text-text-muted mt-0.5">{browser}{os ? ` \u2022 ${os}` : ""}</p>
           <p className="text-xs text-text-muted mt-0.5">
-            {session.last_active_at ? `Son aktivite: ${formatRelativeDate(session.last_active_at)}` : ""}
+            {session.last_active_at ? t("lastActivity", { time: formatRelativeDate(session.last_active_at) }) : ""}
           </p>
         </div>
 
@@ -244,14 +247,14 @@ function SessionCard({
           className="flex-1 t-btn cancel !h-[36px] !text-xs"
         >
           <Shield className="h-3.5 w-3.5" />
-          {session.is_trusted ? "Güvenme" : "Güven"}
+          {session.is_trusted ? t("untrust") : t("trust")}
         </button>
         <button
           onClick={onEndSession}
           className="t-btn cancel !h-[36px] !text-xs text-error"
         >
           <LogOut className="h-3.5 w-3.5" />
-          Çıkış yap
+          {t("signOutDevice")}
         </button>
       </div>
     </div>

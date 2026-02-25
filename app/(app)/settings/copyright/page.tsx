@@ -61,7 +61,7 @@ export default function CopyrightSettingsPage() {
               İçeriklerinizi yazarken telif hakkı koruması seçeneğini açarak içeriklerinizi koruma altına alabilirsiniz.
             </p>
 
-            <div className="bg-bg-secondary rounded-xl p-4 space-y-3">
+            <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
               <p className="text-xs font-medium text-text-primary">İhlal Hakları</p>
               <div className="flex items-center gap-3">
                 <div className="flex gap-1">
@@ -97,7 +97,7 @@ export default function CopyrightSettingsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-bg-secondary rounded-xl p-4">
+            <div className="bg-bg-secondary rounded-[15px] p-4">
               <p className="text-sm text-text-primary">
                 Telif hakkı koruması düzgün özgün içerik üretiminde sistem tarafından otomatik olarak etkinleşir.
               </p>
@@ -118,7 +118,7 @@ export default function CopyrightSettingsPage() {
               </p>
             </div>
 
-            <div className="bg-bg-secondary rounded-xl p-4">
+            <div className="bg-bg-secondary rounded-[15px] p-4">
               <p className="text-sm font-medium mb-2">Hızlı başvuru: Kimler başvurabilir?</p>
               <p className="text-xs text-text-muted mb-2">Beklemek istemiyorsanız aşağıdaki formu doldurarak doğrudan erişim talep edebilirsiniz.</p>
               <ul className="space-y-1.5 text-xs text-text-muted">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordInput from "@/components/PasswordInput";
@@ -11,6 +12,8 @@ import { translateError } from "@/lib/utils/translateError";
 import { VALIDATION } from "@/lib/constants";
 
 export default function ResetPasswordPage() {
+  const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,7 @@ export default function ResetPasswordPage() {
     try {
       if (password !== confirmPassword) {
         await waitMin();
-        feedimAlert("error", "Şifreler eşleşmiyor");
+        feedimAlert("error", t("passwordsNoMatch"));
         return;
       }
 
@@ -52,12 +55,12 @@ export default function ResetPasswordPage() {
       if (error) throw error;
 
       await waitMin();
-      feedimAlert("success", "Şifreniz değiştirildi");
+      feedimAlert("success", t("resetPasswordChanged"));
       await supabase.auth.signOut();
       router.push("/login");
     } catch (error: any) {
       await waitMin();
-      feedimAlert("error", translateError(error.message) || "Şifre güncellenemedi");
+      feedimAlert("error", translateError(error.message, tErrors) || t("resetPasswordFailed"));
     } finally {
       setLoading(false);
     }
@@ -65,7 +68,7 @@ export default function ResetPasswordPage() {
 
   if (!authChecked) {
     return (
-      <AuthLayout title="Yeni Şifre Belirle" subtitle="Yükleniyor...">
+      <AuthLayout title={t("resetPasswordTitle")} subtitle={t("resetPasswordLoading")}>
         <div className="flex justify-center py-8">
           <span className="loader" />
         </div>
@@ -74,10 +77,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout title="Yeni Şifre Belirle" subtitle="Yeni şifrenizi aşağıya girin.">
+    <AuthLayout title={t("resetPasswordTitle")} subtitle={t("resetPasswordSubtitle")}>
       <form onSubmit={handleReset} className="space-y-4">
         <PasswordInput
-          placeholder="Yeni şifre"
+          placeholder={t("resetNewPassword")}
           value={password}
           onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))}
           required
@@ -87,7 +90,7 @@ export default function ResetPasswordPage() {
           style={{ height: 50, fontSize: 16, fontWeight: 600 }}
         />
         <PasswordInput
-          placeholder="Yeni şifre (tekrar)"
+          placeholder={t("resetNewPasswordConfirm")}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value.replace(/\s/g, ""))}
           required
@@ -100,13 +103,13 @@ export default function ResetPasswordPage() {
           type="submit"
           className="t-btn accept w-full relative"
           disabled={loading}
-          aria-label="Şifreyi Değiştir"
+          aria-label={t("resetChangePassword")}
         >
-          {loading ? <span className="loader" /> : "Şifreyi değiştir"}
+          {loading ? <span className="loader" /> : t("resetChangePassword")}
         </button>
         <div className="text-center">
           <Link href="/login" className="text-sm text-text-muted hover:text-text-primary transition font-semibold">
-            Giriş sayfasına dön
+            {t("backToLogin")}
           </Link>
         </div>
       </form>

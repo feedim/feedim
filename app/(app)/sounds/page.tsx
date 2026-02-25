@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { Music } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
 import { formatCount } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
@@ -26,6 +27,7 @@ type SortTab = "popular" | "newest";
 
 export default function SoundsPage() {
   useSearchParams();
+  const t = useTranslations("sounds");
   const [sounds, setSounds] = useState<Sound[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -77,13 +79,13 @@ export default function SoundsPage() {
   };
 
   return (
-    <AppLayout headerTitle="Sesler" hideRightSidebar>
+    <AppLayout headerTitle={t("title")} hideRightSidebar>
       {/* Sort tabs */}
       <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient border-b border-border-primary">
         <div className="flex">
           {([
-            { id: "popular" as const, label: "Popüler" },
-            { id: "newest" as const, label: "Yeni" },
+            { id: "popular" as const, label: t("popular") },
+            { id: "newest" as const, label: t("newest") },
           ]).map(tab => (
             <button
               key={tab.id}
@@ -103,17 +105,7 @@ export default function SoundsPage() {
 
       <div className="px-3 sm:px-4 py-2">
         {loading && sounds.length === 0 ? (
-          <div className="space-y-3 py-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="skeleton h-12 w-12 rounded-lg shrink-0" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="skeleton h-3.5 w-2/3 rounded" />
-                  <div className="skeleton h-3 w-1/2 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : sounds.length > 0 ? (
           <>
             <div>
@@ -133,9 +125,9 @@ export default function SoundsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.9rem] font-semibold truncate">{sound.title}</p>
                     <p className="text-xs text-text-muted truncate">
-                      {sound.artist || "Orijinal ses"}
+                      {sound.artist || t("originalSound")}
                       {sound.duration ? ` · ${formatDuration(sound.duration)}` : ""}
-                      {sound.usage_count ? ` · ${formatCount(sound.usage_count)} kullanım` : ""}
+                      {sound.usage_count ? ` · ${formatCount(sound.usage_count)} ${t("usage")}` : ""}
                     </p>
                   </div>
                   <SoundPreviewButton audioUrl={sound.audio_url} />
@@ -149,15 +141,15 @@ export default function SoundsPage() {
                   disabled={loadingMore}
                   className="t-btn cancel !h-9 !px-4 !text-sm"
                 >
-                  {loadingMore ? "Yükleniyor..." : "Daha fazla"}
+                  {loadingMore ? t("loading") : t("loadMore")}
                 </button>
               </div>
             )}
           </>
         ) : (
           <EmptyState
-            title="Henüz ses yok"
-            description="Moment oluştururken kullanılabilecek sesler burada görünecek."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
             icon={<Music className="h-12 w-12" />}
           />
         )}

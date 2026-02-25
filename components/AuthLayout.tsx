@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 
 interface AuthLayoutProps {
@@ -11,16 +12,17 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
   const router = useRouter();
+  const t = useTranslations("auth");
 
   return (
     <div className="min-h-screen px-4 py-12 relative">
       <button
         onClick={() => router.back()}
         className="absolute top-6 left-4 flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
-        aria-label="Geri dön"
+        aria-label={t("goBack")}
       >
         <ArrowLeft className="h-5 w-5" />
-        <span className="text-sm font-medium">Geri</span>
+        <span className="text-sm font-medium">{t("goBack")}</span>
       </button>
 
       <div className="flex items-center justify-center min-h-[calc(100vh-96px)] pb-[18vh] sm:pb-0">

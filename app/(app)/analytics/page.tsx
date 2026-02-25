@@ -10,6 +10,7 @@ import {
   BarChart3, Activity, Clock, CalendarDays, Zap, Award, ChevronDown, ChevronUp,
   Coins, Film, Play, CheckCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
 import NoImage from "@/components/NoImage";
 import ShareIcon from "@/components/ShareIcon";
@@ -38,7 +39,7 @@ interface VideoAnalyticsData {
 }
 type ChartMetric = "views" | "likes" | "comments" | "followers";
 
-const WEEKDAY_NAMES = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+// Weekday names will be provided by translations
 
 /* ─── Smart percentage: no absurd 100%/600% ─── */
 function smartChange(current: number, previous: number): { text: string; isUp: boolean; show: boolean } {
@@ -64,6 +65,7 @@ function smartChange(current: number, previous: number): { text: string; isUp: b
 ───────────────────────────────────── */
 export default function AnalyticsPage() {
   useSearchParams();
+  const t = useTranslations("analytics");
   const { user: ctxUser, isLoggedIn } = useUser();
   const authorized = isLoggedIn ? (ctxUser?.isPremium ?? false) : false;
   const isPro = isProfessional(ctxUser?.accountType);
@@ -106,28 +108,29 @@ export default function AnalyticsPage() {
   }, [period, loadAnalytics, authorized]);
 
   if (!authorized) return (
-    <AppLayout headerTitle="Analitik" hideRightSidebar>
+    <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="px-4 py-20 text-center">
         <Lock className="h-12 w-12 text-text-muted mx-auto mb-4" />
-        <h2 className="text-lg font-bold mb-2">Premium Üyelik Gerekli</h2>
-        <p className="text-sm text-text-muted mb-6 leading-relaxed">İstatistiklere erişmek için Premium üyeliğe sahip olmanız gerekiyor.</p>
-        <Link href="/settings/premium" className="t-btn accept inline-flex">Premium&apos;a Geç</Link>
+        <h2 className="text-lg font-bold mb-2">{t("premiumRequired")}</h2>
+        <p className="text-sm text-text-muted mb-6 leading-relaxed">{t("premiumRequiredDesc")}</p>
+        <Link href="/settings/premium" className="t-btn accept inline-flex">{t("goPremium")}</Link>
       </div>
     </AppLayout>
   );
 
-  const periodLabel = period === "7d" ? "7 gün" : period === "30d" ? "30 gün" : "90 gün";
+  const periodLabel = period === "7d" ? t("period7d") : period === "30d" ? t("period30d") : t("period90d");
+  const WEEKDAY_NAMES = [t("weekdaySun"), t("weekdayMon"), t("weekdayTue"), t("weekdayWed"), t("weekdayThu"), t("weekdayFri"), t("weekdaySat")];
   const hasData = (overview?.postCount || 0) > 0;
 
   return (
-    <AppLayout headerTitle="Analitik" hideRightSidebar>
+    <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="pb-10">
         {/* Period tabs */}
         <div className="flex items-center gap-1 px-4 py-3 sticky top-0 z-10 bg-bg-primary sticky-ambient">
           {(["7d", "30d", "90d"] as const).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-4 py-1.5 rounded-full text-[0.8rem] font-semibold transition ${period === p ? "bg-text-primary text-bg-primary" : "text-text-muted hover:text-text-primary"}`}
-            >{p === "7d" ? "7 gün" : p === "30d" ? "30 gün" : "90 gün"}</button>
+            >{p === "7d" ? t("period7d") : p === "30d" ? t("period30d") : t("period90d")}</button>
           ))}
         </div>
 
@@ -136,9 +139,9 @@ export default function AnalyticsPage() {
         ) : !hasData ? (
           <div className="px-4 py-20 text-center">
             <TrendingUp className="h-14 w-14 text-text-muted mx-auto mb-4" />
-            <p className="text-lg font-bold">Henüz veri yok</p>
-            <p className="text-sm text-text-muted mt-2 leading-relaxed">Gönderi yayınladığınızda<br />istatistikler burada görünecek.</p>
-            <Link href="/create" className="t-btn accept inline-flex mt-6">Gönderi Oluştur</Link>
+            <p className="text-lg font-bold">{t("noDataYet")}</p>
+            <p className="text-sm text-text-muted mt-2 leading-relaxed whitespace-pre-line">{t("noDataDesc")}</p>
+            <Link href="/create" className="t-btn accept inline-flex mt-6">{t("createPost")}</Link>
           </div>
         ) : (
           <>
@@ -150,22 +153,22 @@ export default function AnalyticsPage() {
 
             {/* 3. Metric Grid */}
             <div className="grid grid-cols-2 gap-2.5 mx-4 mt-4">
-              <MetricCard icon={Eye} label="Görüntülenme" value={periodCounts?.views || 0} prev={prev?.views || 0} />
-              <MetricCard icon={Heart} label="Beğeni" value={periodCounts?.likes || 0} prev={prev?.likes || 0} />
-              <MetricCard icon={MessageCircle} label="Yorum" value={periodCounts?.comments || 0} prev={prev?.comments || 0} />
-              <MetricCard icon={Bookmark} label="Kaydetme" value={periodCounts?.saves || 0} prev={prev?.saves || 0} />
-              <MetricCard icon={ShareIcon} label="Paylaşım" value={periodCounts?.shares || 0} prev={prev?.shares || 0} />
-              <MetricCard icon={Users} label="Yeni Takipçi" value={periodCounts?.followers || 0} prev={prev?.followers || 0} />
+              <MetricCard icon={Eye} label={t("views")} value={periodCounts?.views || 0} prev={prev?.views || 0} prevLabel={t("previousPeriod", { value: "" })} />
+              <MetricCard icon={Heart} label={t("likes")} value={periodCounts?.likes || 0} prev={prev?.likes || 0} prevLabel={t("previousPeriod", { value: "" })} />
+              <MetricCard icon={MessageCircle} label={t("comments")} value={periodCounts?.comments || 0} prev={prev?.comments || 0} prevLabel={t("previousPeriod", { value: "" })} />
+              <MetricCard icon={Bookmark} label={t("saves")} value={periodCounts?.saves || 0} prev={prev?.saves || 0} prevLabel={t("previousPeriod", { value: "" })} />
+              <MetricCard icon={ShareIcon} label={t("shares")} value={periodCounts?.shares || 0} prev={prev?.shares || 0} prevLabel={t("previousPeriod", { value: "" })} />
+              <MetricCard icon={Users} label={t("newFollowers")} value={periodCounts?.followers || 0} prev={prev?.followers || 0} prevLabel={t("previousPeriod", { value: "" })} />
             </div>
 
             {/* 4. Quick Stats Row */}
             <div className="flex gap-2 mx-4 mt-3 overflow-x-auto no-scrollbar">
-              <QuickStat icon={FileText} label="Gönderi" value={String(overview?.postCount || 0)} />
-              <QuickStat icon={Users} label="Takipçi" value={formatCount(overview?.followerCount || 0)} />
-              <QuickStat icon={Activity} label="Etkileşim" value={`${Math.min(overview?.engagementRate || 0, 99)}%`} />
-              <QuickStat icon={Eye} label="Ort. Okuma" value={formatCount(overview?.avgViewsPerPost || 0)} />
-              <QuickStat icon={Clock} label="Ort. Süre" value={`${overview?.avgReadingTime || 0} dk`} />
-              <QuickStat icon={Heart} label="Ort. Beğeni" value={String(overview?.avgLikesPerPost || 0)} />
+              <QuickStat icon={FileText} label={t("posts")} value={String(overview?.postCount || 0)} />
+              <QuickStat icon={Users} label={t("followers")} value={formatCount(overview?.followerCount || 0)} />
+              <QuickStat icon={Activity} label={t("engagement")} value={`${Math.min(overview?.engagementRate || 0, 99)}%`} />
+              <QuickStat icon={Eye} label={t("avgRead")} value={formatCount(overview?.avgViewsPerPost || 0)} />
+              <QuickStat icon={Clock} label={t("avgDuration")} value={`${overview?.avgReadingTime || 0} ${t("min")}`} />
+              <QuickStat icon={Heart} label={t("avgLikes")} value={String(overview?.avgLikesPerPost || 0)} />
             </div>
 
             {/* 5. Chart */}
@@ -193,7 +196,7 @@ export default function AnalyticsPage() {
 
             {/* 10. Top Posts */}
             {topPosts.length > 0 && (
-              <Section icon={Award} title="En İyi Gönderiler">
+              <Section icon={Award} title={t("topPosts")}>
                 {topPosts.map((post, i) => (
                   <TopPostRow key={post.id} post={post} rank={i + 1} maxViews={topPosts[0].views} />
                 ))}
@@ -208,7 +211,7 @@ export default function AnalyticsPage() {
                   className="flex items-center gap-2 px-4 py-3 w-full text-left text-[0.82rem] font-semibold text-accent-main hover:bg-bg-secondary transition"
                 >
                   {showAllPosts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  {showAllPosts ? "Daha az göster" : `Tüm gönderileri gör (${allPosts.length})`}
+                  {showAllPosts ? t("showLess") : t("showAllPosts", { count: allPosts.length })}
                 </button>
                 {showAllPosts && (
                   <div>
@@ -244,6 +247,7 @@ function Section({ icon: Icon, title, children }: { icon: any; title: string; ch
    Earnings Card
 ───────────────────────────────────── */
 function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData; periodLabel: string; isPro: boolean }) {
+  const t = useTranslations("analytics");
   if (!isPro) {
     return (
       <div className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gradient-to-r from-accent-main/10 via-accent-main/5 to-transparent relative">
@@ -253,20 +257,20 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
               <Coins className="h-5 w-5 text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[0.72rem] text-text-muted">Jeton Bakiyesi</p>
-              <p className="text-xl font-extrabold">0 <span className="text-sm font-semibold text-text-muted">jeton</span></p>
+              <p className="text-[0.72rem] text-text-muted">{t("tokenBalance")}</p>
+              <p className="text-xl font-extrabold">0 <span className="text-sm font-semibold text-text-muted">{t("token")}</span></p>
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 ml-15">
-            <div><p className="text-[0.62rem] text-text-muted">Son {periodLabel}</p><p className="text-sm font-bold">0</p></div>
+            <div><p className="text-[0.62rem] text-text-muted">{t("last", { period: periodLabel })}</p><p className="text-sm font-bold">0</p></div>
             <div className="w-px h-6 bg-border-primary" />
-            <div><p className="text-[0.62rem] text-text-muted">Toplam</p><p className="text-sm font-bold">0</p></div>
+            <div><p className="text-[0.62rem] text-text-muted">{t("total")}</p><p className="text-sm font-bold">0</p></div>
           </div>
         </div>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <Lock className="h-5 w-5 text-text-muted mb-1.5" />
-          <p className="text-[0.78rem] font-semibold text-text-primary">Kazanç için Profesyonel Hesap gerekli</p>
-          <Link href="/settings" className="text-[0.68rem] text-accent-main font-medium mt-1">Ayarlara Git</Link>
+          <p className="text-[0.78rem] font-semibold text-text-primary">{t("proAccountRequired")}</p>
+          <Link href="/settings" className="text-[0.68rem] text-accent-main font-medium mt-1">{t("goToSettings")}</Link>
         </div>
       </div>
     );
@@ -280,23 +284,23 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
             <Coins className="h-5 w-5 text-accent-main" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[0.72rem] text-text-muted">Jeton Bakiyesi</p>
-            <p className="text-xl font-extrabold">{formatCount(earnings.coinBalance)} <span className="text-sm font-semibold text-text-muted">jeton</span></p>
+            <p className="text-[0.72rem] text-text-muted">{t("tokenBalance")}</p>
+            <p className="text-xl font-extrabold">{formatCount(earnings.coinBalance)} <span className="text-sm font-semibold text-text-muted">{t("token")}</span></p>
           </div>
         </div>
         <div className="flex items-center gap-4 mt-3 ml-15">
           <div>
-            <p className="text-[0.62rem] text-text-muted">Son {periodLabel}</p>
+            <p className="text-[0.62rem] text-text-muted">{t("last", { period: periodLabel })}</p>
             <p className="text-sm font-bold">+{formatCount(earnings.periodEarned)}</p>
           </div>
           <div className="w-px h-6 bg-border-primary" />
           <div>
-            <p className="text-[0.62rem] text-text-muted">Toplam Kazanç</p>
+            <p className="text-[0.62rem] text-text-muted">{t("totalEarnings")}</p>
             <p className="text-sm font-bold">{formatCount(earnings.totalEarned)}</p>
           </div>
           <div className="w-px h-6 bg-border-primary" />
           <div>
-            <p className="text-[0.62rem] text-text-muted">Nitelikli Okuma</p>
+            <p className="text-[0.62rem] text-text-muted">{t("qualifiedReads")}</p>
             <p className="text-sm font-bold">{formatCount(earnings.qualifiedReads)}</p>
           </div>
         </div>
@@ -311,6 +315,7 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
 function HeroCard({ overview, periodCounts, prev, periodLabel }: {
   overview: OverviewData | null; periodCounts: PeriodCounts | null; prev: PeriodCounts | null; periodLabel: string;
 }) {
+  const t = useTranslations("analytics");
   const reach = periodCounts?.views || 0;
   const prevReach = prev?.views || 0;
   const engagement = (periodCounts?.likes || 0) + (periodCounts?.comments || 0) + (periodCounts?.saves || 0) + (periodCounts?.shares || 0);
@@ -321,21 +326,21 @@ function HeroCard({ overview, periodCounts, prev, periodLabel }: {
   return (
     <div className="mx-4 rounded-2xl overflow-hidden bg-gradient-to-br from-accent-main/12 via-accent-main/5 to-transparent">
       <div className="p-5">
-        <p className="text-[0.72rem] text-text-muted font-medium uppercase tracking-wider mb-4">Son {periodLabel}</p>
+        <p className="text-[0.72rem] text-text-muted font-medium uppercase tracking-wider mb-4">{t("last", { period: periodLabel })}</p>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-[1.75rem] font-extrabold leading-none">{formatCount(reach)}</p>
-            <p className="text-[0.7rem] text-text-muted mt-1">Erişim</p>
+            <p className="text-[0.7rem] text-text-muted mt-1">{t("reach")}</p>
             <ChangeBadge current={reach} previous={prevReach} />
           </div>
           <div>
             <p className="text-[1.75rem] font-extrabold leading-none">{formatCount(engagement)}</p>
-            <p className="text-[0.7rem] text-text-muted mt-1">Etkileşim</p>
+            <p className="text-[0.7rem] text-text-muted mt-1">{t("engagement")}</p>
             <ChangeBadge current={engagement} previous={prevEngagement} />
           </div>
           <div>
             <p className="text-[1.75rem] font-extrabold leading-none">+{formatCount(followers)}</p>
-            <p className="text-[0.7rem] text-text-muted mt-1">Takipçi</p>
+            <p className="text-[0.7rem] text-text-muted mt-1">{t("followers")}</p>
             <ChangeBadge current={followers} previous={prevFollowersVal} />
           </div>
         </div>
@@ -363,10 +368,11 @@ function ChangeBadge({ current, previous }: { current: number; previous: number 
 /* ─────────────────────────────────────
    Metric Card
 ───────────────────────────────────── */
-function MetricCard({ icon: Icon, label, value, prev }: { icon: any; label: string; value: number; prev: number }) {
+function MetricCard({ icon: Icon, label, value, prev, prevLabel }: { icon: any; label: string; value: number; prev: number; prevLabel?: string }) {
+  const t = useTranslations("analytics");
   const change = smartChange(value, prev);
   return (
-    <div className="bg-bg-secondary rounded-xl p-3.5">
+    <div className="bg-bg-secondary rounded-[15px] p-3.5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Icon className="h-3.5 w-3.5 text-text-muted" />
@@ -380,7 +386,7 @@ function MetricCard({ icon: Icon, label, value, prev }: { icon: any; label: stri
         )}
       </div>
       <p className="text-2xl font-bold">{formatCount(value)}</p>
-      {prev > 0 && <p className="text-[0.62rem] text-text-muted mt-0.5">Önceki dönem: {formatCount(prev)}</p>}
+      {prev > 0 && <p className="text-[0.62rem] text-text-muted mt-0.5">{t("previousPeriod", { value: formatCount(prev) })}</p>}
     </div>
   );
 }
@@ -405,8 +411,9 @@ function ChartSection({ chartMetric, setChartMetric, viewsByDay, likesByDay, com
   chartMetric: ChartMetric; setChartMetric: (m: ChartMetric) => void;
   viewsByDay: DayData[]; likesByDay: DayData[]; commentsByDay: DayData[]; followersByDay: DayData[];
 }) {
+  const t = useTranslations("analytics");
   const dataMap: Record<ChartMetric, DayData[]> = { views: viewsByDay, likes: likesByDay, comments: commentsByDay, followers: followersByDay };
-  const labelMap: Record<ChartMetric, string> = { views: "Görüntülenme", likes: "Beğeni", comments: "Yorum", followers: "Takipçi" };
+  const labelMap: Record<ChartMetric, string> = { views: t("views"), likes: t("likes"), comments: t("comments"), followers: t("followers") };
   const chartData = dataMap[chartMetric];
   const maxCount = Math.max(...chartData.map(d => d.count), 1);
   const total = chartData.reduce((s, d) => s + d.count, 0);
@@ -416,7 +423,7 @@ function ChartSection({ chartMetric, setChartMetric, viewsByDay, likesByDay, com
 
   return (
     <div className="mx-4 mt-5">
-      <div className="bg-bg-secondary rounded-xl p-4">
+      <div className="bg-bg-secondary rounded-[15px] p-4">
         <div className="flex items-center gap-1 mb-1 overflow-x-auto no-scrollbar">
           {(Object.keys(labelMap) as ChartMetric[]).map(m => (
             <button key={m} onClick={() => setChartMetric(m)}
@@ -426,8 +433,8 @@ function ChartSection({ chartMetric, setChartMetric, viewsByDay, likesByDay, com
         </div>
         <div className="flex items-end gap-3 mt-2 mb-4">
           <span className="text-2xl font-bold">{formatCount(total)}</span>
-          <span className="text-[0.72rem] text-text-muted mb-0.5">toplam</span>
-          <span className="text-[0.72rem] text-text-muted mb-0.5">{avg}/gün ort.</span>
+          <span className="text-[0.72rem] text-text-muted mb-0.5">{t("chartTotal")}</span>
+          <span className="text-[0.72rem] text-text-muted mb-0.5">{t("chartAvgPerDay", { avg })}</span>
         </div>
 
         <div className="flex items-end gap-[1.5px] h-36">
@@ -464,17 +471,18 @@ function ChartSection({ chartMetric, setChartMetric, viewsByDay, likesByDay, com
    Peak Hours Heatmap
 ───────────────────────────────────── */
 function PeakHoursCard({ peakHours }: { peakHours: HourData[] }) {
+  const t = useTranslations("analytics");
   const maxH = Math.max(...peakHours.map(h => h.count), 1);
   const peakHour = peakHours.reduce((a, b) => a.count > b.count ? a : b);
 
   return (
     <div className="mx-4 mt-5">
-      <div className="bg-bg-secondary rounded-xl p-4">
+      <div className="bg-bg-secondary rounded-[15px] p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5">
-            <Clock className="h-4 w-4 text-text-muted" /> Aktif Saatler
+            <Clock className="h-4 w-4 text-text-muted" /> {t("activeHours")}
           </h3>
-          <span className="text-[0.68rem] text-text-muted">En yoğun: {String(peakHour.hour).padStart(2, "0")}:00</span>
+          <span className="text-[0.68rem] text-text-muted">{t("peakHour", { hour: String(peakHour.hour).padStart(2, "0") })}</span>
         </div>
         <div className="grid grid-cols-12 gap-1">
           {peakHours.slice(0, 24).map(h => {
@@ -508,17 +516,19 @@ function PeakHoursCard({ peakHours }: { peakHours: HourData[] }) {
    Weekday Breakdown
 ───────────────────────────────────── */
 function WeekdayCard({ weekdayBreakdown }: { weekdayBreakdown: WeekdayData[] }) {
+  const t = useTranslations("analytics");
+  const WEEKDAY_NAMES = [t("weekdaySun"), t("weekdayMon"), t("weekdayTue"), t("weekdayWed"), t("weekdayThu"), t("weekdayFri"), t("weekdaySat")];
   const maxViews = Math.max(...weekdayBreakdown.map(w => w.views), 1);
   const bestDay = weekdayBreakdown.reduce((a, b) => a.views > b.views ? a : b);
 
   return (
     <div className="mx-4 mt-4">
-      <div className="bg-bg-secondary rounded-xl p-4">
+      <div className="bg-bg-secondary rounded-[15px] p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5">
-            <CalendarDays className="h-4 w-4 text-text-muted" /> Haftalık Dağılım
+            <CalendarDays className="h-4 w-4 text-text-muted" /> {t("weeklyBreakdown")}
           </h3>
-          <span className="text-[0.68rem] text-text-muted">En iyi gün: {WEEKDAY_NAMES[bestDay.day]}</span>
+          <span className="text-[0.68rem] text-text-muted">{t("bestDay", { day: WEEKDAY_NAMES[bestDay.day] })}</span>
         </div>
         <div className="space-y-2">
           {weekdayBreakdown.map(w => {
@@ -546,6 +556,8 @@ function InsightsCard({ overview, periodCounts, prev, peakHours, weekdayBreakdow
   overview: OverviewData | null; periodCounts: PeriodCounts | null; prev: PeriodCounts | null;
   peakHours: HourData[]; weekdayBreakdown: WeekdayData[]; periodLabel: string;
 }) {
+  const t = useTranslations("analytics");
+  const WEEKDAY_NAMES = [t("weekdaySun"), t("weekdayMon"), t("weekdayTue"), t("weekdayWed"), t("weekdayThu"), t("weekdayFri"), t("weekdaySat")];
   const insights: { icon: any; text: string }[] = [];
 
   const totalViews = periodCounts?.views || 0;
@@ -558,20 +570,20 @@ function InsightsCard({ overview, periodCounts, prev, peakHours, weekdayBreakdow
   if (totalViews >= 10) {
     const er = totalViews > 0 ? Math.round((totalInteractions / totalViews) * 100) : 0;
     const cappedEr = Math.min(er, 99);
-    if (cappedEr >= 10) insights.push({ icon: Zap, text: `Etkileşim oranın %${cappedEr} — ortalamanın üzerinde.` });
-    else if (cappedEr >= 3) insights.push({ icon: Activity, text: `Etkileşim oranın %${cappedEr}.` });
+    if (cappedEr >= 10) insights.push({ icon: Zap, text: t("insightEngagementHigh", { rate: cappedEr }) });
+    else if (cappedEr >= 3) insights.push({ icon: Activity, text: t("insightEngagement", { rate: cappedEr }) });
   }
 
   // Best day — only if at least 2 different days have views
   if (weekdayBreakdown.filter(w => w.views > 0).length >= 2) {
     const best = weekdayBreakdown.reduce((a, b) => a.views > b.views ? a : b);
-    insights.push({ icon: CalendarDays, text: `En çok okuma ${WEEKDAY_NAMES[best.day]} günleri geliyor.` });
+    insights.push({ icon: CalendarDays, text: t("insightBestDay", { day: WEEKDAY_NAMES[best.day] }) });
   }
 
   // Peak hour — only if at least 3 different hours have activity
   if (peakHours.filter(h => h.count > 0).length >= 3) {
     const peak = peakHours.reduce((a, b) => a.count > b.count ? a : b);
-    insights.push({ icon: Clock, text: `Okuyucuların en aktif saati: ${String(peak.hour).padStart(2, "0")}:00` });
+    insights.push({ icon: Clock, text: t("insightPeakHour", { hour: String(peak.hour).padStart(2, "0") }) });
   }
 
   // Growth — only with meaningful previous period data
@@ -579,13 +591,13 @@ function InsightsCard({ overview, periodCounts, prev, peakHours, weekdayBreakdow
   if (prevViews >= 5 && totalViews >= 5) {
     const growth = Math.round(((totalViews - prevViews) / prevViews) * 100);
     const cappedGrowth = Math.min(Math.abs(growth), 99);
-    if (growth > 10) insights.push({ icon: TrendingUp, text: `Görüntülenmeler önceki döneme göre %${cappedGrowth} arttı.` });
-    else if (growth < -10) insights.push({ icon: TrendingUp, text: `Görüntülenmeler önceki döneme göre %${cappedGrowth} düştü.` });
+    if (growth > 10) insights.push({ icon: TrendingUp, text: t("insightGrowthUp", { rate: cappedGrowth }) });
+    else if (growth < -10) insights.push({ icon: TrendingUp, text: t("insightGrowthDown", { rate: cappedGrowth }) });
   }
 
   // Avg views — only if meaningful
   if ((overview?.avgViewsPerPost || 0) >= 5) {
-    insights.push({ icon: BarChart3, text: `Gönderi başına ortalama ${formatCount(overview?.avgViewsPerPost || 0)} görüntülenme.` });
+    insights.push({ icon: BarChart3, text: t("insightAvgViews", { count: formatCount(overview?.avgViewsPerPost || 0) }) });
   }
 
   if (insights.length === 0) return null;
@@ -594,7 +606,7 @@ function InsightsCard({ overview, periodCounts, prev, peakHours, weekdayBreakdow
     <div className="mx-4 mt-5">
       <div className="bg-gradient-to-br from-accent-main/8 to-transparent rounded-xl p-4">
         <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5 mb-3">
-          <Zap className="h-4 w-4 text-accent-main" /> Öngörüler
+          <Zap className="h-4 w-4 text-accent-main" /> {t("insights")}
         </h3>
         <div className="space-y-2.5">
           {insights.map((ins, i) => (
@@ -623,42 +635,43 @@ function fmtDuration(seconds: number): string {
 }
 
 function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; periodLabel: string }) {
+  const t = useTranslations("analytics");
   return (
     <div className="mx-4 mt-5">
       <div className="bg-gradient-to-br from-purple-500/8 via-purple-400/3 to-transparent rounded-xl overflow-hidden">
         <div className="p-4">
           <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5 mb-4">
-            <Film className="h-4 w-4 text-purple-500" /> Video İstatistikleri
-            <span className="text-[0.65rem] text-text-muted font-normal ml-1">Son {periodLabel}</span>
+            <Film className="h-4 w-4 text-purple-500" /> {t("videoStats")}
+            <span className="text-[0.65rem] text-text-muted font-normal ml-1">{t("last", { period: periodLabel })}</span>
           </h3>
 
           {/* Summary grid */}
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-bg-secondary rounded-xl p-3">
+            <div className="bg-bg-secondary rounded-[15px] p-3">
               <div className="flex items-center gap-1 mb-1.5">
                 <Clock className="h-3 w-3 text-text-muted" />
-                <span className="text-[0.65rem] text-text-muted">Toplam İzlenme</span>
+                <span className="text-[0.65rem] text-text-muted">{t("totalWatch")}</span>
               </div>
-              <p className="text-xl font-bold">{data.totalWatchHours}<span className="text-[0.72rem] text-text-muted font-semibold ml-1">saat</span></p>
+              <p className="text-xl font-bold">{data.totalWatchHours}<span className="text-[0.72rem] text-text-muted font-semibold ml-1">{t("hours")}</span></p>
             </div>
-            <div className="bg-bg-secondary rounded-xl p-3">
+            <div className="bg-bg-secondary rounded-[15px] p-3">
               <div className="flex items-center gap-1 mb-1.5">
                 <Play className="h-3 w-3 text-text-muted" />
-                <span className="text-[0.65rem] text-text-muted">Ort. İzlenme Süresi</span>
+                <span className="text-[0.65rem] text-text-muted">{t("avgWatchDuration")}</span>
               </div>
               <p className="text-xl font-bold">{fmtDuration(data.avgWatchDuration)}</p>
             </div>
-            <div className="bg-bg-secondary rounded-xl p-3">
+            <div className="bg-bg-secondary rounded-[15px] p-3">
               <div className="flex items-center gap-1 mb-1.5">
                 <Activity className="h-3 w-3 text-text-muted" />
-                <span className="text-[0.65rem] text-text-muted">Ort. İzlenme %</span>
+                <span className="text-[0.65rem] text-text-muted">{t("avgWatchPercent")}</span>
               </div>
               <p className="text-xl font-bold">%{data.avgWatchPercentage}</p>
             </div>
-            <div className="bg-bg-secondary rounded-xl p-3">
+            <div className="bg-bg-secondary rounded-[15px] p-3">
               <div className="flex items-center gap-1 mb-1.5">
                 <CheckCircle className="h-3 w-3 text-text-muted" />
-                <span className="text-[0.65rem] text-text-muted">Tamamlama Oranı</span>
+                <span className="text-[0.65rem] text-text-muted">{t("completionRate")}</span>
               </div>
               <p className="text-xl font-bold">%{data.completionRate}</p>
             </div>
@@ -669,19 +682,19 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
             <div className="flex items-center gap-1.5 bg-bg-secondary rounded-full px-3 py-1.5 shrink-0">
               <Film className="h-3 w-3 text-text-muted" />
               <span className="text-[0.68rem] font-bold">{data.videoCount}</span>
-              <span className="text-[0.62rem] text-text-muted">Video</span>
+              <span className="text-[0.62rem] text-text-muted">{t("videoCount")}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-bg-secondary rounded-full px-3 py-1.5 shrink-0">
               <Eye className="h-3 w-3 text-text-muted" />
               <span className="text-[0.68rem] font-bold">{formatCount(data.totalWatchers)}</span>
-              <span className="text-[0.62rem] text-text-muted">İzleyici</span>
+              <span className="text-[0.62rem] text-text-muted">{t("watchers")}</span>
             </div>
           </div>
 
           {/* Top Videos */}
           {data.topVideos.length > 0 && (
             <div>
-              <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider mb-2">En Çok İzlenen</p>
+              <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider mb-2">{t("mostWatched")}</p>
               <div className="space-y-1">
                 {data.topVideos.map((video, i) => (
                   <Link
@@ -698,8 +711,8 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
                     <div className="flex-1 min-w-0">
                       <p className="text-[0.78rem] font-medium truncate group-hover:text-accent-main transition">{video.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[0.62rem] text-text-muted">{formatCount(video.views)} görüntülenme</span>
-                        <span className="text-[0.62rem] text-text-muted">{video.watchHours}sa izlenme</span>
+                        <span className="text-[0.62rem] text-text-muted">{t("viewCount", { count: formatCount(video.views) })}</span>
+                        <span className="text-[0.62rem] text-text-muted">{t("watchHours", { hours: video.watchHours })}</span>
                       </div>
                     </div>
                   </Link>

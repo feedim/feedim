@@ -107,7 +107,17 @@ export async function GET(request: NextRequest) {
           }
           window.close();
         </script>
-        <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#666">Giriş başarılı! Bu pencere kapanacak...</p>
+        <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#666">${
+          (() => {
+            const locale = request.cookies.get('fdm-locale')?.value || 'tr';
+            const messages: Record<string, string> = {
+              tr: 'Giriş başarılı! Bu pencere kapanacak...',
+              en: 'Login successful! This window will close...',
+              az: 'Giriş uğurlu oldu! Bu pəncərə bağlanacaq...',
+            };
+            return messages[locale] || messages.tr;
+          })()
+        }</p>
       </body></html>`,
       { headers: { "Content-Type": "text/html" } }
     );

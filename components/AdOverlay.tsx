@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import { AD_SKIP_DELAY } from "@/lib/constants";
 import { getProviderForSlot, type AdProviderConfig } from "@/lib/adProviders";
@@ -19,6 +20,7 @@ declare global {
 }
 
 export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOverlayProps) {
+  const t = useTranslations("ad");
   const { user } = useUser();
   const provider = getProviderForSlot("overlay");
   const [countdown, setCountdown] = useState(AD_SKIP_DELAY);
@@ -304,7 +306,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
               </span>
             </div>
             <span className="text-white/50 text-[0.72rem] font-medium hidden sm:inline">
-              Reklam
+              {t("label")}
             </span>
           </div>
         )}
@@ -313,7 +315,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
             onClick={handleSkip}
             className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 active:bg-white/30 text-white rounded-full pl-4 pr-3 py-2.5 text-[0.82rem] font-semibold backdrop-blur-sm transition cursor-pointer"
           >
-            Reklamı Geç
+            {t("skipAd")}
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             </svg>

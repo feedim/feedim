@@ -8,6 +8,8 @@ import ScrollToTop from "@/components/ScrollToTop";
 import GlobalHotkeys from "@/components/GlobalHotkeys";
 import TopProgressBar from "@/components/TopProgressBar";
 import ModalsPreload from "@/components/ModalsPreload";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 
 export const viewport: Viewport = {
@@ -19,29 +21,36 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export const metadata: Metadata = {
-  title: "Feedim — Keşfet ve Paylaş",
-  description: "Feedim ile ilham veren içerikler yaz, videolar paylaş, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
-  keywords: ["gönderi yazma", "içerik platformu", "video platformu", "blog", "keşfet", "paylaş", "kullanıcı", "okuyucu", "feedim"],
-  authors: [{ name: "Feedim" }],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
-  icons: {
-    icon: "/favicon.png",
-    apple: "/apple-icon.png",
-  },
-  openGraph: {
-    title: "Feedim — Keşfet ve Paylaş",
-    description: "İlham veren içerikler yaz, videolar paylaş, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
-    type: "website",
-    locale: "tr_TR",
-    siteName: "Feedim",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Feedim — Keşfet ve Paylaş",
-    description: "İlham veren içerikler yaz, videolar paylaş, farklı bakış açılarını keşfet ve fikirlerini dünyayla paylaş.",
-  },
-};
+const localeToOg: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
+const localeToHtml: Record<string, string> = { tr: "tr-TR", en: "en-US", az: "az-AZ" };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  const locale = await getLocale();
+  return {
+    title: t("title"),
+    description: t("description"),
+    keywords: ["feedim", "content platform", "video platform", "blog", "explore", "share"],
+    authors: [{ name: "Feedim" }],
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+    icons: {
+      icon: "/favicon.png",
+      apple: "/apple-icon.png",
+    },
+    openGraph: {
+      title: t("title"),
+      description: t("ogDescription"),
+      type: "website",
+      locale: localeToOg[locale] || "tr_TR",
+      siteName: "Feedim",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("title"),
+      description: t("ogDescription"),
+    },
+  };
+}
 
 import AdsScriptLoader from "@/components/AdsScriptLoader";
 import { getAdsEnabled } from "@/lib/siteSettings";
@@ -52,17 +61,20 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const adsEnabled = await getAdsEnabled();
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const inLanguage = localeToHtml[locale] || "tr-TR";
   return (
-    <html lang="tr" suppressHydrationWarning data-ads-enabled={adsEnabled ? "1" : "0"}>
+    <html lang={locale} suppressHydrationWarning data-ads-enabled={adsEnabled ? "1" : "0"}>
       <head>
         <meta charSet="utf-8" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        {/* Dark mode flash prevention + theme-color sync + skeleton gate */}
+        {/* Dark mode flash prevention + theme-color sync */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem('fdm-theme')||'dark';var c={light:'#ffffff',dark:'#090909',dim:'#0e1520'};var r=m;if(m==='system')r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(r==='dark'||r==='dim'){document.documentElement.setAttribute('data-theme',r)}var t=document.querySelector('meta[name="theme-color"]');if(t&&c[r])t.setAttribute('content',c[r])}catch(e){}try{var hasAuth=false;for(var k in localStorage){if(k.indexOf('sb-')===0&&k.indexOf('-auth-token')>0){if(localStorage.getItem(k)){hasAuth=true;break}}}if(!hasAuth){document.documentElement.setAttribute('data-skeletons-off','1')}}catch(e){}})()`,
+            __html: `(function(){try{var m=localStorage.getItem('fdm-theme')||'dark';var c={light:'#ffffff',dark:'#090909',dim:'#0e1520'};var r=m;if(m==='system')r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(r==='dark'||r==='dim'){document.documentElement.setAttribute('data-theme',r)}var t=document.querySelector('meta[name="theme-color"]');if(t&&c[r])t.setAttribute('content',c[r])}catch(e){}})()`,
           }}
         />
         <script
@@ -73,8 +85,8 @@ export default async function RootLayout({
               "@type": "WebSite",
               url: process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com",
               name: "Feedim",
-              description: "Keşfet ve Paylaş - İçerik ve video platformu",
-              inLanguage: "tr-TR",
+              description: messages && typeof messages === 'object' && 'metadata' in messages ? (messages.metadata as Record<string, string>).siteDescription : "Discover and Share",
+              inLanguage,
               potentialAction: {
                 "@type": "SearchAction",
                 target: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/explore?q={search_term_string}`,
@@ -98,16 +110,18 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased" suppressHydrationWarning>
-        <AuthModalProvider>
-          <Suspense fallback={null}>
-            <TopProgressBar />
-          </Suspense>
-          <ScrollToTop />
-          <GlobalHotkeys />
-          <ModalsPreload />
-          {children}
-        </AuthModalProvider>
-        <FeedimAlertProvider />
+        <NextIntlClientProvider messages={messages} locale={locale}>
+          <AuthModalProvider>
+            <Suspense fallback={null}>
+              <TopProgressBar />
+            </Suspense>
+            <ScrollToTop />
+            <GlobalHotkeys />
+            <ModalsPreload />
+            {children}
+          </AuthModalProvider>
+          <FeedimAlertProvider />
+        </NextIntlClientProvider>
         {/* Google AdSense (loaded conditionally) */}
         <AdsScriptLoader />
         {/* Google Analytics */}

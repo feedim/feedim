@@ -7,6 +7,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import PublicFooter from "@/components/PublicFooter";
 import AmbientLight from "@/components/AmbientLight";
 import { UserProvider, type InitialUser } from "@/components/UserContext";
+import LocationPrompt from "@/components/LocationPrompt";
 
 interface DashboardShellContextValue {
   setMobileNavVisible: (visible: boolean) => void;
@@ -45,6 +46,7 @@ export default function DashboardShell({
             </div>
           </main>
           {mobileNavVisible && <MobileBottomNav />}
+          <LocationPrompt />
         </div>
       </DashboardShellContext.Provider>
     </UserProvider>

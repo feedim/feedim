@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, Lock, AlertCircle, Coins, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
+import { useTranslations } from "next-intl";
 
 interface CoinPaymentData {
   package_id: string;
@@ -18,6 +19,7 @@ interface CoinPaymentData {
 
 export default function PaymentPage() {
   useSearchParams();
+  const t = useTranslations("payment");
   const [data, setData] = useState<CoinPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -63,7 +65,7 @@ export default function PaymentPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          feedimAlert("error", "Giriş yapılmadı");
+          feedimAlert("error", t("notLoggedIn"));
           router.push("/login");
           return;
         }
@@ -77,7 +79,7 @@ export default function PaymentPage() {
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-          setError(result.error || "Ödeme başlatılamadı");
+          setError(result.error || t("paymentInitFailed"));
           return;
         }
 
@@ -86,10 +88,10 @@ export default function PaymentPage() {
           sessionStorage.setItem("fdm_payment_pending", "true");
           setIframeToken(result.token);
         } else {
-          setError("Ödeme işlenemedi");
+          setError(t("paymentProcessFailed"));
         }
       } catch (err: any) {
-        setError("Ödeme hatası: " + (err.message || "Lütfen tekrar deneyin"));
+        setError(t("paymentError") + ": " + (err.message || t("pleaseTryAgain")));
       }
     };
 
@@ -116,7 +118,7 @@ export default function PaymentPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-[0.95rem] font-semibold">Ödeme</h1>
+          <h1 className="text-[0.95rem] font-semibold">{t("paymentTitle")}</h1>
           <div className="w-8" />
         </nav>
       </header>
@@ -133,7 +135,7 @@ export default function PaymentPage() {
                 <div>
                   <p className="font-semibold">{data.package_name}</p>
                   <p className="text-sm text-text-muted">
-                    {totalCoins.toLocaleString()} Jeton
+                    {totalCoins.toLocaleString()} {t("token")}
                     {data.bonus_coins > 0 && (
                       <span className="text-accent-main"> (+{data.bonus_coins} bonus)</span>
                     )}
@@ -160,7 +162,7 @@ export default function PaymentPage() {
                   }}
                   className="text-xs text-error underline hover:text-error/80 transition"
                 >
-                  Tekrar Dene
+                  {t("retry")}
                 </button>
               </div>
             </div>
@@ -183,26 +185,26 @@ export default function PaymentPage() {
             </div>
             <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
               <Lock className="h-3.5 w-3.5" />
-              <p>Ödeme süresince sayfayı kapatmayın. Tamamlandığında otomatik yönlendirileceksiniz.</p>
+              <p>{t("doNotClosePayment")}</p>
             </div>
           </div>
         ) : !error ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="h-10 w-10 text-accent-main animate-spin" />
-            <p className="text-text-muted text-sm">Ödeme formu yükleniyor...</p>
+            <p className="text-text-muted text-sm">{t("paymentFormLoading")}</p>
           </div>
         ) : null}
 
         {/* Info & Legal */}
-        <div className="mt-6 bg-bg-secondary rounded-xl px-4 py-3 space-y-1.5 text-xs text-text-muted font-medium">
-          <p>Tüm işlemler 256-bit SSL şifreleme ve 3D Secure ile korunur.</p>
-          <p>Ödeme altyapısı PayTR tarafından sağlanmaktadır.</p>
+        <div className="mt-6 bg-bg-secondary rounded-[15px] px-4 py-3 space-y-1.5 text-xs text-text-muted font-medium">
+          <p>{t("sslSecure")}</p>
+          <p>{t("paytrProvider")}</p>
         </div>
 
         <div className="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[0.72rem] text-text-muted font-medium pt-4">
-          <Link href="/help/terms" className="hover:text-text-primary transition">Koşullar</Link>
-          <Link href="/help/privacy" className="hover:text-text-primary transition">Gizlilik</Link>
-          <Link href="/help" className="hover:text-text-primary transition">Yardım Merkezi</Link>
+          <Link href="/help/terms" className="hover:text-text-primary transition">{t("terms")}</Link>
+          <Link href="/help/privacy" className="hover:text-text-primary transition">{t("privacy")}</Link>
+          <Link href="/help" className="hover:text-text-primary transition">{t("helpCenter")}</Link>
         </div>
       </main>
     </div>

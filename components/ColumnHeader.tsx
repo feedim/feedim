@@ -12,46 +12,7 @@ import {
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { useUser } from "@/components/UserContext";
 import Modal from "@/components/modals/Modal";
-
-const pageTitles: Record<string, string> = {
-  "/": "Ana Sayfa",
-  "/explore": "Keşfet",
-  "/notifications": "Bildirimler",
-  "/bookmarks": "Kaydedilenler",
-  "/create": "Yeni Gönderi",
-  "/coins": "Bakiye",
-  "/coins/buy": "Jeton Satın Al",
-  "/security": "Güvenlik",
-  "/app-payment": "Jeton Satın Al",
-  "/subscription-payment": "Abonelik",
-  "/transactions": "İşlem Geçmişi",
-  "/withdrawal": "Ödeme Alma",
-  "/video": "Video",
-  "/create/video": "Video",
-};
-
-const mobileTopItems = [
-  { href: "/", icon: Home, label: "Ana Sayfa" },
-  { href: "/explore", icon: Search, label: "Keşfet" },
-];
-
-const mobileContentItems = [
-  { href: "/posts", icon: BookOpen, label: "Gönderiler" },
-  { href: "/notes", icon: Users, label: "Topluluk Notları" },
-  { href: "/video", icon: Film, label: "Video" },
-  { href: "/moments", icon: Clapperboard, label: "Moments" },
-];
-
-const mobileContentPaths = mobileContentItems.map(i => i.href);
-
-const mobileAuthNavItems = [
-  { href: "/notifications", icon: Bell, label: "Bildirimler" },
-  { href: "/bookmarks", icon: Bookmark, label: "Kaydedilenler" },
-  { href: "/analytics", icon: BarChart3, label: "Analitik" },
-  { href: "/coins", icon: Wallet, label: "Bakiye" },
-  { href: "/settings", icon: Settings, label: "Ayarlar" },
-  { href: "/profile", icon: User, label: "Profil" },
-];
+import { useTranslations } from "next-intl";
 
 interface ColumnHeaderProps {
   rightAction?: React.ReactNode;
@@ -65,6 +26,48 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const t = useTranslations();
+
+  const pageTitles: Record<string, string> = {
+    "/": t("nav.home"),
+    "/explore": t("nav.explore"),
+    "/notifications": t("nav.notifications"),
+    "/bookmarks": t("nav.bookmarks"),
+    "/create": t("columnHeader.newPost"),
+    "/coins": t("nav.balance"),
+    "/coins/buy": t("columnHeader.buyTokens"),
+    "/security": t("columnHeader.security"),
+    "/app-payment": t("columnHeader.buyTokens"),
+    "/subscription-payment": t("columnHeader.subscription"),
+    "/transactions": t("columnHeader.transactionHistory"),
+    "/withdrawal": t("columnHeader.withdrawal"),
+    "/video": t("nav.video"),
+    "/create/video": t("nav.video"),
+  };
+
+  const mobileTopItems = [
+    { href: "/", icon: Home, label: t("nav.home") },
+    { href: "/explore", icon: Search, label: t("nav.explore") },
+  ];
+
+  const mobileContentItems = [
+    { href: "/posts", icon: BookOpen, label: t("nav.posts") },
+    { href: "/notes", icon: Users, label: t("nav.communityNotes") },
+    { href: "/video", icon: Film, label: t("nav.video") },
+    { href: "/moments", icon: Clapperboard, label: t("nav.moments") },
+  ];
+
+  const mobileContentPaths = mobileContentItems.map(i => i.href);
+
+  const mobileAuthNavItems = [
+    { href: "/notifications", icon: Bell, label: t("nav.notifications") },
+    { href: "/bookmarks", icon: Bookmark, label: t("nav.bookmarks") },
+    { href: "/analytics", icon: BarChart3, label: t("nav.analytics") },
+    { href: "/coins", icon: Wallet, label: t("nav.balance") },
+    { href: "/settings", icon: Settings, label: t("nav.settings") },
+    { href: "/profile", icon: User, label: t("nav.profile") },
+  ];
+
   const [contentExpanded, setContentExpanded] = useState(() =>
     mobileContentPaths.some(p => pathname === p || pathname.startsWith(p + "/"))
   );
@@ -76,7 +79,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
   }, []);
 
   const isHome = pathname === "/";
-  const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/u/") ? "Profil" : null);
+  const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/u/") ? t("nav.profile") : null);
 
   const handleBack = onBack || (() => {
     try {
@@ -97,7 +100,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
     return <Monitor className="h-5 w-5" />;
   };
 
-  const themeLabel = theme === "system" ? "Sistem" : theme === "light" ? "Açık" : theme === "dark" ? "Koyu" : "Dim";
+  const themeLabel = theme === "system" ? t("theme.system") : theme === "light" ? t("theme.light") : theme === "dark" ? t("theme.dark") : t("theme.dim");
 
   const navItemClass = (active: boolean) =>
     `flex items-center gap-3 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
@@ -114,11 +117,11 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
             <Link href="/" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2 rounded-full hover:bg-bg-secondary transition">
               <FeedimIcon className="h-14 w-14" />
             </Link>
-            <span className="hidden md:block text-[1.5rem] font-bold">Ana Sayfa</span>
+            <span className="hidden md:block text-[1.5rem] font-bold">{t("nav.home")}</span>
           </>
         ) : (
           <div className="flex items-center gap-2.5">
-            <button onClick={handleBack} className="i-btn !w-8 !h-8 text-text-primary" aria-label="Geri">
+            <button onClick={handleBack} className="i-btn !w-8 !h-8 text-text-primary" aria-label={t("common.back")}>
               <ArrowLeft className="h-5 w-5" />
             </button>
             <span className={`text-[1.1rem] font-bold ${!pageTitle ? "hidden" : ""}`}>{pageTitle || ""}</span>
@@ -134,7 +137,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
             <button
               onClick={() => setMobileNavOpen(true)}
               className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary md:hidden"
-              aria-label="Menü"
+              aria-label={t("nav.menu")}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -144,9 +147,8 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
     </header>
 
     {/* Mobile navigation modal */}
-    <Modal open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} title="Menü" size="sm" hideHeader>
+    <Modal open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} title={t("nav.menu")} size="sm" hideHeader>
       <div className="pt-[3px] pb-2 px-2 space-y-[5px]">
-        {/* Ana Sayfa, Keşfet */}
         {mobileTopItems.map(item => {
           const Icon = item.icon;
           const active = pathname === item.href;
@@ -158,7 +160,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
           );
         })}
 
-        {/* Daha Fazla accordion */}
+        {/* Content accordion */}
         <button
           onClick={() => setContentExpanded(prev => !prev)}
           className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
@@ -168,7 +170,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
           }`}
         >
           <LayoutGrid className="h-5 w-5 shrink-0" />
-          <span className="flex-1 text-left">Daha Fazla</span>
+          <span className="flex-1 text-left">{t("common.more")}</span>
           <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${contentExpanded ? "rotate-180" : ""}`} />
         </button>
         {contentExpanded && (
@@ -210,7 +212,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
           </>
         )}
 
-        {/* Bottom: Theme + Shortcuts */}
+        {/* Bottom: Theme */}
         <div className="border-t border-border-primary !my-1.5" />
         <button
           onClick={() => {
@@ -234,7 +236,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
               className="flex items-center gap-3 px-3 py-3 rounded-[10px] transition text-[0.93rem] font-semibold text-accent-main hover:bg-accent-main/10"
             >
               <LogIn className="h-5 w-5 shrink-0" />
-              <span>Giriş Yap</span>
+              <span>{t("common.login")}</span>
             </Link>
           </>
         )}

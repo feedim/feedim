@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { X, UserPlus, Check, ChevronRight } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
 
@@ -22,6 +23,7 @@ interface Props {
 const DISMISS_KEY = "fdm-carousel-dismissed";
 
 export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
+  const t = useTranslations("follow");
   const [users, setUsers] = useState<SuggestedUser[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState(false);
@@ -68,7 +70,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
         setFollowing(reverted);
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          feedimAlert("error", data.error || "Günlük takip limitine ulaştın");
+          feedimAlert("error", data.error || t("followLimitReached"));
         }
       }
     } catch {
@@ -81,7 +83,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
 
   const handleFollow = useCallback((username: string, userId: string) => {
     if (following.has(userId)) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      feedimAlert("question", t("unfollowConfirm"), { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
       return;
     }
     doFollowToggle(username, userId);
@@ -101,7 +103,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
-        <span className="text-[0.88rem] font-bold">Tanıyor olabileceğin kişiler</span>
+        <span className="text-[0.88rem] font-bold">{t("peopleYouMayKnow")}</span>
         <button
           onClick={handleDismiss}
           className="i-btn !w-7 !h-7 text-text-muted hover:text-text-primary"
@@ -153,9 +155,9 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
                 }`}
               >
                 {isFollowing ? (
-                  <><Check className="h-3 w-3" /> Takip</>
+                  <><Check className="h-3 w-3" /> {t("following")}</>
                 ) : (
-                  <><UserPlus className="h-3 w-3" /> Takip Et</>
+                  <><UserPlus className="h-3 w-3" /> {t("follow")}</>
                 )}
               </button>
             </div>
@@ -171,7 +173,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
           <div className="w-[72px] h-[72px] rounded-full bg-bg-secondary flex items-center justify-center mb-2">
             <ChevronRight className="h-6 w-6 text-text-muted" />
           </div>
-          <p className="text-[0.78rem] font-semibold text-text-muted">Tümünü gör</p>
+          <p className="text-[0.78rem] font-semibold text-text-muted">{t("seeAll")}</p>
         </Link>
       </div>
     </div>

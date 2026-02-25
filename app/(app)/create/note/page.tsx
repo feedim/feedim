@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
-import { formatCount } from "@/lib/utils";
+import { formatCount, getPostUrl } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -33,6 +34,7 @@ function NoteWriteContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   const { user } = useUser();
+  const t = useTranslations("create");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -112,7 +114,7 @@ function NoteWriteContent() {
         setTags(postTags);
       }
     } catch {
-      feedimAlert("error", "Taslak yüklenemedi, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("draftLoadError"));
     } finally {
       setLoadingDraft(false);
     }
@@ -281,19 +283,19 @@ function NoteWriteContent() {
     const trimmed = tagSearch.trim().replace(/\s+/g, ' ');
     if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
     if (trimmed.length < VALIDATION.tagName.min) {
-      feedimAlert("error", `Etiket en az ${VALIDATION.tagName.min} karakter olmalı`);
+      feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
       return;
     }
     if (trimmed.length > VALIDATION.tagName.max) {
-      feedimAlert("error", `Etiket en fazla ${VALIDATION.tagName.max} karakter olabilir`);
+      feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max }));
       return;
     }
     if (!VALIDATION.tagName.pattern.test(trimmed)) {
-      feedimAlert("error", "Etiket adı geçersiz karakterler içeriyor");
+      feedimAlert("error", t("tagInvalidChars"));
       return;
     }
     if (/^\d+$/.test(trimmed)) {
-      feedimAlert("error", "Etiket sadece sayılardan oluşamaz");
+      feedimAlert("error", t("tagOnlyNumbers"));
       return;
     }
     setTagCreating(true);
@@ -308,10 +310,10 @@ function NoteWriteContent() {
       if (res.ok && data.tag) {
         addTag(data.tag);
       } else {
-        feedimAlert("error", data.error || "Etiket oluşturulamadı");
+        feedimAlert("error", data.error || t("tagCreateFailed"));
       }
     } catch {
-      feedimAlert("error", "Etiket oluşturulamadı, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("tagCreateFailedRetry"));
     } finally {
       setTagCreating(false);
     }
@@ -351,11 +353,11 @@ function NoteWriteContent() {
   const savePost = async (status: "draft" | "published") => {
     const trimmed = noteText.trim();
     if (!trimmed) {
-      feedimAlert("error", "Not içeriği boş olamaz");
+      feedimAlert("error", t("noteContentEmpty"));
       return;
     }
     if (status === "published" && trimmed.length > MAX_CHARS) {
-      feedimAlert("error", `Not en fazla ${MAX_CHARS} karakter olabilir`);
+      feedimAlert("error", t("noteMaxChars", { max: MAX_CHARS }));
       return;
     }
 
@@ -386,7 +388,7 @@ function NoteWriteContent() {
         setHasUnsavedChanges(false);
         if (status === "published" && data.post?.slug) {
           emitNavigationStart();
-          router.push(`/${data.post.slug}`);
+          router.push(getPostUrl(data.post.slug, "note"));
         } else {
           sessionStorage.setItem("fdm-open-create-modal", "1");
           sessionStorage.setItem("fdm-create-view", "drafts");
@@ -394,10 +396,10 @@ function NoteWriteContent() {
           router.push("/");
         }
       } else {
-        feedimAlert("error", data.error || "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", data.error || t("genericErrorRetry"));
       }
     } catch {
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", t("genericErrorRetry"));
     } finally {
       setSavingAs(null);
     }
@@ -412,7 +414,7 @@ function NoteWriteContent() {
 
   const headerRight = (
     <div className="flex items-center gap-2">
-      {autoSaving && <span className="text-xs text-text-muted">Kaydediliyor...</span>}
+      {autoSaving && <span className="text-xs text-text-muted">{t("autoSaving")}</span>}
       {/* Character counter in header */}
       {step === 1 && (
         <span className={`text-xs ${remaining <= 20 ? (remaining <= 0 ? "text-error font-semibold" : "text-warning") : "text-text-muted"}`}>
@@ -425,7 +427,7 @@ function NoteWriteContent() {
           disabled={!canGoNext}
           className="t-btn accept !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
         >
-          İleri
+          {t("nextStep")}
         </button>
       ) : (
         <>
@@ -434,15 +436,15 @@ function NoteWriteContent() {
             disabled={savingAs !== null || !noteText.trim()}
             className="t-btn cancel !h-9 !px-4 !text-[0.82rem] disabled:opacity-40"
           >
-            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Kaydet"}
+            {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
           </button>
           <button
             onClick={() => savePost("published")}
             disabled={savingAs !== null || !noteText.trim() || remaining < 0}
             className="t-btn accept relative !h-9 !px-5 !text-[0.82rem] disabled:opacity-40"
-            aria-label="Yayınla"
+            aria-label={t("shareBtn")}
           >
-            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Paylaş"}
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("shareBtn")}
           </button>
         </>
       )}
@@ -454,7 +456,7 @@ function NoteWriteContent() {
       hideMobileNav
       hideRightSidebar
       headerRightAction={headerRight}
-      headerTitle={step === 1 ? "Not" : "Detaylar"}
+      headerTitle={step === 1 ? t("headerNote") : t("headerDetails")}
       headerOnBack={() => { if (step === 2) setStep(1); else router.back(); }}
     >
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
@@ -462,7 +464,7 @@ function NoteWriteContent() {
         {step === 1 && loadingDraft && (
           <div className="flex flex-col items-center justify-center flex-1 py-16">
             <span className="loader" style={{ width: 28, height: 28 }} />
-            <p className="text-sm text-text-muted mt-3">Not yükleniyor...</p>
+            <p className="text-sm text-text-muted mt-3">{t("noteLoading")}</p>
           </div>
         )}
         {step === 1 && !loadingDraft && (
@@ -488,7 +490,7 @@ function NoteWriteContent() {
                       value={noteText}
                       onChange={(e) => handleNoteChange(e.target.value)}
                       onKeyDown={handleMentionKeyDown}
-                      placeholder="Aklınızda ne var?"
+                      placeholder={t("whatsOnYourMind")}
                       className="w-full bg-transparent text-[1.05rem] leading-[1.55] text-text-primary placeholder:text-text-muted/50 resize-none min-h-[200px]"
                       style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto" }}
                       maxLength={MAX_CHARS}
@@ -539,7 +541,7 @@ function NoteWriteContent() {
           <div className="space-y-6 px-3 sm:px-4 pt-4 pb-20">
             {/* Tags */}
             <div>
-              <label className="block text-sm font-semibold mb-2">Etiketler</label>
+              <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {tags.map(tag => (
@@ -559,7 +561,7 @@ function NoteWriteContent() {
                     value={tagSearch}
                     onChange={e => setTagSearch(e.target.value)}
                     onKeyDown={handleTagKeyDown}
-                    placeholder="Etiket ara veya yeni oluştur..."
+                    placeholder={t("tagSearchPlaceholder")}
                     className="input-modern w-full"
                   />
                   {/* Suggestions dropdown */}
@@ -575,7 +577,7 @@ function NoteWriteContent() {
                         >
                           <span className="text-text-muted">#</span>{s.name}
                           {s.post_count !== undefined && (
-                            <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} gönderi</span>
+                            <span className="ml-auto text-xs text-text-muted">{formatCount(s.post_count || 0)} {t("postsCount")}</span>
                           )}
                         </button>
                       ))}
@@ -591,18 +593,18 @@ function NoteWriteContent() {
                       {tagCreating ? (
                         <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
                       ) : (
-                        <><Plus className="h-3.5 w-3.5" /> Oluştur</>
+                        <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
                       )}
                     </button>
                   )}
                 </div>
               )}
-              <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} etiket</p>
+              <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
 
               {/* Popular tags */}
               {tags.length < VALIDATION.postTags.max && !tagSearch && popularTags.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs text-text-muted mb-2">Popüler etiketler</p>
+                  <p className="text-xs text-text-muted mb-2">{t("popularTags")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {popularTags
                       .filter(pt => !tags.some(t => t.id === pt.id))
@@ -623,15 +625,15 @@ function NoteWriteContent() {
 
             {/* Settings */}
             <div>
-              <label className="block text-sm font-semibold mb-3">Ayarlar</label>
+              <label className="block text-sm font-semibold mb-3">{t("settingsLabel")}</label>
               <div className="space-y-1">
                 <button
                   onClick={() => setAllowComments(!allowComments)}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
                 >
                   <div>
-                    <p className="text-sm font-medium">Yorumlara izin ver</p>
-                    <p className="text-xs text-text-muted mt-0.5">Okuyucular yorum yapabilir</p>
+                    <p className="text-sm font-medium">{t("allowComments")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDesc")}</p>
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />

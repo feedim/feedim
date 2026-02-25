@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import Modal from "./Modal";
@@ -30,48 +31,16 @@ interface SuggestedUser {
   bio?: string;
 }
 
-const planPerks: Record<string, string[]> = {
-  basic: [
-    "Reklamsız deneyim",
-    "Artırılmış günlük limitler",
-  ],
-  pro: [
-    "Onaylı rozet",
-    "Reklamsız deneyim",
-    "Para kazanma",
-    "Keşfette öne çıkma",
-    "Analitik paneli",
-  ],
-  max: [
-    "Onaylı rozet (altın)",
-    "Reklamsız deneyim",
-    "Para kazanma",
-    "Profil ziyaretçileri",
-    "Uzun gönderi & yorum",
-    "Öncelikli destek",
-  ],
-  business: [
-    "Onaylı rozet (altın)",
-    "İşletme hesabı",
-    "Para kazanma",
-    "Tüm premium özellikler",
-    "Öncelikli destek",
-  ],
+const planPerkKeys: Record<string, string[]> = {
+  basic: ["noAdsExperience", "increasedLimits"],
+  pro: ["verifiedBadge", "noAdsExperience", "monetization", "featuredInExplore", "analyticsPanel"],
+  max: ["goldenBadge", "noAdsExperience", "monetization", "profileVisitorsFeature", "longPostsComments", "prioritySupport"],
+  business: ["goldenBadge", "businessAccount", "monetization", "allPremiumFeatures", "prioritySupport"],
 };
 
-/** Turkish vowel harmony for dative suffix */
-function getDativeSuffix(planId: string): string {
-  switch (planId) {
-    case "basic": return "Super'a";
-    case "pro": return "Pro'ya";
-    case "max": return "Max'e";
-    case "business": return "Business'a";
-    default: return planId + "'e";
-  }
-}
-
 export default function PremiumWelcomeModal({ open, onClose, planName, planId, avatarUrl, fullName }: PremiumWelcomeModalProps) {
-  const perks = planPerks[planId] || planPerks.pro;
+  const t = useTranslations("modals");
+  const perkKeys = planPerkKeys[planId] || planPerkKeys.pro;
   const badgeVariant = getBadgeVariant(planId);
 
   const [users, setUsers] = useState<SuggestedUser[]>([]);
@@ -157,13 +126,11 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
 
   const handleFollow = (username: string, userId: string) => {
     if (following.has(userId) || requested.has(userId)) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
+      feedimAlert("question", t("unfollowConfirm"), { showYesNo: true, onYes: () => doFollowToggle(username, userId) });
       return;
     }
     doFollowToggle(username, userId);
   };
-
-  const dativeName = getDativeSuffix(planId);
 
   return (
     <Modal
@@ -172,14 +139,14 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
       size="sm"
       centerOnDesktop
       title="Premium"
-      infoText="Premium aboneliğinle onaylı rozet, reklamsız deneyim, para kazanma ve daha birçok özelliğe erişebilirsin. Detaylar için Ayarlar > Abonelik sayfasını ziyaret et."
+      infoText={t("premiumInfoText")}
       footer={
         <div className="px-6 py-4 border-t border-border-primary">
           <button
             onClick={onClose}
             className="w-full py-3.5 rounded-full bg-accent-main text-white font-semibold text-[0.95rem] hover:opacity-90 transition-all active:scale-[0.97]"
           >
-            Keşfetmeye Başla
+            {t("startExploring")}
           </button>
         </div>
       }
@@ -199,20 +166,20 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
 
         {/* Welcome text */}
         <h2 className="text-[1.35rem] font-extrabold mb-1.5">
-          Premium {dativeName} Hoş Geldin!
+          {t("welcomeToPremium", { plan: planName })}
         </h2>
         <p className="text-sm text-text-muted mb-6">
-          {fullName ? `Merhaba ${fullName}, artık bir Premium üyesin` : "Artık bir Premium üyesin"}
+          {fullName ? t("premiumGreeting", { name: fullName }) : t("premiumGreetingShort")}
         </p>
 
         {/* Perks */}
         <div className="text-left space-y-3 mb-6">
-          {perks.map((perk, i) => (
+          {perkKeys.map((key, i) => (
             <div key={i} className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
                 <Check className="h-3 w-3 text-accent-main" strokeWidth={3} />
               </div>
-              <span className="text-[0.88rem] font-medium">{perk}</span>
+              <span className="text-[0.88rem] font-medium">{t(key)}</span>
             </div>
           ))}
         </div>
@@ -222,9 +189,9 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
       {users.length > 0 && (
         <div className="mx-4 mb-5 bg-bg-tertiary rounded-[10px] p-2">
           <div className="flex items-center justify-between px-2 py-2">
-            <span className="text-[0.95rem] font-bold">Kişileri Bul</span>
+            <span className="text-[0.95rem] font-bold">{t("findPeople")}</span>
             <Link href="/suggestions" onClick={onClose} className="text-[0.75rem] font-medium text-text-muted hover:text-text-primary transition">
-              Tümünü gör
+              {t("seeAll")}
             </Link>
           </div>
           <div className="space-y-0">

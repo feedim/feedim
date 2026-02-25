@@ -2,12 +2,16 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkTextContent } from "@/lib/moderation";
+import { getTranslations } from "next-intl/server";
 
 /** POST — Save onboarding step data & advance progression */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const t = await getTranslations("onboarding");
+  const tErrors = await getTranslations("errors");
 
   const body = await req.json();
   const { step, action, ...payload } = body;
@@ -22,16 +26,16 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!prof?.birth_date || !prof?.gender) {
-      return NextResponse.json({ error: "Zorunlu alanlar eksik" }, { status: 400 });
+      return NextResponse.json({ error: t("requiredFieldsMissing") }, { status: 400 });
     }
-    if ((prof?.onboarding_step || 1) < 7) {
-      return NextResponse.json({ error: "Onboarding adımları tamamlanmadı" }, { status: 400 });
+    if ((prof?.onboarding_step || 1) < 9) {
+      return NextResponse.json({ error: t("stepsNotCompleted") }, { status: 400 });
     }
 
     const admin = createAdminClient();
     const { error: completeErr } = await admin
       .from("profiles")
-      .update({ onboarding_completed: true, onboarding_step: 8 })
+      .update({ onboarding_completed: true, onboarding_step: 10 })
       .eq("user_id", user.id);
     if (completeErr) return NextResponse.json({ error: completeErr.message }, { status: 500 });
 
@@ -45,18 +49,18 @@ export async function POST(req: NextRequest) {
 
   // Step doğrulaması
   if (action !== "complete") {
-    if (!step || typeof step !== "number" || step < 1 || step > 8) {
-      return NextResponse.json({ error: "Geçersiz adım" }, { status: 400 });
+    if (!step || typeof step !== "number" || step < 1 || step > 10) {
+      return NextResponse.json({ error: t("invalidStep") }, { status: 400 });
     }
   }
 
   // Skip step
   if (action === "skip") {
-    const skippable = [1, 4, 5, 6, 7];
+    const skippable = [3, 6, 7, 8, 9];
     if (!skippable.includes(step)) {
-      return NextResponse.json({ error: "Bu adım atlanamaz" }, { status: 400 });
+      return NextResponse.json({ error: t("cannotSkip") }, { status: 400 });
     }
-    const nextStep = Math.min(8, step + 1);
+    const nextStep = Math.min(10, step + 1);
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarding_step")
@@ -65,7 +69,7 @@ export async function POST(req: NextRequest) {
     const currentProgress = profile?.onboarding_step || 1;
     // Client'ın mevcut adımdan ileri atlamamasını sağla
     if (step > currentProgress + 1) {
-      return NextResponse.json({ error: "Adım sırası atlanamaz" }, { status: 400 });
+      return NextResponse.json({ error: t("cannotSkipOrder") }, { status: 400 });
     }
     if (nextStep > currentProgress) {
       await supabase.from("profiles").update({ onboarding_step: nextStep }).eq("user_id", user.id);
@@ -77,15 +81,31 @@ export async function POST(req: NextRequest) {
   const updates: Record<string, unknown> = {};
 
   switch (step) {
-    case 1:
+    case 1: {
+      // Country
+      const country = payload.country;
+      if (country && typeof country === "string" && country.length === 2) {
+        updates.country = country.toUpperCase();
+      }
+      break;
+    }
+    case 2: {
+      // Language
+      const lang = payload.language;
+      if (lang && ["tr", "en", "az"].includes(lang)) {
+        updates.language = lang;
+      }
+      break;
+    }
+    case 3:
       // Avatar — handled separately via /api/profile/avatar
       break;
-    case 2: {
+    case 4: {
       const birth = payload.birth_date;
-      if (!birth) return NextResponse.json({ error: "Doğum tarihi gerekli" }, { status: 400 });
+      if (!birth) return NextResponse.json({ error: t("birthDateRequired") }, { status: 400 });
       const d = new Date(birth);
       if (isNaN(d.getTime())) {
-        return NextResponse.json({ error: "Geçersiz tarih formatı" }, { status: 400 });
+        return NextResponse.json({ error: t("invalidDateFormat") }, { status: 400 });
       }
       const now = new Date();
       let age = now.getFullYear() - d.getFullYear();
@@ -94,31 +114,31 @@ export async function POST(req: NextRequest) {
         age--;
       }
       if (age < 13 || age > 120) {
-        return NextResponse.json({ error: "Yaş 13-120 arasında olmalı" }, { status: 400 });
+        return NextResponse.json({ error: t("ageRange") }, { status: 400 });
       }
       updates.birth_date = birth;
       break;
     }
-    case 3: {
+    case 5: {
       const gender = payload.gender;
       if (!gender || !["male", "female", "other"].includes(gender)) {
-        return NextResponse.json({ error: "Cinsiyet secimi gerekli" }, { status: 400 });
+        return NextResponse.json({ error: t("genderRequired") }, { status: 400 });
       }
       updates.gender = gender;
       break;
     }
-    case 4: {
+    case 6: {
       const bio = (payload.bio || "").slice(0, 150);
       updates.bio = bio;
       break;
     }
-    case 5:
+    case 7:
       // Email verify — Supabase handles this natively
       break;
-    case 6:
+    case 8:
       // Topics — tag follows handled client-side via /api/tags/[id]/follow
       break;
-    case 7:
+    case 9:
       // Suggestions — no data to save
       break;
   }
@@ -197,7 +217,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Advance progression
-  const nextStep = Math.min(8, step + 1);
+  const nextStep = Math.min(10, step + 1);
   const { data: profile } = await supabase
     .from("profiles")
     .select("onboarding_step")
@@ -206,7 +226,7 @@ export async function POST(req: NextRequest) {
   const currentProgress = profile?.onboarding_step || 1;
   // Client'ın mevcut adımdan ileri atlamamasını sağla
   if (step > currentProgress + 1) {
-    return NextResponse.json({ error: "Adım sırası atlanamaz" }, { status: 400 });
+    return NextResponse.json({ error: t("cannotSkipOrder") }, { status: 400 });
   }
   if (nextStep > currentProgress) {
     await supabase.from("profiles").update({ onboarding_step: nextStep }).eq("user_id", user.id);

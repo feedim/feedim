@@ -2,28 +2,51 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { useState, useEffect, useCallback } from "react";
-import { Bookmark } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
+import { Bookmark, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { FEED_PAGE_SIZE } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 
-type BookmarkTab = "all" | "posts" | "notes" | "moments" | "video";
+type BookmarkFilter = "all" | "post" | "note" | "moment" | "video";
 
 export default function BookmarksPage() {
   useSearchParams();
-  const [activeTab, setActiveTab] = useState<BookmarkTab>("all");
+  const t = useTranslations();
+  const tExplore = useTranslations("explore");
+  const [filter, setFilter] = useState<BookmarkFilter>("all");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const supabase = createClient();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const loadBookmarks = useCallback(async (pageNum: number, contentType: BookmarkTab = "all") => {
+  const filterOptions: { id: BookmarkFilter; label: string }[] = [
+    { id: "all", label: t("bookmarks.all") },
+    { id: "post", label: t("bookmarks.posts") },
+    { id: "note", label: t("bookmarks.notes") },
+    { id: "moment", label: t("bookmarks.moments") },
+    { id: "video", label: t("bookmarks.video") },
+  ];
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    if (dropdownOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
+  const loadBookmarks = useCallback(async (pageNum: number, contentType: BookmarkFilter = "all") => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -59,7 +82,7 @@ export default function BookmarksPage() {
         .eq("status", "published");
 
       if (contentType !== "all") {
-        postsQuery = postsQuery.eq("content_type", contentType === "posts" ? "article" : contentType);
+        postsQuery = postsQuery.eq("content_type", contentType);
       }
 
       const { data: postsData } = await postsQuery;
@@ -90,42 +113,46 @@ export default function BookmarksPage() {
     loadBookmarks(1);
   }, []);
 
-  const handleTabChange = (tab: BookmarkTab) => {
-    setActiveTab(tab);
+  const handleFilterChange = (f: BookmarkFilter) => {
+    setFilter(f);
+    setDropdownOpen(false);
     setPosts([]);
     setPage(1);
     setHasMore(false);
-    loadBookmarks(1, tab);
+    loadBookmarks(1, f);
   };
 
-  return (
-    <AppLayout headerTitle="Kaydedilenler" hideRightSidebar>
-      {/* Tab bar */}
-      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient border-b border-border-primary">
-        <div className="flex overflow-x-auto scrollbar-hide">
-          {([
-            { id: "all" as const, label: "Hepsi" },
-            { id: "posts" as const, label: "Gönderiler" },
-            { id: "notes" as const, label: "Notlar" },
-            { id: "moments" as const, label: "Moments" },
-            { id: "video" as const, label: "Video" },
-          ]).map(tab => (
+  const currentFilterLabel = filterOptions.find(o => o.id === filter)?.label || t("bookmarks.all");
+
+  const filterButton = (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setDropdownOpen(!dropdownOpen)}
+        className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full bg-bg-secondary hover:bg-bg-elevated transition"
+      >
+        {currentFilterLabel}
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {dropdownOpen && (
+        <div className="absolute right-0 top-full mt-1 bg-bg-elevated border border-border-primary rounded-xl shadow-lg min-w-[140px] py-1 z-50">
+          {filterOptions.map(opt => (
             <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                "shrink-0 flex-1 py-3 text-[0.88rem] font-bold text-center border-b-[2.5px] transition whitespace-nowrap",
-                activeTab === tab.id
-                  ? "border-accent-main text-text-primary"
-                  : "border-transparent text-text-muted"
-              )}
+              key={opt.id}
+              onClick={() => handleFilterChange(opt.id)}
+              className={`w-full text-left px-4 py-2 text-sm transition hover:bg-bg-secondary ${
+                filter === opt.id ? "font-bold text-accent-main" : "text-text-primary"
+              }`}
             >
-              {tab.label}
+              {opt.label}
             </button>
           ))}
         </div>
-      </div>
+      )}
+    </div>
+  );
 
+  return (
+    <AppLayout headerTitle={t("bookmarks.title")} hideRightSidebar headerRightAction={filterButton}>
       <div className="px-2.5 sm:px-3">
         {loading && posts.length === 0 ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
@@ -137,15 +164,15 @@ export default function BookmarksPage() {
             ))}
             </div>
             <LoadMoreTrigger
-              onLoadMore={() => { const next = page + 1; setPage(next); loadBookmarks(next, activeTab); }}
+              onLoadMore={() => { const next = page + 1; setPage(next); loadBookmarks(next, filter); }}
               loading={loading}
               hasMore={hasMore}
             />
           </>
         ) : (
           <EmptyState
-            title="Henüz gönderi yok"
-            description="Beğendiğiniz gönderileri kaydedin, burada görüntülensin."
+            title={t("bookmarks.emptyTitle")}
+            description={t("bookmarks.emptyDesc")}
             icon={<Bookmark className="h-12 w-12" />}
           />
         )}

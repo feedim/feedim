@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import Modal from "./Modal";
 
 
@@ -26,6 +27,7 @@ interface FollowRequestsModalProps {
 }
 
 export default function FollowRequestsModal({ open, onClose }: FollowRequestsModalProps) {
+  const t = useTranslations("modals");
   const [requests, setRequests] = useState<FollowRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,12 +76,12 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Takip İstekleri" size="md" infoText="Gelen takip isteklerini buradan kabul edebilir veya reddedebilirsin.">
+    <Modal open={open} onClose={onClose} title={t("followRequests")} size="md" infoText={t("followRequestsInfoText")}>
       <div className="px-4 py-3">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : requests.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">Bekleyen takip isteği yok</p>
+          <p className="text-center text-text-muted text-sm py-8">{t("noFollowRequestsPending")}</p>
         ) : (
           <div className="space-y-1">
             {requests.map(r => {
@@ -96,15 +98,15 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
                       <button
                         onClick={() => handleAction(r.id, p.username, "accept")}
                         className="t-btn bg-accent-main text-white"
-                        aria-label="Takip İsteğini Kabul Et"
+                        aria-label={t("acceptRequest")}
                       >
-                        Kabul et
+                        {t("acceptRequest")}
                       </button>
                       <button
                         onClick={() => handleAction(r.id, p.username, "reject")}
                         className="t-btn bg-bg-tertiary text-text-muted hover:bg-error/10 hover:text-error"
                       >
-                        Sil
+                        {t("deleteRequest")}
                       </button>
                     </div>
                   }

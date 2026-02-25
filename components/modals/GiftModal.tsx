@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { Coins, Plus } from "lucide-react";
 import Modal from "./Modal";
@@ -232,6 +233,7 @@ const GIFT_GLOW: Record<GiftKey, string> = {
 };
 
 export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftModalProps) {
+  const t = useTranslations("modals");
   const [selected, setSelected] = useState<GiftKey | null>(null);
   const [sending, setSending] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
@@ -275,7 +277,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
     if (!user) return;
 
     if (!canAffordSelected) {
-      feedimAlert("error", "Yetersiz jeton bakiyesi");
+      feedimAlert("error", t("insufficientBalance"));
       return;
     }
 
@@ -290,7 +292,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
         });
         const data = await res.json();
         if (!res.ok) {
-          feedimAlert("error", data.error || "Bir hata oluştu");
+          feedimAlert("error", data.error || t("errorOccurred"));
           if (i > 0) loadData();
           return;
         }
@@ -313,7 +315,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
       // Show done button after sequential animations complete
       setTimeout(() => setShowDone(true), 1800);
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", t("errorOccurred"));
     } finally {
       setSending(false);
     }
@@ -356,7 +358,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   <Plus className="h-4 w-4" />
                 </button>
                 <span className="text-[0.72rem] text-text-muted ml-1">
-                  = {totalCost} jeton
+                  = {totalCost} {t("tokens")}
                 </span>
               </div>
             )}
@@ -365,13 +367,13 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
               onClick={handleSend}
               disabled={!selected || sending || !canAffordSelected}
               className="t-btn accept w-full !py-3.5 !text-[0.88rem] disabled:opacity-40"
-              aria-label="Hediye Gönder"
+              aria-label={t("sendGift")}
             >
               {sending
                 ? <span className="loader" style={{ width: 18, height: 18 }} />
                 : selected
-                  ? `${count > 1 ? `${count}x ` : ""}${GIFT_TYPES[selected].name} Gonder`
-                  : "Hediye Secin"
+                  ? count > 1 ? t("sendGiftCount", { count, name: GIFT_TYPES[selected].name }) : t("sendGiftSingle", { name: GIFT_TYPES[selected].name })
+                  : t("selectGift")
               }
             </button>
           </div>
@@ -379,7 +381,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h2 className="text-[1.05rem] font-bold">Hediye Gonder</h2>
+          <h2 className="text-[1.05rem] font-bold">{t("sendGift")}</h2>
           <div className="flex items-center gap-1.5 bg-bg-tertiary backdrop-blur-sm px-3 py-1.5 rounded-full">
             <Coins className="h-3.5 w-3.5 text-accent-main" />
             <span className="text-[0.78rem] font-bold">
@@ -426,7 +428,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
           {/* Recent gifts — compact row under grid */}
           {recentGifts.length > 0 && (
             <div className="mt-4 pt-3 border-t border-border-primary/30">
-              <p className="text-[0.65rem] text-text-muted font-medium uppercase tracking-wider mb-2">Son hediyeler</p>
+              <p className="text-[0.65rem] text-text-muted font-medium uppercase tracking-wider mb-2">{t("recentGifts")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {recentGifts.slice(0, 8).map((g, i) => (
                   <div key={i} className="flex items-center gap-1 bg-bg-tertiary rounded-full pl-0.5 pr-2 py-0.5">
@@ -475,7 +477,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
 
             {/* Sent label — step 3 */}
             <p className="text-white/60 text-[0.82rem] font-medium mt-1.5 gift-celebration-text" style={{ animationDelay: "0.7s" }}>
-              Gonderildi!
+              {t("sent")}
             </p>
 
             {/* Done button — step 4, appears after all animations */}
@@ -485,7 +487,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                 className="t-btn mt-8 w-[180px] bg-white text-black gift-celebration-text"
                 style={{ animationDelay: "0s" }}
               >
-                Tamam
+                {t("ok")}
               </button>
             )}
           </div>

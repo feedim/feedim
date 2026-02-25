@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import VideoSidebar, { type VideoItem } from "@/components/VideoSidebar";
 
 interface VideoSidebarPortalProps {
@@ -9,6 +10,7 @@ interface VideoSidebarPortalProps {
 }
 
 export default function VideoSidebarPortal({ videos }: VideoSidebarPortalProps) {
+  const t = useTranslations("video");
   const [container, setContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function VideoSidebarPortal({ videos }: VideoSidebarPortalProps) 
   if (!container || videos.length === 0) return null;
 
   return createPortal(
-    <VideoSidebar videos={videos} title="Sonraki videolar" />,
+    <VideoSidebar videos={videos} title={t("nextVideos")} />,
     container
   );
 }

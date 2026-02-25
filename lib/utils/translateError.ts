@@ -1,32 +1,36 @@
-const ERROR_MAP: Record<string, string> = {
-  // Auth errors
-  "A user with this email address has already been registered":
-    "Bu e-posta adresi zaten kayıtlı",
-  "User already registered": "Bu kullanıcı zaten kayıtlı",
-  "Invalid login credentials": "Geçersiz giriş bilgileri",
-  "Email not confirmed": "E-posta adresi doğrulanmamış",
-  "Signup requires a valid password": "Geçerli bir şifre gerekli",
-  "Password should be at least 6 characters":
-    "Şifre en az 6 karakter olmalı",
-  "New password should be different from the old password.":
-    "Yeni şifre eski şifreden farklı olmalı",
-  "Email rate limit exceeded": "E-posta gönderim limiti aşıldı",
-  "For security purposes, you can only request this once every 60 seconds":
-    "Güvenlik nedeniyle bu işlemi 60 saniyede bir yapabilirsiniz",
-  "Unable to validate email address: invalid format":
-    "Geçersiz e-posta formatı",
-  "Auth session missing!": "Oturum bulunamadı, lütfen tekrar giriş yapın",
+/**
+ * Maps English Supabase/Auth error messages to i18n translation keys.
+ * The key is the English error string (or substring), and the value is
+ * the translation key within the "errors" namespace.
+ */
+const ERROR_KEY_MAP: Record<string, string> = {
+  "A user with this email address has already been registered": "emailAlreadyRegistered",
+  "User already registered": "userAlreadyRegistered",
+  "Invalid login credentials": "invalidLoginCredentials",
+  "Email not confirmed": "emailNotConfirmed",
+  "Signup requires a valid password": "validPasswordRequired",
+  "Password should be at least 6 characters": "passwordMinChars",
+  "New password should be different from the old password.": "newPasswordMustDiffer",
+  "Email rate limit exceeded": "emailRateLimitExceeded",
+  "For security purposes, you can only request this once every 60 seconds": "securityRateLimit",
+  "Unable to validate email address: invalid format": "invalidEmailFormat",
+  "Auth session missing!": "sessionMissing",
 };
 
-export function translateError(message: string): string {
-  if (!message) return "Bir hata oluştu";
+/**
+ * Translates a Supabase/Auth error message using the provided translation function.
+ * @param message - The original English error message from Supabase
+ * @param t - Translation function from useTranslations("errors") or getTranslations("errors")
+ */
+export function translateError(message: string, t: (key: string) => string): string {
+  if (!message) return t("generic");
 
   // Exact match
-  if (ERROR_MAP[message]) return ERROR_MAP[message];
+  if (ERROR_KEY_MAP[message]) return t(ERROR_KEY_MAP[message]);
 
   // Partial match
-  for (const [en, tr] of Object.entries(ERROR_MAP)) {
-    if (message.toLowerCase().includes(en.toLowerCase())) return tr;
+  for (const [en, key] of Object.entries(ERROR_KEY_MAP)) {
+    if (message.toLowerCase().includes(en.toLowerCase())) return t(key);
   }
 
   return message;

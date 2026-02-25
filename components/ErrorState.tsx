@@ -1,4 +1,7 @@
+"use client";
+
 import { AlertCircle, RefreshCw, Home, ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 interface ErrorStateProps {
@@ -14,13 +17,16 @@ interface ErrorStateProps {
 }
 
 export default function ErrorState({
-  title = "Bir Hata Oluştu",
-  message = "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+  title,
+  message,
   action,
   showHomeLink = false,
   showBackLink = false,
   variant = 'error'
 }: ErrorStateProps) {
+  const t = useTranslations("errors");
+  const resolvedTitle = title ?? t("somethingWentWrong");
+  const resolvedMessage = message ?? t("unexpectedError");
   const colors = {
     error: {
       bg: 'bg-accent-main/10',
@@ -55,11 +61,11 @@ export default function ErrorState({
       </div>
 
       <h2 className={`text-2xl font-bold mb-2 ${style.title}`}>
-        {title}
+        {resolvedTitle}
       </h2>
 
       <p className="text-text-muted mb-6">
-        {message}
+        {resolvedMessage}
       </p>
 
       <div className="space-y-3">
@@ -78,10 +84,10 @@ export default function ErrorState({
           <button
             onClick={() => window.history.back()}
             className="w-full bg-bg-secondary hover:bg-bg-tertiary text-text-primary py-3 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-2"
-            aria-label="Geri dön"
+            aria-label={t("goBack")}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Geri Dön
+            {t("goBack")}
           </button>
         )}
 
@@ -89,10 +95,10 @@ export default function ErrorState({
           <Link
             href="/"
             className="w-full bg-bg-secondary hover:bg-bg-tertiary text-text-primary py-3 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-2"
-            aria-label="Ana sayfaya dön"
+            aria-label={t("goHome")}
           >
             <Home className="h-4 w-4" aria-hidden="true" />
-            Ana Sayfa
+            {t("goHome")}
           </Link>
         )}
       </div>
@@ -128,15 +134,17 @@ export function ErrorMessage({
  * Loading state component
  */
 export function LoadingState({
-  message = "Yükleniyor..."
+  message
 }: {
   message?: string;
 }) {
+  const t = useTranslations("common");
+  const resolvedMessage = message ?? t("loading");
   return (
     <div className="flex flex-col items-center justify-center p-12" role="status" aria-live="polite">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-main mb-4" aria-hidden="true"></div>
-      <p className="text-text-muted dark:text-text-muted">{message}</p>
-      <span className="sr-only">Yükleniyor</span>
+      <p className="text-text-muted dark:text-text-muted">{resolvedMessage}</p>
+      <span className="sr-only">{t("loading")}</span>
     </div>
   );
 }

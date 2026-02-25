@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { BookOpen, FileText, Trash2, Film, Clapperboard, Users, ArrowLeft } from "lucide-react";
 import Modal from "./Modal";
@@ -22,6 +23,9 @@ interface Draft {
 }
 
 export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps) {
+  const t = useTranslations("modals");
+  const tc = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
@@ -91,7 +95,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
 
   const handleNewPost = () => {
     if (pathname === "/create") {
-      feedimAlert("question", "Mevcut gönderi silinecek. Devam etmek istiyor musunuz?", {
+      feedimAlert("question", t("discardCurrentPost"), {
         showYesNo: true,
         onYes: () => {
           onClose();
@@ -104,7 +108,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
   };
 
   const deleteDraft = (draftId: number) => {
-    feedimAlert("question", "Bu taslağı silmek istediğine emin misin?", {
+    feedimAlert("question", t("deleteDraftConfirm"), {
       showYesNo: true,
       onYes: async () => {
         try {
@@ -125,10 +129,10 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
     <Modal
       open={open}
       onClose={handleClose}
-      title={view === "drafts" ? "Taslaklar" : "Oluştur"}
+      title={view === "drafts" ? t("drafts") : t("createMenuTitle")}
       size="sm"
       centerOnDesktop
-      infoText={view === "drafts" ? "Yayınlanmamış taslak gönderilerinizi buradan düzenleyebilir veya silebilirsiniz." : "Yeni gönderi, video veya moment oluşturabilir, taslak gönderilerinizi yönetebilirsiniz."}
+      infoText={view === "drafts" ? t("draftsInfoText") : t("createMenuInfoText")}
       leftAction={view === "drafts" ? (
         <button onClick={() => setView("menu")} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label="Geri">
           <ArrowLeft className="h-6 w-6" />
@@ -146,8 +150,8 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
               <BookOpen className="h-[18px] w-[18px] text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Gönderi</p>
-              <p className="text-xs text-text-muted mt-0.5">Yeni bir gönderi oluşturun</p>
+              <p className="text-sm font-semibold">{t("postLabel")}</p>
+              <p className="text-xs text-text-muted mt-0.5">{t("postDesc")}</p>
             </div>
           </button>
 
@@ -160,8 +164,8 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
               <Users className="h-[18px] w-[18px] text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Not</p>
-              <p className="text-xs text-text-muted mt-0.5">Kısa metin paylaşın (maks 280 karakter)</p>
+              <p className="text-sm font-semibold">{t("noteLabel")}</p>
+              <p className="text-xs text-text-muted mt-0.5">{t("noteDesc")}</p>
             </div>
           </button>
 
@@ -174,8 +178,8 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
               <Film className="h-[18px] w-[18px] text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Video</p>
-              <p className="text-xs text-text-muted mt-0.5">Video içeriği yükleyin (maks 10 dk)</p>
+              <p className="text-sm font-semibold">{t("videoLabel")}</p>
+              <p className="text-xs text-text-muted mt-0.5">{t("videoDesc")}</p>
             </div>
           </button>
 
@@ -188,8 +192,8 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
               <Clapperboard className="h-[18px] w-[18px] text-accent-main" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Moment</p>
-              <p className="text-xs text-text-muted mt-0.5">Kısa dikey video (maks 60 sn, 9:16)</p>
+              <p className="text-sm font-semibold">{t("momentLabel")}</p>
+              <p className="text-xs text-text-muted mt-0.5">{t("momentDesc")}</p>
             </div>
           </button>
 
@@ -203,9 +207,9 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                 <FileText className="h-[18px] w-[18px] text-text-muted" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Taslaklar</p>
+                <p className="text-sm font-semibold">{t("drafts")}</p>
                 <p className="text-xs text-text-muted mt-0.5">
-                  {draftCount > 0 ? `${draftCount} taslak` : "Kayıtlı taslak yok"}
+                  {draftCount > 0 ? t("draftCount", { count: draftCount }) : t("noDrafts")}
                 </p>
               </div>
               <svg className="h-4 w-4 text-text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
@@ -221,11 +225,11 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
           ) : drafts.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-10 w-10 text-text-muted mx-auto mb-3 opacity-40" />
-              <p className="text-sm text-text-muted">Kayıtlı taslak yok</p>
+              <p className="text-sm text-text-muted">{t("noDrafts")}</p>
             </div>
           ) : (
             <>
-              <p className="px-3 pb-2 text-[0.72rem] text-text-muted">en fazla 10 adet</p>
+              <p className="px-3 pb-2 text-[0.72rem] text-text-muted">{t("maxDrafts")}</p>
               {drafts.map(draft => (
                 <div
                   key={draft.id}
@@ -245,10 +249,10 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
                       <BookOpen className="h-4 w-4 text-text-muted shrink-0" />
                     )}
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-medium truncate">{draft.title || "Başlıksız"}</p>
+                      <p className="text-sm font-medium truncate">{draft.title || t("untitled")}</p>
                       <p className="text-xs text-text-muted mt-0.5">
-                        {new Date(draft.updated_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        {" "}{draft.content_type === "moment" ? "Moment" : draft.content_type === "video" ? "Video" : draft.content_type === "note" ? "Not" : "Gönderi"}
+                        {new Date(draft.updated_at).toLocaleDateString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {" "}{draft.content_type === "moment" ? t("momentLabel") : draft.content_type === "video" ? t("videoLabel") : draft.content_type === "note" ? t("noteLabel") : t("postLabel")}
                       </p>
                     </div>
                   </button>

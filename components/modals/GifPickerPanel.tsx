@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
 
 import Modal from "./Modal";
-import LoadingShell from "@/components/LoadingShell";
+
 
 interface GifPickerPanelProps {
   onGifSelect: (gifUrl: string, previewUrl: string) => void;
@@ -131,7 +131,7 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
       {/* GIF grid */}
       <div className="p-2.5">
         {loading ? (
-          <LoadingShell />
+          <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : gifs.length === 0 ? (
           <div className="flex items-center justify-center h-[200px] text-sm text-text-muted">
             GIF bulunamadi

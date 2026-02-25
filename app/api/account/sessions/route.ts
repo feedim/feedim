@@ -74,12 +74,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check max 5 trusted devices
-    const { count: trustedCount } = await admin
-      .from("sessions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("is_active", true);
+    // Count active sessions and check if this device_hash has ever been seen
+    const [{ count: activeCount }, deviceSeen] = await Promise.all([
+      admin
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_active", true),
+      device_hash
+        ? admin
+            .from("sessions")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("device_hash", device_hash)
+            .limit(1)
+            .then(({ data }) => data && data.length > 0)
+        : Promise.resolve(false),
+    ]);
+
+    const totalActive = activeCount || 0;
+    // First ever session is always trusted; otherwise trust up to 5 active
+    const isFirstSession = totalActive === 0;
+    const isTrusted = isFirstSession || totalActive < 5;
 
     // Insert new session
     const { data: session } = await admin
@@ -90,24 +106,24 @@ export async function POST(req: NextRequest) {
         ip_address: ip,
         user_agent: user_agent || null,
         is_active: true,
-        is_trusted: (trustedCount || 0) < 5,
+        is_trusted: isTrusted,
       })
       .select("id")
       .single();
 
-    // Send device login notification for new sessions
-    if (session?.id) {
+    // Send device login notification only for truly new devices
+    if (session?.id && !isFirstSession && !deviceSeen) {
       const device = parseUA(user_agent);
       createNotification({
         admin,
         user_id: user.id,
         actor_id: user.id,
         type: 'device_login',
-        content: `Yeni cihazdan giriş: ${device}`,
+        content: device,
       }).catch(() => {});
     }
 
-    return NextResponse.json({ session_id: session?.id, total_sessions: (trustedCount || 0) + 1 });
+    return NextResponse.json({ session_id: session?.id, total_sessions: totalActive + 1 });
   } catch {
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
   }

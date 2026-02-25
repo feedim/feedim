@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { Briefcase, ChevronRight, Check, Lock, Mail, Phone } from "lucide-react";
 import Modal from "./Modal";
@@ -21,6 +22,8 @@ interface ProfessionalAccountModalProps {
 
 export default function ProfessionalAccountModal({ open, onClose, onComplete, isPrivate, onMakePublic, initialStep }: ProfessionalAccountModalProps) {
   const router = useRouter();
+  const t = useTranslations("modals");
+  const tc = useTranslations("common");
   const { user: currentUser } = useUser();
   const plan = currentUser?.premiumPlan;
   const isPremium = currentUser?.isPremium === true;
@@ -74,7 +77,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
     if (contactEmail && contactEmail.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(contactEmail.trim())) {
-        feedimAlert("error", "Geçersiz e-posta adresi");
+        feedimAlert("error", t("invalidEmail"));
         return;
       }
     }
@@ -97,13 +100,13 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
 
       if (!res.ok) {
         const data = await res.json();
-        feedimAlert("error", data.error || "Bir hata oluştu");
+        feedimAlert("error", data.error || t("errorOccurred"));
         return;
       }
 
       setStep(4);
     } catch {
-      feedimAlert("error", "Bir hata oluştu");
+      feedimAlert("error", t("errorOccurred"));
     } finally {
       setSaving(false);
     }
@@ -127,21 +130,21 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
         return (
           <div className="px-4 py-6 text-center space-y-4">
             <Lock className="h-12 w-12 text-text-muted mx-auto" />
-            <h3 className="text-lg font-bold">Gizli Hesap Uyarısı</h3>
+            <h3 className="text-lg font-bold">{t("privateAccountWarning")}</h3>
             <p className="text-sm text-text-muted leading-relaxed">
-              Profesyonel hesaplar gizli olamaz. Devam etmek için hesabınızı herkese açık yapmanız gerekiyor.
+              {t("privateAccountProWarning")}
             </p>
             <div className="space-y-2 pt-2">
               <button
                 onClick={handleMakePublic}
                 disabled={makingPublic}
                 className="w-full t-btn accept disabled:opacity-50"
-                aria-label="Hesabı Herkese Aç"
+                aria-label={t("makePublic")}
               >
-                {makingPublic ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Hesabı Herkese Aç"}
+                {makingPublic ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("makePublic")}
               </button>
               <button onClick={handleClose} disabled={makingPublic} className="w-full t-btn cancel disabled:opacity-50">
-                Vazgeç
+                {t("giveUp")}
               </button>
             </div>
           </div>
@@ -153,19 +156,19 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
           return (
             <div className="px-4 py-6 text-center space-y-4">
               <Lock className="h-12 w-12 text-text-muted mx-auto" />
-              <h3 className="text-lg font-bold">Premium Gerekli</h3>
+              <h3 className="text-lg font-bold">{t("premiumRequired")}</h3>
               <p className="text-sm text-text-muted leading-relaxed">
-                Profesyonel hesap oluşturmak için Pro, Max veya Business aboneliğiniz olmalıdır.
+                {t("premiumRequiredDesc")}
               </p>
               <div className="space-y-2 pt-2">
                 <button
                   onClick={() => { onClose(); emitNavigationStart(); router.push("/premium"); }}
                   className="w-full t-btn accept"
                 >
-                  Premium'a Göz At
+                  {t("browsePremium")}
                 </button>
                 <button onClick={handleClose} className="w-full t-btn cancel">
-                  Vazgeç
+                  {t("giveUp")}
                 </button>
               </div>
             </div>
@@ -174,8 +177,8 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
         return (
           <div className="px-4 py-6 space-y-4">
             <div className="text-center mb-2">
-              <h3 className="text-lg font-bold">Hesap Türü</h3>
-              <p className="text-sm text-text-muted mt-1">Hangi tür profesyonel hesap istiyorsunuz?</p>
+              <h3 className="text-lg font-bold">{t("accountType")}</h3>
+              <p className="text-sm text-text-muted mt-1">{t("accountTypeDesc")}</p>
             </div>
             <button
               onClick={() => { setAccountType("creator"); setCategory(""); setStep(2); }}
@@ -185,15 +188,15 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 <svg className="h-6 w-6 text-accent-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               </div>
               <div className="text-left flex-1">
-                <p className="font-semibold">İçerik Üretici</p>
-                <p className="text-xs text-text-muted mt-0.5">Influencer, sanatçı, blog yazarı ve içerik üreticileri için</p>
+                <p className="font-semibold">{t("creatorLabel")}</p>
+                <p className="text-xs text-text-muted mt-0.5">{t("creatorDesc")}</p>
               </div>
               <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
             </button>
             <button
               onClick={() => {
                 if (!canUseBusiness) {
-                  feedimAlert("error", "İşletme hesabı sadece Business abonelere özeldir");
+                  feedimAlert("error", t("businessOnlyError"));
                   return;
                 }
                 setAccountType("business"); setCategory(""); setStep(2);
@@ -204,9 +207,9 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 <Briefcase className="h-6 w-6 text-accent-main" />
               </div>
               <div className="text-left flex-1">
-                <p className="font-semibold">İşletme</p>
+                <p className="font-semibold">{t("businessLabel")}</p>
                 <p className="text-xs text-text-muted mt-0.5">
-                  {canUseBusiness ? "İşletme, marka ve ticari kuruluşlar için" : "Business abonelere özel"}
+                  {canUseBusiness ? t("businessDesc") : t("businessOnlyDesc")}
                 </p>
               </div>
               {canUseBusiness ? (
@@ -222,8 +225,8 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
         return (
           <div className="px-4 py-6 space-y-4">
             <div className="text-center mb-2">
-              <h3 className="text-lg font-bold">Kategori Seçin</h3>
-              <p className="text-sm text-text-muted mt-1">Sizi en iyi tanımlayan kategoriyi seçin</p>
+              <h3 className="text-lg font-bold">{t("selectCategoryTitle")}</h3>
+              <p className="text-sm text-text-muted mt-1">{t("selectCategoryDesc")}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {categories.map(cat => (
@@ -251,9 +254,9 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 }}
                 disabled={!category || saving}
                 className="w-full t-btn accept disabled:opacity-40"
-                aria-label="Devam Et"
+                aria-label={accountType === "creator" ? t("complete") : t("continue")}
               >
-                {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : accountType === "creator" ? "Tamamla" : "Devam"}
+                {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : accountType === "creator" ? t("complete") : t("continue")}
               </button>
             </div>
           </div>
@@ -263,24 +266,24 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
         return (
           <div className="px-4 py-6 space-y-4">
             <div className="text-center mb-2">
-              <h3 className="text-lg font-bold">İletişim Bilgileri</h3>
-              <p className="text-sm text-text-muted mt-1">Profilinizde gösterilecek iletişim bilgileri (isteğe bağlı)</p>
+              <h3 className="text-lg font-bold">{t("contactInfo")}</h3>
+              <p className="text-sm text-text-muted mt-1">{t("contactInfoDesc")}</p>
             </div>
             <div>
               <label className="flex items-center gap-2 text-xs text-text-muted mb-1">
-                <Mail className="h-3.5 w-3.5" /> İletişim E-postası
+                <Mail className="h-3.5 w-3.5" /> {t("contactEmail")}
               </label>
               <input
                 type="email"
                 value={contactEmail}
                 onChange={e => setContactEmail(e.target.value)}
                 className="input-modern w-full"
-                placeholder="iletisim@ornek.com"
+                placeholder="contact@example.com"
               />
             </div>
             <div>
               <label className="flex items-center gap-2 text-xs text-text-muted mb-1">
-                <Phone className="h-3.5 w-3.5" /> İletişim Telefonu
+                <Phone className="h-3.5 w-3.5" /> {t("contactPhone")}
               </label>
               <input
                 type="tel"
@@ -300,9 +303,9 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 onClick={handleComplete}
                 disabled={saving}
                 className="w-full t-btn accept disabled:opacity-40"
-                aria-label="Tamamla"
+                aria-label={t("complete")}
               >
-                {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : "Tamamla"}
+                {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("complete")}
               </button>
             </div>
           </div>
@@ -314,12 +317,12 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
             <div className="w-16 h-16 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
               <Check className="h-8 w-8 text-accent-main" />
             </div>
-            <h3 className="text-lg font-bold">Profesyonel Hesap Aktif!</h3>
+            <h3 className="text-lg font-bold">{t("proAccountActive")}</h3>
             <p className="text-xs text-text-muted leading-relaxed">
-              Hesabınız başarıyla profesyonel hesaba dönüştürüldü. Artık istatistiklerinize erişebilir ve profilinizde kategorinizi gösterebilirsiniz.
+              {t("proAccountActiveDesc")}
             </p>
             <button onClick={() => { handleDone(); emitNavigationStart(); router.push("/profile"); }} className="w-full t-btn accept">
-              Profile Git
+              {t("goToProfileBtn")}
             </button>
           </div>
         );
@@ -334,13 +337,13 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
     <Modal
       open={open}
       onClose={handleClose}
-      title="Profesyonel Hesap"
+      title={t("proAccountTitle")}
       size="md"
       zIndex="z-[10001]"
-      infoText="Profesyonel hesap ile istatistiklerine erişebilir, profilinde kategori ve iletişim bilgilerini gösterebilirsin. Profesyonel hesaplar herkese açık olmak zorundadır."
+      infoText={t("proAccountInfoText")}
       leftAction={
         step > 1 && step < 4 ? (
-          <button onClick={() => setStep(step - 1)} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label="Geri">
+          <button onClick={() => setStep(step - 1)} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={tc("back")}>
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
         ) : undefined

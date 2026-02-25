@@ -10,10 +10,13 @@ import PasswordInput from "@/components/PasswordInput";
 import { VALIDATION } from "@/lib/constants";
 import { normalizeUsername, filterNameInput } from "@/lib/utils";
 import Turnstile from "@/components/Turnstile";
+import { useTranslations } from "next-intl";
 
 export default function RegisterPage() {
+  const t = useTranslations('auth');
+  const tc = useTranslations('common');
   return (
-    <Suspense fallback={<AuthLayout title="Hesap Oluştur" subtitle="Yükleniyor..."><div className="flex justify-center py-8"><span className="loader" /></div></AuthLayout>}>
+    <Suspense fallback={<AuthLayout title={t('createAccount')} subtitle={tc('loading')}><div className="flex justify-center py-8"><span className="loader" /></div></AuthLayout>}>
       <RegisterForm />
     </Suspense>
   );
@@ -42,6 +45,9 @@ function generateUsernameSuggestions(name: string, surname: string): string[] {
 }
 
 function RegisterForm() {
+  const t = useTranslations('auth');
+  const tc = useTranslations('common');
+  const te = useTranslations('errors');
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [username, setUsername] = useState("");
@@ -128,7 +134,7 @@ function RegisterForm() {
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
+    if (error) feedimAlert("error", t('signInFailed'));
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -145,25 +151,25 @@ function RegisterForm() {
       // Client-side validation
       if (!VALIDATION.name.pattern.test(name) || !VALIDATION.name.pattern.test(surname)) {
         await waitMin();
-        feedimAlert("error", "Ad ve soyad sadece harf ve boşluk içerebilir");
+        feedimAlert("error", t('nameLettersOnly'));
         return;
       }
 
       if (isGibberish(name) || isGibberish(surname)) {
         await waitMin();
-        feedimAlert("error", "Lütfen geçerli bir ad ve soyad girin");
+        feedimAlert("error", t('validNameRequired'));
         return;
       }
 
       if (password !== confirmPassword) {
         await waitMin();
-        feedimAlert("error", "Şifreler eşleşmiyor");
+        feedimAlert("error", t('passwordsNoMatch'));
         return;
       }
 
       if (username && !VALIDATION.username.pattern.test(username)) {
         await waitMin();
-        feedimAlert("error", "Geçersiz kullanıcı adı formatı");
+        feedimAlert("error", t('invalidUsername'));
         return;
       }
 
@@ -179,13 +185,13 @@ function RegisterForm() {
       if (error) {
         await waitMin();
         if (error.message.includes('User already registered')) {
-          feedimAlert("error", "Bu e-posta adresi zaten kullanılıyor");
+          feedimAlert("error", t('emailInUse'));
         } else if (error.message.includes('Password')) {
-          feedimAlert("error", "Şifre en az 6 karakter olmalıdır");
+          feedimAlert("error", t('passwordMin'));
         } else if (error.message.includes('Email')) {
-          feedimAlert("error", "Geçerli bir e-posta adresi girin");
+          feedimAlert("error", t('validEmailRequired'));
         } else {
-          feedimAlert("error", "Kayıt oluşturulamadı, lütfen daha sonra tekrar deneyin");
+          feedimAlert("error", t('registrationFailed'));
         }
         return;
       }
@@ -199,7 +205,7 @@ function RegisterForm() {
       await waitMin();
 
       if (data.user && !data.session) {
-        feedimAlert("info", "Lütfen e-postanızı kontrol edin ve doğrulayın");
+        feedimAlert("info", t('checkEmail'));
         router.push("/login");
       } else if (data.session) {
         window.location.href = "/";
@@ -208,18 +214,18 @@ function RegisterForm() {
       }
     } catch {
       await waitMin();
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", te('generic'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Hesap Oluştur" subtitle="Hemen ücretsiz bir hesap oluşturun.">
+    <AuthLayout title={t('createAccount')} subtitle={t('createAccountDesc')}>
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <input type="text" placeholder="Ad" value={name} onChange={(e) => setName(filterNameInput(e.target.value))} required minLength={VALIDATION.name.min} maxLength={VALIDATION.name.max} autoComplete="given-name" className="input-modern w-full" />
-          <input type="text" placeholder="Soyad" value={surname} onChange={(e) => setSurname(filterNameInput(e.target.value))} required minLength={VALIDATION.name.min} maxLength={VALIDATION.name.max} autoComplete="family-name" className="input-modern w-full" />
+          <input type="text" placeholder={t('firstName')} value={name} onChange={(e) => setName(filterNameInput(e.target.value))} required minLength={VALIDATION.name.min} maxLength={VALIDATION.name.max} autoComplete="given-name" className="input-modern w-full" />
+          <input type="text" placeholder={t('lastName')} value={surname} onChange={(e) => setSurname(filterNameInput(e.target.value))} required minLength={VALIDATION.name.min} maxLength={VALIDATION.name.max} autoComplete="family-name" className="input-modern w-full" />
         </div>
 
         {/* Username */}
@@ -227,7 +233,7 @@ function RegisterForm() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Kullanıcı adı (3-15 karakter)"
+              placeholder={t('usernameHint')}
               value={username}
               onChange={(e) => setUsername(normalizeUsername(e.target.value))}
               maxLength={VALIDATION.username.max}
@@ -247,7 +253,7 @@ function RegisterForm() {
             )}
           </div>
           {usernameAvailable === false && username.length >= 3 && !usernameChecking && (
-            <p className="text-xs text-error mt-1">Bu kullanıcı adı zaten kullanılıyor, lütfen farklı bir tane deneyin.</p>
+            <p className="text-xs text-error mt-1">{t('usernameTaken')}</p>
           )}
           {/* Suggestions */}
           {suggestions.length > 0 && !username && (
@@ -267,7 +273,7 @@ function RegisterForm() {
         </div>
 
         <div className="relative">
-          <input type="email" placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} required maxLength={VALIDATION.email.max} autoComplete="email" className="input-modern w-full" />
+          <input type="email" placeholder={t('email')} value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} required maxLength={VALIDATION.email.max} autoComplete="email" className="input-modern w-full" />
           {email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2">
               {emailChecking ? (
@@ -280,22 +286,24 @@ function RegisterForm() {
             </span>
           )}
           {emailAvailable === false && (
-            <p className="text-xs text-error mt-1">Bu e-posta zaten kullanılıyor, lütfen farklı bir e-posta deneyin.</p>
+            <p className="text-xs text-error mt-1">{t('emailTaken')}</p>
           )}
         </div>
-        <PasswordInput placeholder={`Şifre (en az ${VALIDATION.password.min} karakter)`} value={password} onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
-        <PasswordInput placeholder="Şifre tekrar" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
+        <PasswordInput placeholder={t('passwordHintDynamic', { min: VALIDATION.password.min })} value={password} onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
+        <PasswordInput placeholder={t('confirmPassword')} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
 
         <label className="flex items-start gap-3 cursor-pointer select-none">
           <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5 cursor-pointer" />
           <span className="text-sm text-text-muted leading-snug">
-            <Link href="/help/terms" target="_blank" className="text-accent-main hover:opacity-80 underline">Kullanım Koşulları</Link>&apos;nı ve{" "}
-            <Link href="/help/privacy" target="_blank" className="text-accent-main hover:opacity-80 underline">Gizlilik Politikası</Link>&apos;nı kabul ediyorum.
+            {t.rich('termsAndPrivacy', {
+              terms: (chunks) => <Link href="/help/terms" target="_blank" className="text-accent-main hover:opacity-80 underline">{chunks}</Link>,
+              privacy: (chunks) => <Link href="/help/privacy" target="_blank" className="text-accent-main hover:opacity-80 underline">{chunks}</Link>,
+            })}
           </span>
         </label>
         <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} className="flex justify-center" />
-        <button type="submit" className="t-btn accept w-full relative" disabled={loading || !termsAccepted || (password !== confirmPassword)} aria-label="Kayıt Ol">
-          {loading ? <span className="loader" /> : "Kayıt Ol"}
+        <button type="submit" className="t-btn accept w-full relative" disabled={loading || !termsAccepted || (password !== confirmPassword)} aria-label={t('signUp')}>
+          {loading ? <span className="loader" /> : t('signUp')}
         </button>
       </form>
 
@@ -304,7 +312,7 @@ function RegisterForm() {
           <div className="w-full border-t border-border-primary"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 text-text-muted">veya</span>
+          <span className="px-4 text-text-muted">{tc('or')}</span>
         </div>
       </div>
 
@@ -315,12 +323,12 @@ function RegisterForm() {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
-        Google ile devam et
+        {t('continueWithGoogle')}
       </button>
 
       <p className="text-center text-text-muted text-sm mt-6">
-        Zaten hesabınız var mı?{" "}
-        <Link href="/login" className="text-accent-main hover:opacity-80 font-semibold">Giriş yap</Link>
+        {t('hasAccount')}{" "}
+        <Link href="/login" className="text-accent-main hover:opacity-80 font-semibold">{t('signIn')}</Link>
       </p>
     </AuthLayout>
   );

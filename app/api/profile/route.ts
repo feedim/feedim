@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkTextContent } from "@/lib/moderation";
 import { getUserPlan } from "@/lib/limits";
 import { revalidateTag } from "next/cache";
+import { getTranslations } from "next-intl/server";
 
 export async function GET() {
   const supabase = await createClient();
@@ -25,8 +26,9 @@ export async function PUT(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const tErrors = await getTranslations("apiErrors");
   const body = await req.json();
-  const allowed = ["name", "surname", "username", "bio", "website", "birth_date", "gender", "phone_number", "account_private", "account_type", "professional_category", "contact_email", "contact_phone"];
+  const allowed = ["name", "surname", "username", "bio", "website", "birth_date", "gender", "phone_number", "account_private", "account_type", "professional_category", "contact_email", "contact_phone", "language", "country"];
   const updates: Record<string, any> = {};
 
   for (const key of allowed) {
@@ -39,7 +41,7 @@ export async function PUT(req: NextRequest) {
   if (updates.birth_date) {
     const d = new Date(updates.birth_date);
     if (isNaN(d.getTime())) {
-      return NextResponse.json({ error: "Geçersiz tarih formatı" }, { status: 400 });
+      return NextResponse.json({ error: tErrors("invalidDateFormat") }, { status: 400 });
     }
     const now = new Date();
     let age = now.getFullYear() - d.getFullYear();
@@ -48,7 +50,7 @@ export async function PUT(req: NextRequest) {
       age--;
     }
     if (age < 13 || age > 120) {
-      return NextResponse.json({ error: "Yaş 13-120 arasında olmalı" }, { status: 400 });
+      return NextResponse.json({ error: tErrors("ageRange") }, { status: 400 });
     }
   }
 
@@ -65,7 +67,7 @@ export async function PUT(req: NextRequest) {
       const lastChange = current.name_changed_at ? new Date(current.name_changed_at).getTime() : 0;
       const withinWindow = Date.now() - lastChange < fourteenDays;
       if (withinWindow && (current.name_change_count || 0) >= 2) {
-        return NextResponse.json({ error: "Ad soyad 14 gunde en fazla 2 kez degistirilebilir" }, { status: 429 });
+        return NextResponse.json({ error: tErrors("nameChangeLimit") }, { status: 429 });
       }
       updates.name_changed_at = new Date().toISOString();
       updates.name_change_count = withinWindow ? (current.name_change_count || 0) + 1 : 1;
@@ -79,7 +81,7 @@ export async function PUT(req: NextRequest) {
   if (updates.username) {
     const usernameRegex = /^(?!.*[._]{2})[A-Za-z0-9](?:[A-Za-z0-9._]{1,13})[A-Za-z0-9]$/;
     if (!usernameRegex.test(updates.username)) {
-      return NextResponse.json({ error: "Geçersiz kullanıcı adı" }, { status: 400 });
+      return NextResponse.json({ error: tErrors("invalidUsername") }, { status: 400 });
     }
     const { data: existing } = await supabase
       .from("profiles")
@@ -88,7 +90,7 @@ export async function PUT(req: NextRequest) {
       .neq("user_id", user.id)
       .single();
     if (existing) {
-      return NextResponse.json({ error: "Bu kullanıcı adı zaten alınmış" }, { status: 409 });
+      return NextResponse.json({ error: tErrors("usernameTaken") }, { status: 409 });
     }
     // Username change limit: 7 days
     const { data: currentProfile } = await supabase
@@ -101,7 +103,7 @@ export async function PUT(req: NextRequest) {
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
       if (Date.now() - lastChange < sevenDays) {
         const daysLeft = Math.ceil((sevenDays - (Date.now() - lastChange)) / (24 * 60 * 60 * 1000));
-        return NextResponse.json({ error: `Kullanici adi ${daysLeft} gun sonra degistirilebilir` }, { status: 429 });
+        return NextResponse.json({ error: tErrors("usernameChangeWait", { days: daysLeft }) }, { status: 429 });
       }
     }
     if (currentProfile && currentProfile.username !== updates.username) {
@@ -131,7 +133,7 @@ export async function PUT(req: NextRequest) {
       const plan = await getUserPlan(admin, user.id);
       // Profesyonel hesap Pro, Max veya Business gerektirir
       if (plan !== "pro" && plan !== "max" && plan !== "business") {
-        return NextResponse.json({ error: "Profesyonel hesap için Pro, Max veya Business aboneliği gereklidir" }, { status: 403 });
+        return NextResponse.json({ error: tErrors("professionalRequiresPlan") }, { status: 403 });
       }
       // Creator hesaplar iletişim bilgisi ekleyemez
       if (updates.account_type === "creator") {
@@ -140,7 +142,7 @@ export async function PUT(req: NextRequest) {
       }
       // Business account requires Business subscription
       if (updates.account_type === "business" && plan !== "business") {
-        return NextResponse.json({ error: "İşletme hesabı Business abonelere özeldir" }, { status: 403 });
+        return NextResponse.json({ error: tErrors("businessRequiresPlan") }, { status: 403 });
       }
     }
   }
@@ -149,7 +151,7 @@ export async function PUT(req: NextRequest) {
   if (updates.contact_email && updates.contact_email.trim()) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(updates.contact_email.trim())) {
-      return NextResponse.json({ error: "Geçersiz iletişim e-posta adresi" }, { status: 400 });
+      return NextResponse.json({ error: tErrors("invalidContactEmail") }, { status: 400 });
     }
     updates.contact_email = updates.contact_email.trim();
   }

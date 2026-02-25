@@ -9,6 +9,7 @@ import AuthLayout from "@/components/AuthLayout";
 import PasswordInput from "@/components/PasswordInput";
 import { ArrowLeft, X } from "lucide-react";
 import { VALIDATION } from "@/lib/constants";
+import { useTranslations } from "next-intl";
 
 interface SavedAccount {
   email: string;
@@ -58,14 +59,19 @@ function removeSavedAccount(email: string): SavedAccount[] {
 }
 
 export default function LoginPage() {
+  const t = useTranslations('auth');
+  const tc = useTranslations('common');
   return (
-    <Suspense fallback={<AuthLayout title="Giriş Yap" subtitle="Yükleniyor..."><div className="flex justify-center py-8"><span className="loader" /></div></AuthLayout>}>
+    <Suspense fallback={<AuthLayout title={t('signIn')} subtitle={tc('loading')}><div className="flex justify-center py-8"><span className="loader" /></div></AuthLayout>}>
       <LoginPageContent />
     </Suspense>
   );
 }
 
 function LoginPageContent() {
+  const t = useTranslations('auth');
+  const tc = useTranslations('common');
+  const te = useTranslations('errors');
   const [identifier, setIdentifier] = useState(""); // email OR username
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -114,7 +120,7 @@ function LoginPageContent() {
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
+    if (error) feedimAlert("error", t('signInFailed'));
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -141,7 +147,7 @@ function LoginPageContent() {
         const data = await res.json();
         if (!res.ok) {
           await waitMin();
-          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin");
+          feedimAlert("error", t('invalidCredentials'));
           return;
         }
         email = data.email;
@@ -152,11 +158,11 @@ function LoginPageContent() {
       if (error) {
         await waitMin();
         if (error.message === 'Invalid login credentials') {
-          feedimAlert("error", "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin");
+          feedimAlert("error", t('invalidCredentials'));
         } else if (error.message.includes('Email not confirmed')) {
-          feedimAlert("error", "E-posta adresinizi onaylamanız gerekiyor");
+          feedimAlert("error", t('emailNotVerified'));
         } else {
-          feedimAlert("error", "Giriş yapılamadı, lütfen daha sonra tekrar deneyin");
+          feedimAlert("error", t('signInFailed'));
         }
         return;
       }
@@ -193,7 +199,7 @@ function LoginPageContent() {
             } else {
               document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
               await supabase.auth.signOut();
-              feedimAlert("error", "Hesap kurtarılamadı, lütfen destek ile iletişime geçin");
+              feedimAlert("error", t('accountRecoveryFailed'));
             }
             setLoading(false);
             return;
@@ -202,7 +208,7 @@ function LoginPageContent() {
           // Disabled/blocked account check
           if (profile?.status === "disabled" || profile?.status === "blocked") {
             await waitMin();
-            feedimAlert("error", "Hesabınız devre dışı bırakılmış. Destek ile iletişime geçin");
+            feedimAlert("error", t('accountDisabled'));
             document.cookie = 'fdm-status=; Max-Age=0; Path=/;';
             await supabase.auth.signOut();
             return;
@@ -240,11 +246,22 @@ function LoginPageContent() {
       }
 
       try { sessionStorage.removeItem("fdm_switch_account"); } catch {}
+
+      // Increment login counter and flag location request every 4th login
+      try {
+        const prev = parseInt(localStorage.getItem("fdm-login-count") || "0", 10);
+        const next = prev + 1;
+        localStorage.setItem("fdm-login-count", String(next));
+        if (next % 4 === 0) {
+          sessionStorage.setItem("fdm-request-location", "true");
+        }
+      } catch {}
+
       await waitMin();
       window.location.href = nextUrl || "/";
     } catch {
       await waitMin();
-      feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+      feedimAlert("error", te('generic'));
     } finally {
       setLoading(false);
     }
@@ -292,7 +309,7 @@ function LoginPageContent() {
 
   if (!authChecked) {
     return (
-      <AuthLayout title="Giriş Yap" subtitle="">
+      <AuthLayout title={t('signIn')} subtitle="">
         <div className="flex justify-center py-8"><span className="loader" /></div>
       </AuthLayout>
     );
@@ -303,9 +320,9 @@ function LoginPageContent() {
     return (
       <AuthLayout
         title={savedAccounts.length === 1
-          ? `${savedAccounts[0].full_name.split(" ")[0] || savedAccounts[0].username} olarak devam et`
-          : "Hesabınızla devam edin"}
-        subtitle="Devam etmek için bir hesap seç."
+          ? `${savedAccounts[0].full_name.split(" ")[0] || savedAccounts[0].username} ${t('continueAs')}`
+          : t('continueWithAccount')}
+        subtitle={t('selectAccount')}
       >
         <div className="space-y-2">
           {savedAccounts.map((account) => (
@@ -330,7 +347,7 @@ function LoginPageContent() {
                 type="button"
                 onClick={(e) => handleRemoveAccount(e, account.email)}
                 className="p-1.5 rounded-full hover:bg-bg-tertiary transition opacity-0 group-hover:opacity-100 shrink-0"
-                aria-label="Hesabı kaldır"
+                aria-label={t('removeAccount')}
               >
                 <X className="w-4 h-4 text-text-muted" />
               </button>
@@ -343,7 +360,7 @@ function LoginPageContent() {
             <div className="w-full border-t border-border-primary"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 text-text-muted">veya</span>
+            <span className="px-4 text-text-muted">{tc('or')}</span>
           </div>
         </div>
 
@@ -352,7 +369,7 @@ function LoginPageContent() {
           onClick={handleSwitchToNormalForm}
           className="t-btn accept w-full"
         >
-          Farklı hesapla giriş yap
+          {t('differentAccount')}
         </button>
 
         <button
@@ -366,13 +383,13 @@ function LoginPageContent() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Google ile devam et
+          {t('continueWithGoogle')}
         </button>
 
         <p className="text-center text-text-muted text-sm mt-6">
-          Hesabınız yok mu?{" "}
+          {t('noAccount')}{" "}
           <Link href="/register" className="text-accent-main hover:opacity-80 font-semibold">
-            Kayıt ol
+            {t('signUp')}
           </Link>
         </p>
       </AuthLayout>
@@ -383,8 +400,8 @@ function LoginPageContent() {
   if (showSelectedAccountForm) {
     return (
       <AuthLayout
-        title={`${selectedAccount.full_name.split(" ")[0] || selectedAccount.username} olarak devam et`}
-        subtitle="Devam etmek için şifreni gir."
+        title={`${selectedAccount.full_name.split(" ")[0] || selectedAccount.username} ${t('continueAs')}`}
+        subtitle={t('enterPassword')}
       >
         <div className="flex flex-col items-center gap-2 mb-6">
           {selectedAccount.avatar_url ? (
@@ -397,7 +414,7 @@ function LoginPageContent() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <PasswordInput
-            placeholder="Şifre"
+            placeholder={t('password')}
             value={password}
             onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))}
             required
@@ -407,8 +424,8 @@ function LoginPageContent() {
             className="input-modern w-full"
             autoFocus
           />
-          <button type="submit" className="t-btn accept w-full relative" disabled={loading} aria-label="Giriş Yap">
-            {loading ? <span className="loader" /> : "Giriş yap"}
+          <button type="submit" className="t-btn accept w-full relative" disabled={loading} aria-label={t('signIn')}>
+            {loading ? <span className="loader" /> : t('signIn')}
           </button>
         </form>
 
@@ -419,10 +436,10 @@ function LoginPageContent() {
             className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            Farklı hesap
+            {t('differentAccountShort')}
           </button>
           <Link href="/forgot-password" className="text-sm text-text-muted hover:text-text-primary transition font-semibold">
-            Şifremi unuttum?
+            {t('forgotPassword')}
           </Link>
         </div>
       </AuthLayout>
@@ -431,11 +448,11 @@ function LoginPageContent() {
 
   // --- Durum A: Normal giriş formu ---
   return (
-    <AuthLayout title="Giriş Yap" subtitle="E-posta veya kullanıcı adınızı kullanarak giriş yapın.">
+    <AuthLayout title={t('signIn')} subtitle={t('emailOrUsernameDesc')}>
       <form onSubmit={handleLogin} className="space-y-4">
         <input
           type="text"
-          placeholder="E-posta veya kullanıcı adı"
+          placeholder={t('emailOrUsername')}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value.replace(/\s/g, ""))}
           required
@@ -444,7 +461,7 @@ function LoginPageContent() {
           className="input-modern w-full"
         />
         <PasswordInput
-          placeholder="Şifre"
+          placeholder={t('password')}
           value={password}
           onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))}
           required
@@ -461,14 +478,14 @@ function LoginPageContent() {
               onChange={(e) => setRememberMe(e.target.checked)}
               className="cursor-pointer"
             />
-            <span className="text-sm text-text-muted">Beni hatırla</span>
+            <span className="text-sm text-text-muted">{t('rememberMe')}</span>
           </label>
           <Link href="/forgot-password" className="text-sm text-text-muted hover:text-text-primary transition font-semibold">
-            Şifremi unuttum?
+            {t('forgotPassword')}
           </Link>
         </div>
-        <button type="submit" className="t-btn accept w-full relative" disabled={loading} aria-label="Giriş Yap">
-          {loading ? <span className="loader" /> : "Giriş yap"}
+        <button type="submit" className="t-btn accept w-full relative" disabled={loading} aria-label={t('signIn')}>
+          {loading ? <span className="loader" /> : t('signIn')}
         </button>
       </form>
 
@@ -479,7 +496,7 @@ function LoginPageContent() {
           className="w-full mt-3 flex items-center justify-center gap-1.5 text-sm text-accent-main hover:opacity-80 font-semibold transition py-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Kayıtlı hesaplara dön
+          {t('savedAccounts')}
         </button>
       )}
 
@@ -488,7 +505,7 @@ function LoginPageContent() {
           <div className="w-full border-t border-border-primary"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 text-text-muted">veya</span>
+          <span className="px-4 text-text-muted">{tc('or')}</span>
         </div>
       </div>
 
@@ -503,13 +520,13 @@ function LoginPageContent() {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
-        Google ile devam et
+        {t('continueWithGoogle')}
       </button>
 
       <p className="text-center text-text-muted text-sm mt-6">
-        Hesabınız yok mu?{" "}
+        {t('noAccount')}{" "}
         <Link href="/register" className="text-accent-main hover:opacity-80 font-semibold">
-          Kayıt ol
+          {t('signUp')}
         </Link>
       </p>
     </AuthLayout>

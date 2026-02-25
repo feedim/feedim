@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { XCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function PaymentFailedPage() {
+  const t = useTranslations("payment");
   const router = useRouter();
   const [countdown, setCountdown] = useState(10);
 
@@ -38,29 +40,29 @@ export default function PaymentFailedPage() {
         {/* Error Message */}
         <div className="space-y-4">
           <h1 className="text-4xl font-bold text-error">
-            Ödeme Başarısız
+            {t("paymentFailed")}
           </h1>
           <p className="text-xl text-text-muted">
-            İşlem tamamlanamadı
+            {t("transactionNotCompleted")}
           </p>
         </div>
 
         {/* Info */}
         <div className="bg-bg-secondary rounded-2xl p-6 space-y-4">
           <div className="text-left space-y-2 text-sm text-text-muted">
-            <p>Ödeme işlemi sırasında bir hata oluştu. Olası nedenler:</p>
+            <p>{t("paymentErrorDesc")}</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Yetersiz bakiye</li>
-              <li>Kart bilgilerinde hata</li>
-              <li>Banka tarafından reddedildi</li>
-              <li>İşlem zaman aşımına uğradı</li>
+              <li>{t("reasonInsufficientBalance")}</li>
+              <li>{t("reasonCardError")}</li>
+              <li>{t("reasonBankRejected")}</li>
+              <li>{t("reasonTimeout")}</li>
             </ul>
           </div>
         </div>
 
         {/* Countdown */}
         <p className="text-sm text-text-muted">
-          {countdown} saniye sonra jeton sayfasına yönlendirileceksiniz...
+          {t("redirectCountdown", { seconds: countdown })}
         </p>
 
         {/* Actions */}
@@ -70,7 +72,7 @@ export default function PaymentFailedPage() {
             className="t-btn accept w-full flex items-center justify-center gap-2"
           >
             <RefreshCw className="h-5 w-5" />
-            Tekrar Dene
+            {t("retry")}
           </Link>
 
           <Link
@@ -78,11 +80,11 @@ export default function PaymentFailedPage() {
             className="t-btn cancel w-full flex items-center justify-center gap-2"
           >
             <ArrowLeft className="h-5 w-5" />
-            Ana Sayfaya Dön
+            {t("goHome")}
           </Link>
 
           <Link href="/help" className="block text-text-muted hover:text-text-primary transition text-sm">
-            Yardım Merkezi
+            {t("helpCenter")}
           </Link>
         </div>
       </div>

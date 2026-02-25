@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import Modal from "./Modal";
 
@@ -15,18 +16,19 @@ interface ReportModalProps {
   authorName?: string;
 }
 
-const reasons = [
-  { id: "spam", label: "Spam" },
-  { id: "harassment", label: "Taciz veya zorbalık" },
-  { id: "hate", label: "Nefret söylemi" },
-  { id: "violence", label: "Şiddet içerik" },
-  { id: "nudity", label: "Uygunsuz içerik" },
-  { id: "misinformation", label: "Yanlış bilgi" },
-  { id: "copyright", label: "Telif hakkı ihlali" },
-  { id: "other", label: "Diğer" },
-];
+const reasonKeys = [
+  { id: "spam", tKey: "spam" },
+  { id: "harassment", tKey: "harassment" },
+  { id: "hate", tKey: "hateSpeech" },
+  { id: "violence", tKey: "violence" },
+  { id: "nudity", tKey: "inappropriate" },
+  { id: "misinformation", tKey: "misinformation" },
+  { id: "copyright", tKey: "copyright" },
+  { id: "other", tKey: "otherReason" },
+] as const;
 
 export default function ReportModal({ open, onClose, targetType, targetId, authorUserId, authorName }: ReportModalProps) {
+  const t = useTranslations("modals");
   const [selectedReason, setSelectedReason] = useState("");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -69,8 +71,8 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
         setTimeout(() => {
           handleClose();
           setTimeout(() => {
-            const name = capturedAuthorName || "Bu kişi";
-            feedimAlert("question", `${name} engellensin mi?`, {
+            const name = capturedAuthorName || t("thisPerson");
+            feedimAlert("question", t("blockConfirm", { name }), {
               showYesNo: true,
               onYes: async () => {
                 fetch("/api/blocks", {
@@ -98,19 +100,19 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="Şikayet Et" size="md" infoText="Uygunsuz içerikleri bildirerek topluluğun güvenliğine katkıda bulun.">
+    <Modal open={open} onClose={handleClose} title={t("report")} size="md" infoText={t("reportInfoText")}>
       <div className="px-4 py-4">
         {submitted ? (
           <div className="text-center py-8">
-            <p className="text-lg font-semibold mb-2">Şikayetiniz alındı</p>
-            <p className="text-sm text-text-muted">Moderatör ekibimiz en kısa süre içerisinde inceleyecektir.</p>
-            <button onClick={handleClose} className="t-btn accept mt-6 px-8">Tamam</button>
+            <p className="text-lg font-semibold mb-2">{t("reportReceived")}</p>
+            <p className="text-sm text-text-muted">{t("reportReviewMsg")}</p>
+            <button onClick={handleClose} className="t-btn accept mt-6 px-8">{t("ok")}</button>
           </div>
         ) : (
           <>
-            <p className="text-sm text-text-muted mb-4">Bu içeriği neden şikayet ediyorsunuz?</p>
+            <p className="text-sm text-text-muted mb-4">{t("whyReporting")}</p>
             <div className="space-y-1.5">
-              {reasons.map(r => (
+              {reasonKeys.map(r => (
                 <button
                   key={r.id}
                   onClick={() => setSelectedReason(r.id)}
@@ -120,7 +122,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
                       : "hover:bg-bg-tertiary text-text-primary"
                   }`}
                 >
-                  {r.label}
+                  {t(r.tKey)}
                   {selectedReason === r.id && (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20 6L9 17l-5-5" />
@@ -133,17 +135,17 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
             {selectedReason === "copyright" && (
               <div className="space-y-3 mt-4">
                 <div>
-                  <label className="text-xs text-text-muted mb-1 block">Ad Soyad / Şirket Adı *</label>
+                  <label className="text-xs text-text-muted mb-1 block">{t("copyrightOwnerName")}</label>
                   <input
                     value={copyrightOwnerName}
                     onChange={e => setCopyrightOwnerName(e.target.value)}
                     className="input-modern w-full"
-                    placeholder="Telif hakkı sahibinin adı"
+                    placeholder={t("copyrightOwnerPlaceholder")}
                     maxLength={200}
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted mb-1 block">E-posta *</label>
+                  <label className="text-xs text-text-muted mb-1 block">{t("emailLabel")}</label>
                   <input
                     type="email"
                     value={copyrightEmail}
@@ -154,7 +156,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted mb-1 block">Orijinal İçerik Linki</label>
+                  <label className="text-xs text-text-muted mb-1 block">{t("originalContentLink")}</label>
                   <input
                     value={copyrightOriginalUrl}
                     onChange={e => setCopyrightOriginalUrl(e.target.value)}
@@ -171,7 +173,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
                 <textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Ek açıklama (isteğe bağlı)"
+                  placeholder={t("additionalDescription")}
                   maxLength={500}
                   rows={3}
                   className="input-modern w-full resize-none"
@@ -183,9 +185,9 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
               onClick={handleSubmit}
               disabled={!selectedReason}
               className="t-btn accept w-full relative mt-4 disabled:opacity-40"
-              aria-label="Şikayet Gönder"
+              aria-label={t("reportSubmit")}
             >
-              Gönder
+              {t("submit")}
             </button>
           </>
         )}

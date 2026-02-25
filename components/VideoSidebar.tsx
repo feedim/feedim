@@ -4,7 +4,7 @@ import Link from "next/link";
 import NoImage from "@/components/NoImage";
 import BlurImage from "@/components/BlurImage";
 import WatchProgressBar from "@/components/WatchProgressBar";
-import { formatCount, formatRelativeDate } from "@/lib/utils";
+import { formatCount, formatRelativeDate, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 export interface VideoItem {
@@ -17,6 +17,7 @@ export interface VideoItem {
   video_duration?: number;
   view_count?: number;
   published_at?: string;
+  content_type?: string;
   author_id?: string;
   profiles?: {
     user_id?: string;
@@ -52,7 +53,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
         {videos.map(video => (
           <Link
             key={video.id}
-            href={`/${video.slug}`}
+            href={getPostUrl(video.slug, video.content_type)}
             className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
           >
             {/* Thumbnail */}

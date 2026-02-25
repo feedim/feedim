@@ -58,14 +58,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
   if (!loaded) {
     return (
       <div className={cn("sm:mx-3 my-3 py-3 rounded-[16px]", !noBg && "bg-bg-secondary")} style={{ marginLeft: 11, marginRight: 11 }}>
-        <div className="flex items-center justify-between px-4 mb-3">
-          <div className="h-4 w-20 bg-bg-tertiary rounded animate-pulse" />
-        </div>
-        <div className="flex gap-2.5 pl-[10px] overflow-hidden">
-          {Array.from({ length: Math.min(maxItems, 5) }).map((_, i) => (
-            <div key={i} className="shrink-0 w-[130px] h-[230px] rounded-[14px] bg-bg-tertiary animate-pulse" />
-          ))}
-        </div>
+        <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
       </div>
     );
   }

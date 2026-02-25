@@ -2,6 +2,21 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { checkUrl, isExemptPath } from '@/lib/waf'
 
+const SUPPORTED_LOCALES = ['tr', 'az', 'en']
+const DEFAULT_LOCALE = 'tr'
+
+function parseAcceptLanguage(header: string | null): string {
+  if (!header) return DEFAULT_LOCALE
+  const langs = header.split(',').map(part => {
+    const [lang, q] = part.trim().split(';q=')
+    return { lang: lang.trim().split('-')[0].toLowerCase(), q: q ? parseFloat(q) : 1 }
+  }).sort((a, b) => b.q - a.q)
+  for (const { lang } of langs) {
+    if (SUPPORTED_LOCALES.includes(lang)) return lang
+  }
+  return 'en' // Foreign visitors default to English
+}
+
 // ─── IP Rate Limiter ───
 const apiRateMap = new Map<string, { count: number; resetAt: number }>()
 const API_RATE_LIMIT = 300
@@ -131,13 +146,21 @@ export async function middleware(request: NextRequest) {
     if (needStatus || needOnboarding || needRole) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('status, onboarding_completed, role')
+        .select('status, onboarding_completed, role, language')
         .eq('user_id', user.id)
         .single()
 
       if (needStatus) status = profile?.status || 'active'
       if (needOnboarding) onboardingCompleted = profile?.onboarding_completed ?? null
       if (needRole) role = profile?.role || 'user'
+
+      // ─── Locale: sync cookie from DB if missing ───
+      const localeCookie = request.cookies.get('fdm-locale')?.value
+      if (!localeCookie && profile?.language && SUPPORTED_LOCALES.includes(profile.language)) {
+        supabaseResponse.cookies.set('fdm-locale', profile.language, {
+          maxAge: 86400 * 365, httpOnly: false, secure: true, sameSite: 'lax', path: '/',
+        })
+      }
     }
 
     // --- Status enforcement ---
@@ -207,15 +230,39 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ─── 3c. Locale resolution ───
+  {
+    const localeCookie = request.cookies.get('fdm-locale')?.value
+    let resolvedLocale: string
+
+    if (localeCookie && SUPPORTED_LOCALES.includes(localeCookie)) {
+      resolvedLocale = localeCookie
+    } else {
+      // No cookie — detect from Accept-Language for unauthenticated users
+      resolvedLocale = parseAcceptLanguage(request.headers.get('accept-language'))
+      // Set cookie so next request doesn't need detection
+      supabaseResponse.cookies.set('fdm-locale', resolvedLocale, {
+        maxAge: 86400 * 365, httpOnly: false, secure: true, sameSite: 'lax', path: '/',
+      })
+    }
+
+    // Set x-locale header for server components (next-intl reads this)
+    request.headers.set('x-locale', resolvedLocale)
+    // Recreate response to include the new header, preserve cookies
+    const prevCookies = supabaseResponse.cookies.getAll()
+    supabaseResponse = NextResponse.next({ request })
+    prevCookies.forEach(c => supabaseResponse.cookies.set(c))
+  }
+
   // For API routes, return with refreshed cookies (no further middleware logic needed)
   if (pathname.startsWith('/api/')) {
     return supabaseResponse
   }
 
   // ─── 4. Route protection ───
-  const publicAppPaths = ['/', '/explore', '/moments', '/video', '/notes', '/posts', '/sounds']
-  const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/')
-  const appPaths = ['/', '/explore', '/moments', '/video', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create']
+  const publicAppPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/sounds']
+  const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/') || pathname.startsWith('/video/') || pathname.startsWith('/note/') || pathname.startsWith('/moments/')
+  const appPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create']
   const isAppPath = appPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isProtected = isAppPath && !isPublicApp
 
@@ -251,7 +298,10 @@ export const config = {
     // App routes (was /dashboard/:path*)
     '/explore/:path*',
     '/moments',
+    '/moments/:path*',
     '/video',
+    '/video/:path*',
+    '/note/:path*',
     '/notes/:path*',
     '/posts',
     '/notifications',
