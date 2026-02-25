@@ -794,7 +794,7 @@ function MomentWriteContent() {
                       disabled={uploading}
                       moment
                       loop
-                      externalMuted={false}
+                      externalMuted={!!selectedSound}
                       externalPaused={uploading}
                       videoClassName="absolute inset-0 w-full h-full object-cover"
                     />
