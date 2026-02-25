@@ -1,17 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { VAST_TAG_URL } from "@/lib/adProviders";
 
 /**
  * VAST proxy — fetches VAST XML server-side to avoid CORS issues.
- * Client calls /api/vast → server fetches from HilltopAds → returns XML to client.
+ * Forwards real client context (UA, IP, Referer) so ad networks return fill.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ua = request.headers.get("user-agent") || "Mozilla/5.0 (compatible; Feedim/1.0)";
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "";
+    const referer = request.headers.get("referer") || "https://feedim.com";
+
+    const headers: Record<string, string> = {
+      "User-Agent": ua,
+      "Referer": referer,
+    };
+    if (ip) headers["X-Forwarded-For"] = ip;
+
     const res = await fetch(VAST_TAG_URL, {
       cache: "no-store",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Feedim/1.0)",
-      },
+      headers,
       redirect: "follow",
     });
 

@@ -16,7 +16,7 @@ export interface VastAd {
  * Returns null if no valid ad found.
  */
 export async function parseVast(tagUrl: string, depth = 0): Promise<VastAd | null> {
-  if (depth > 3) return null;
+  if (depth > 5) return null;
 
   try {
     const res = await fetch(tagUrl, { cache: "no-store" });
@@ -33,79 +33,90 @@ export async function parseVast(tagUrl: string, depth = 0): Promise<VastAd | nul
 
     if (doc.querySelector("parsererror")) return null;
 
-    const ad = doc.querySelector("Ad");
-    if (!ad) return null;
+    // Try all Ad elements — first valid one wins
+    const ads = doc.querySelectorAll("Ad");
+    if (ads.length === 0) return null;
 
-    // Handle Wrapper — follow VAST redirect
-    const wrapper = ad.querySelector("Wrapper");
-    if (wrapper) {
-      const uri = wrapper.querySelector("VASTAdTagURI")?.textContent?.trim();
-      if (uri) return parseVast(uri, depth + 1);
-      return null;
+    for (const ad of ads) {
+      const result = await parseAdElement(ad, depth);
+      if (result) return result;
     }
 
-    const inline = ad.querySelector("InLine");
-    if (!inline) return null;
-
-    // Impression URLs
-    const impressionUrls: string[] = [];
-    inline.querySelectorAll("Impression").forEach(el => {
-      const url = el.textContent?.trim();
-      if (url) impressionUrls.push(url);
-    });
-
-    // Find Linear creative
-    const linear = inline.querySelector("Linear");
-    if (!linear) return null;
-
-    // Duration
-    const durStr = linear.querySelector("Duration")?.textContent?.trim() || "00:00:15";
-    const [h, m, s] = durStr.split(":").map(Number);
-    const duration = (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
-
-    // Media files — prefer MP4, then by resolution
-    const files: { url: string; type: string; w: number }[] = [];
-    linear.querySelectorAll("MediaFile").forEach(el => {
-      const url = el.textContent?.trim();
-      const type = el.getAttribute("type") || "";
-      const w = parseInt(el.getAttribute("width") || "0");
-      if (url) files.push({ url, type, w });
-    });
-
-    files.sort((a, b) => {
-      const aMp4 = a.type.includes("mp4") ? 1 : 0;
-      const bMp4 = b.type.includes("mp4") ? 1 : 0;
-      if (aMp4 !== bMp4) return bMp4 - aMp4;
-      return b.w - a.w;
-    });
-
-    if (files.length === 0) return null;
-
-    // Click-through URL
-    const clickUrl = linear.querySelector("VideoClicks ClickThrough")?.textContent?.trim()
-      || linear.querySelector("ClickThrough")?.textContent?.trim()
-      || undefined;
-
-    // Tracking events
-    const trackingEvents: Record<string, string[]> = {};
-    linear.querySelectorAll("TrackingEvents Tracking").forEach(el => {
-      const event = el.getAttribute("event");
-      const url = el.textContent?.trim();
-      if (event && url) {
-        (trackingEvents[event] ??= []).push(url);
-      }
-    });
-
-    // Click tracking
-    linear.querySelectorAll("VideoClicks ClickTracking").forEach(el => {
-      const url = el.textContent?.trim();
-      if (url) (trackingEvents["click"] ??= []).push(url);
-    });
-
-    return { videoUrl: files[0].url, duration, clickUrl, impressionUrls, trackingEvents };
+    return null;
   } catch {
     return null;
   }
+}
+
+/** Parse a single <Ad> element — handles both InLine and Wrapper. */
+async function parseAdElement(ad: Element, depth: number): Promise<VastAd | null> {
+  // Handle Wrapper — follow VAST redirect
+  const wrapper = ad.querySelector("Wrapper");
+  if (wrapper) {
+    const uri = wrapper.querySelector("VASTAdTagURI")?.textContent?.trim();
+    if (uri) return parseVast(uri, depth + 1);
+    return null;
+  }
+
+  const inline = ad.querySelector("InLine");
+  if (!inline) return null;
+
+  // Impression URLs
+  const impressionUrls: string[] = [];
+  inline.querySelectorAll("Impression").forEach(el => {
+    const url = el.textContent?.trim();
+    if (url) impressionUrls.push(url);
+  });
+
+  // Find Linear creative
+  const linear = inline.querySelector("Linear");
+  if (!linear) return null;
+
+  // Duration
+  const durStr = linear.querySelector("Duration")?.textContent?.trim() || "00:00:15";
+  const [h, m, s] = durStr.split(":").map(Number);
+  const duration = (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
+
+  // Media files — prefer MP4, then by resolution
+  const files: { url: string; type: string; w: number }[] = [];
+  linear.querySelectorAll("MediaFile").forEach(el => {
+    const url = el.textContent?.trim();
+    const type = el.getAttribute("type") || "";
+    const w = parseInt(el.getAttribute("width") || "0");
+    if (url) files.push({ url, type, w });
+  });
+
+  files.sort((a, b) => {
+    const aMp4 = a.type.includes("mp4") ? 1 : 0;
+    const bMp4 = b.type.includes("mp4") ? 1 : 0;
+    if (aMp4 !== bMp4) return bMp4 - aMp4;
+    return b.w - a.w;
+  });
+
+  if (files.length === 0) return null;
+
+  // Click-through URL
+  const clickUrl = linear.querySelector("VideoClicks ClickThrough")?.textContent?.trim()
+    || linear.querySelector("ClickThrough")?.textContent?.trim()
+    || undefined;
+
+  // Tracking events
+  const trackingEvents: Record<string, string[]> = {};
+  linear.querySelectorAll("TrackingEvents Tracking").forEach(el => {
+    const event = el.getAttribute("event");
+    const url = el.textContent?.trim();
+    if (event && url) {
+      (trackingEvents[event] ??= []).push(url);
+    }
+  });
+
+  // Click tracking
+  linear.querySelectorAll("VideoClicks ClickTracking").forEach(el => {
+    const url = el.textContent?.trim();
+    if (url) (trackingEvents["click"] ??= []).push(url);
+  });
+
+  return { videoUrl: files[0].url, duration, clickUrl, impressionUrls, trackingEvents };
 }
 
 /** Fire tracking pixel(s) non-blocking. */

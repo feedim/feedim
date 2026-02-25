@@ -499,8 +499,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     document.addEventListener("webkitfullscreenchange", onFsChange);
 
     // Optimistic play: try immediately, on loadeddata (first frame), and on canplay
-    // Skip when disabled — upload preview mode should not auto-play
-    if (!disabled) {
+    // Skip when disabled or when autoStart is explicitly false (pre-roll active)
+    if (!disabled && autoStart !== false) {
       const tryPlay = () => v.play().catch(() => {
         // Browser blocked unmuted autoplay — retry muted
         if (!v.muted) {
