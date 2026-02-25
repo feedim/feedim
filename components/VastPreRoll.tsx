@@ -77,19 +77,33 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
   }, [active, user?.isPremium]);
 
   // Play video ad
+  // Play video ad — with robust fallback if autoplay fails
   useEffect(() => {
     if (!adData || !active) return;
     const v = videoRef.current;
     if (!v) return;
 
+    // Safety net: if ad doesn't start playing within 6 seconds, skip it
+    const playbackGuard = setTimeout(() => {
+      if (!skipCalledRef.current) {
+        skipCalledRef.current = true;
+        onCompleteRef.current();
+      }
+    }, 6000);
+
+    const clearGuard = () => clearTimeout(playbackGuard);
+
     const onCanPlay = () => {
-      v.play().catch(() => {
-        // Autoplay blocked — try muted
-        v.muted = true;
-        v.play().catch(() => {});
+      // Always try muted first — browsers reliably allow muted autoplay
+      v.muted = true;
+      v.play().then(clearGuard).catch(() => {
+        // Even muted play failed — skip ad entirely
+        clearGuard();
+        if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
       });
     };
     const onPlaying = () => {
+      clearGuard();
       setAdPlaying(true);
       if (!firedRef.current.has("impression")) {
         firedRef.current.add("impression");
@@ -102,6 +116,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
     };
     const onError = () => {
+      clearGuard();
       if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
     };
     const onTimeUpdate = () => {
@@ -120,6 +135,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
     v.load();
 
     return () => {
+      clearGuard();
       v.removeEventListener("canplay", onCanPlay);
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("ended", onEnded);
