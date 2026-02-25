@@ -174,6 +174,8 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
       if (!video) return;
 
       const key = e.key.toLowerCase();
+      // Prevent Tab from moving focus out of the player to description
+      if (key === "tab") { e.preventDefault(); return; }
       if (key === " " || key === "k") {
         e.preventDefault();
         togglePlayPause();

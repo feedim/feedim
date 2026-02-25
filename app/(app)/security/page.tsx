@@ -358,17 +358,19 @@ export default function SecurityPage() {
               </p>
 
               {!canUseMfa && !mfaEnabled ? (
-                <Link
-                  href="/premium"
-                  className="flex items-center gap-3 p-4 bg-bg-secondary rounded-[15px] hover:bg-bg-tertiary transition-colors"
-                >
-                  <Lock className="h-5 w-5 text-text-muted shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{t("mfaRequiresPremium")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("mfaPremiumDesc")}</p>
+                <div className="bg-bg-secondary rounded-2xl p-5 text-center space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
+                    <Lock className="h-7 w-7 text-accent-main" />
                   </div>
-                  <svg className="h-4 w-4 text-text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                </Link>
+                  <p className="text-sm font-semibold">{t("mfaRequiresPremium")}</p>
+                  <p className="text-xs text-text-muted">{t("mfaPremiumDesc")}</p>
+                  <Link
+                    href="/premium"
+                    className="block w-full t-btn accept !text-[0.84rem]"
+                  >
+                    {t("browsePremium")}
+                  </Link>
+                </div>
               ) : mfaEnabled ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-bg-secondary rounded-[15px]">

@@ -1,0 +1,112 @@
+/**
+ * Feedim — VAST 3.0 Video Ad Parser
+ * Parses VAST XML to extract video ad data for pre-roll playback.
+ */
+
+export interface VastAd {
+  videoUrl: string;
+  duration: number;
+  clickUrl?: string;
+  impressionUrls: string[];
+  trackingEvents: Record<string, string[]>;
+}
+
+/**
+ * Parse VAST XML from a tag URL. Handles InLine and single-level Wrapper.
+ * Returns null if no valid ad found.
+ */
+export async function parseVast(tagUrl: string, depth = 0): Promise<VastAd | null> {
+  if (depth > 3) return null;
+
+  try {
+    const res = await fetch(tagUrl, { cache: "no-store" });
+    if (!res.ok) return null;
+
+    const text = await res.text();
+    if (!text.trim()) return null;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, "text/xml");
+
+    if (doc.querySelector("parsererror")) return null;
+
+    const ad = doc.querySelector("Ad");
+    if (!ad) return null;
+
+    // Handle Wrapper — follow VAST redirect
+    const wrapper = ad.querySelector("Wrapper");
+    if (wrapper) {
+      const uri = wrapper.querySelector("VASTAdTagURI")?.textContent?.trim();
+      if (uri) return parseVast(uri, depth + 1);
+      return null;
+    }
+
+    const inline = ad.querySelector("InLine");
+    if (!inline) return null;
+
+    // Impression URLs
+    const impressionUrls: string[] = [];
+    inline.querySelectorAll("Impression").forEach(el => {
+      const url = el.textContent?.trim();
+      if (url) impressionUrls.push(url);
+    });
+
+    // Find Linear creative
+    const linear = inline.querySelector("Linear");
+    if (!linear) return null;
+
+    // Duration
+    const durStr = linear.querySelector("Duration")?.textContent?.trim() || "00:00:15";
+    const [h, m, s] = durStr.split(":").map(Number);
+    const duration = (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
+
+    // Media files — prefer MP4, then by resolution
+    const files: { url: string; type: string; w: number }[] = [];
+    linear.querySelectorAll("MediaFile").forEach(el => {
+      const url = el.textContent?.trim();
+      const type = el.getAttribute("type") || "";
+      const w = parseInt(el.getAttribute("width") || "0");
+      if (url) files.push({ url, type, w });
+    });
+
+    files.sort((a, b) => {
+      const aMp4 = a.type.includes("mp4") ? 1 : 0;
+      const bMp4 = b.type.includes("mp4") ? 1 : 0;
+      if (aMp4 !== bMp4) return bMp4 - aMp4;
+      return b.w - a.w;
+    });
+
+    if (files.length === 0) return null;
+
+    // Click-through URL
+    const clickUrl = linear.querySelector("VideoClicks ClickThrough")?.textContent?.trim()
+      || linear.querySelector("ClickThrough")?.textContent?.trim()
+      || undefined;
+
+    // Tracking events
+    const trackingEvents: Record<string, string[]> = {};
+    linear.querySelectorAll("TrackingEvents Tracking").forEach(el => {
+      const event = el.getAttribute("event");
+      const url = el.textContent?.trim();
+      if (event && url) {
+        (trackingEvents[event] ??= []).push(url);
+      }
+    });
+
+    // Click tracking
+    linear.querySelectorAll("VideoClicks ClickTracking").forEach(el => {
+      const url = el.textContent?.trim();
+      if (url) (trackingEvents["click"] ??= []).push(url);
+    });
+
+    return { videoUrl: files[0].url, duration, clickUrl, impressionUrls, trackingEvents };
+  } catch {
+    return null;
+  }
+}
+
+/** Fire tracking pixel(s) non-blocking. */
+export function firePixels(urls?: string[]) {
+  if (!urls?.length) return;
+  urls.forEach(url => { try { new Image().src = url; } catch {} });
+}

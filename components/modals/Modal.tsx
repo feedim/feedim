@@ -236,15 +236,8 @@ export default function Modal({
     hasMoved.current = false;
     scrollDisabled.current = false;
 
-    // Kill CSS animation so inline transform can take priority
-    // (CSS animations override inline styles, causing drag to be invisible)
-    if (sheet) {
-      sheet.style.animation = "none";
-      sheet.style.transition = "none";
-    }
-    if (backdropRef.current) {
-      backdropRef.current.style.transition = "none";
-    }
+    // Don't kill CSS animation here — wait until drag gesture is confirmed
+    // This prevents taps from interfering with modal animations
   }, []);
 
   const moveDrag = useCallback((clientY: number, clientX: number) => {
@@ -267,6 +260,10 @@ export default function Modal({
 
       if (isDragGesture) {
         isDragging.current = true;
+        // NOW kill CSS animation so inline transform can take priority
+        const s = sheetRef.current;
+        if (s) { s.style.animation = "none"; s.style.transition = "none"; }
+        if (backdropRef.current) { backdropRef.current.style.transition = "none"; }
         // Disable scroll parent to prevent scroll interference
         if (scrollParentRef.current) {
           scrollParentRef.current.style.overflow = "hidden";
@@ -320,8 +317,7 @@ export default function Modal({
     }
 
     if (!isDragging.current || dy < 4) {
-      if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; sheet.style.animation = ""; }
-      if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
+      // No drag happened — styles were never changed, just reset state
       resetDragState();
       return;
     }

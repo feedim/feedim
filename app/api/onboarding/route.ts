@@ -83,19 +83,21 @@ export async function POST(req: NextRequest) {
 
   switch (step) {
     case 1: {
-      // Country
+      // Country — required
       const country = payload.country;
-      if (country && typeof country === "string" && country.length === 2) {
-        updates.country = country.toUpperCase();
+      if (!country || typeof country !== "string" || country.length !== 2) {
+        return NextResponse.json({ error: t("countryRequired") }, { status: 400 });
       }
+      updates.country = country.toUpperCase();
       break;
     }
     case 2: {
-      // Language
+      // Language — required
       const lang = payload.language;
-      if (lang && ["tr", "en", "az"].includes(lang)) {
-        updates.language = lang;
+      if (!lang || !["tr", "en", "az"].includes(lang)) {
+        return NextResponse.json({ error: t("languageRequired") }, { status: 400 });
       }
+      updates.language = lang;
       break;
     }
     case 3:

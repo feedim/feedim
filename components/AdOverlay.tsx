@@ -247,8 +247,8 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
         Feedim Ads
       </span>
 
-      {/* Center: Loader or ad */}
-      <div className={`flex-1 flex items-center justify-center w-full max-w-[400px] px-3 sm:px-4 overflow-hidden ${provider.id === "adsense" ? "" : "max-h-[60%]"}`}>
+      {/* Center: Loader or ad — fills player area on mobile */}
+      <div className={`flex-1 flex items-center justify-center w-full max-w-full sm:max-w-[400px] px-3 sm:px-4 overflow-hidden`}>
         {!adLoaded && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div

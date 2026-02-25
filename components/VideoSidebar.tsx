@@ -53,7 +53,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
         {videos.map(video => (
           <Link
             key={video.id}
-            href={getPostUrl(video.slug, video.content_type)}
+            href={`/${video.slug}`}
             className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
           >
             {/* Thumbnail */}
@@ -81,15 +81,18 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                 {video.title}
               </p>
               <div className="mt-0 space-y-0.5">
-                <p className="text-[0.72rem] text-text-muted font-medium flex items-center gap-1">
-                  @{video.profiles?.username}
+                <p className="text-[0.72rem] text-text-muted font-medium flex items-center gap-1 truncate">
+                  <span className="truncate">@{video.profiles?.username}</span>
                   {video.profiles?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(video.profiles.premium_plan)} role={video.profiles?.role} />}
+                  {video.published_at && (
+                    <span className="shrink-0 text-text-muted/70">· {formatRelativeDate(video.published_at)}</span>
+                  )}
                 </p>
-                <p className="text-[0.62rem] text-text-muted">
-                  {video.view_count ? `${formatCount(video.view_count)} görüntülenme` : ""}
-                  {video.view_count && video.published_at ? " " : ""}
-                  {video.published_at ? formatRelativeDate(video.published_at) : ""}
-                </p>
+                {video.view_count ? (
+                  <p className="text-[0.62rem] text-text-muted">
+                    {formatCount(video.view_count)} görüntülenme
+                  </p>
+                ) : null}
               </div>
             </div>
           </Link>

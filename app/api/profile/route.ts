@@ -29,7 +29,7 @@ export async function PUT(req: NextRequest) {
 
   const tErrors = await getTranslations("apiErrors");
   const body = await req.json();
-  const allowed = ["name", "surname", "username", "bio", "website", "birth_date", "gender", "phone_number", "account_private", "account_type", "professional_category", "contact_email", "contact_phone", "language", "country"];
+  const allowed = ["name", "surname", "username", "bio", "website", "links", "birth_date", "gender", "phone_number", "account_private", "account_type", "professional_category", "contact_email", "contact_phone", "language", "country"];
   const updates: Record<string, any> = {};
 
   for (const key of allowed) {
@@ -53,6 +53,39 @@ export async function PUT(req: NextRequest) {
     if (age < 13 || age > 120) {
       return NextResponse.json({ error: tErrors("ageRange") }, { status: 400 });
     }
+  }
+
+  // Links validation
+  if (updates.links !== undefined) {
+    if (!Array.isArray(updates.links)) {
+      return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+    }
+    if (updates.links.length > 2) {
+      return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+    }
+    for (const link of updates.links) {
+      if (!link.url || typeof link.url !== "string" || link.url.length > 255) {
+        return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+      }
+      // URL must start with http:// or https://
+      if (!/^https?:\/\//i.test(link.url.trim())) {
+        return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+      }
+      // Title is required and must be 5-30 characters
+      if (!link.title || typeof link.title !== "string" || link.title.trim().length < 5 || link.title.length > 30) {
+        return NextResponse.json({ error: tErrors("linkTitleRequired") }, { status: 400 });
+      }
+    }
+    // Premium check: more than 1 link requires max or business
+    if (updates.links.length > 1) {
+      const admin = createAdminClient();
+      const plan = await getUserPlan(admin, user.id);
+      if (plan !== "max" && plan !== "business") {
+        return NextResponse.json({ error: tErrors("linksRequirePremium") }, { status: 403 });
+      }
+    }
+    // Backward compatibility: write first link URL to website field
+    updates.website = updates.links[0]?.url || "";
   }
 
   if (updates.name || updates.surname) {

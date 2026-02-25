@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Upload } from "lucide-react";
-import Modal from "./Modal";
+import { Check, Upload } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 
 interface ThumbnailPickerModalProps {
@@ -29,11 +29,14 @@ export default function ThumbnailPickerModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
+  const [mounted, setMounted] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [currentTime, setCurrentTime] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [frameThumbs, setFrameThumbs] = useState<string[]>([]);
   const [framePreview, setFramePreview] = useState("");
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Create preview URL
   useEffect(() => {
@@ -217,43 +220,53 @@ export default function ThumbnailPickerModal({
 
   const scrubPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  const closeBtn = (
-    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary">
-      <X className="h-5 w-5" />
-    </button>
-  );
+  if (!open || !mounted) return null;
 
-  const previewAspect = aspectRatio === "16:9" ? "16/9" : "9/16";
-  const previewMaxW = aspectRatio === "16:9" ? "360px" : "240px";
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex flex-col bg-bg-primary">
+      {/* Top bar — matches CropModal style */}
+      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border-primary" style={{ touchAction: "auto" }}>
+        <button
+          onClick={onClose}
+          className="text-sm text-text-muted hover:text-text-primary transition font-medium"
+        >
+          {t("thumbnailCancel")}
+        </button>
+        <span className="text-sm text-text-primary font-semibold">{t("thumbnailPickerTitle")}</span>
+        <button
+          onClick={handleApply}
+          disabled={!framePreview}
+          className="flex items-center gap-1.5 text-sm text-accent-main font-semibold disabled:opacity-40 transition"
+        >
+          <Check className="h-4 w-4" />
+          {t("thumbnailSelectFrame")}
+        </button>
+      </div>
 
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t("thumbnailPickerTitle")}
-      size="sm"
-      centerOnDesktop
-      rightAction={closeBtn}
-    >
-      <div className="px-4 pb-4 space-y-4">
-        {/* Hidden video for seeking */}
-        {previewUrl && (
-          <video
-            ref={videoRef}
-            src={previewUrl}
-            muted
-            playsInline
-            preload="auto"
-            className="hidden"
-          />
-        )}
-        {/* Hidden canvas for frame capture */}
-        <canvas ref={canvasRef} className="hidden" />
+      {/* Hidden video for seeking */}
+      {previewUrl && (
+        <video
+          ref={videoRef}
+          src={previewUrl}
+          muted
+          playsInline
+          preload="auto"
+          className="hidden"
+        />
+      )}
+      {/* Hidden canvas for frame capture */}
+      <canvas ref={canvasRef} className="hidden" />
 
-        {/* Frame preview */}
+      {/* Preview area — fills available space */}
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black/5 dark:bg-black/30">
         <div
-          className="relative rounded-xl overflow-hidden bg-black mx-auto"
-          style={{ aspectRatio: previewAspect, maxWidth: previewMaxW }}
+          className="relative overflow-hidden rounded-lg"
+          style={{
+            aspectRatio: aspectRatio === "16:9" ? "16/9" : "9/16",
+            maxWidth: aspectRatio === "16:9" ? "min(90%, 640px)" : "min(65%, 360px)",
+            maxHeight: "calc(100% - 24px)",
+            width: "100%",
+          }}
         >
           {framePreview ? (
             <img
@@ -263,28 +276,31 @@ export default function ThumbnailPickerModal({
               draggable={false}
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="loader" style={{ width: 24, height: 24 }} />
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <span className="loader" style={{ width: 28, height: 28 }} />
             </div>
           )}
         </div>
+      </div>
 
+      {/* Bottom controls — timeline + upload */}
+      <div className="shrink-0 border-t border-border-primary px-4 pt-3 pb-4 space-y-3" style={{ touchAction: "auto" }}>
         {/* Time display */}
-        <div className="text-center text-sm text-text-muted tabular-nums">
+        <div className="text-center text-sm text-text-muted tabular-nums font-medium">
           {fmtTime(currentTime)} / {fmtTime(duration)}
         </div>
 
         {/* Timeline scrubber */}
         <div
           ref={trackRef}
-          className="relative h-16 select-none touch-none mx-2 cursor-pointer"
+          className="relative h-14 select-none touch-none cursor-pointer"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
           {/* Track with frame thumbnails */}
-          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-12 rounded-lg bg-bg-tertiary overflow-hidden">
+          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-11 rounded-lg bg-bg-tertiary overflow-hidden">
             {frameThumbs.length > 0 && (
               <div className="absolute inset-0 flex">
                 {frameThumbs.map((thumb, i) => (
@@ -296,7 +312,7 @@ export default function ThumbnailPickerModal({
 
           {/* Scrubber indicator */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-[3px] h-14 rounded-full z-[4] pointer-events-none"
+            className="absolute top-1/2 w-[3px] h-[52px] rounded-full z-[4] pointer-events-none"
             style={{
               left: `${scrubPct}%`,
               backgroundColor: "var(--accent-color)",
@@ -304,7 +320,7 @@ export default function ThumbnailPickerModal({
               transform: "translate(-50%, -50%)",
             }}
           >
-            {/* Handle dot */}
+            {/* Handle dots */}
             <div
               className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
               style={{ backgroundColor: "var(--accent-color)", boxShadow: "0 0 4px rgba(0,0,0,0.3)" }}
@@ -316,22 +332,14 @@ export default function ThumbnailPickerModal({
           </div>
         </div>
 
-        {/* Apply button */}
-        <button
-          onClick={handleApply}
-          disabled={!framePreview}
-          className="t-btn accept relative w-full !h-11 !text-[0.9rem] disabled:opacity-50"
-        >
-          {t("thumbnailSelectFrame")}
-        </button>
-
         {/* Upload image link */}
-        <label className="flex items-center justify-center gap-1.5 w-full py-2 text-sm text-accent-main hover:text-accent-main/80 font-medium cursor-pointer transition">
+        <label className="flex items-center justify-center gap-1.5 w-full py-1.5 text-sm text-accent-main hover:text-accent-main/80 font-medium cursor-pointer transition">
           <Upload className="h-3.5 w-3.5" />
           {t("thumbnailUploadImage")}
           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
         </label>
       </div>
-    </Modal>
+    </div>,
+    document.body
   );
 }

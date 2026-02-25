@@ -9,11 +9,12 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import Modal from "./Modal";
 import AvatarCropModal from "./AvatarCropModal";
 import ProfessionalAccountModal from "./ProfessionalAccountModal";
+import LinksModal, { type ProfileLink } from "./LinksModal";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { VALIDATION } from "@/lib/constants";
 import { normalizeUsername, filterNameInput } from "@/lib/utils";
 import { isProfessional, getCategoryLabel } from "@/lib/professional";
-import { Briefcase, ChevronRight, Mail, Phone } from "lucide-react";
+import { Briefcase, ChevronRight, Mail, Phone, Link as LinkIcon } from "lucide-react";
 
 
 
@@ -21,10 +22,12 @@ interface EditProfileModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
+  onReopen?: () => void;
+  onLinksChange?: (links: ProfileLink[]) => void;
   openAvatarPicker?: boolean;
 }
 
-export default function EditProfileModal({ open, onClose, onSave, openAvatarPicker }: EditProfileModalProps) {
+export default function EditProfileModal({ open, onClose, onSave, onReopen, onLinksChange, openAvatarPicker }: EditProfileModalProps) {
   const t = useTranslations("modals");
   const tc = useTranslations("common");
   const locale = useLocale();
@@ -57,15 +60,24 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
   const [contactPhone, setContactPhone] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [usernameLockedUntil, setUsernameLockedUntil] = useState<string | null>(null);
+  const [links, setLinks] = useState<ProfileLink[]>([]);
+  const [linksModalOpen, setLinksModalOpen] = useState(false);
   const [proModalOpen, setProModalOpen] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarPickQueuedRef = useRef(false);
+  const skipLoadRef = useRef(false);
   const supabase = createClient();
 
   useEffect(() => {
-    if (open) loadProfile();
+    if (open) {
+      if (skipLoadRef.current) {
+        skipLoadRef.current = false;
+        return;
+      }
+      loadProfile();
+    }
   }, [open]);
 
   useEffect(() => {
@@ -120,6 +132,14 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
         setContactEmail(p.contact_email || "");
         setContactPhone(p.contact_phone || "");
         setIsPrivate(p.account_private || false);
+
+        // Load links — migrate old website if links is empty
+        const profileLinks: ProfileLink[] = Array.isArray(p.links) ? p.links : [];
+        if (profileLinks.length === 0 && p.website) {
+          setLinks([{ title: "", url: p.website }]);
+        } else {
+          setLinks(profileLinks);
+        }
 
         // Check username change cooldown (7 days)
         if (p.username_changed_at) {
@@ -218,7 +238,9 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name, surname, username, bio, website,
+            name, surname, username, bio,
+            links,
+            website: links[0]?.url || "",
             birth_date: birthDate || null,
             gender: gender || null,
             phone_number: phone || null,
@@ -358,17 +380,26 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
               <p className="text-xs text-text-muted mt-1 text-right">{bio.length}/{VALIDATION.bio.max}</p>
             </div>
 
-            {/* Website */}
+            {/* Links */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">{t("websiteLabel")}</label>
-              <input
-                type="url"
-                value={website}
-                onChange={e => setWebsite(e.target.value)}
-                maxLength={VALIDATION.website.max}
-                className="input-modern w-full"
-                placeholder="https://..."
-              />
+              <label className="block text-xs text-text-muted mb-1">{t("linksLabel")}</label>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  setTimeout(() => setLinksModalOpen(true), 280);
+                }}
+                className="w-full h-[50px] flex items-center justify-between px-[18px] rounded-[14px] border-[1.5px] border-border-primary hover:border-text-muted transition text-[0.93rem]"
+              >
+                <span className="flex items-center gap-2 text-text-secondary">
+                  <LinkIcon className="h-4 w-4" />
+                  {links.filter(l => l.url.trim()).length > 0
+                    ? t("linksCount", { count: links.filter(l => l.url.trim()).length })
+                    : t("addLink")
+                  }
+                </span>
+                <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
+              </button>
             </div>
 
             {/* Birth date */}
@@ -514,6 +545,23 @@ export default function EditProfileModal({ open, onClose, onSave, openAvatarPick
       onClose={() => setCropOpen(false)}
       file={cropFile}
       onCrop={handleCroppedUpload}
+    />
+    <LinksModal
+      open={linksModalOpen}
+      onClose={() => setLinksModalOpen(false)}
+      onBack={() => {
+        setLinksModalOpen(false);
+        if (onReopen) {
+          skipLoadRef.current = true;
+          setTimeout(() => onReopen(), 280);
+        }
+      }}
+      links={links}
+      onSave={(saved) => {
+        setLinks(saved);
+        onLinksChange?.(saved);
+      }}
+      premiumPlan={premiumPlan}
     />
     <ProfessionalAccountModal
       open={proModalOpen}

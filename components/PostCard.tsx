@@ -417,8 +417,8 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
             </div>
           )}
 
-          {/* Actions — inside content column, below view count */}
-          <div className="relative z-[1] mt-1.5">
+          {/* Actions — desktop: inside content column */}
+          <div className="relative z-[1] mt-1.5 hidden sm:block">
             <PostInteractionBar
               postId={post.id}
               postUrl={postHref}
@@ -438,6 +438,23 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
       </div>
 
     </article>
+    {/* Actions — mobile: outside article with 9px gap */}
+    <div className="sm:hidden pl-[12px] pr-[12px]" style={{ marginTop: 9 }}>
+      <PostInteractionBar
+        postId={post.id}
+        postUrl={postHref}
+        postTitle={post.title}
+        postSlug={post.slug}
+        likeCount={post.like_count || 0}
+        commentCount={post.comment_count || 0}
+        saveCount={post.save_count || 0}
+        initialLiked={initialLiked ?? false}
+        initialSaved={initialSaved ?? false}
+        isVideo={isVideo}
+        contentType={post.content_type}
+        compact={isVideo || isNote ? "full" : "no-like"}
+      />
+    </div>
     </div>
   );
 });

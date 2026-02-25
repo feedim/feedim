@@ -89,6 +89,8 @@ export default function ForgotPasswordPage() {
         return;
       }
 
+      // Şifre sıfırlama sayfasına email bilgisini taşı (auto-login için)
+      try { sessionStorage.setItem("fdm-reset-email", email); } catch {}
       router.push("/reset-password");
     } catch {
       feedimAlert("error", t("forgotGenericError"));

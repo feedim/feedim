@@ -235,13 +235,15 @@ export default function OnboardingPage() {
 
     switch (step) {
       case 1: {
-        // Country
-        await saveStep(selectedCountry ? { country: selectedCountry } : {});
+        // Country — required
+        if (!selectedCountry) { feedimAlert("error", t("countryRequired")); return; }
+        await saveStep({ country: selectedCountry });
         break;
       }
       case 2: {
-        // Language — save and reload if language changed
-        await saveStep(selectedLanguage ? { language: selectedLanguage } : {});
+        // Language — required, save and reload if language changed
+        if (!selectedLanguage) { feedimAlert("error", t("languageRequired")); return; }
+        await saveStep({ language: selectedLanguage });
         if (selectedLanguage) {
           document.cookie = `fdm-locale=${selectedLanguage};path=/;max-age=${365 * 24 * 60 * 60}`;
           window.location.reload();

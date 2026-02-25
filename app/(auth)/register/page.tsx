@@ -38,7 +38,7 @@ function generateUsernameSuggestions(name: string, surname: string): string[] {
   const suggestions = [
     base,
     `${base}${Math.floor(Math.random() * 99)}`,
-    `${normalizeUsername(name)}.${normalizeUsername(surname)}`,
+    ...(surname ? [`${normalizeUsername(name)}.${normalizeUsername(surname)}`] : []),
     `${base}_${new Date().getFullYear() % 100}`,
   ].filter(s => s.length >= 3 && s.length <= 15);
   return [...new Set(suggestions)].slice(0, 3);
@@ -73,8 +73,8 @@ function RegisterForm() {
 
   // Auto-suggest usernames when name/surname change
   useEffect(() => {
-    if (name && surname && !username) {
-      setSuggestions(generateUsernameSuggestions(name, surname));
+    if (name && !username) {
+      setSuggestions(generateUsernameSuggestions(name, surname || ""));
     }
   }, [name, surname]);
 
@@ -149,13 +149,13 @@ function RegisterForm() {
 
     try {
       // Client-side validation
-      if (!VALIDATION.name.pattern.test(name) || !VALIDATION.name.pattern.test(surname)) {
+      if (!VALIDATION.name.pattern.test(name) || (surname && !VALIDATION.name.pattern.test(surname))) {
         await waitMin();
         feedimAlert("error", t('nameLettersOnly'));
         return;
       }
 
-      if (isGibberish(name) || isGibberish(surname)) {
+      if (isGibberish(name) || (surname && isGibberish(surname))) {
         await waitMin();
         feedimAlert("error", t('validNameRequired'));
         return;
@@ -177,7 +177,7 @@ function RegisterForm() {
         email,
         password,
         options: {
-          data: { name, surname, full_name: `${name} ${surname}`, username: username || undefined },
+          data: { name, surname: surname || undefined, full_name: surname ? `${name} ${surname}` : name, username: username || undefined },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -197,7 +197,8 @@ function RegisterForm() {
       }
 
       if (data.user) {
-        const updates: Record<string, any> = { name, surname };
+        const updates: Record<string, any> = { name };
+        if (surname) updates.surname = surname;
         if (username) updates.username = username;
         await supabase.from('profiles').update(updates).eq('user_id', data.user.id);
       }
@@ -212,19 +213,27 @@ function RegisterForm() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user_id: data.user.id }),
           });
+          // Kısa bekleme — Supabase'in email_confirmed_at güncellemesini işlemesi için
+          await new Promise(r => setTimeout(r, 300));
           const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
           if (!loginError) {
             window.location.href = "/";
             return;
           }
+          // İlk deneme başarısız olduysa bir kez daha dene
+          await new Promise(r => setTimeout(r, 500));
+          const { error: retryError } = await supabase.auth.signInWithPassword({ email, password });
+          if (!retryError) {
+            window.location.href = "/";
+            return;
+          }
         } catch {}
-        // Fallback: e-posta onayı başarısız olursa eski davranış
-        feedimAlert("info", t('checkEmail'));
-        router.push("/login");
+        // Fallback: direkt giriş sayfasına yönlendir (e-posta onay mesajı gösterme)
+        window.location.href = "/login";
       } else if (data.session) {
         window.location.href = "/";
       } else {
-        router.push("/login");
+        window.location.href = "/login";
       }
     } catch {
       await waitMin();
@@ -239,7 +248,7 @@ function RegisterForm() {
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <input type="text" placeholder={t('firstName')} value={name} onChange={(e) => setName(filterNameInput(e.target.value))} required minLength={VALIDATION.name.min} maxLength={VALIDATION.name.max} autoComplete="given-name" className="input-modern w-full" />
-          <input type="text" placeholder={t('lastName')} value={surname} onChange={(e) => setSurname(filterNameInput(e.target.value))} required minLength={VALIDATION.name.min} maxLength={VALIDATION.name.max} autoComplete="family-name" className="input-modern w-full" />
+          <input type="text" placeholder={t('lastNameOptional')} value={surname} onChange={(e) => setSurname(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} autoComplete="family-name" className="input-modern w-full" />
         </div>
 
         {/* Username */}

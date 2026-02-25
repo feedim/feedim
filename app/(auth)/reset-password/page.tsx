@@ -54,6 +54,15 @@ export default function ResetPasswordPage() {
 
       if (error) throw error;
 
+      // Şifre değişti — yeni şifreyle otomatik giriş yap
+      try {
+        const resetEmail = sessionStorage.getItem("fdm-reset-email");
+        if (resetEmail) {
+          sessionStorage.removeItem("fdm-reset-email");
+          await supabase.auth.signInWithPassword({ email: resetEmail, password });
+        }
+      } catch {}
+
       await waitMin();
       feedimAlert("success", t("resetPasswordChanged"));
       window.location.replace("/");

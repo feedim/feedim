@@ -110,7 +110,9 @@ export default function AnalyticsPage() {
   if (!authorized) return (
     <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="px-4 py-20 text-center">
-        <Lock className="h-12 w-12 text-text-muted mx-auto mb-4" />
+        <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto mb-4">
+          <Lock className="h-7 w-7 text-accent-main" />
+        </div>
         <h2 className="text-lg font-bold mb-2">{t("premiumRequired")}</h2>
         <p className="text-sm text-text-muted mb-6 leading-relaxed">{t("premiumRequiredDesc")}</p>
         <Link href="/settings/premium" className="t-btn accept inline-flex">{t("goPremium")}</Link>
@@ -268,7 +270,9 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
           </div>
         </div>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <Lock className="h-5 w-5 text-text-muted mb-1.5" />
+          <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto mb-2">
+            <Lock className="h-7 w-7 text-accent-main" />
+          </div>
           <p className="text-[0.78rem] font-semibold text-text-primary">{t("proAccountRequired")}</p>
           <Link href="/settings" className="text-[0.68rem] text-accent-main font-medium mt-1">{t("goToSettings")}</Link>
         </div>

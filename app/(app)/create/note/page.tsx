@@ -480,7 +480,7 @@ function NoteWriteContent() {
             <div className="px-3 sm:px-4 pt-4 flex-1">
               <div className="flex gap-3">
                 {/* Avatar */}
-                <div className="shrink-0 pt-0.5">
+                <div className="shrink-0">
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" loading="lazy" />
                   ) : (
@@ -499,7 +499,7 @@ function NoteWriteContent() {
                       onChange={(e) => handleNoteChange(e.target.value)}
                       onKeyDown={handleMentionKeyDown}
                       placeholder={t("whatsOnYourMind")}
-                      className="w-full bg-transparent text-[1.05rem] leading-[1.55] text-text-primary placeholder:text-text-muted/50 resize-none min-h-[200px]"
+                      className="w-full bg-transparent text-[1rem] leading-[1.55] text-text-primary placeholder:text-text-muted/50 resize-none min-h-[200px]"
                       style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto" }}
                       maxLength={MAX_CHARS}
                       autoFocus

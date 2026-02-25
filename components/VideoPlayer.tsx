@@ -655,6 +655,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       // Block save / view-source shortcuts inside player
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "u")) { e.preventDefault(); return; }
       const dur = v.duration || 0;
+      // Prevent Tab from moving focus out of the player
+      if (e.key === "Tab") { e.preventDefault(); return; }
       switch (e.key) {
         case " ": case "k": e.preventDefault(); togglePlay(); break;
         case "ArrowLeft": e.preventDefault(); v.currentTime = Math.max(0, v.currentTime - 5); updateProgress(); showControls(); break;

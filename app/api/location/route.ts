@@ -105,18 +105,6 @@ export async function POST(req: NextRequest) {
     return safeError(error);
   }
 
-  // Keep max 10 locations per user
-  const { data: allLocations } = await admin
-    .from("user_locations")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  if (allLocations && allLocations.length > 10) {
-    const idsToDelete = allLocations.slice(10).map((l: { id: number }) => l.id);
-    await admin.from("user_locations").delete().in("id", idsToDelete);
-  }
-
   return NextResponse.json({ location: { city, region, country_code: countryCode } });
 }
 

@@ -129,7 +129,9 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       case 0:
         return (
           <div className="px-4 py-6 text-center space-y-4">
-            <Lock className="h-12 w-12 text-text-muted mx-auto" />
+            <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
+              <Lock className="h-7 w-7 text-accent-main" />
+            </div>
             <h3 className="text-lg font-bold">{t("privateAccountWarning")}</h3>
             <p className="text-sm text-text-muted leading-relaxed">
               {t("privateAccountProWarning")}
@@ -155,7 +157,9 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
         if (!canUseProfessional) {
           return (
             <div className="px-4 py-6 text-center space-y-4">
-              <Lock className="h-12 w-12 text-text-muted mx-auto" />
+              <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
+                <Lock className="h-7 w-7 text-accent-main" />
+              </div>
               <h3 className="text-lg font-bold">{t("premiumRequired")}</h3>
               <p className="text-sm text-text-muted leading-relaxed">
                 {t("premiumRequiredDesc")}

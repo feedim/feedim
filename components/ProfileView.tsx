@@ -28,6 +28,7 @@ const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
 const ProfileVisitorsModal = lazy(() => import("@/components/modals/ProfileVisitorsModal"));
 const FollowRequestsModal = lazy(() => import("@/components/modals/FollowRequestsModal"));
 const MutualFollowersModal = lazy(() => import("@/components/modals/MutualFollowersModal"));
+const ProfileLinksModal = lazy(() => import("@/components/modals/ProfileLinksModal"));
 
 interface Profile {
   user_id: string;
@@ -38,6 +39,7 @@ interface Profile {
   avatar_url?: string;
   bio?: string;
   website?: string;
+  links?: { title: string; url: string }[];
   is_verified?: boolean;
   premium_plan?: string | null;
   is_premium?: boolean;
@@ -120,6 +122,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [visitorsOpen, setVisitorsOpen] = useState(false);
   const [followRequestsOpen, setFollowRequestsOpen] = useState(false);
   const [mutualFollowersOpen, setMutualFollowersOpen] = useState(false);
+  const [profileLinksOpen, setProfileLinksOpen] = useState(false);
   const [totalViews, setTotalViews] = useState<number | null>(null);
 
   // Admin panel
@@ -538,11 +541,24 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           {!isAnyBlocked && (
             <div className="mt-1 space-y-1">
               {profile.bio && <p className="text-[0.84rem] text-text-secondary leading-snug">{profile.bio}</p>}
-              {profile.website && (
-                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[0.8rem] text-accent-main hover:underline">
-                  <LinkIcon className="h-3.5 w-3.5" /> {profile.website.replace(/https?:\/\//, "")}
-                </a>
-              )}
+              {(() => {
+                const resolvedLinks = (Array.isArray(profile.links) && profile.links.length > 0)
+                  ? profile.links
+                  : profile.website ? [{ title: "", url: profile.website }] : [];
+                if (resolvedLinks.length === 0) return null;
+                const firstDomain = (() => {
+                  try { return new URL(resolvedLinks[0].url).hostname.replace(/^www\./, ""); }
+                  catch { return resolvedLinks[0].url.replace(/https?:\/\//, "").split("/")[0]; }
+                })();
+                const extraCount = resolvedLinks.length - 1;
+                return (
+                  <button onClick={() => setProfileLinksOpen(true)} className="flex items-center gap-1 text-[0.8rem] text-accent-main hover:underline">
+                    <LinkIcon className="h-3.5 w-3.5" />
+                    {resolvedLinks[0].title || firstDomain}
+                    {extraCount > 0 && <span className="text-text-muted">{t("otherLinks", { count: extraCount })}</span>}
+                  </button>
+                );
+              })()}
               {profile.created_at && (
                 <span className="flex items-center gap-1 text-[0.78rem] text-text-muted">
                   <Calendar className="h-3 w-3" /> {t("joinedAt", { date: new Date(profile.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) })}
@@ -889,6 +905,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           setEditOpen(false);
           setEditAvatarOnOpen(false);
         }}
+        onReopen={() => setEditOpen(true)}
+        onLinksChange={(links) => setProfile(prev => ({ ...prev, links }))}
         openAvatarPicker={editAvatarOnOpen}
         onSave={(updated) => { setProfile({ ...profile, ...updated }); setEditOpen(false); }}
       />
@@ -946,6 +964,17 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         open={mutualFollowersOpen}
         onClose={() => setMutualFollowersOpen(false)}
         username={profile.username}
+      />
+
+      <ProfileLinksModal
+        open={profileLinksOpen}
+        onClose={() => setProfileLinksOpen(false)}
+        links={
+          (Array.isArray(profile.links) && profile.links.length > 0)
+            ? profile.links
+            : profile.website ? [{ title: "", url: profile.website }] : []
+        }
+        displayName={displayName}
       />
     </div>
   );

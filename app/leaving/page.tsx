@@ -14,6 +14,14 @@ function LeavingContent() {
   const handleOpen = () => {
     if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
+      // Auto-navigate back after opening the link
+      setTimeout(() => {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = "/";
+        }
+      }, 300);
     }
   };
 

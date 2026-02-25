@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Sparkles, Undo2, ChevronRight, Clock, CheckCircle, XCircle, Copyright, Eye, Smartphone, Monitor } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Sparkles, Undo2, ChevronRight, Clock, CheckCircle, XCircle, Copyright, Eye, Smartphone, Monitor, X } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import AppLayout from "@/components/AppLayout";
@@ -170,6 +170,7 @@ function groupByTimeSection(notifications: GroupedNotification[], t: (key: strin
 export default function NotificationsPage() {
   useSearchParams();
   const t = useTranslations("notifications");
+  const tc = useTranslations("common");
   const [activeTab, setActiveTab] = useState<NotifTab>("social");
   const [notifications, setNotifications] = useState<GroupedNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,6 +268,15 @@ export default function NotificationsPage() {
       await fetch("/api/notifications", { method: "PUT" });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch {}
+  };
+
+  const handleDeleteNotification = async (notifIds: number[]) => {
+    // Optimistic removal
+    setNotifications(prev => prev.filter(n => !n.notification_ids.some(id => notifIds.includes(id))));
+    // Fire-and-forget delete for each notification
+    for (const id of notifIds) {
+      fetch(`/api/notifications?id=${id}`, { method: "DELETE", keepalive: true }).catch(() => {});
+    }
   };
 
   const handleTabChange = (tab: NotifTab) => {
@@ -492,19 +502,26 @@ export default function NotificationsPage() {
                           <p className="text-xs text-text-muted mt-0.5">{formatRelativeDate(n.latest_at)}</p>
                         </div>
 
-                        {/* Right: Post thumbnail or unread dot */}
-                        <div className="shrink-0 z-[1] pointer-events-none flex items-center gap-2">
+                        {/* Right: Post thumbnail, unread dot, delete button */}
+                        <div className="shrink-0 z-[1] flex items-center gap-2">
                           {n.post_thumbnail && (
                             <img
                               src={n.post_thumbnail}
                               alt=""
-                              className="h-10 w-10 rounded-[9px] object-cover"
+                              className="h-10 w-10 rounded-[9px] object-cover pointer-events-none"
                               loading="lazy"
                             />
                           )}
                           {!n.is_read && (
-                            <div className="w-2 h-2 rounded-full bg-accent-main shrink-0" />
+                            <div className="w-2 h-2 rounded-full bg-accent-main shrink-0 pointer-events-none" />
                           )}
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteNotification(n.notification_ids); }}
+                            className="opacity-0 group-hover:opacity-100 sm:opacity-0 active:opacity-100 p-1.5 rounded-full hover:bg-bg-tertiary text-text-muted hover:text-error transition z-[2] pointer-events-auto"
+                            aria-label={tc("delete")}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </div>
                     );
