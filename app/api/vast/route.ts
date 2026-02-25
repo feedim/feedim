@@ -2,8 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { VAST_TAG_URL } from "@/lib/adProviders";
 
 /**
+ * Resolve VAST wrapper chain server-side.
+ * Wrappers contain <VASTAdTagURI> pointing to another VAST endpoint.
+ * Following these client-side fails due to CORS, so we resolve here.
+ */
+async function resolveVastChain(
+  url: string,
+  headers: Record<string, string>,
+  depth = 0,
+): Promise<string | null> {
+  if (depth > 5) return null;
+
+  const res = await fetch(url, { cache: "no-store", headers, redirect: "follow" });
+  if (!res.ok) return null;
+
+  const xml = await res.text();
+  if (!xml.trim()) return null;
+
+  // Check for Wrapper → follow VASTAdTagURI server-side
+  const uriMatch = xml.match(
+    /<VASTAdTagURI[^>]*>\s*(?:<!\[CDATA\[\s*)?(https?:\/\/[^\s<\]]+)/i,
+  );
+  if (uriMatch) {
+    return resolveVastChain(uriMatch[1].trim(), headers, depth + 1);
+  }
+
+  return xml;
+}
+
+/**
  * VAST proxy — fetches VAST XML server-side to avoid CORS issues.
- * Forwards real client context (UA, IP, Referer) so ad networks return fill.
+ * Resolves wrapper chains and forwards real client context so ad networks return fill.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,20 +46,14 @@ export async function GET(request: NextRequest) {
     };
     if (ip) headers["X-Forwarded-For"] = ip;
 
-    const res = await fetch(VAST_TAG_URL, {
-      cache: "no-store",
-      headers,
-      redirect: "follow",
-    });
+    const xml = await resolveVastChain(VAST_TAG_URL, headers);
 
-    if (!res.ok) {
+    if (!xml) {
       return new NextResponse("", {
         status: 204,
         headers: { "Content-Type": "application/xml" },
       });
     }
-
-    const xml = await res.text();
 
     return new NextResponse(xml, {
       status: 200,

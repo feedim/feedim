@@ -22,7 +22,6 @@ export default function AdsScriptLoader() {
         : provider.scriptUrl;
       script.async = true;
       script.crossOrigin = "anonymous";
-      script.dataset.adProvider = provider.id;
       document.head.appendChild(script);
     }
   }, []);
