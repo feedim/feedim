@@ -60,7 +60,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
         skipCalledRef.current = true;
         onCompleteRef.current();
       }
-    }, 4000);
+    }, 8000);
 
     parseVast("/api/vast").then(data => {
       clearTimeout(timeout);
@@ -93,7 +93,10 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
 
     const clearGuard = () => clearTimeout(playbackGuard);
 
-    const onCanPlay = () => {
+    let playAttempted = false;
+    const tryPlay = () => {
+      if (playAttempted) return;
+      playAttempted = true;
       // Always try muted first — browsers reliably allow muted autoplay
       v.muted = true;
       v.play().then(clearGuard).catch(() => {
@@ -127,7 +130,8 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       if (pct >= 0.75 && !firedRef.current.has("thirdQuartile")) { firedRef.current.add("thirdQuartile"); firePixels(adData.trackingEvents.thirdQuartile); }
     };
 
-    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("canplay", tryPlay);
+    v.addEventListener("loadeddata", tryPlay);
     v.addEventListener("playing", onPlaying);
     v.addEventListener("ended", onEnded);
     v.addEventListener("error", onError);
@@ -136,7 +140,8 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
 
     return () => {
       clearGuard();
-      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("canplay", tryPlay);
+      v.removeEventListener("loadeddata", tryPlay);
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("ended", onEnded);
       v.removeEventListener("error", onError);
@@ -229,8 +234,10 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
         <video
           ref={videoRef}
           src={adData.videoUrl}
+          muted
           playsInline
           preload="auto"
+          crossOrigin="anonymous"
           className="w-full h-full object-contain"
           onClick={(e) => { e.stopPropagation(); handleClick(); }}
           onContextMenu={(e) => e.preventDefault()}

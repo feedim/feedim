@@ -886,7 +886,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           poster={poster}
           preload={hlsUrl || hasSavedPos ? "metadata" : "auto"}
           playsInline
-          autoPlay={!disabled}
+          autoPlay={!disabled && autoStart !== false}
           muted
           loop={loop || !!disabled}
           suppressHydrationWarning

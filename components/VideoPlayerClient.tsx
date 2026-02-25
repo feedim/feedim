@@ -271,7 +271,7 @@ export default function VideoPlayerClient({
   return (
     <div className="relative sm:rounded-lg sm:overflow-hidden">
       <div className={adActive ? "pointer-events-none" : ""}>
-        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
+        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={!preRollActive && autoStart} />
       </div>
 
       {/* VAST pre-roll video ad */}
