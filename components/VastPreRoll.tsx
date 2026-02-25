@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import { AD_SKIP_DELAY } from "@/lib/constants";
@@ -18,6 +18,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState(AD_SKIP_DELAY);
   const [adPlaying, setAdPlaying] = useState(false);
+  const [sourceIndex, setSourceIndex] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const skipCalledRef = useRef(false);
@@ -25,6 +26,11 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
   const firedRef = useRef<Set<string>>(new Set());
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const mediaSources = useMemo(() => {
+    if (!adData) return [];
+    const urls = adData.mediaUrls?.length ? adData.mediaUrls : [adData.videoUrl];
+    return Array.from(new Set(urls.filter(Boolean)));
+  }, [adData]);
 
   // Premium → skip
   useEffect(() => {
@@ -54,7 +60,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
 
     let cancelled = false;
 
-    // Timeout — if VAST takes > 4s, skip
+    // Timeout — if VAST takes too long, skip
     const timeout = setTimeout(() => {
       if (!cancelled && !skipCalledRef.current) {
         skipCalledRef.current = true;
@@ -69,6 +75,7 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
         if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
         return;
       }
+      setSourceIndex(0);
       setAdData(data);
       setLoading(false);
     });
@@ -76,22 +83,37 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
     return () => { cancelled = true; clearTimeout(timeout); };
   }, [active, user?.isPremium]);
 
-  // Play video ad
-  // Play video ad — with robust fallback if autoplay fails
+  // Play video ad — retry next MediaFile URL when current source times out/errors.
   useEffect(() => {
     if (!adData || !active) return;
     const v = videoRef.current;
     if (!v) return;
-
-    // Safety net: if ad doesn't start playing within 6 seconds, skip it
-    const playbackGuard = setTimeout(() => {
+    if (sourceIndex >= mediaSources.length) {
       if (!skipCalledRef.current) {
         skipCalledRef.current = true;
         onCompleteRef.current();
       }
-    }, 6000);
+      return;
+    }
 
-    const clearGuard = () => clearTimeout(playbackGuard);
+    let started = false;
+    let switched = false;
+    const fallbackOrSkip = () => {
+      if (skipCalledRef.current || switched) return;
+      firePixels(adData.trackingEvents.error);
+      if (!started && sourceIndex + 1 < mediaSources.length) {
+        switched = true;
+        setSourceIndex(sourceIndex + 1);
+        return;
+      }
+      skipCalledRef.current = true;
+      onCompleteRef.current();
+    };
+
+    // Per-source startup timeout (network/CDN timeout => next MediaFile).
+    const sourceGuard = setTimeout(fallbackOrSkip, 7000);
+
+    const clearGuard = () => clearTimeout(sourceGuard);
 
     let playAttempted = false;
     const tryPlay = () => {
@@ -99,13 +121,10 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       playAttempted = true;
       // Always try muted first — browsers reliably allow muted autoplay
       v.muted = true;
-      v.play().then(clearGuard).catch(() => {
-        // Even muted play failed — skip ad entirely
-        clearGuard();
-        if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
-      });
+      v.play().catch(fallbackOrSkip);
     };
     const onPlaying = () => {
+      started = true;
       clearGuard();
       setAdPlaying(true);
       if (!firedRef.current.has("impression")) {
@@ -119,8 +138,15 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
     };
     const onError = () => {
+      if (!started) {
+        fallbackOrSkip();
+        return;
+      }
       clearGuard();
       if (!skipCalledRef.current) { skipCalledRef.current = true; onCompleteRef.current(); }
+    };
+    const onStalled = () => {
+      if (!started) fallbackOrSkip();
     };
     const onTimeUpdate = () => {
       if (!v.duration) return;
@@ -135,7 +161,9 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
     v.addEventListener("playing", onPlaying);
     v.addEventListener("ended", onEnded);
     v.addEventListener("error", onError);
+    v.addEventListener("stalled", onStalled);
     v.addEventListener("timeupdate", onTimeUpdate);
+    v.muted = true;
     v.load();
 
     return () => {
@@ -145,9 +173,10 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("ended", onEnded);
       v.removeEventListener("error", onError);
+      v.removeEventListener("stalled", onStalled);
       v.removeEventListener("timeupdate", onTimeUpdate);
     };
-  }, [adData, active]);
+  }, [adData, active, mediaSources, sourceIndex]);
 
   // Countdown
   useEffect(() => {
@@ -230,10 +259,10 @@ export default function VastPreRoll({ active, onComplete }: VastPreRollProps) {
       )}
 
       {/* VAST Video Ad */}
-      {adData && (
+      {adData && mediaSources.length > 0 && (
         <video
           ref={videoRef}
-          src={adData.videoUrl}
+          src={mediaSources[sourceIndex]}
           muted
           playsInline
           preload="auto"

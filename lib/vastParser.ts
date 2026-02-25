@@ -5,6 +5,7 @@
 
 export interface VastAd {
   videoUrl: string;
+  mediaUrls: string[];
   duration: number;
   clickUrl?: string;
   impressionUrls: string[];
@@ -77,23 +78,33 @@ async function parseAdElement(ad: Element, depth: number): Promise<VastAd | null
   const [h, m, s] = durStr.split(":").map(Number);
   const duration = (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
 
-  // Media files — prefer MP4, then by resolution
-  const files: { url: string; type: string; w: number }[] = [];
+  // Media files — prefer MP4/progressive; lower resolutions start faster on weak links
+  const files: { url: string; type: string; w: number; delivery: string }[] = [];
   linear.querySelectorAll("MediaFile").forEach(el => {
     const url = el.textContent?.trim();
     const type = el.getAttribute("type") || "";
     const w = parseInt(el.getAttribute("width") || "0");
-    if (url) files.push({ url, type, w });
+    const delivery = (el.getAttribute("delivery") || "").toLowerCase();
+    if (url) files.push({ url, type, w, delivery });
   });
 
   files.sort((a, b) => {
-    const aMp4 = a.type.includes("mp4") ? 1 : 0;
-    const bMp4 = b.type.includes("mp4") ? 1 : 0;
+    const aType = a.type.toLowerCase();
+    const bType = b.type.toLowerCase();
+    const aMp4 = aType.includes("mp4") ? 1 : 0;
+    const bMp4 = bType.includes("mp4") ? 1 : 0;
     if (aMp4 !== bMp4) return bMp4 - aMp4;
-    return b.w - a.w;
+
+    const aProg = a.delivery === "progressive" ? 1 : 0;
+    const bProg = b.delivery === "progressive" ? 1 : 0;
+    if (aProg !== bProg) return bProg - aProg;
+
+    // Prefer smaller files first to reduce startup timeouts on ad CDNs.
+    return a.w - b.w;
   });
 
-  if (files.length === 0) return null;
+  const mediaUrls = Array.from(new Set(files.map(file => file.url)));
+  if (mediaUrls.length === 0) return null;
 
   // Click-through URL
   const clickUrl = linear.querySelector("VideoClicks ClickThrough")?.textContent?.trim()
@@ -116,7 +127,14 @@ async function parseAdElement(ad: Element, depth: number): Promise<VastAd | null
     if (url) (trackingEvents["click"] ??= []).push(url);
   });
 
-  return { videoUrl: files[0].url, duration, clickUrl, impressionUrls, trackingEvents };
+  return {
+    videoUrl: mediaUrls[0],
+    mediaUrls,
+    duration,
+    clickUrl,
+    impressionUrls,
+    trackingEvents,
+  };
 }
 
 /** Fire tracking pixel(s) non-blocking. */
