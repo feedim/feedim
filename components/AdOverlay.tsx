@@ -174,6 +174,13 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
               if (status === "filled") {
                 setAdLoaded(true);
                 observerRef.current?.disconnect();
+              } else if (status === "unfilled") {
+                // No ad available — auto-skip immediately
+                observerRef.current?.disconnect();
+                if (!skipCalledRef.current) {
+                  skipCalledRef.current = true;
+                  onSkip();
+                }
               }
             }
           }
@@ -199,6 +206,20 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
     skipCalledRef.current = true;
     onSkip();
   }, [onSkip]);
+
+  // Auto-skip if ad fails to load within 5 seconds (fallback for no status)
+  useEffect(() => {
+    if (!active || user?.isPremium || adLoaded) return;
+
+    const timeout = setTimeout(() => {
+      if (!adLoaded && !skipCalledRef.current) {
+        skipCalledRef.current = true;
+        onSkip();
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [active, adLoaded, user?.isPremium, onSkip]);
 
   // Auto-skip after 60 seconds if user doesn't manually skip
   const autoSkipRef = useRef<ReturnType<typeof setTimeout>>(undefined);

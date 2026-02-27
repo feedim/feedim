@@ -17,6 +17,7 @@ import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import ModerationBadge from "@/components/ModerationBadge";
 import { getTranslations } from "next-intl/server";
+import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -314,6 +315,7 @@ export default async function NotePage({ params }: PageProps) {
           authorUsername={author?.username}
           authorUserId={author?.user_id}
           authorName={authorName}
+          authorRole={author?.role}
           isOwnPost={isOwnPost}
           postSlug={post.slug}
           portalToHeader
@@ -322,7 +324,7 @@ export default async function NotePage({ params }: PageProps) {
 
         <div className="flex items-center gap-2 mb-4">
           {author?.avatar_url ? (
-            <img src={author.avatar_url} alt={authorName} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+            <img src={author.avatar_url} alt={authorName} loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover bg-bg-tertiary" />
           ) : (
             <img className="default-avatar-auto h-10 w-10 rounded-full object-cover shrink-0" alt="" loading="lazy" />
           )}
@@ -333,17 +335,32 @@ export default async function NotePage({ params }: PageProps) {
             </div>
             <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
               {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
+              {post.visibility && (
+                <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+              )}
             </div>
           </div>
           <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
         </div>
 
-        <p className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3">
-          {noteText}
-        </p>
+        <p
+          className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3"
+          dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
+        />
 
         {(post.view_count || 0) > 0 && (
           <p className="text-[0.75rem] text-text-muted mb-5">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
+        )}
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2 mb-2">
+            {tags.map((tag: { id: number; name: string; slug: string }) => (
+              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
         )}
 
         <PostInteractionBar
@@ -363,18 +380,7 @@ export default async function NotePage({ params }: PageProps) {
           authorUsername={author?.username}
           likedByBottom
           contentType={post.content_type}
-        >
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 mb-2">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
-                  #{tag.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </PostInteractionBar>
+        />
 
         <RelatedPosts
           posts={authorContent}

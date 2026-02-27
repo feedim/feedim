@@ -14,6 +14,8 @@ import { useEffect, useRef, useCallback } from "react";
  * Sends beacon to /api/posts/{id}/view on exit (same endpoint as read tracker).
  * Maps: read_duration → watch_duration, read_percentage → watch_percentage
  */
+const MAX_VIDEO_SESSION = 900; // 15 minutes max session cap
+
 export default function VideoViewTracker({ postId }: { postId: number }) {
   const sent = useRef(false);
   const watchTime = useRef(0);           // Total seconds played
@@ -99,6 +101,10 @@ export default function VideoViewTracker({ postId }: { postId: number }) {
     tickInterval.current = setInterval(() => {
       if (isPlaying.current) {
         watchTime.current += 1;
+        // Max session cap: auto-send beacon after 15 minutes
+        if (watchTime.current >= MAX_VIDEO_SESSION) {
+          sendView();
+        }
       }
     }, 1000);
 
@@ -107,7 +113,7 @@ export default function VideoViewTracker({ postId }: { postId: number }) {
 
       const onPlay = () => {
         isPlaying.current = true;
-        interactionCount.current++;
+        // Don't increment interactionCount — autoplay triggers this
       };
       const onPause = () => {
         isPlaying.current = false;

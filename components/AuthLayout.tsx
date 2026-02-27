@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
+import { smartBack } from "@/lib/smartBack";
 
 interface AuthLayoutProps {
   title: string;
@@ -14,16 +15,7 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
   const router = useRouter();
   const t = useTranslations("auth");
 
-  const handleBack = () => {
-    try {
-      const ref = document.referrer;
-      if (ref && new URL(ref).origin === window.location.origin) {
-        router.back();
-        return;
-      }
-    } catch {}
-    window.location.href = "/";
-  };
+  const handleBack = () => smartBack(router, "/");
 
   return (
     <div className="min-h-screen px-4 py-12 relative">

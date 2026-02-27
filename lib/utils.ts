@@ -161,10 +161,14 @@ export function getDateLocale(locale: string): string {
   return ({ tr: 'tr-TR', az: 'az-AZ', en: 'en-US' } as Record<string, string>)[locale] || 'tr-TR';
 }
 
+export function isValidEmail(email: string): boolean {
+  return /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(email);
+}
+
 export function getPostUrl(slug: string, contentType?: string) {
   switch (contentType) {
     case "video": return `/video/${slug}`;
-    case "moment": return `/moments/${slug}`;
+    case "moment": return `/moments?s=${slug}`;
     case "note": return `/note/${slug}`;
     default: return `/${slug}`;
   }

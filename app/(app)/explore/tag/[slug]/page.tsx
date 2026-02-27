@@ -333,7 +333,7 @@ export default function TagPage() {
   const renderPostList = (items: TagPost[]) => (
     items.length > 0 ? (
       <>
-        <div className="flex flex-col gap-[40px]">
+        <div className="flex flex-col gap-[40px] mt-[10px]">
           {items.map(post => (
             <PostCard
               key={post.id}
@@ -384,7 +384,7 @@ export default function TagPage() {
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient px-3 sm:px-4 overflow-x-auto scrollbar-hide">
+      <div className="z-20 px-3 sm:px-4 overflow-x-auto scrollbar-hide">
         <div className="flex gap-0 min-w-max">
           {tabs.map(tab => (
             <button
@@ -411,7 +411,7 @@ export default function TagPage() {
             <span className="loader mx-auto" style={{ width: 24, height: 24 }} />
           </div>
         ) : searchResults && searchResults.length > 0 ? (
-          <div className="mt-1 flex flex-col gap-[40px]">
+          <div className="mt-1 flex flex-col gap-[40px] mt-[10px]">
             {searchResults.map(post => <PostCard key={post.id} post={post} />)}
           </div>
         ) : searchResults ? (

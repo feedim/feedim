@@ -7,6 +7,7 @@ import { Check, PenLine, Trash2, BarChart3, Shield, ShieldOff, Archive, Eye } fr
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useAuthModal } from "@/components/AuthModal";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
 import { useUser } from "@/components/UserContext";
 import Modal from "./Modal";
 import ReportModal from "./ReportModal";
@@ -25,9 +26,10 @@ interface PostMoreModalProps {
   postSlug?: string;
   contentType?: "post" | "video" | "moment";
   onDeleteSuccess?: () => void;
+  authorRole?: string;
 }
 
-export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug, contentType, onDeleteSuccess }: PostMoreModalProps) {
+export default function PostMoreModal({ open, onClose, postId, postUrl, authorUsername, authorUserId, authorName, onShare, isOwnPost, postSlug, contentType, onDeleteSuccess, authorRole }: PostMoreModalProps) {
   const t = useTranslations("modals");
   const tc = useTranslations("common");
   const [copied, setCopied] = useState(false);
@@ -42,6 +44,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   const isOwn = isOwnPost ?? (!!currentUser && !!authorUserId && currentUser.id === authorUserId);
   const isAdmin = currentUser?.role === "admin";
   const isMod = currentUser?.role === "moderator" || isAdmin;
+  const authorIsStaff = authorRole === "admin" || authorRole === "moderator";
 
   const handleCopyUrl = async () => {
     const fullUrl = `${window.location.origin}${postUrl}`;
@@ -100,13 +103,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
         if (onDeleteSuccess) {
           onDeleteSuccess();
         } else {
-          // Default: go back if history exists, otherwise navigate to dashboard
-          emitNavigationStart();
-          if (window.history.length > 2) {
-            router.back();
-          } else {
-            router.push("/");
-          }
+          smartBack(router);
         }
         // Fire-and-forget background delete
         fetch(`/api/posts/${postId}`, { method: "DELETE", keepalive: true }).catch(() => {});
@@ -151,7 +148,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   return (
     <>
       <Modal open={open} onClose={onClose} size="sm" title={t("postMore")} infoText={t("postMoreInfoText")}>
-        <div className="py-2 px-2.5">
+        <div className="py-2 px-2.5 space-y-[3px]">
           <button onClick={handleCopyUrl} className={btnClass}>
             <span className={labelClass}>{copied ? t("copied") : t("copyLink")}</span>
             {copied ? (
@@ -194,7 +191,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             </>
           )}
 
-          {!isOwn && (
+          {!isOwn && !authorIsStaff && (
             <>
               <div className="border-t border-border-primary mx-4 my-1" />
               <button onClick={handleReport} className={btnClass}>

@@ -17,7 +17,6 @@ import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { useUser } from "@/components/UserContext";
 import { fetchWithCache } from "@/lib/fetchWithCache";
-import { FeedAdSlot } from "@/components/AdBanner";
 const PremiumWelcomeModal = lazy(() => import("@/components/modals/PremiumWelcomeModal"));
 
 interface FeedPost {
@@ -246,16 +245,15 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
         <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
       ) : visiblePosts.length > 0 ? (
         <>
-          <div className="flex flex-col gap-[40px]">
+          <div className="flex flex-col gap-[40px] mt-[10px]">
             {visiblePosts.map((post, index) => (
               <div key={post.id}>
                 <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} onDelete={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />
                 {index === 4 && isLoggedIn && <SuggestionCarousel />}
-                <FeedAdSlot index={index} />
               </div>
             ))}
           </div>
-          <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
+          <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} minLoadingMs={1000} />
         </>
       ) : (
         <EmptyState

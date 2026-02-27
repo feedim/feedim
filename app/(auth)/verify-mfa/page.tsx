@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
+import DigitInput from "@/components/DigitInput";
 import { Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -16,6 +17,7 @@ export default function VerifyMfaPage() {
   const [sending, setSending] = useState(true);
   const [cooldown, setCooldown] = useState(0);
   const [email, setEmail] = useState("");
+  const [hasResent, setHasResent] = useState(false);
   const router = useRouter();
   const supabase = createClient();
   const otpSent = useRef(false);
@@ -45,13 +47,15 @@ export default function VerifyMfaPage() {
   const sendOtp = async (targetEmail: string) => {
     setSending(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: targetEmail,
-        options: { shouldCreateUser: false },
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail }),
       });
-      if (error) {
+      if (res.status === 429) {
+        feedimAlert("error", t('otpRateLimited'));
+      } else if (!res.ok) {
         feedimAlert("error", t('mfaCodeSendFailed'));
-        if (process.env.NODE_ENV === "development") console.log("OTP error:", error.message);
       } else {
         feedimAlert("success", t('mfaCodeSent'));
         setCooldown(60);
@@ -70,7 +74,9 @@ export default function VerifyMfaPage() {
       return;
     }
 
+    const savedCode = code;
     setLoading(true);
+    let success = false;
     try {
       const { error } = await supabase.auth.verifyOtp({
         email,
@@ -84,6 +90,7 @@ export default function VerifyMfaPage() {
         return;
       }
 
+      success = true;
       sessionStorage.removeItem("mfa_email");
 
       // Record session
@@ -101,18 +108,20 @@ export default function VerifyMfaPage() {
       feedimAlert("error", te('generic'));
     } finally {
       setLoading(false);
+      if (!success) setCode(savedCode);
     }
   };
 
   const handleResend = () => {
-    if (cooldown > 0 || !email) return;
+    if (cooldown > 0 || hasResent || !email) return;
+    setHasResent(true);
     sendOtp(email);
   };
 
   return (
     <AuthLayout
       title={t('mfaCode')}
-      subtitle={email ? t('mfaEmailHint', { email }) : t('mfaWaiting')}
+      subtitle={email ? t('mfaEmailHint', { email: (() => { const [l, d] = email.split("@"); if (!d) return email; const [dn, ...ext] = d.split("."); return `${l.length <= 2 ? l : l.slice(0, 2) + "****"}@${dn.length <= 1 ? dn : dn.slice(0, 1) + "***"}.${ext.join(".")}`; })() }) : t('mfaWaiting')}
     >
       <form onSubmit={handleVerify} className="space-y-4">
         <div className="flex items-center justify-center gap-2 text-accent-main mb-2">
@@ -120,21 +129,7 @@ export default function VerifyMfaPage() {
           <span className="text-sm font-semibold">{t('mfaTitle')}</span>
         </div>
 
-        <div>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="00000000"
-            value={code}
-            onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "").slice(0, 8);
-              setCode(val);
-            }}
-            maxLength={8}
-            autoFocus
-            className="input-modern w-full text-center text-2xl font-mono tracking-[0.5em]"
-          />
-        </div>
+        <DigitInput value={code} onChange={setCode} autoFocus />
 
         <button
           type="submit"
@@ -152,8 +147,8 @@ export default function VerifyMfaPage() {
         ) : (
           <button
             onClick={handleResend}
-            disabled={cooldown > 0}
-            className="text-sm text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={hasResent || cooldown > 0}
+            className="text-sm font-semibold text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cooldown > 0
               ? t('mfaResendCountdown', { seconds: cooldown })
@@ -162,7 +157,7 @@ export default function VerifyMfaPage() {
         )}
       </div>
 
-      <p className="text-center text-text-muted text-xs mt-4">
+      <p className="text-center text-text-muted text-[0.68rem] mt-4">
         {t('mfaEmailExpiry')}
         <br />
         {t('mfaCheckSpam')}

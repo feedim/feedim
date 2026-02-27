@@ -28,21 +28,50 @@ export async function GET(request: NextRequest) {
       }
 
       const tab = request.nextUrl.searchParams.get("tab");
-      let countQuery = supabase
+      let query = supabase
         .from("notifications")
-        .select("id", { count: "exact", head: true })
+        .select("id, actor_id, type")
         .eq("user_id", user.id)
         .eq("is_read", false)
         .gte("created_at", thirtyDaysAgo);
 
       if (tab === "system") {
-        countQuery = countQuery.in("type", NOTIFICATION_SYSTEM_TYPES as unknown as string[]);
+        query = query.in("type", NOTIFICATION_SYSTEM_TYPES as unknown as string[]);
       } else if (tab === "social") {
-        countQuery = countQuery.in("type", NOTIFICATION_SOCIAL_TYPES as unknown as string[]);
+        query = query.in("type", NOTIFICATION_SOCIAL_TYPES as unknown as string[]);
       }
 
-      const { count } = await countQuery;
-      return NextResponse.json({ unread_count: count || 0 });
+      const { data: unreadNotifs } = await query;
+      if (!unreadNotifs || unreadNotifs.length === 0) {
+        return NextResponse.json({ unread_count: 0 });
+      }
+
+      // Filter out inactive actors (frozen, deleted, etc.)
+      const actorIds = [...new Set(unreadNotifs.filter(n => n.actor_id).map(n => n.actor_id))];
+      let inactiveActors = new Set<string>();
+      if (actorIds.length > 0) {
+        const admin = createAdminClient();
+        const { data: profiles } = await admin
+          .from("profiles")
+          .select("user_id, status")
+          .in("user_id", actorIds);
+        inactiveActors = new Set(
+          (profiles || []).filter(p => p.status !== "active").map(p => p.user_id)
+        );
+      }
+
+      // Filter out blocked users
+      const { data: blocks } = await supabase
+        .from("blocks")
+        .select("blocked_id, blocker_id")
+        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+      const blockedIds = new Set((blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id));
+
+      const count = unreadNotifs.filter(n =>
+        !n.actor_id || (!inactiveActors.has(n.actor_id) && !blockedIds.has(n.actor_id))
+      ).length;
+
+      return NextResponse.json({ unread_count: count });
     }
 
     const page = parseInt(request.nextUrl.searchParams.get("page") || "1");

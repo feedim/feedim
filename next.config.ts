@@ -41,12 +41,11 @@ const nextConfig: NextConfig = {
       { source: '/dashboard/write', destination: '/create', permanent: true },
       // Payment rename
       { source: '/dashboard/payment', destination: '/app-payment', permanent: true },
-      // Dashboard → root (general catch-all)
-      { source: '/dashboard', destination: '/', permanent: true },
-      { source: '/dashboard/:path*', destination: '/:path*', permanent: true },
       // Post → root slug
       { source: '/post/:slug/moderation', destination: '/:slug/moderation', permanent: true },
       { source: '/post/:slug', destination: '/:slug', permanent: true },
+      // Moments detail → feed view (moments are designed for scroll experience)
+      { source: '/moments/:slug', destination: '/moments?s=:slug', permanent: false },
     ];
   },
   // Security headers to protect against common web vulnerabilities

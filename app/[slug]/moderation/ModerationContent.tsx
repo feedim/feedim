@@ -39,7 +39,7 @@ export default function ModerationContent({ decisionCode, minimal }: Props) {
       {!minimal && (
         <>
           <p className="text-xs text-text-muted">
-            İçerik insan moderasyon ekibimiz tarafından kontrol edildi. Karar no ile <span className="font-medium text-text-primary">help.feedim.com</span> adresi üzerinden itiraz talebi oluşturabilirsiniz.
+            İçerik insan moderasyon ekibimiz tarafından kontrol edildi. Karar no ile <span className="font-medium text-text-primary">www.feedim.com/help/</span> adresi üzerinden itiraz talebi oluşturabilirsiniz.
           </p>
           <Link href="/help/moderation" className="t-btn bg-text-primary text-bg-primary flex items-center justify-center w-full">
             Daha fazla bilgi

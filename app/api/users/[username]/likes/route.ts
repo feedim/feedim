@@ -7,12 +7,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const admin = createAdminClient();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = 12;
+  const limit = 10;
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -72,4 +73,7 @@ export async function GET(
     posts,
     hasMore: (likes || []).length >= limit,
   });
+  } catch (err) {
+    return safeError(err);
+  }
 }

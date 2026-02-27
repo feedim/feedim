@@ -7,6 +7,8 @@ import { formatCount, encodeId } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import ShareIcon from "@/components/ShareIcon";
 import VideoPlayer from "@/components/VideoPlayer";
+import { useTranslations } from "next-intl";
+import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 
 interface MomentCardProps {
   moment: {
@@ -63,6 +65,7 @@ interface MomentCardProps {
 }
 
 export default memo(function MomentCard({ moment, isActive = false, loadVideo = false, onLike, onComment, onShare, onSave, onOptions, onLikesClick, liked = false, saved = false, muted = true, onToggleMute, preloadHint }: MomentCardProps) {
+  const t = useTranslations("tooltip");
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -294,6 +297,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
       {/* Mute button — top right */}
       <button
         onClick={toggleMute}
+        aria-label={muted ? t("unmute") : t("mute")}
         className="absolute top-3 right-3 z-30 w-11 h-11 md:w-10 md:h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center touch-manipulation active:scale-90 transition-transform"
       >
         {muted ? <VolumeX className="h-5 w-5 text-white" /> : <Volume2 className="h-5 w-5 text-white" />}
@@ -303,7 +307,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
       <div className="absolute right-1 bottom-4 z-20 flex flex-col items-center gap-4 touch-manipulation">
         {/* Like */}
         <div className="flex flex-col items-center gap-0.5" style={{ rowGap: 2 }}>
-          <button onClick={(e) => { e.stopPropagation(); onLike?.(); }} data-hotkey="like" className="active:scale-90 transition-transform">
+          <button onClick={(e) => { e.stopPropagation(); onLike?.(); }} data-hotkey="like" aria-label={t("like")} className="active:scale-90 transition-transform">
             <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
               <Heart className={`h-[27px] w-[27px] md:h-[23px] md:w-[23px] transition-transform ${liked ? "fill-red-500 text-red-500 scale-110" : "text-white"}`} />
             </div>
@@ -318,7 +322,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         </div>
 
         {/* Comment */}
-        <button onClick={(e) => { e.stopPropagation(); onComment?.(); }} data-hotkey="comments" className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
+        <button onClick={(e) => { e.stopPropagation(); onComment?.(); }} data-hotkey="comments" aria-label={t("comment")} className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
             <MessageCircle className="h-[27px] w-[27px] md:h-[23px] md:w-[23px] text-white" />
           </div>
@@ -328,7 +332,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         </button>
 
         {/* Save */}
-        <button onClick={(e) => { e.stopPropagation(); onSave?.(); }} data-hotkey="save" className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
+        <button onClick={(e) => { e.stopPropagation(); onSave?.(); }} data-hotkey="save" aria-label={t("save")} className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
             <Bookmark className={`h-[27px] w-[27px] md:h-[23px] md:w-[23px] transition-transform ${saved ? "fill-white text-white scale-110" : "text-white"}`} />
           </div>
@@ -338,7 +342,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         </button>
 
         {/* Share */}
-        <button onClick={(e) => { e.stopPropagation(); onShare?.(); }} data-hotkey="share" className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
+        <button onClick={(e) => { e.stopPropagation(); onShare?.(); }} data-hotkey="share" aria-label={t("share")} className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform" style={{ rowGap: 2 }}>
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
             <ShareIcon className="h-[27px] w-[27px] md:h-[23px] md:w-[23px] text-white" />
           </div>
@@ -348,7 +352,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         </button>
 
         {/* Options */}
-        <button onClick={(e) => { e.stopPropagation(); onOptions?.(); }} className="flex flex-col items-center active:scale-90 transition-transform">
+        <button onClick={(e) => { e.stopPropagation(); onOptions?.(); }} aria-label={t("options")} className="flex flex-col items-center active:scale-90 transition-transform">
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
             <MoreHorizontal className="h-[27px] w-[27px] md:h-[23px] md:w-[23px] text-white" />
           </div>
@@ -360,7 +364,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         <div className="flex items-center gap-2 mb-1.5">
           <Link href={`/u/${author?.username}`} className="flex items-center gap-2 min-w-0">
             {author?.avatar_url ? (
-              <img src={author.avatar_url} alt="" className="rounded-full object-cover border border-white/30" style={{ width: 30, height: 30 }} loading="lazy" />
+              <img src={author.avatar_url} alt="" loading="lazy" decoding="async" className="rounded-full object-cover border border-white/30 bg-bg-tertiary" style={{ width: 30, height: 30 }} />
             ) : (
               <img className="default-avatar-auto rounded-full object-cover border border-white/30" style={{ width: 30, height: 30 }} alt="" loading="lazy" />
             )}
@@ -387,9 +391,8 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
             ref={titleRef}
             className={`text-white text-[0.82rem] font-medium leading-snug ${expanded ? "" : "line-clamp-2"}`}
             style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
-          >
-            {moment.title}
-          </p>
+            dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(moment.title) }}
+          />
           {isClamped && !expanded && (
             <button
               onClick={(e) => { e.stopPropagation(); setExpanded(true); }}

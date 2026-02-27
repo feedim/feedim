@@ -60,7 +60,7 @@ export async function POST(
     if (!allowed) {
       logRateLimitHit(admin, user.id, 'like', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
       return NextResponse.json(
-        { error: `Günlük beğeni limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
+        { error: `Topluluğumuzu korumak adına günlük beğeni limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
         { status: 429 }
       );
     }

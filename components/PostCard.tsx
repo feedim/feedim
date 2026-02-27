@@ -16,6 +16,8 @@ import PostInteractionBar from "@/components/PostInteractionBar";
 import { useUser } from "@/components/UserContext";
 import { useAuthModal } from "@/components/AuthModal";
 import { useTranslations, useLocale } from "next-intl";
+import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
+import FeedItemViewTracker from "@/components/FeedItemViewTracker";
 
 // Global: follow status cache per username
 const followCache = new Map<string, boolean | "loading">();
@@ -31,16 +33,16 @@ function setActivePreview(id: number | null) {
 const NOTE_TRUNCATE_LENGTH = 280;
 const NOTE_TRUNCATE_LINES = 5;
 
-function NoteContent({ text, viewCount }: { text: string; viewCount?: number }) {
+function NoteContent({ text }: { text: string }) {
   const t = useTranslations();
-  const locale = useLocale();
   const [expanded, setExpanded] = useState(false);
   const isLong = (text?.length || 0) > NOTE_TRUNCATE_LENGTH || (text?.split("\n").length || 0) > NOTE_TRUNCATE_LINES;
   return (
     <>
-      <p className={`text-[0.82rem] leading-[1.45] text-text-primary whitespace-pre-line ${!expanded && isLong ? "line-clamp-5" : ""}`}>
-        {text}
-      </p>
+      <p
+        className={`text-[0.95rem] leading-[1.45] text-text-primary whitespace-pre-line ${!expanded && isLong ? "line-clamp-5" : ""}`}
+        dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(text) }}
+      />
       {isLong && !expanded && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(true); }}
@@ -48,9 +50,6 @@ function NoteContent({ text, viewCount }: { text: string; viewCount?: number }) 
         >
           {t('common.readMore')}
         </button>
-      )}
-      {(viewCount ?? 0) > 0 && (
-        <span className="text-[0.7rem] text-text-muted mt-1">{formatCount(viewCount!, locale)} {t('common.views')}</span>
       )}
     </>
   );
@@ -74,6 +73,7 @@ interface PostCardProps {
     video_url?: string;
     blurhash?: string | null;
     published_at?: string;
+    visibility?: string;
     is_nsfw?: boolean;
     moderation_category?: string | null;
     profiles?: {
@@ -150,7 +150,11 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
     }
   }, [author?.username, requireAuth]);
   const thumbRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Feed-level view tracking for video/moment/note (not post — post requires entering detail page)
+  const trackFeedView = (isVideo || isNote) && !!post.id;
   const MAX_PREVIEW_DURATION = 240; // 4 dakika
 
   // Listen for global active preview changes — pause if another card starts
@@ -226,15 +230,22 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
 
   return (
     <div>
-    <article className="pt-[4px] pb-[9px] pl-[10px] pr-[12px] mx-[5px] hover:bg-bg-secondary rounded-[24px] transition-colors overflow-hidden">
+    {trackFeedView && (
+      <FeedItemViewTracker
+        postId={post.id}
+        contentType={post.content_type as "video" | "moment" | "note"}
+        containerRef={cardRef}
+      />
+    )}
+    <article ref={cardRef} className="pt-[4px] pb-[9px] pl-[10px] pr-[12px] mx-[5px] hover:bg-bg-secondary rounded-[24px] transition-colors overflow-hidden">
       <div className="flex gap-2 items-stretch">
         {/* Avatar — fixed left column with timeline line */}
         <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
           {author?.avatar_url ? (
-            <img src={author.avatar_url} alt={author?.username || ""} className="h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full object-cover relative z-[1]" loading="lazy" />
+            <img src={author.avatar_url} alt={author?.username || ""} loading="lazy" decoding="async" className="h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full object-cover relative z-[1] bg-bg-tertiary" />
           ) : (
             <div className="h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full overflow-hidden relative z-[1]">
-              <img className="default-avatar-auto h-full w-full rounded-full object-cover" alt="" loading="lazy" />
+              <img className="default-avatar-auto h-full w-full rounded-full object-cover" alt="" />
             </div>
           )}
           <div className="flex-1 w-px mt-1" style={{ backgroundColor: "var(--border-primary)" }} />
@@ -253,6 +264,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                   <span className="text-text-muted/40 text-xs">·</span>
                   <button
                     onClick={handleFollow}
+                    aria-label={t('common.follow')}
                     className="text-[0.75rem] font-semibold text-accent-main hover:text-accent-main/80 transition pointer-events-auto shrink-0"
                   >
                     {t('common.follow')}
@@ -277,6 +289,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                   authorUsername={author?.username}
                   authorUserId={author?.user_id}
                   authorName={author?.full_name || author?.username}
+                  authorRole={author?.role}
                   postSlug={post.slug}
                   contentType={post.content_type as "post" | "video" | "moment" | undefined}
                   onDeleteSuccess={() => { if (onDelete) onDelete(post.id); else setIsDeleted(true); }}
@@ -286,7 +299,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           </div>
 
           {isNote ? (
-            <NoteContent text={post.excerpt || post.title} viewCount={post.view_count} />
+            <NoteContent text={post.excerpt || post.title} />
           ) : (
             <>
               {/* Title */}
@@ -335,6 +348,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                       {!showCTA && (
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMuted(m => !m); }}
+                          aria-label={muted ? t('tooltip.unmute') : t('tooltip.mute')}
                           className="absolute bottom-2.5 left-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto hover:bg-black/80 transition"
                         >
                           {muted ? (
@@ -399,10 +413,19 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
             </>
           )}
 
-          {/* View count (non-note posts) */}
-          {!isNote && (post.view_count ?? 0) > 0 && (
-            <span className="relative z-[1] text-[0.7rem] text-text-muted mt-1">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
-          )}
+          {/* View count + visibility */}
+          <div className="relative z-[1] flex items-center gap-2 mt-1">
+            {(post.view_count ?? 0) > 0 && (
+              <span className="text-[0.7rem] text-text-muted">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
+            )}
+            {post.visibility && (
+              <span className="text-[0.65rem] text-text-muted">
+                · {post.visibility === 'followers' ? t('post.visibilityFollowers') :
+                   post.visibility === 'only_me' ? t('post.visibilityOnlyMe') :
+                   t('post.visibilityPublic')}
+              </span>
+            )}
+          </div>
 
           {/* NSFW moderation badge */}
           {post.is_nsfw && (

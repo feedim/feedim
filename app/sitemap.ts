@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { locales, defaultLocale } from '@/i18n/config'
+import { getPostUrl } from '@/lib/utils'
 
 function buildAlternates(baseUrl: string, path: string) {
   const languages: Record<string, string> = {}
@@ -67,18 +68,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { data: posts } = await supabase
       .from('posts')
-      .select('slug, updated_at, published_at')
+      .select('slug, content_type, updated_at, published_at')
       .eq('status', 'published')
       .order('published_at', { ascending: false })
 
     if (posts) {
-      postPages = posts.map(post => ({
-        url: `${baseUrl}/${encodeURIComponent(post.slug)}`,
-        lastModified: post.updated_at || post.published_at || now,
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-        alternates: buildAlternates(baseUrl, `/${encodeURIComponent(post.slug)}`),
-      }))
+      postPages = posts.map(post => {
+        const path = getPostUrl(post.slug, post.content_type)
+        return {
+          url: `${baseUrl}${path}`,
+          lastModified: post.updated_at || post.published_at || now,
+          changeFrequency: 'weekly' as const,
+          priority: 0.8,
+          alternates: buildAlternates(baseUrl, path),
+        }
+      })
     }
   } catch {
     // Fail silently — static pages will still be included

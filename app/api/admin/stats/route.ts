@@ -24,13 +24,25 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const [usersRes, paymentsRes, todayPaymentsRes, projectsRes, recentUsersRes] = await Promise.all([
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [usersRes, paymentsRes, todayPaymentsRes, projectsRes, recentUsersRes, platformViewsRes, contentTypeRes, recentViewsRes] = await Promise.all([
       admin.from("profiles").select("*", { count: "exact", head: true }),
       admin.from("coin_payments").select("price_paid, coins_purchased", { count: "exact" }).eq("status", "completed"),
       admin.from("coin_payments").select("price_paid, coins_purchased").eq("status", "completed").gte("completed_at", new Date().toISOString().split("T")[0]),
       admin.from("projects").select("*", { count: "exact", head: true }).eq("is_published", true),
       admin.from("profiles").select("name, surname, full_name, coin_balance, created_at").order("created_at", { ascending: false }).limit(10),
+      admin.from("post_views").select("id", { count: "exact", head: true }),
+      admin.from("posts").select("content_type").eq("status", "published"),
+      admin.from("post_views").select("id", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
     ]);
+
+    // Content type distribution
+    const contentByType: Record<string, number> = {};
+    for (const p of contentTypeRes.data || []) {
+      const ct = p.content_type || "post";
+      contentByType[ct] = (contentByType[ct] || 0) + 1;
+    }
 
     return NextResponse.json({
       totalUsers: usersRes.count || 0,
@@ -41,6 +53,9 @@ export async function GET() {
       todayPayments: todayPaymentsRes.data?.length || 0,
       publishedPages: projectsRes.count || 0,
       recentUsers: recentUsersRes.data || [],
+      totalPlatformViews: platformViewsRes.count || 0,
+      contentByType,
+      viewsLast30d: recentViewsRes.count || 0,
     });
   } catch (error) {
     if (process.env.NODE_ENV === "development") console.error("Admin stats error:", error);

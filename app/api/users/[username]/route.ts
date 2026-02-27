@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
 
@@ -92,6 +94,18 @@ export async function GET(
       .single();
     isBlocked = !!block;
 
+    // Check if profile follows current user
+    const { data: followsBack } = await supabase
+      .from("follows")
+      .select("id")
+      .eq("follower_id", profile.user_id)
+      .eq("following_id", user.id)
+      .single();
+    if (followsBack) {
+      // @ts-ignore
+      profile.follows_me = true;
+    }
+
     // Check if TARGET blocked current user (reverse direction)
     const { data: blockedBy } = await supabase
       .from("blocks")
@@ -156,4 +170,7 @@ export async function GET(
       ...(coin_balance !== undefined && { coin_balance }),
     },
   });
+  } catch (err) {
+    return safeError(err);
+  }
 }

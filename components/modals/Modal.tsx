@@ -487,17 +487,17 @@ export default function Modal({
         {/* Handle — sadece bottom sheet tiplerinde göster */}
         {showDragHandle && (
           <div
-            className="flex justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+            className="flex justify-center cursor-grab active:cursor-grabbing touch-none select-none mb-1"
             {...dragHandleProps}
           >
-            <div className="w-[72px] h-1 mt-3.5 -mb-1.5 rounded-full bg-text-muted/40" />
+            <div className="w-[72px] h-1 mt-3.5 mb-[3px] rounded-full bg-text-muted/40" />
           </div>
         )}
 
         {/* Header */}
         {!hideHeader && (
           <div
-            className={`flex items-center justify-between px-4 py-3 shrink-0 ${enableHeaderDrag ? "touch-none select-none" : ""}`}
+            className={`flex items-center justify-between px-4 pt-1.5 pb-[3px] shrink-0 ${enableHeaderDrag ? "touch-none select-none" : ""}`}
             {...headerDragProps}
           >
             <div className="w-16 flex items-center">

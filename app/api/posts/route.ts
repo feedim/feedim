@@ -5,7 +5,7 @@ import { createNotification } from '@/lib/notifications';
 import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { getProfileSignals } from '@/lib/modSignals';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
-import { VALIDATION, MOMENT_MAX_DURATION, CONTENT_TYPES } from '@/lib/constants';
+import { VALIDATION, MOMENT_MAX_DURATION, CONTENT_TYPES, MAX_DRAFTS } from '@/lib/constants';
 import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
 import { checkNsfwContent } from '@/lib/nsfwCheck';
 import { checkTextContent, checkMetadataContent } from '@/lib/moderation';
@@ -13,6 +13,7 @@ import { checkCopyrightUnified, computeContentHash, stripHtmlToText, normalizeFo
 import { sendEmail, getEmailIfEnabled, moderationReviewEmail } from '@/lib/email';
 import { revalidateTag } from 'next/cache';
 import { after } from 'next/server';
+import { extractMentions } from '@/lib/mentionRenderer';
 import sanitizeHtml from 'sanitize-html';
 import { getTranslations } from 'next-intl/server';
 import { safeError } from '@/lib/apiError';
@@ -49,12 +50,27 @@ export async function POST(request: NextRequest) {
     const isMoment = content_type === 'moment';
     const isNote = content_type === 'note';
 
-    // Validate title (optional for moments)
-    if (!isMoment && (!title || typeof title !== 'string' || title.trim().length === 0)) {
+    // Draft limit check — only when creating a new draft
+    if (status === 'draft') {
+      const { count: draftCount } = await admin
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', user.id)
+        .eq('status', 'draft');
+      if ((draftCount || 0) >= MAX_DRAFTS) {
+        return NextResponse.json(
+          { error: tErrors('draftLimitReached', { max: MAX_DRAFTS }) },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate title (optional for moments, relaxed for drafts)
+    if (!isMoment && status !== 'draft' && (!title || typeof title !== 'string' || title.trim().length === 0)) {
       return NextResponse.json({ error: tErrors('titleRequired') }, { status: 400 });
     }
     const trimmedTitle = (title || '').trim();
-    if (!isNote && !isMoment && trimmedTitle.length < VALIDATION.postTitle.min) {
+    if (status !== 'draft' && !isNote && !isMoment && trimmedTitle.length < VALIDATION.postTitle.min) {
       return NextResponse.json({ error: tErrors('titleMinLength', { min: VALIDATION.postTitle.min }) }, { status: 400 });
     }
     if (trimmedTitle.length > VALIDATION.postTitle.max) {
@@ -68,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate note content
-    if (isNote) {
+    if (isNote && status !== 'draft') {
       const noteText = (content || '').replace(/<[^>]+>/g, '').trim();
       if (!noteText) {
         return NextResponse.json({ error: tErrors('noteContentRequired') }, { status: 400 });
@@ -78,8 +94,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate content (video posts can have empty content/description)
-    if (!isVideo && !isNote && (!content || typeof content !== 'string' || content.trim().length === 0)) {
+    // Validate content (video posts can have empty content/description, drafts are relaxed)
+    if (status !== 'draft' && !isVideo && !isNote && (!content || typeof content !== 'string' || content.trim().length === 0)) {
       return NextResponse.json({ error: tErrors('contentRequired') }, { status: 400 });
     }
 
@@ -99,7 +115,7 @@ export async function POST(request: NextRequest) {
     const slug = `${slugBase}-${slugHash}`;
 
     // Sanitize content — no iframe support
-    const sanitizedContent = isNote
+    let sanitizedContent = isNote
       ? sanitizeHtml(content || '', { allowedTags: ['br', 'p', 'a'], allowedAttributes: { 'a': ['href', 'target', 'rel'] } })
       : isVideo
       ? sanitizeHtml(content || '', { allowedTags: ['br', 'strong', 'p'], allowedAttributes: {} })
@@ -107,6 +123,9 @@ export async function POST(request: NextRequest) {
           allowedTags: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
           allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], '*': ['class'] },
         });
+
+    // Görseli saran <a> etiketlerini kaldır — görsellerde link olamaz
+    sanitizedContent = sanitizedContent.replace(/<a[^>]*>\s*(<img[^>]*\/?>)\s*<\/a>/gi, '$1');
 
     // Server-side content validation for published posts (skip for video and note posts)
     if (status === 'published' && !isVideo && !isNote) {
@@ -511,32 +530,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Copyright strike counter — increment on any copyright flag (≥60%) — admin immune
-    if (copyrightFlagged && !isAdmin) {
-      try {
-        const { data: profile } = await admin
-          .from('profiles')
-          .select('copyright_strike_count')
-          .eq('user_id', user.id)
-          .single();
-        const newCount = (profile?.copyright_strike_count || 0) + 1;
-        const strikeUpdate: Record<string, unknown> = { copyright_strike_count: newCount };
-        // 10 strikes → copyright revoked + account goes to moderation
-        if (newCount >= 10) {
-          strikeUpdate.status = 'moderation';
-          try {
-            const strikeCode = String(Math.floor(100000 + Math.random() * 900000));
-            await admin.from('moderation_decisions').insert({
-              target_type: 'user', target_id: user.id, decision: 'moderation', reason: `Telif hakkı ihlali: ${newCount} strike`, moderator_id: 'system', decision_code: strikeCode,
-            });
-          } catch {}
-        }
-        await admin.from('profiles').update(strikeUpdate).eq('user_id', user.id);
-      } catch (err) {
-        if (process.env.NODE_ENV === "development") console.error('[Copyright] Strike increment failed:', err);
-      }
-    }
-
     // Handle tags
     if (tags && Array.isArray(tags) && tags.length > 0) {
       const tagIds: number[] = [];
@@ -633,8 +626,51 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Mention notifications for published posts
     if (postStatus === 'published') {
-      revalidateTag('posts', { expire: 0 });
+      try {
+        // Extract mentions from title and content
+        const mentionSource = isNote
+          ? (content || '')
+          : isMoment
+          ? trimmedTitle
+          : `${trimmedTitle} ${(content || '').replace(/<[^>]+>/g, '')}`;
+        const mentionedUsernames = extractMentions(mentionSource, 3);
+
+        for (const mentionedUsername of mentionedUsernames) {
+          const { data: mentionedProfile } = await admin
+            .from('profiles')
+            .select('user_id')
+            .eq('username', mentionedUsername)
+            .single();
+
+          if (mentionedProfile && mentionedProfile.user_id !== user.id) {
+            // Verify follow relationship (either direction)
+            const { count } = await admin
+              .from('follows')
+              .select('id', { count: 'exact', head: true })
+              .or(
+                `and(follower_id.eq.${user.id},following_id.eq.${mentionedProfile.user_id}),and(follower_id.eq.${mentionedProfile.user_id},following_id.eq.${user.id})`
+              );
+
+            if (count && count > 0) {
+              await createNotification({
+                admin,
+                user_id: mentionedProfile.user_id,
+                actor_id: user.id,
+                type: 'mention',
+                object_type: 'post',
+                object_id: post.id,
+                content: trimmedTitle?.slice(0, 80) || (content || '').replace(/<[^>]+>/g, '').slice(0, 80),
+              });
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (postStatus === 'published') {
+      revalidateTag('posts');
     }
 
     const response: Record<string, unknown> = { post };

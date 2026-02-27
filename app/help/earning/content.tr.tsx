@@ -17,12 +17,13 @@ export default function ContentTr() {
         </p>
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Profesyonel hesap türü:</strong> Hesabınızın profesyonel (yazar) hesap türünde olması gerekmektedir</li>
+            <li><strong>Profesyonel hesap:</strong> Hesabınızın profesyonel (creator veya business) hesap türünde olması gerekmektedir</li>
+            <li><strong>Para kazanma onayı:</strong> Ayarlar &gt; Para Kazanma bölümünden başvuru yapmanız ve moderatör onayı almanız gerekmektedir</li>
             <li><strong>Premium üyelik:</strong> Aktif bir Premium aboneliğinizin bulunması gerekmektedir</li>
           </ul>
         </div>
         <p>
-          Bu iki koşulu sağlayan kullanıcılar, içeriklerinin okunmasından otomatik olarak kazanç elde etmeye başlar.
+          Bu koşulları sağlayan ve başvurusu onaylanan kullanıcılar, içeriklerinin okunmasından otomatik olarak kazanç elde etmeye başlar.
         </p>
 
         {/* ── Kazanç Kaynakları ── */}

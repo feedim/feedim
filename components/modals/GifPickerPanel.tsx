@@ -133,7 +133,7 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
         {loading ? (
           <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : gifs.length === 0 ? (
-          <div className="flex items-center justify-center h-[200px] text-sm text-text-muted">
+          <div className="flex items-center justify-center h-[200px] text-[0.74rem] text-text-muted">
             GIF bulunamadi
           </div>
         ) : (

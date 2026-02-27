@@ -116,7 +116,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
                 <button
                   key={r.id}
                   onClick={() => setSelectedReason(r.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition text-left text-sm font-medium ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-[6px] transition text-left text-sm font-medium ${
                     selectedReason === r.id
                       ? "bg-accent-main/10 text-accent-main"
                       : "hover:bg-bg-tertiary text-text-primary"

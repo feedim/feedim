@@ -16,6 +16,10 @@ import EmojiPickerPanel from "./EmojiPickerPanel";
 import GifPickerPanel from "./GifPickerPanel";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { isBlockedContent } from "@/lib/blockedWords";
+import { VALIDATION } from "@/lib/constants";
+import { useMention } from "@/lib/useMention";
+import MentionDropdown from "@/components/MentionDropdown";
+import { renderMentionsAsHTML, countMentions } from "@/lib/mentionRenderer";
 
 
 interface Comment {
@@ -67,6 +71,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const [reportTarget, setReportTarget] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showReplies, setShowReplies] = useState<Set<number>>(new Set());
+  const [loadingReplies, setLoadingReplies] = useState<Set<number>>(new Set());
 
   // Animation + Emoji/GIF
   const [newCommentId, setNewCommentId] = useState<number | null>(null);
@@ -75,19 +80,23 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const [pendingGif, setPendingGif] = useState<{ url: string; preview: string } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
+  // Like debounce: prevent double-tapping same comment
+  const likingRef = useRef<Set<number>>(new Set());
+
+  // AbortController for race condition prevention
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Per-tab cache for instant tab switching
+  const tabCacheRef = useRef<Record<string, { comments: Comment[]; hasMore: boolean }>>({});
+
   // Mention system
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionUsers, setMentionUsers] = useState<{ user_id: string; username: string; avatar_url?: string; is_verified?: boolean; premium_plan?: string | null; role?: string }[]>([]);
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [mentionPos, setMentionPos] = useState(-1);
-  const mentionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   const { requireAuth } = useAuthModal();
   const { user: ctxUser } = useUser();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Plan bazli yorum karakter limiti: max/business 500, digerleri 250
-  const maxCommentLength = (ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business") ? 500 : 250;
+  const maxCommentLength = (ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business") ? VALIDATION.comment.maxPremium : VALIDATION.comment.max;
 
   const resizeTextarea = useCallback(() => {
     const textarea = inputRef.current;
@@ -110,10 +119,16 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   useEffect(() => {
     if (open) {
+      setComments([]);
+      setLoading(true);
       setPage(1);
-      loadComments(1, sortBy).then(() => {
-        // Scroll to target comment if specified
+      tabCacheRef.current = {};
+      loadComments(1, sortBy, { target: targetCommentId }).then((res) => {
         if (targetCommentId) {
+          // If target is a reply, expand its parent's replies first
+          if (res?.targetParentId) {
+            setShowReplies(prev => new Set([...prev, res.targetParentId!]));
+          }
           setTimeout(() => {
             const el = document.getElementById(`comment-${targetCommentId}`);
             if (el) {
@@ -121,10 +136,15 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
               el.classList.add("bg-accent-main/10");
               setTimeout(() => el.classList.remove("bg-accent-main/10"), 2000);
             }
-          }, 300);
+          }, 500);
         }
       });
       loadLikedComments();
+    } else {
+      abortRef.current?.abort();
+      tabCacheRef.current = {};
+      setComments([]);
+      setLoading(true);
     }
   }, [open, targetCommentId]);
 
@@ -134,21 +154,50 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     }
   }, [replyTo]);
 
-  const loadComments = async (pageNum: number, sort: string = sortBy) => {
-    if (pageNum === 1) setLoading(true); else setLoadingMore(true);
+  const loadComments = async (pageNum: number, sort: string = sortBy, { isTabSwitch = false, target }: { isTabSwitch?: boolean; target?: number | null } = {}): Promise<{ targetParentId?: number } | void> => {
+    // Abort any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    if (isTabSwitch && pageNum === 1) {
+      // Tab switch: show loader while fetching
+      setComments([]);
+      setLoading(true);
+    } else if (pageNum === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      const res = await fetch(`/api/posts/${postId}/comments?page=${pageNum}&sort=${sort}`);
+      let url = `/api/posts/${postId}/comments?page=${pageNum}&sort=${sort}`;
+      if (target) url += `&target=${target}`;
+      const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
       if (res.ok) {
         if (pageNum === 1) {
           setComments(data.comments || []);
+          tabCacheRef.current[sort] = { comments: data.comments || [], hasMore: data.hasMore };
         } else {
-          setComments(prev => [...prev, ...(data.comments || [])]);
+          setComments(prev => {
+            const updated = [...prev, ...(data.comments || [])];
+            tabCacheRef.current[sort] = { comments: updated, hasMore: data.hasMore };
+            return updated;
+          });
         }
         setHasMore(data.hasMore);
+        if (data.userLikedIds?.length) {
+          setLikedComments(prev => {
+            const next = new Set(prev);
+            data.userLikedIds.forEach((id: number) => next.add(id));
+            return next;
+          });
+        }
+        return { targetParentId: data.targetParentId };
       }
-    } catch {
-      // Silent
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -159,7 +208,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     if (sort === sortBy) return;
     setSortBy(sort);
     setPage(1);
-    loadComments(1, sort);
+    setShowReplies(new Set());
+    setOpenMenuId(null);
+    loadComments(1, sort, { isTabSwitch: true });
   };
 
   const loadLikedCommentsRef = useRef(false);
@@ -175,79 +226,36 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   };
 
   // — Mention helpers —
-  const searchMentionUsers = useCallback(async (query: string) => {
-    if (query.length < 1) { setMentionUsers([]); return; }
-    try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      setMentionUsers(data.users || []);
-      setMentionIndex(0);
-    } catch { setMentionUsers([]); }
-  }, []);
-
   const handleCommentChange = (value: string) => {
     setNewComment(value);
-    const textarea = inputRef.current;
-    if (!textarea) return;
     resizeTextarea();
-    const cursorPos = textarea.selectionStart;
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const mentionMatch = textBeforeCursor.match(/(^|[^A-Za-z0-9._-])@(\w*)$/);
-    if (mentionMatch) {
-      const query = mentionMatch[2];
-      setMentionPos(cursorPos - query.length - 1);
-      setMentionQuery(query);
-      if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current);
-      mentionTimerRef.current = setTimeout(() => searchMentionUsers(query), 200);
-    } else {
-      setMentionUsers([]);
-      setMentionQuery("");
-      setMentionPos(-1);
-    }
+    mention.handleTextChange(value, inputRef.current);
   };
 
   const selectMentionUser = (username: string) => {
-    if (mentionPos < 0) return;
-    const before = newComment.substring(0, mentionPos);
-    const after = newComment.substring(mentionPos + 1 + mentionQuery.length);
-    const newValue = before + "@" + username + " " + after;
-    setNewComment(newValue);
-    setMentionUsers([]);
-    setMentionQuery("");
-    setMentionPos(-1);
-    setTimeout(() => {
-      if (inputRef.current) {
-        const pos = before.length + username.length + 2;
-        inputRef.current.selectionStart = pos;
-        inputRef.current.selectionEnd = pos;
-        inputRef.current.focus();
-      }
-    }, 0);
+    mention.selectUser(username, newComment, (v) => {
+      setNewComment(v);
+      setTimeout(() => {
+        if (inputRef.current) {
+          const pos = v.indexOf("@" + username) + username.length + 2;
+          inputRef.current.selectionStart = pos;
+          inputRef.current.selectionEnd = pos;
+          inputRef.current.focus();
+        }
+      }, 0);
+    });
   };
 
   const handleMentionKeyDown = (e: React.KeyboardEvent) => {
-    if (mentionUsers.length > 0) {
-      if (e.key === "ArrowDown") {
+    if (mention.mentionUsers.length > 0) {
+      if ((e.key === "Enter" || e.key === "Tab") && mention.mentionUsers[mention.mentionIndex]) {
         e.preventDefault();
-        setMentionIndex(i => (i < mentionUsers.length - 1 ? i + 1 : 0));
+        selectMentionUser(mention.mentionUsers[mention.mentionIndex].username);
         return;
       }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setMentionIndex(i => (i > 0 ? i - 1 : mentionUsers.length - 1));
-        return;
-      }
-      if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        selectMentionUser(mentionUsers[mentionIndex].username);
-        return;
-      }
-      if (e.key === "Escape") {
-        setMentionUsers([]);
-        return;
-      }
+      if (mention.handleKeyDown(e)) return;
     }
-    if (e.key === "Enter" && !e.shiftKey && mentionUsers.length === 0) {
+    if (e.key === "Enter" && !e.shiftKey && mention.mentionUsers.length === 0) {
       e.preventDefault();
       handleSubmit(e as unknown as React.FormEvent);
     }
@@ -338,12 +346,18 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
     // Background API call
     try {
-      const res = await fetch(`/api/posts/${postId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      const reqInit = { method: "POST" as const, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+      let res = await fetch(`/api/posts/${postId}/comments`, reqInit);
+
+      // Retry once on 401 — session may need refresh after login redirect
+      if (res.status === 401) {
+        const sb = createClient();
+        await sb.auth.refreshSession();
+        res = await fetch(`/api/posts/${postId}/comments`, reqInit);
+      }
+
+      let data: Record<string, any>;
+      try { data = await res.json(); } catch { data = {}; }
 
       if (!res.ok) {
         // Rollback
@@ -423,7 +437,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       }, 0);
     }
     setShowEmojiPicker(false);
-    setMentionUsers([]);
+    mention.clearMention();
   };
 
   // — GIF handler —
@@ -434,8 +448,10 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   };
 
   const handleLikeComment = useCallback(async (commentId: number) => {
+    if (likingRef.current.has(commentId)) return;
     if (!ctxUser) { const user = await requireAuth(); if (!user) return; }
 
+    likingRef.current.add(commentId);
     const isLiked = likedComments.has(commentId);
     setLikedComments(prev => {
       const next = new Set(prev);
@@ -452,7 +468,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     };
     updateCount(isLiked ? -1 : 1);
 
-    fetch(`/api/posts/${postId}/comments/${commentId}/like`, { method: isLiked ? "DELETE" : "POST", keepalive: true }).then(res => {
+    const likeUrl = `/api/posts/${postId}/comments/${commentId}/like`;
+    const likeMethod = isLiked ? "DELETE" : "POST";
+    fetch(likeUrl, { method: likeMethod, keepalive: true }).then(async res => {
+      if (res.status === 401) {
+        const sb = createClient();
+        await sb.auth.refreshSession();
+        res = await fetch(likeUrl, { method: likeMethod, keepalive: true });
+      }
       if (!res.ok) {
         updateCount(isLiked ? 1 : -1);
         setLikedComments(prev => {
@@ -468,8 +491,35 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         if (isLiked) next.add(commentId); else next.delete(commentId);
         return next;
       });
+    }).finally(() => {
+      likingRef.current.delete(commentId);
     });
   }, [likedComments, postId, ctxUser, requireAuth]);
+
+  const REPLY_PAGE_SIZE = 10;
+
+  const loadMoreReplies = useCallback(async (commentId: number) => {
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+    const loaded = comment.replies?.length || 0;
+
+    setLoadingReplies(prev => new Set(prev).add(commentId));
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments?parent_id=${commentId}&offset=${loaded}&limit=${REPLY_PAGE_SIZE}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.replies?.length) {
+          setComments(prev => prev.map(c => {
+            if (c.id === commentId) {
+              return { ...c, replies: [...(c.replies || []), ...data.replies] };
+            }
+            return c;
+          }));
+        }
+      }
+    } catch {}
+    setLoadingReplies(prev => { const next = new Set(prev); next.delete(commentId); return next; });
+  }, [comments, postId]);
 
   const toggleRepliesVisibility = (commentId: number) => {
     setShowReplies(prev => {
@@ -480,17 +530,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   };
 
   const renderMentionContent = useCallback((text: string) => {
-    // Escape HTML entities first to prevent XSS
-    const escaped = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-    return escaped.replace(
-      /@([A-Za-z0-9._-]+)/g,
-      '<a href="/u/$1" class="text-accent-main font-semibold hover:underline">@$1</a>'
-    );
+    return renderMentionsAsHTML(text);
   }, []);
 
   const commentFormFooter = (
@@ -507,31 +547,6 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           >
             {tc("cancel")}
           </button>
-        </div>
-      )}
-
-      {/* Mention dropdown */}
-      {mentionUsers.length > 0 && (
-        <div className="bg-bg-elevated bg-solid border border-border-primary rounded-xl shadow-xl mb-2 max-h-[200px] overflow-y-auto">
-          {mentionUsers.map((u, i) => (
-            <button
-              key={u.user_id}
-              onClick={() => selectMentionUser(u.username)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition text-sm ${
-                i === mentionIndex ? "bg-accent-main/10" : "hover:bg-bg-tertiary"
-              }`}
-            >
-              {u.avatar_url ? (
-                <img src={u.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
-              ) : (
-                <img className="default-avatar-auto h-7 w-7 rounded-full object-cover shrink-0" alt="" />
-              )}
-              <div className="flex flex-col">
-                <span className="font-medium">@{u.username}</span>
-              </div>
-              {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} role={u.role} />}
-            </button>
-          ))}
         </div>
       )}
 
@@ -556,12 +571,19 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         {/* Avatar */}
         <div className="shrink-0 mb-[7px]">
           {ctxUser?.avatarUrl ? (
-            <img src={ctxUser.avatarUrl} alt="" className="h-[34px] w-[34px] rounded-full object-cover" />
+            <img src={ctxUser.avatarUrl} alt="" className="h-[39px] w-[39px] rounded-full object-cover" />
           ) : (
-            <img className="default-avatar-auto h-[34px] w-[34px] rounded-full object-cover" alt="" />
+            <img className="default-avatar-auto h-[39px] w-[39px] rounded-full object-cover" alt="" />
           )}
         </div>
         <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary relative">
+          {/* Mention dropdown — positioned above textarea */}
+          <MentionDropdown
+            users={mention.mentionUsers}
+            activeIndex={mention.mentionIndex}
+            onSelect={selectMentionUser}
+            className="absolute bottom-full left-0 right-0 mb-2"
+          />
           <textarea
             data-hotkey="comment-input"
             ref={inputRef}
@@ -575,12 +597,12 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             placeholder={pendingGif ? t("gifSelected") : t("sharePlaceholder")}
             rows={1}
             className={cn(
-              "comment-textarea flex-1 py-[13px] pl-[18px] pr-[10px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] text-text-readable min-h-[35px] placeholder:text-text-muted",
+              "comment-textarea flex-1 py-[13px] pl-[18px] pr-[10px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] min-h-[35px] text-text-readable placeholder:text-text-muted",
               pendingGif && "opacity-20 cursor-default"
             )}
+            style={{ fontFamily: 'inherit' }}
             onInput={resizeTextarea}
             onKeyDown={handleMentionKeyDown}
-            style={{ fontFamily: 'inherit' }}
           />
           {newComment.length >= 100 && (
             <span className="absolute left-[18px] bottom-[6px] text-[0.66rem] tabular-nums text-text-muted/60 pointer-events-none">
@@ -634,7 +656,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   return (
     <>
-    <Modal open={open} onClose={onClose} title={t("commentsTitle", { count: totalCount })} size="md" infoText={t("commentsInfoText")} footer={commentFormFooter} fullHeight>
+    <Modal open={open} onClose={onClose} title={t("commentsTitle")} size="md" infoText={t("commentsInfoText")} footer={commentFormFooter} fullHeight>
         {/* Sort tabs - sticky */}
         {comments.length > 0 && (
           <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-1 px-4 py-1">
@@ -695,7 +717,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                     postSlug={postSlug}
                     onToggleMenu={setOpenMenuId}
                     onLike={handleLikeComment}
-                    onReply={(id, name) => setReplyTo({ id, name })}
+                    onReply={(id, name) => { if (id < 0) return; setReplyTo({ id, name }); }}
                     onDelete={handleDeleteComment}
                     onReport={async (id) => { const user = await requireAuth(); if (user) setReportTarget(id); }}
                     renderMentionContent={renderMentionContent}
@@ -703,23 +725,26 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
                   {/* Toggle replies button */}
                   {comment.reply_count > 0 && (
-                    <button
-                      onClick={() => toggleRepliesVisibility(comment.id)}
-                      className="py-[7px] px-[29px] bg-transparent border-none text-[0.84rem] text-accent-main cursor-pointer font-medium hover:underline"
-                    >
-                      {showReplies.has(comment.id)
-                        ? t("hideReplies", { count: comment.reply_count })
-                        : t("showReplies", { count: comment.reply_count })
-                      }
-                    </button>
+                    <div className={`flex items-center gap-0 ml-[54px] my-[2px]`}>
+                      {!showReplies.has(comment.id) && <span className="w-6 border-t border-text-muted/30" />}
+                      <button
+                        onClick={() => toggleRepliesVisibility(comment.id)}
+                        className="py-[5px] px-[10px] bg-transparent border-none text-[0.84rem] text-text-muted cursor-pointer font-semibold hover:text-text-primary transition"
+                      >
+                        {showReplies.has(comment.id)
+                          ? t("hideReplies", { count: comment.reply_count })
+                          : t("showReplies", { count: comment.reply_count })
+                        }
+                      </button>
+                    </div>
                   )}
 
                   {/* Replies container */}
                   {showReplies.has(comment.id) && comment.replies && comment.replies.length > 0 && (
-                    <div className="pl-[11px] ml-[13px]">
+                    <div className="pl-[41px] pb-[10px]">
                       {comment.replies.filter(r => r.author_id === currentUserId || !isBlockedContent(r.content)).map(reply => (
+                        <div key={reply.id} id={`comment-${reply.id}`}>
                         <CommentCard
-                          key={reply.id}
                           comment={reply}
                           isReply
                           likedComments={likedComments}
@@ -732,7 +757,23 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                           onReport={async (id) => { const user = await requireAuth(); if (user) setReportTarget(id); }}
                           renderMentionContent={renderMentionContent}
                         />
+                        </div>
                       ))}
+                      {/* Load more replies */}
+                      {comment.reply_count > (comment.replies?.length || 0) && (
+                        <div className="ml-[30px] my-[2px]">
+                          <button
+                            onClick={() => loadMoreReplies(comment.id)}
+                            disabled={loadingReplies.has(comment.id)}
+                            className="py-[5px] px-[10px] bg-transparent border-none text-[0.84rem] text-text-muted cursor-pointer font-semibold hover:text-text-primary transition disabled:opacity-50"
+                          >
+                            {loadingReplies.has(comment.id)
+                              ? <span className="loader" style={{ width: 14, height: 14 }} />
+                              : t("loadMoreReplies")
+                            }
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>
@@ -754,7 +795,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       const menuUsername = menuComment.profiles?.username || "anonim";
       return (
         <Modal open={true} onClose={() => setOpenMenuId(null)} hideHeader size="sm" zIndex="z-[99991]">
-          <div className="py-1 px-2">
+          <div className="py-1 px-2 space-y-[3px]">
             {!menuComment.is_nsfw && (
               <>
                 <button
@@ -764,7 +805,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                     onClose();
                     window.location.href = `/u/${username}`;
                   }}
-                  className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
+                  className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] font-medium text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                 >
                   <User className="h-[18px] w-[18px] text-text-muted" />
                   {t("goToProfile")}
@@ -777,20 +818,20 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                       setOpenMenuId(null);
                       feedimAlert("success", t("commentLinkCopied"));
                     }}
-                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
+                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] font-medium text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                   >
                     <Link2 className="h-[18px] w-[18px] text-text-muted" />
                     {t("copyCommentLink")}
                   </button>
                 )}
-                {menuComment.content_type !== "gif" && menuComment.content && (
+                {menuComment.content_type !== "gif" && (menuComment.content || "").trim() !== "" && (
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(menuComment.content);
+                      navigator.clipboard.writeText(menuComment.content || "");
                       setOpenMenuId(null);
                       feedimAlert("success", t("textCopied"));
                     }}
-                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
+                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] font-medium text-text-primary hover:bg-bg-tertiary transition w-full text-left rounded-[12px]"
                   >
                     <Copy className="h-[18px] w-[18px] text-text-muted" />
                     {t("copyText")}
@@ -799,7 +840,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 {currentUserId !== menuComment.author_id && (
                   <button
                     onClick={() => { setOpenMenuId(null); setReportTarget(menuComment.id); }}
-                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
+                    className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] font-medium text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
                   >
                     <Flag className="h-[18px] w-[18px]" />
                     {t("reportComment")}
@@ -810,7 +851,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             {(currentUserId === menuComment.author_id || ctxUser?.role === 'admin') && (
               <button
                 onClick={() => { setOpenMenuId(null); handleDeleteComment(menuComment.id); }}
-                className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
+                className="flex items-center gap-3 px-4 py-3.5 text-[0.88rem] font-medium text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
               >
                 <Trash2 className="h-[18px] w-[18px]" />
                 {ctxUser?.role === 'admin' && currentUserId !== menuComment.author_id ? t("deleteCommentAdmin") : t("deleteComment")}
@@ -877,25 +918,25 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
   return (
     <div className={cn(
       "flex flex-row w-full py-[6px] px-[11px]",
-      isReply && "pl-[11px] ml-[13px] border-l-2 border-border-primary"
+      isReply && "pl-[11px] border-l-2 border-border-primary"
     )}>
       {/* Avatar */}
       <div className="shrink-0 mt-[9px]">
         <a href={`/u/${profileUsername}`}>
           {comment.profiles?.avatar_url ? (
-            <img src={comment.profiles.avatar_url} alt="" className="h-[34px] w-[34px] rounded-full object-cover" />
+            <img src={comment.profiles.avatar_url} alt="" loading="lazy" decoding="async" className="h-[39px] w-[39px] rounded-full object-cover bg-bg-tertiary" />
           ) : (
-            <img className="default-avatar-auto h-[34px] w-[34px] rounded-full object-cover" alt="" />
+            <img className="default-avatar-auto h-[39px] w-[39px] rounded-full object-cover" alt="" />
           )}
         </a>
       </div>
 
       {/* Content */}
-      <div className="flex flex-col items-start flex-1 min-w-0 ml-[9px]">
+      <div className="flex flex-col items-start flex-1 min-w-0 ml-[9px] mr-[6px]">
         {/* Author row + action buttons */}
         <div className="flex w-full justify-between mt-[5px]">
           <div className="flex items-center gap-1.5">
-            <a href={`/u/${profileUsername}`} className="flex items-center gap-1 text-[0.8rem] font-bold leading-tight text-text-primary hover:underline">
+            <a href={`/u/${profileUsername}`} className="flex items-center gap-1 text-[0.8rem] font-semibold leading-tight text-text-primary hover:underline">
               <span className="line-clamp-1">{displayName}</span>
               {comment.profiles?.is_verified && <VerifiedBadge variant={getBadgeVariant(comment.profiles?.premium_plan)} role={comment.profiles?.role} />}
             </a>
@@ -929,7 +970,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           <>
             <div
               className={cn(
-                "w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px] mt-[2px] mx-[1px]",
+                "w-full max-w-full text-[0.82rem] leading-[1.5] text-text-readable select-none break-words pr-[26px] mx-[1px]",
                 !expanded && isLong && "line-clamp-6"
               )}
               dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}
@@ -947,22 +988,22 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
 
         {/* Bottom action bar */}
         {!comment.is_nsfw && (
-          <div className="flex items-center w-full h-[28px] justify-between pr-3 mt-[2px]">
+          <div className="flex items-center w-full h-[28px] justify-between pr-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => onLike(comment.id)}
                 className={cn(
-                  "flex items-center gap-1 text-xs transition",
+                  "flex items-center gap-1 text-[0.78rem] font-medium transition",
                   likedComments.has(comment.id) ? "text-error" : "text-text-muted hover:text-error"
                 )}
               >
                 <Heart className={cn("h-[14px] w-[14px]", likedComments.has(comment.id) && "fill-current")} />
-                <span>{comment.like_count > 0 ? formatCount(comment.like_count) : t("like")}</span>
+                <span>{(comment.like_count > 0 || likedComments.has(comment.id)) ? formatCount(Math.max(comment.like_count, likedComments.has(comment.id) ? 1 : 0)) : t("like")}</span>
               </button>
               {!isReply && onReply && (
                 <button
                   onClick={() => onReply(comment.id, profileUsername)}
-                  className="text-[0.84rem] text-text-muted hover:text-text-primary transition font-medium"
+                  className="text-[0.78rem] text-text-muted hover:text-text-primary transition font-medium"
                 >
                   {t("reply")}
                 </button>

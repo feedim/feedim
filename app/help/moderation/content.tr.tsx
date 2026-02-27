@@ -15,7 +15,7 @@ export default function ContentTr() {
         <p>
           Feedim moderasyon sistemi iki temel bileşenden oluşur: yapay zeka (AI) taraması ve insan moderasyonu.
           Her içerik yayınlandığında otomatik olarak AI taramasından geçer. AI, içeriği politika ihlalleri
-          açısından analiz eder ve gerektiğinde içeriği tespit eder veya doğrudan engeller.
+          açısından analiz eder ve gerektiğinde içeriği tespit ederek moderasyon ekibine iletir.
         </p>
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <div className="flex items-start gap-3">
@@ -29,7 +29,7 @@ export default function ContentTr() {
             <span className="text-accent-main font-bold text-xs mt-0.5 shrink-0">2.</span>
             <div>
               <p className="font-semibold text-text-primary">Tespit ve/veya Engelleme</p>
-              <p className="text-text-muted text-xs mt-0.5">Politika ihlali tespit edilirse içerik gizlenir veya doğrudan engellenir.</p>
+              <p className="text-text-muted text-xs mt-0.5">Politika ihlali tespit edilirse içerik gizlenir ve moderasyon ekibine iletilir.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">

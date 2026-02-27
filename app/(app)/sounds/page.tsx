@@ -9,6 +9,7 @@ import AppLayout from "@/components/AppLayout";
 import { formatCount } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import EmptyState from "@/components/EmptyState";
+import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import SoundPreviewButton from "@/components/SoundPreviewButton";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +38,7 @@ export default function SoundsPage() {
   const loadSounds = useCallback(async (sortBy: SortTab, cursor?: string) => {
     if (!cursor) setLoading(true); else setLoadingMore(true);
     try {
-      const url = `/api/sounds?sort=${sortBy}&limit=20${cursor ? `&cursor=${cursor}` : ""}`;
+      const url = `/api/sounds?sort=${sortBy}&limit=10${cursor ? `&cursor=${cursor}` : ""}`;
       const res = await fetch(url);
       const data = await res.json();
       const items = data.sounds || [];
@@ -81,7 +82,7 @@ export default function SoundsPage() {
   return (
     <AppLayout headerTitle={t("title")} hideRightSidebar>
       {/* Sort tabs */}
-      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient border-b border-border-primary">
+      <div className="z-20 border-b border-border-primary">
         <div className="flex">
           {([
             { id: "popular" as const, label: t("popular") },
@@ -134,17 +135,11 @@ export default function SoundsPage() {
                 </Link>
               ))}
             </div>
-            {hasMore && (
-              <div className="flex justify-center py-4">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="t-btn cancel !h-9 !px-4 !text-sm"
-                >
-                  {loadingMore ? t("loading") : t("loadMore")}
-                </button>
-              </div>
-            )}
+            <LoadMoreTrigger
+              onLoadMore={handleLoadMore}
+              loading={loadingMore}
+              hasMore={hasMore}
+            />
           </>
         ) : (
           <EmptyState

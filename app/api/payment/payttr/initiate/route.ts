@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import crypto from 'crypto';
+import { COIN_MIN_PURCHASE, COIN_MAX_PURCHASE } from '@/lib/constants';
+import { calculateCoinPurchase } from '@/lib/coinPricing';
 
 // Simple in-memory rate limiter: 5 attempts per minute per user
 const attempts = new Map<string, number[]>();
@@ -24,27 +26,24 @@ export async function POST(request: NextRequest) {
     }
 
     if (!checkPaymentLimit(user.id)) {
-      return NextResponse.json({ success: false, error: 'Çok fazla ödeme denemesi. Lütfen bir dakika bekleyin.' }, { status: 429 });
+      return NextResponse.json({ success: false, error: 'Topluluğumuzu korumak adına ödeme denemeleri sınırlandırıldı, lütfen bir dakika bekleyin' }, { status: 429 });
     }
 
     const body = await request.json();
-    const { package_id } = body;
+    const { amount_try } = body;
 
-    if (!package_id) {
-      return NextResponse.json({ success: false, error: 'Paket ID gerekli' }, { status: 400 });
+    if (!amount_try || typeof amount_try !== 'number' || !Number.isInteger(amount_try)) {
+      return NextResponse.json({ success: false, error: 'Geçerli bir tutar giriniz' }, { status: 400 });
     }
 
-    // Paketi veritabanından al
+    if (amount_try < COIN_MIN_PURCHASE || amount_try > COIN_MAX_PURCHASE) {
+      return NextResponse.json({ success: false, error: `Tutar ₺${COIN_MIN_PURCHASE} ile ₺${COIN_MAX_PURCHASE} arasında olmalıdır` }, { status: 400 });
+    }
+
+    // Server-side hesaplama
+    const calc = calculateCoinPurchase(amount_try);
+
     const admin = createAdminClient();
-    const { data: pkg, error: pkgError } = await admin
-      .from('coin_packages')
-      .select('id, name, coins, price_try, bonus_coins')
-      .eq('id', package_id)
-      .single();
-
-    if (pkgError || !pkg) {
-      return NextResponse.json({ success: false, error: 'Paket bulunamadı' }, { status: 404 });
-    }
 
     // Kullanıcı bilgilerini al
     const { data: profile } = await admin
@@ -72,13 +71,14 @@ export async function POST(request: NextRequest) {
       : request.headers.get('x-real-ip') || '127.0.0.1';
 
     // Sepet (PayTR formatı — base64 encoded JSON)
+    const basketName = `Feedim Jeton — ₺${calc.amountTRY}`;
     const user_basket = Buffer.from(JSON.stringify([
-      [pkg.name, String(pkg.price_try), 1]
+      [basketName, String(calc.amountTRY), 1]
     ])).toString('base64');
 
     // PayTR parametreleri
     const email = user.email || 'noreply@feedim.com';
-    const payment_amount = Math.round(pkg.price_try * 100).toString();
+    const payment_amount = Math.round(calc.amountTRY * 100).toString();
     const user_name = profile?.full_name || 'Feedim Kullanıcısı';
     const user_address = 'Dijital Urun - Feedim';
     const user_phone = '8508400000';
@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         merchant_oid: merchant_oid,
-        package_id: pkg.id,
-        price_paid: pkg.price_try,
-        coins_purchased: pkg.coins + (pkg.bonus_coins || 0),
+        package_id: null,
+        price_paid: calc.amountTRY,
+        coins_purchased: calc.totalCoins,
         status: 'pending',
         payment_method: 'payttr',
         payment_ref: merchant_oid,

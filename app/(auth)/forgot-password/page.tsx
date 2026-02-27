@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
+import DigitInput from "@/components/DigitInput";
 
 type Step = "email" | "code";
 
@@ -17,6 +18,7 @@ export default function ForgotPasswordPage() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [hasResent, setHasResent] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -32,17 +34,22 @@ export default function ForgotPasswordPage() {
     const start = Date.now();
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: false },
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
       const elapsed = Date.now() - start;
       if (elapsed < 3000) await new Promise((r) => setTimeout(r, 3000 - elapsed));
 
-      if (error) {
+      if (res.status === 429) {
+        feedimAlert("error", t("otpRateLimited"));
+        return;
+      }
+
+      if (!res.ok) {
         feedimAlert("error", t("mfaCodeSendFailed"));
-        if (process.env.NODE_ENV === "development") console.log("OTP error:", error.message);
         return;
       }
 
@@ -63,7 +70,8 @@ export default function ForgotPasswordPage() {
   };
 
   const handleResend = async () => {
-    if (cooldown > 0) return;
+    if (cooldown > 0 || hasResent) return;
+    setHasResent(true);
     setCode("");
     await sendOtp();
   };
@@ -75,7 +83,9 @@ export default function ForgotPasswordPage() {
       return;
     }
 
+    const savedCode = code;
     setLoading(true);
+    let success = false;
     try {
       const { error } = await supabase.auth.verifyOtp({
         email,
@@ -89,6 +99,7 @@ export default function ForgotPasswordPage() {
         return;
       }
 
+      success = true;
       // Şifre sıfırlama sayfasına email bilgisini taşı (auto-login için)
       try { sessionStorage.setItem("fdm-reset-email", email); } catch {}
       router.push("/reset-password");
@@ -96,13 +107,23 @@ export default function ForgotPasswordPage() {
       feedimAlert("error", t("forgotGenericError"));
     } finally {
       setLoading(false);
+      if (!success) setCode(savedCode);
     }
+  };
+
+  const maskEmail = (e: string) => {
+    const [local, domain] = e.split("@");
+    if (!domain) return e;
+    const [domName, ...ext] = domain.split(".");
+    const ml = local.length <= 2 ? local : local.slice(0, 2) + "****";
+    const md = domName.length <= 1 ? domName : domName.slice(0, 1) + "***";
+    return `${ml}@${md}.${ext.join(".")}`;
   };
 
   const subtitle =
     step === "email"
       ? t("forgotSubtitle")
-      : t("mfaEmailHint", { email });
+      : t("mfaEmailHint", { email: maskEmail(email) });
 
   return (
     <AuthLayout title={t("forgotTitle")} subtitle={subtitle}>
@@ -136,22 +157,7 @@ export default function ForgotPasswordPage() {
         </form>
       ) : (
         <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="00000000"
-              value={code}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "").slice(0, 8);
-                setCode(val);
-              }}
-              maxLength={8}
-              autoFocus
-              className="w-full text-center bg-transparent border-none outline-none focus:ring-0"
-              style={{ height: 50, fontSize: 50, fontWeight: 700, fontFamily: "sans-serif", letterSpacing: "0.3em" }}
-            />
-          </div>
+          <DigitInput value={code} onChange={setCode} autoFocus />
 
           <button
             type="submit"
@@ -166,8 +172,8 @@ export default function ForgotPasswordPage() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={cooldown > 0 || loading}
-              className="text-sm text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={hasResent || cooldown > 0 || loading}
+              className="text-sm font-semibold text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cooldown > 0
                 ? t("mfaResendCountdown", { seconds: cooldown })
@@ -195,7 +201,7 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
 
-          <p className="text-center text-text-muted text-xs mt-2">
+          <p className="text-center text-text-muted text-[0.68rem] mt-2">
             {t("mfaEmailExpiry")}
             <br />
             {t("mfaCheckSpam")}

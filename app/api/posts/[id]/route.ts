@@ -446,26 +446,6 @@ export async function PUT(
                 } catch {}
               }
 
-              // Increment copyright strike counter
-              try {
-                const { data: profile } = await admin
-                  .from('profiles')
-                  .select('copyright_strike_count')
-                  .eq('user_id', user.id)
-                  .single();
-                const newCount = (profile?.copyright_strike_count || 0) + 1;
-                const strikeUpdate: Record<string, unknown> = { copyright_strike_count: newCount };
-                if (newCount >= 10) {
-                  strikeUpdate.status = 'moderation';
-                  try {
-                    const strikeCode = String(Math.floor(100000 + Math.random() * 900000));
-                    await admin.from('moderation_decisions').insert({
-                      target_type: 'user', target_id: user.id, decision: 'moderation', reason: `Telif hakkı ihlali: ${newCount} strike`, moderator_id: 'system', decision_code: strikeCode,
-                    });
-                  } catch {}
-                }
-                await admin.from('profiles').update(strikeUpdate).eq('user_id', user.id);
-              } catch {}
             } else {
               // Clear copyright fields if no longer matching
               copyrightUpdates.copyright_match_id = null;

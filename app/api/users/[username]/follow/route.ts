@@ -10,6 +10,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -88,7 +89,7 @@ export async function POST(
   if (!allowed) {
     logRateLimitHit(admin, user.id, "follow", req.headers.get("x-forwarded-for")?.split(",")[0]?.trim());
     return NextResponse.json(
-      { error: `Günlük takip limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
+      { error: `Topluluğumuzu korumak adına günlük takip limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
       { status: 429 }
     );
   }
@@ -124,4 +125,45 @@ export async function POST(
     content: "seni takip etmeye başladı",
   });
   return NextResponse.json({ following: true, requested: false });
+  } catch (err) {
+    return safeError(err);
+  }
+}
+
+/** DELETE — Remove a follower (the target user stops following you) */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ username: string }> }
+) {
+  try {
+    const { username } = await params;
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+
+    if (action !== "remove-follower") {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { data: target } = await admin
+      .from("profiles")
+      .select("user_id")
+      .eq("username", username)
+      .single();
+
+    if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    // Delete the follow where target follows me
+    await admin.from("follows").delete()
+      .eq("follower_id", target.user_id)
+      .eq("following_id", user.id);
+
+    return NextResponse.json({ removed: true });
+  } catch (err) {
+    return safeError(err);
+  }
 }

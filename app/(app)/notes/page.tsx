@@ -119,7 +119,7 @@ export default function CommunityNotesPage() {
   return (
     <AppLayout headerTitle="Topluluk Notları">
       {/* Tabs */}
-      <div className="flex border-b border-border-primary sticky top-[53px] z-20">
+      <div className="flex border-b border-border-primary z-20">
         <button
           onClick={() => handleTabChange("for-you")}
           className={`flex-1 py-3.5 text-[0.88rem] font-semibold transition relative ${
@@ -162,7 +162,7 @@ export default function CommunityNotesPage() {
         <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
       ) : posts.length > 0 ? (
         <>
-          <div className="flex flex-col gap-[40px]">
+          <div className="flex flex-col gap-[40px] mt-[10px]">
             {posts.map((post) => (
               <div key={post.id}>
                 <PostCard

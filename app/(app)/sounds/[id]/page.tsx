@@ -47,7 +47,7 @@ export default function SoundDetailPage() {
 
   const loadData = useCallback(async (cursor?: string) => {
     try {
-      const url = `/api/sounds/${id}?limit=20${cursor ? `&cursor=${cursor}` : ""}`;
+      const url = `/api/sounds/${id}?limit=10${cursor ? `&cursor=${cursor}` : ""}`;
       const res = await fetch(url);
       if (!res.ok) return null;
       return await res.json();
@@ -131,7 +131,7 @@ export default function SoundDetailPage() {
 
   if (loading) {
     return (
-      <AppLayout hideRightSidebar headerTitle="Ses" headerOnBack={() => router.back()}>
+      <AppLayout hideRightSidebar headerTitle="Ses">
         <div className="flex justify-center py-16">
           <span className="loader" style={{ width: 28, height: 28 }} />
         </div>
@@ -141,14 +141,14 @@ export default function SoundDetailPage() {
 
   if (!sound) {
     return (
-      <AppLayout hideRightSidebar headerTitle="Ses" headerOnBack={() => router.back()}>
+      <AppLayout hideRightSidebar headerTitle="Ses">
         <div className="text-center py-16 text-text-muted">Ses bulunamadı</div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout hideRightSidebar headerTitle="Ses" headerOnBack={() => router.back()}>
+    <AppLayout hideRightSidebar headerTitle="Ses">
       <div className="px-4 py-6">
         {/* Sound info */}
         <div className="flex items-center gap-4 mb-6">

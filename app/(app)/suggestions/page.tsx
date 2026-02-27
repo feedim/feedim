@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import UserListItem from "@/components/UserListItem";
 import FollowButton from "@/components/FollowButton";
+import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useTranslations } from "next-intl";
 
@@ -22,6 +23,7 @@ interface SuggestedUser {
   bio?: string;
   follower_count?: number;
   mutual_count?: number;
+  follows_me?: boolean;
 }
 
 const FOLLOW_COOLDOWN = 3000;
@@ -36,6 +38,9 @@ export default function SuggestionsPage() {
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [disabledFollows, setDisabledFollows] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -57,16 +62,23 @@ export default function SuggestionsPage() {
     await loadSuggestions();
   };
 
-  const loadSuggestions = useCallback(async () => {
+  const loadSuggestions = useCallback(async (pageNum = 1) => {
     try {
-      const res = await fetch("/api/suggestions?page=1&limit=20");
+      const res = await fetch(`/api/suggestions?page=${pageNum}&limit=10`);
       const data = await res.json();
-      setUsers(data.users || []);
+      if (pageNum === 1) {
+        setUsers(data.users || []);
+      } else {
+        setUsers(prev => [...prev, ...(data.users || [])]);
+      }
+      setHasMore(data.hasMore || false);
+      setPage(pageNum);
     } catch {
       // Silent
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -176,7 +188,7 @@ export default function SuggestionsPage() {
 
   return (
     <AppLayout hideRightSidebar headerTitle={t("findPeople")} headerRightAction={refreshButton}>
-      <div className="px-3 sm:px-4 py-4">
+      <div className="px-2 py-4">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : users.length === 0 ? (
@@ -197,12 +209,18 @@ export default function SuggestionsPage() {
                   <FollowButton
                     following={following.has(u.user_id) || requested.has(u.user_id)}
                     isPrivate={requested.has(u.user_id)}
+                    followsMe={u.follows_me && !following.has(u.user_id)}
                     onClick={() => handleFollow(u.username, u.user_id)}
                     disabled={disabledFollows.has(u.user_id)}
                   />
                 }
               />
             ))}
+            <LoadMoreTrigger
+              onLoadMore={() => { setLoadingMore(true); loadSuggestions(page + 1); }}
+              loading={loadingMore}
+              hasMore={hasMore}
+            />
           </div>
         )}
       </div>

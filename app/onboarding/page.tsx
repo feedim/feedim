@@ -670,7 +670,6 @@ function StepGender({ value, onChange }: { value: string; onChange: (v: string) 
         <option value="">{t("selectGender")}</option>
         <option value="male">{t("male")}</option>
         <option value="female">{t("female")}</option>
-        <option value="other">{t("other")}</option>
       </select>
     </div>
   );
@@ -757,7 +756,7 @@ function StepTopicTags({ tags, selectedIds, onToggle, loaded, minRequired, maxAl
                 <button
                   key={tag.id}
                   onClick={() => onToggle(tag.id)}
-                  className={`px-5 py-2 rounded-full text-[0.94rem] font-bold border transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-[0.88rem] font-bold border transition-all ${
                     selected
                       ? "bg-accent-main text-white border-accent-main"
                       : "bg-bg-secondary text-text-primary border-border-primary hover:border-accent-main/50"

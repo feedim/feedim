@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MAX_READ_DURATION, MAX_VIDEO_WATCH_DURATION } from "@/lib/constants";
+
+/** Trimmed mean: if N≥10, drop top/bottom 10%; otherwise normal mean */
+function trimmedMean(values: number[]): number {
+  if (values.length === 0) return 0;
+  if (values.length < 10) {
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const trimCount = Math.floor(sorted.length * 0.1);
+  const trimmed = sorted.slice(trimCount, sorted.length - trimCount);
+  return Math.round(trimmed.reduce((a, b) => a + b, 0) / trimmed.length);
+}
 
 export async function GET(
   req: NextRequest,
@@ -8,6 +21,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const tz = req.nextUrl.searchParams.get("tz") || "Europe/Istanbul";
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,11 +35,16 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    if (!post || post.author_id !== user.id) {
+    let isAdminOrMod = false;
+    if (post && post.author_id !== user.id) {
+      const { data: profile } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
+      isAdminOrMod = profile?.role === 'admin' || profile?.role === 'moderator';
+    }
+    if (!post || (post.author_id !== user.id && !isAdminOrMod)) {
       return NextResponse.json({ error: "Yetkisiz" }, { status: 403 });
     }
 
-    const isVideo = post.content_type === "video";
+    const isVideoOrMoment = post.content_type === "video" || post.content_type === "moment";
 
     // All-time counts + views data for chart (last 30 days) + peak hours
     const now = new Date();
@@ -49,7 +68,7 @@ export async function GET(
 
     // Video analytics events (separate query)
     let videoEvents: any[] = [];
-    if (isVideo) {
+    if (isVideoOrMoment) {
       const { data } = await admin
         .from("analytics_events")
         .select("data")
@@ -73,23 +92,22 @@ export async function GET(
       viewsByDay.push({ date, count });
     }
 
-    // Peak hours (from last 30 days data)
+    // Peak hours (from last 30 days data) with timezone
     const hourMap = new Map<number, number>();
     for (let h = 0; h < 24; h++) hourMap.set(h, 0);
     for (const v of viewsData || []) {
-      const h = new Date(v.created_at).getHours();
+      const h = parseInt(new Date(v.created_at).toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: tz }), 10);
       hourMap.set(h, (hourMap.get(h) || 0) + 1);
     }
     const peakHours = Array.from(hourMap.entries()).map(([hour, count]) => ({ hour, count }));
 
-    // Read/Watch stats from all views
-    const validReads = (allViewsData || []).filter(v => v.read_duration > 0);
-    const avgReadDuration = validReads.length > 0
-      ? Math.round(validReads.reduce((s, v) => s + v.read_duration, 0) / validReads.length)
-      : 0;
-    const avgReadPercentage = validReads.length > 0
-      ? Math.round(validReads.reduce((s, v) => s + v.read_percentage, 0) / validReads.length)
-      : 0;
+    // Read/Watch stats from all views — quality filter + trimmed mean
+    const meaningfulReads = (allViewsData || []).filter(v =>
+      v.read_duration >= 5 && v.read_percentage >= 5 &&
+      v.read_duration <= MAX_READ_DURATION
+    );
+    const avgReadDuration = trimmedMean(meaningfulReads.map(v => v.read_duration));
+    const avgReadPercentage = trimmedMean(meaningfulReads.map(v => v.read_percentage));
     const qualifiedReads = (allViewsData || []).filter(v => v.is_qualified_read).length;
 
     // Engagement rate (all-time)
@@ -100,8 +118,9 @@ export async function GET(
 
     // Video-specific analytics
     let videoStats = null;
-    if (isVideo && videoEvents.length > 0) {
-      const events = videoEvents.map((e: any) => e.data).filter(Boolean);
+    if (isVideoOrMoment && videoEvents.length > 0) {
+      const events = videoEvents.map((e: any) => e.data).filter(Boolean)
+        .filter((e: any) => (e.watch_duration || 0) >= 3 && (e.watch_duration || 0) <= MAX_VIDEO_WATCH_DURATION);
       const totalWatchSeconds = events.reduce((s: number, e: any) => s + (e.watch_duration || 0), 0);
       const totalWatchHours = Math.round((totalWatchSeconds / 3600) * 10) / 10;
       const completedCount = events.filter((e: any) => e.completed).length;

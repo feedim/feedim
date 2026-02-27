@@ -81,6 +81,13 @@ function LoginPageContent() {
   const [showNormalForm, setShowNormalForm] = useState(() => {
     try { return sessionStorage.getItem("fdm_switch_account") === "1"; } catch { return false; }
   });
+
+  // Landing page "Farklı hesapla giriş yap" sends ?switch=1 → skip saved accounts screen
+  useEffect(() => {
+    if (searchParams.get("switch") === "1" && !showNormalForm) {
+      setShowNormalForm(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -214,15 +221,14 @@ function LoginPageContent() {
             return;
           }
 
-          // Save account for quick login
+          // Save account for quick login (don't update React state — page is about to redirect)
           if (profile?.username) {
-            const updated = upsertSavedAccount({
+            upsertSavedAccount({
               email,
               username: profile.username,
               full_name: profile.full_name || "",
               avatar_url: profile.avatar_url || null,
             });
-            setSavedAccounts(updated);
           }
         } catch {}
       }

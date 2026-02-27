@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cache } from "@/lib/cache";
+import { safeError } from "@/lib/apiError";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -15,12 +17,13 @@ export async function POST(
 
   const { data: target } = await admin
     .from("profiles")
-    .select("user_id")
+    .select("user_id, role")
     .eq("username", username)
     .single();
 
   if (!target) return NextResponse.json({ error: "Kullanici bulunamadi" }, { status: 404 });
   if (target.user_id === user.id) return NextResponse.json({ error: "Kendini engelleyemezsin" }, { status: 400 });
+  if (target.role === "admin" || target.role === "moderator") return NextResponse.json({ error: "Bu kullanıcı engellenemez" }, { status: 403 });
 
   // Check if already blocked
   const { data: existing } = await admin
@@ -50,5 +53,8 @@ export async function POST(
     cache.delete(`user:${user.id}:blocks`);
     cache.delete(`user:${user.id}:follows`);
     return NextResponse.json({ blocked: true });
+  }
+  } catch (err) {
+    return safeError(err);
   }
 }

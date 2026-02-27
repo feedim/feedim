@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { emitNavigationStart } from "@/lib/navigationProgress";
 import { ArrowLeft } from "lucide-react";
+import { smartBack } from "@/lib/smartBack";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslations } from "next-intl";
@@ -48,10 +48,7 @@ export default function PublicHeader({ variant = "back", backLabel }: PublicHead
             )
           ) : (
             <button
-              onClick={() => {
-                if (window.history.length > 2) router.back();
-                else { emitNavigationStart(); router.push("/"); }
-              }}
+              onClick={() => smartBack(router, "/")}
               className="flex items-center gap-2 text-text-muted hover:text-text-primary transition"
             >
               <ArrowLeft className="h-5 w-5" />

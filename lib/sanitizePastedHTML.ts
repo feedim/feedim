@@ -55,8 +55,13 @@ export function sanitizePastedHTML(html: string): string {
   // 4b. Blok-seviye kuralları uygula (editör toolbar kısıtlamalarıyla uyumlu)
   enforceBlockRules(body);
 
-  // 7. <a> temizliği
+  // 7. <a> temizliği — görseli saran linkleri kaldır
   body.querySelectorAll("a").forEach(a => {
+    // Görsel içeren <a> etiketlerini unwrap et — görsellerde link olamaz
+    if (a.querySelector("img")) {
+      unwrapElement(a);
+      return;
+    }
     const href = a.getAttribute("href") || "";
     if (!href || /^(javascript|data):/i.test(href)) {
       unwrapElement(a);

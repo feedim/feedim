@@ -10,13 +10,14 @@ import AppLayout from "@/components/AppLayout";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import Link from "next/link";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function BlockedUsersPage() {
   useSearchParams();
   const t = useTranslations("settings");
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const supabase = createClient();
@@ -27,6 +28,7 @@ export default function BlockedUsersPage() {
 
   const loadBlockedUsers = async (pageNum: number) => {
     if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -66,27 +68,32 @@ export default function BlockedUsersPage() {
       }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   const [unblockingId, setUnblockingId] = useState<number | null>(null);
 
-  const handleUnblock = async (username: string, blockId: number) => {
-    setUnblockingId(blockId);
-    try {
-      const [res] = await Promise.all([
-        fetch(`/api/users/${username}/block`, { method: "POST" }),
-        new Promise(r => setTimeout(r, 2000)),
-      ]);
-      if (res.ok) {
-        setBlockedUsers(prev => prev.filter(b => b.id !== blockId));
-        feedimAlert("success", t("unblockSuccess", { username }));
-      }
-    } catch {
-      feedimAlert("error", t("unblockFailed"));
-    } finally {
-      setUnblockingId(null);
-    }
+  const handleUnblock = (username: string, blockId: number) => {
+    feedimAlert("question", t("unblockConfirm", { username }), {
+      showYesNo: true,
+      onYes: async () => {
+        setUnblockingId(blockId);
+        try {
+          const [res] = await Promise.all([
+            fetch(`/api/users/${username}/block`, { method: "POST" }),
+            new Promise(r => setTimeout(r, 2000)),
+          ]);
+          if (res.ok) {
+            setBlockedUsers(prev => prev.filter(b => b.id !== blockId));
+          }
+        } catch {
+          feedimAlert("error", t("unblockFailed"));
+        } finally {
+          setUnblockingId(null);
+        }
+      },
+    });
   };
 
   return (
@@ -131,7 +138,7 @@ export default function BlockedUsersPage() {
             </div>
             <LoadMoreTrigger
               onLoadMore={() => { const next = page + 1; setPage(next); loadBlockedUsers(next); }}
-              loading={loading}
+              loading={loadingMore}
               hasMore={hasMore}
             />
           </div>

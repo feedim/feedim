@@ -3,23 +3,23 @@
 import { useEffect, useState, useRef } from "react";
 import {useRouter, useSearchParams } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
-import Link from "next/link";
+import { smartBack } from "@/lib/smartBack";
 import { ArrowLeft, Lock, AlertCircle, Coins, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useTranslations } from "next-intl";
 
 interface CoinPaymentData {
-  package_id: string;
-  package_name: string;
-  price: number;
-  coins: number;
+  amount_try: number;
+  base_coins: number;
   bonus_coins: number;
+  total_coins: number;
 }
 
 export default function PaymentPage() {
   useSearchParams();
   const t = useTranslations("payment");
+  const tc = useTranslations("coins");
   const [data, setData] = useState<CoinPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,7 +45,7 @@ export default function PaymentPage() {
 
     try {
       const parsed = JSON.parse(coinRaw) as CoinPaymentData;
-      if (!parsed.package_id) {
+      if (!parsed.amount_try) {
         router.push("/");
         return;
       }
@@ -73,7 +73,7 @@ export default function PaymentPage() {
         const response = await fetch("/api/payment/payttr/initiate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ package_id: data.package_id }),
+          body: JSON.stringify({ amount_try: data.amount_try }),
         });
 
         const result = await response.json();
@@ -106,14 +106,14 @@ export default function PaymentPage() {
     );
   }
 
-  const totalCoins = data ? (data.coins || 0) + (data.bonus_coins || 0) : 0;
+  const totalCoins = data ? data.total_coins : 0;
 
   return (
     <div className="min-h-screen text-text-primary">
-      <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient">
+      <header className="z-50 bg-bg-primary">
         <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
           <button
-            onClick={() => { if (window.history.length > 1) router.back(); else { emitNavigationStart(); router.push("/"); } }}
+            onClick={() => smartBack(router, "/")}
             className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -127,22 +127,42 @@ export default function PaymentPage() {
         {/* Sipariş Özeti */}
         {data && (
           <div className="bg-bg-secondary rounded-2xl p-5 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-accent-main/10 flex items-center justify-center">
-                  <Coins className="h-5 w-5 text-accent-main" />
-                </div>
-                <div>
-                  <p className="font-semibold">{data.package_name}</p>
-                  <p className="text-sm text-text-muted">
-                    {totalCoins.toLocaleString()} {t("token")}
-                    {data.bonus_coins > 0 && (
-                      <span className="text-accent-main"> (+{data.bonus_coins} bonus)</span>
-                    )}
-                  </p>
-                </div>
+            <p className="text-[0.8rem] text-text-secondary font-bold uppercase tracking-wider mb-4">{t("paymentSummary")}</p>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[0.88rem] text-text-muted">{tc("baseTokens")}</span>
+              <span className="text-[0.88rem] font-semibold">{data.base_coins.toLocaleString()} {tc("token")}</span>
+            </div>
+
+            {data.bonus_coins > 0 && (
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[0.88rem] text-accent-main font-medium">{tc("bonus", { percent: data.base_coins > 0 ? Math.round((data.bonus_coins / data.base_coins) * 100) : 0 })}</span>
+                <span className="text-[0.88rem] font-semibold text-accent-main">+{data.bonus_coins.toLocaleString()} {tc("token")}</span>
               </div>
-              <p className="text-xl font-bold">{data.price}₺</p>
+            )}
+
+            <div className="h-px bg-border-primary/60 my-3" />
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[0.88rem] font-bold">{tc("totalTokens")}</span>
+              <span className="text-[0.88rem] font-bold text-accent-main">{totalCoins.toLocaleString()} {tc("token")}</span>
+            </div>
+
+            <div className="h-px bg-border-primary/60 my-3" />
+
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[0.88rem] text-text-muted">{t("subtotal")}</span>
+              <span className="text-[0.88rem] text-text-muted">₺{(data.amount_try / 1.20).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[0.88rem] text-text-muted">{t("taxIncluded", { rate: 20 })}</span>
+              <span className="text-[0.88rem] text-text-muted">₺{(data.amount_try - data.amount_try / 1.20).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[0.95rem] font-bold">{t("total")}</span>
+              <span className="text-[1.1rem] font-bold">₺{data.amount_try.toLocaleString()}</span>
             </div>
           </div>
         )}
@@ -198,14 +218,8 @@ export default function PaymentPage() {
         {/* Info & Legal */}
         <div className="mt-6 bg-bg-secondary rounded-[15px] px-4 py-3 space-y-1.5 text-xs text-text-muted font-medium">
           <p>{t("sslSecure")}</p>
-          <p>{t("paytrProvider")}</p>
         </div>
 
-        <div className="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[0.72rem] text-text-muted font-medium pt-4">
-          <Link href="/help/terms" className="hover:text-text-primary transition">{t("terms")}</Link>
-          <Link href="/help/privacy" className="hover:text-text-primary transition">{t("privacy")}</Link>
-          <Link href="/help" className="hover:text-text-primary transition">{t("helpCenter")}</Link>
-        </div>
       </main>
     </div>
   );

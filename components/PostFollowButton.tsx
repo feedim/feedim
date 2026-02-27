@@ -17,6 +17,7 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
   const t = useTranslations("follow");
   const [following, setFollowing] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [followsMe, setFollowsMe] = useState(false);
   const [ready, setReady] = useState(false);
   const { user: ctxUser, isLoggedIn } = useUser();
   const { requireAuth } = useAuthModal();
@@ -31,10 +32,12 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
     Promise.all([
       supabase.from("follows").select("id").eq("follower_id", ctxUser.id).eq("following_id", authorUserId).maybeSingle(),
       supabase.from("follow_requests").select("id").eq("requester_id", ctxUser.id).eq("target_id", authorUserId).eq("status", "pending").maybeSingle(),
-    ]).then(([followRes, reqRes]) => {
+      supabase.from("follows").select("id").eq("follower_id", authorUserId).eq("following_id", ctxUser.id).maybeSingle(),
+    ]).then(([followRes, reqRes, followsMeRes]) => {
       if (cancelled) return;
       setFollowing(!!followRes.data);
       setRequested(!!reqRes.data);
+      setFollowsMe(!!followsMeRes.data);
       setReady(true);
     });
     return () => { cancelled = true; };
@@ -92,5 +95,5 @@ export default function PostFollowButton({ authorUsername, authorUserId }: PostF
 
   if (isOwn || !ready) return null;
 
-  return <FollowButton following={following || requested} isPrivate={requested} onClick={handleFollow} />;
+  return <FollowButton following={following || requested} isPrivate={requested} followsMe={followsMe && !following} onClick={handleFollow} />;
 }

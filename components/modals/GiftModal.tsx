@@ -380,7 +380,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
         }
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between px-5 pt-3 pb-3">
           <h2 className="text-[1.05rem] font-bold">{t("sendGift")}</h2>
           <div className="flex items-center gap-1.5 bg-bg-tertiary backdrop-blur-sm px-3 py-1.5 rounded-full">
             <Coins className="h-3.5 w-3.5 text-accent-main" />

@@ -35,7 +35,7 @@ export default memo(function FeedTabs({
   }, [isLoggedIn, onTabChange]);
 
   return (
-    <div className="sticky top-0 z-20 bg-bg-primary sticky-ambient px-1.5 sm:px-4 overflow-x-auto scrollbar-hide">
+    <div className="z-20 px-1.5 sm:px-4 overflow-x-auto scrollbar-hide">
       <div className="flex gap-[6px] min-w-max">
         {tabs.map(tab => (
           <button

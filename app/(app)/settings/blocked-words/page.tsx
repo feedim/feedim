@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, X } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
@@ -11,6 +11,9 @@ export default function BlockedWordsPage() {
   useSearchParams();
   const [blockedWords, setBlockedWords] = useState<string[]>([]);
   const [newBlockedWord, setNewBlockedWord] = useState("");
+  const [adding, setAdding] = useState(false);
+  const lastAddRef = useRef<number>(0);
+  const COOLDOWN_MS = 2000;
 
   useEffect(() => {
     try {
@@ -21,7 +24,11 @@ export default function BlockedWordsPage() {
 
   const addBlockedWord = () => {
     const word = newBlockedWord.trim().toLowerCase();
-    if (!word || word.length < 2) return;
+    const charCount = word.replace(/\s/g, "").length;
+    if (!word || charCount < 4) {
+      feedimAlert("error", "En az 4 karakter gereklidir (boşluk sayılmaz)");
+      return;
+    }
     if (blockedWords.includes(word)) {
       feedimAlert("error", "Bu kelime zaten listede");
       return;
@@ -30,10 +37,24 @@ export default function BlockedWordsPage() {
       feedimAlert("error", "En fazla 50 kelime eklenebilir");
       return;
     }
-    const updated = [...blockedWords, word];
-    setBlockedWords(updated);
-    localStorage.setItem("fdm-blocked-words", JSON.stringify(updated));
-    setNewBlockedWord("");
+    const now = Date.now();
+    const elapsed = now - lastAddRef.current;
+    if (elapsed < COOLDOWN_MS) {
+      feedimAlert("error", "Çok hızlı ekliyorsunuz, lütfen bekleyin");
+      return;
+    }
+
+    setAdding(true);
+    lastAddRef.current = now;
+
+    // Simulate async save with minimum delay
+    setTimeout(() => {
+      const updated = [...blockedWords, word];
+      setBlockedWords(updated);
+      localStorage.setItem("fdm-blocked-words", JSON.stringify(updated));
+      setNewBlockedWord("");
+      setAdding(false);
+    }, 500);
   };
 
   const removeBlockedWord = (word: string) => {
@@ -58,14 +79,15 @@ export default function BlockedWordsPage() {
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addBlockedWord(); } }}
             placeholder="Kelime ekle..."
             maxLength={30}
+            disabled={adding}
             className="input-modern flex-1 !py-2 !text-sm"
           />
           <button
             onClick={addBlockedWord}
-            disabled={!newBlockedWord.trim() || newBlockedWord.trim().length < 2}
+            disabled={adding || !newBlockedWord.trim() || newBlockedWord.trim().replace(/\s/g, "").length < 4}
             className="i-btn !w-10 !h-10 bg-bg-tertiary text-text-muted hover:text-text-primary disabled:opacity-40 shrink-0"
           >
-            <Plus className="h-4.5 w-4.5" />
+            {adding ? <span className="loader" style={{ width: 16, height: 16 }} /> : <Plus className="h-4.5 w-4.5" />}
           </button>
         </div>
 

@@ -72,7 +72,7 @@ export default function ContentEn() {
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <p className="font-semibold text-text-primary text-xs uppercase tracking-wide">Withdrawal Conditions</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li>Minimum withdrawal amount: <strong>100 tokens</strong> (10 TL)</li>
+            <li>Minimum withdrawal amount: <strong>600 tokens</strong> (200 TL)</li>
             <li>You need to add your <strong>IBAN information</strong> to your account for withdrawal</li>
             <li>Withdrawal requests are processed on <strong>business days</strong></li>
             <li>The withdrawal amount is sent to your specified IBAN via bank transfer</li>

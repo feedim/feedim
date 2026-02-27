@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MAX_VIDEO_WATCH_DURATION } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,6 +10,7 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const period = req.nextUrl.searchParams.get("period") || "7d";
+    const tz = req.nextUrl.searchParams.get("tz") || "Europe/Istanbul";
     const admin = createAdminClient();
 
     const now = new Date();
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
         premiumReads: 0,
       },
       videoAnalytics: null,
+      followerDemographics: null,
     };
 
     if (postIds.length === 0) return NextResponse.json(empty);
@@ -126,25 +129,34 @@ export async function GET(req: NextRequest) {
     const commentsByDay = groupByDay(commentsData);
     const followersByDay = groupByDay(followersData);
 
-    // ─── Peak hours (0-23) ───
+    // ─── Peak hours (0-23) with timezone ───
+    function getHourInTz(dateStr: string) {
+      return parseInt(new Date(dateStr).toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: tz }), 10);
+    }
+    function getDayInTz(dateStr: string) {
+      const dayStr = new Date(dateStr).toLocaleDateString("en-US", { weekday: "short", timeZone: tz });
+      const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      return dayMap[dayStr] ?? 0;
+    }
+
     const hourMap = new Map<number, number>();
     for (let h = 0; h < 24; h++) hourMap.set(h, 0);
     for (const v of viewsData || []) {
-      const h = new Date(v.created_at).getHours();
+      const h = getHourInTz(v.created_at);
       hourMap.set(h, (hourMap.get(h) || 0) + 1);
     }
     const peakHours = Array.from(hourMap.entries()).map(([hour, count]) => ({ hour, count }));
 
-    // ─── Weekday breakdown ───
+    // ─── Weekday breakdown with timezone ───
     const weekdayViews = new Map<number, number>();
     const weekdayLikes = new Map<number, number>();
     for (let d = 0; d < 7; d++) { weekdayViews.set(d, 0); weekdayLikes.set(d, 0); }
     for (const v of viewsData || []) {
-      const d = new Date(v.created_at).getDay();
+      const d = getDayInTz(v.created_at);
       weekdayViews.set(d, (weekdayViews.get(d) || 0) + 1);
     }
     for (const l of likesData || []) {
-      const d = new Date(l.created_at).getDay();
+      const d = getDayInTz(l.created_at);
       weekdayLikes.set(d, (weekdayLikes.get(d) || 0) + 1);
     }
     const weekdayBreakdown = Array.from({ length: 7 }, (_, i) => ({
@@ -160,8 +172,9 @@ export async function GET(req: NextRequest) {
     const avgViewsPerPost = postCount > 0 ? Math.round(totalViews / postCount) : 0;
     const avgLikesPerPost = postCount > 0 ? Math.round(totalLikes / postCount * 10) / 10 : 0;
     const avgCommentsPerPost = postCount > 0 ? Math.round(totalComments / postCount * 10) / 10 : 0;
-    const totalReadingTime = (userPosts || []).reduce((s, p) => s + (p.reading_time || 0), 0);
-    const avgReadingTime = postCount > 0 ? Math.round(totalReadingTime / postCount) : 0;
+    const textPosts = (userPosts || []).filter(p => p.content_type !== "video" && p.content_type !== "moment");
+    const totalReadingTime = textPosts.reduce((s, p) => s + (p.reading_time || 0), 0);
+    const avgReadingTime = textPosts.length > 0 ? Math.round(totalReadingTime / textPosts.length) : 0;
 
     // ─── Top 5 posts ───
     const topPosts = [...(userPosts || [])]
@@ -172,6 +185,7 @@ export async function GET(req: NextRequest) {
         views: p.view_count || 0, likes: p.like_count || 0,
         comments: p.comment_count || 0, saves: p.save_count || 0,
         featured_image: p.featured_image, published_at: p.published_at,
+        content_type: p.content_type,
       }));
 
     // ─── All posts (sorted by views) ───
@@ -182,6 +196,7 @@ export async function GET(req: NextRequest) {
         views: p.view_count || 0, likes: p.like_count || 0,
         comments: p.comment_count || 0, saves: p.save_count || 0,
         featured_image: p.featured_image, published_at: p.published_at,
+        content_type: p.content_type,
       }));
 
     // ─── Recent views ───
@@ -225,8 +240,86 @@ export async function GET(req: NextRequest) {
 
     const periodEarned = (periodTransactions || []).reduce((s, t) => s + (t.amount || 0), 0);
 
+    // ─── Follower Demographics ───
+    let followerDemographics = null;
+    const followerCount = profile?.follower_count || 0;
+
+    if (followerCount > 0) {
+      const { data: followerRows } = await admin
+        .from("follows")
+        .select("follower_id")
+        .eq("following_id", user.id)
+        .limit(10000);
+
+      const followerIds = (followerRows || []).map((f: any) => f.follower_id).filter(Boolean);
+
+      if (followerIds.length > 0) {
+        const [{ data: locationData }, { data: profileData }] = await Promise.all([
+          admin.from("user_locations").select("user_id, country_code").in("user_id", followerIds),
+          admin.from("profiles").select("user_id, birth_date, gender, last_active_at").in("user_id", followerIds),
+        ]);
+
+        // Countries — top 5
+        const countryMap = new Map<string, number>();
+        for (const loc of locationData || []) {
+          if (loc.country_code) {
+            countryMap.set(loc.country_code, (countryMap.get(loc.country_code) || 0) + 1);
+          }
+        }
+        const sortedCountries = Array.from(countryMap.entries())
+          .sort((a, b) => b[1] - a[1]);
+        const top5Countries = sortedCountries.slice(0, 5);
+        const othersCount = sortedCountries.slice(5).reduce((s, [, c]) => s + c, 0);
+        const countries = [
+          ...top5Countries.map(([code, count]) => ({ code, count })),
+          ...(othersCount > 0 ? [{ code: "OTHER", count: othersCount }] : []),
+        ];
+
+        // Age ranges
+        const nowTs = Date.now();
+        const ageRanges: Record<string, number> = { "13-17": 0, "18-24": 0, "25-34": 0, "35-44": 0, "45+": 0 };
+        let ageUnknown = 0;
+        for (const p of profileData || []) {
+          if (!p.birth_date) { ageUnknown++; continue; }
+          const age = Math.floor((nowTs - new Date(p.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          if (age < 13) continue;
+          else if (age <= 17) ageRanges["13-17"]++;
+          else if (age <= 24) ageRanges["18-24"]++;
+          else if (age <= 34) ageRanges["25-34"]++;
+          else if (age <= 44) ageRanges["35-44"]++;
+          else ageRanges["45+"]++;
+        }
+
+        // Gender
+        const gender: Record<string, number> = { male: 0, female: 0, unknown: 0 };
+        for (const p of profileData || []) {
+          if (p.gender === "male") gender.male++;
+          else if (p.gender === "female") gender.female++;
+          else gender.unknown++;
+        }
+
+        // Active followers (last 30 days)
+        const thirtyDaysAgo = new Date(nowTs - 30 * 24 * 60 * 60 * 1000);
+        let activeCount = 0;
+        for (const p of profileData || []) {
+          if (p.last_active_at && new Date(p.last_active_at) >= thirtyDaysAgo) activeCount++;
+        }
+        const activePercentage = followerIds.length > 0 ? Math.round((activeCount / followerIds.length) * 100) : 0;
+
+        followerDemographics = {
+          totalFollowers: followerCount,
+          countries,
+          ageRanges,
+          ageUnknown,
+          gender,
+          activePercentage,
+          activeCount,
+        };
+      }
+    }
+
     // ─── Video Analytics ───
-    const videoPosts = (userPosts || []).filter(p => p.content_type === "video");
+    const videoPosts = (userPosts || []).filter(p => p.content_type === "video" || p.content_type === "moment");
     const videoPostIds = videoPosts.map(p => p.id);
     let videoAnalytics = null;
 
@@ -238,7 +331,8 @@ export async function GET(req: NextRequest) {
         .in("post_id", videoPostIds)
         .gte("created_at", startDate);
 
-      const events = (videoEvents || []).map((e: any) => ({ ...e.data, post_id: e.post_id })).filter(Boolean);
+      const events = (videoEvents || []).map((e: any) => ({ ...e.data, post_id: e.post_id })).filter(Boolean)
+        .filter((e: any) => (e.watch_duration || 0) >= 3 && (e.watch_duration || 0) <= MAX_VIDEO_WATCH_DURATION);
 
       if (events.length > 0) {
         const totalWatchSeconds = events.reduce((s: number, e: any) => s + (e.watch_duration || 0), 0);
@@ -306,6 +400,7 @@ export async function GET(req: NextRequest) {
         premiumReads: premiumReads || 0,
       },
       videoAnalytics,
+      followerDemographics,
     });
     response.headers.set('Cache-Control', 'private, max-age=300');
     return response;

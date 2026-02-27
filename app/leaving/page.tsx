@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { ExternalLink, ArrowLeft } from "lucide-react";
+import { smartBackRaw } from "@/lib/smartBack";
 
 function LeavingContent() {
   const searchParams = useSearchParams();
@@ -13,25 +14,12 @@ function LeavingContent() {
 
   const handleOpen = () => {
     if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-      // Auto-navigate back after opening the link
-      setTimeout(() => {
-        if (window.history.length > 1) {
-          window.history.back();
-        } else {
-          window.location.href = "/";
-        }
-      }, 300);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => smartBackRaw("/"), 300);
     }
   };
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      window.location.href = "/";
-    }
-  };
+  const handleBack = () => smartBackRaw("/");
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6 text-center">

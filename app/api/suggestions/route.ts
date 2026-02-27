@@ -9,9 +9,11 @@ export async function GET(req: NextRequest) {
     const admin = createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    const locale = req.cookies.get("fdm-locale")?.value || req.headers.get("x-locale") || "tr";
+
     const page = parseInt(req.nextUrl.searchParams.get("page") || "1");
     const requestedLimit = Math.min(
-      parseInt(req.nextUrl.searchParams.get("limit") || "20"),
+      parseInt(req.nextUrl.searchParams.get("limit") || "10"),
       20
     );
     const offset = (page - 1) * requestedLimit;
@@ -22,14 +24,18 @@ export async function GET(req: NextRequest) {
     }
 
     const excludeParamGuest = req.nextUrl.searchParams.get("exclude");
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
     // ── Guest mode ──
     if (!user) {
       const { data: profiles } = await admin
         .from("profiles")
-        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count, following_count, profile_score, account_private")
+        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count, following_count, profile_score, account_private, language, spam_score, last_active_at")
         .eq("status", "active")
         .neq("account_private", true)
+        .lt("spam_score", 30)
+        .gte("last_active_at", thirtyDaysAgo)
         .order("follower_count", { ascending: false })
         .limit(100);
 
@@ -48,12 +54,14 @@ export async function GET(req: NextRequest) {
           if (p.is_verified) score += 50;
           if (p.avatar_url) score += 5;
           score += (p.follower_count || 0) / 10;
+          // Language bonus
+          if (p.language === locale) score += 40;
           return { ...p, _score: score };
         })
         .sort((a, b) => b._score - a._score);
 
       const total = scored.length;
-      const paginated = scored.slice(offset, offset + requestedLimit).map(({ _score, following_count, ...rest }) => rest);
+      const paginated = scored.slice(offset, offset + requestedLimit).map(({ _score, following_count, language, spam_score, last_active_at, ...rest }) => rest);
 
       return NextResponse.json({
         users: paginated,
@@ -65,6 +73,26 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Auth mode ──
+
+    // Phase 0: Fetch current user's language and location
+    const userMeta = await cached(`user:${user.id}:meta`, 300, async () => {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("language")
+        .eq("user_id", user.id)
+        .single();
+
+      const { data: locations } = await admin
+        .from("user_locations")
+        .select("country, city")
+        .eq("user_id", user.id)
+        .limit(5);
+
+      return {
+        language: profile?.language || locale,
+        locations: locations || [],
+      };
+    });
 
     const followingIds = await cached(`user:${user.id}:follows`, 120, async () => {
       const { data: follows } = await admin
@@ -83,6 +111,15 @@ export async function GET(req: NextRequest) {
         (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
       );
     });
+    // Users who follow me (for "follow back" label)
+    const followerIds = await cached(`user:${user.id}:followers`, 120, async () => {
+      const { data: followers } = await admin
+        .from("follows")
+        .select("follower_id")
+        .eq("following_id", user.id);
+      return new Set((followers || []).map(f => f.follower_id));
+    });
+
     const excludeParam = req.nextUrl.searchParams.get("exclude");
     const excludeIds = [user.id, ...followingIds, ...blockedIds];
     if (excludeParam) excludeIds.push(excludeParam);
@@ -132,7 +169,7 @@ export async function GET(req: NextRequest) {
     if (candidateIds.length > 0) {
       const { data: candidateProfiles } = await admin
         .from("profiles")
-        .select("user_id, profile_score, is_verified, premium_plan, role")
+        .select("user_id, profile_score, is_verified, premium_plan, role, spam_score, last_active_at, language")
         .in("user_id", candidateIds);
 
       (candidateProfiles || []).forEach(p => {
@@ -141,22 +178,50 @@ export async function GET(req: NextRequest) {
         existing.score += (p.profile_score || 0) * 1.5;
         if (p.is_verified) existing.score += 50;
         if (p.premium_plan) existing.score += 20;
+        // Spam penalty
+        if ((p.spam_score || 0) >= 30) existing.score -= 200;
+        // Phase 2.5: Language bonus
+        if (p.language === userMeta.language) existing.score += 35;
       });
+    }
+
+    // Phase 2.7: Location bonus for candidates
+    if (userMeta.locations.length > 0 && candidateIds.length > 0) {
+      const { data: candidateLocations } = await admin
+        .from("user_locations")
+        .select("user_id, country, city")
+        .in("user_id", candidateIds);
+
+      if (candidateLocations && candidateLocations.length > 0) {
+        const userCountries = new Set(userMeta.locations.map((l: { country: string }) => l.country));
+        const userCities = new Set(userMeta.locations.map((l: { city: string }) => l.city).filter(Boolean));
+
+        candidateLocations.forEach(loc => {
+          const existing = scoreMap.get(loc.user_id);
+          if (!existing) return;
+          if (userCountries.has(loc.country)) existing.score += 20;
+          if (loc.city && userCities.has(loc.city)) existing.score += 15;
+        });
+      }
     }
 
     // Phase 4: Popular backfill
     const { data: popular } = await admin
       .from("profiles")
-      .select("user_id, follower_count, profile_score, is_verified, premium_plan, role")
+      .select("user_id, follower_count, profile_score, is_verified, premium_plan, role, spam_score, last_active_at, language")
       .eq("status", "active")
+      .lt("spam_score", 30)
       .not("user_id", "in", `(${excludeIds.join(",")})`)
       .order("follower_count", { ascending: false })
       .limit(100);
 
     (popular || []).forEach(u => {
       if (!scoreMap.has(u.user_id)) {
+        let score = (u.follower_count || 0) / 10 + (u.profile_score || 0);
+        // Language bonus for backfill
+        if (u.language === userMeta.language) score += 35;
         scoreMap.set(u.user_id, {
-          score: (u.follower_count || 0) / 10 + (u.profile_score || 0),
+          score,
           mutual_count: 0,
         });
       } else {
@@ -182,12 +247,14 @@ export async function GET(req: NextRequest) {
       profile_score?: number;
       status?: string;
       account_private?: boolean;
+      spam_score?: number;
+      last_active_at?: string;
     }>();
 
     if (allCandidateIds.length > 0) {
       const { data: allProfiles } = await admin
         .from("profiles")
-        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count, following_count, profile_score, status, account_private")
+        .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, follower_count, following_count, profile_score, status, account_private, spam_score, last_active_at")
         .in("user_id", allCandidateIds);
 
       (allProfiles || []).forEach(p => profileMap.set(p.user_id, p));
@@ -203,6 +270,12 @@ export async function GET(req: NextRequest) {
       if (profile.status !== "active") continue;
       if (profile.account_private) continue;
 
+      // Hard exclude: spam accounts
+      if ((profile.spam_score || 0) >= 30) continue;
+
+      // Hard exclude: inactive accounts (60+ days)
+      if (profile.last_active_at && profile.last_active_at < sixtyDaysAgo) continue;
+
       // Soft exclude: 0/0 accounts with low profile_score
       const fc = profile.follower_count || 0;
       const fgc = profile.following_count || 0;
@@ -213,7 +286,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Sort and cap
-    const MAX_TOTAL = 60;
+    const MAX_TOTAL = 80;
     const sorted = filtered
       .sort((a, b) => b[1].score - a[1].score)
       .slice(0, MAX_TOTAL);
@@ -242,6 +315,7 @@ export async function GET(req: NextRequest) {
           bio: p.bio,
           follower_count: p.follower_count,
           mutual_count: info?.mutual_count || 0,
+          follows_me: followerIds.has(p.user_id),
         } : null;
       })
       .filter(Boolean);

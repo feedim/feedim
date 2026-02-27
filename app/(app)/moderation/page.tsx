@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, Trash2, ShieldOff } from "lucide-react";
+import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, ShieldOff, Coins } from "lucide-react";
 import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -17,7 +17,7 @@ export default function AdminPage() {
   useSearchParams();
   const t = useTranslations("moderation");
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"review" | "withdrawals" | "panel">("review");
+  const [tab, setTab] = useState<"review" | "withdrawals" | "panel" | "monetization">("review");
   const [subTab, setSubTab] = useState<"contents" | "comments" | "profiles" | "copyright" | "applications">("contents");
   // overview removed
   const [items, setItems] = useState<any[]>([]);
@@ -65,6 +65,11 @@ export default function AdminPage() {
   const [copyrightApps, setCopyrightApps] = useState<any[]>([]);
   const [copyrightAppsLoading, setCopyrightAppsLoading] = useState(false);
   const [appActionLoading, setAppActionLoading] = useState<number | null>(null);
+
+  // Monetization applications
+  const [monetizationApps, setMonetizationApps] = useState<any[]>([]);
+  const [monetizationAppsLoading, setMonetizationAppsLoading] = useState(false);
+  const [monetizationActionLoading, setMonetizationActionLoading] = useState<string | null>(null);
 
   const loadData = useCallback(async (currentTab: string, p = 1, currentSubTab: "contents" | "comments" | "profiles" | "copyright" | "applications" = "contents", append = false) => {
     if (append) setLoadMoreLoading(true); else setLoading(true);
@@ -262,6 +267,34 @@ export default function AdminPage() {
     } finally { setAppActionLoading(null); }
   };
 
+  const loadMonetizationApps = useCallback(async () => {
+    setMonetizationAppsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/moderation?tab=monetization_apps&_ts=${Date.now()}`, { cache: 'no-store' });
+      const data = await res.json();
+      setMonetizationApps(data.applications || []);
+    } catch {} finally { setMonetizationAppsLoading(false); }
+  }, []);
+
+  const takeMonetizationAction = async (action: 'approve_monetization' | 'reject_monetization', userId: string) => {
+    setMonetizationActionLoading(userId);
+    setMonetizationApps(prev => prev.filter(a => a.user_id !== userId));
+    try {
+      const res = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target_type: 'user', target_id: userId }),
+      });
+      if (!res.ok) {
+        feedimAlert('error', t("actionFailed"));
+        loadMonetizationApps();
+      }
+    } catch {
+      feedimAlert('error', t("actionFailed"));
+      loadMonetizationApps();
+    } finally { setMonetizationActionLoading(null); }
+  };
+
   useEffect(() => {
     if (tab === 'review' && subTab === 'copyright') {
       setCopyrightClaimsPage(1);
@@ -270,12 +303,16 @@ export default function AdminPage() {
     if (tab === 'review' && subTab === 'applications') {
       loadCopyrightApps();
     }
-  }, [tab, subTab, loadCopyrightClaims, loadCopyrightApps]);
+    if (tab === 'monetization') {
+      loadMonetizationApps();
+    }
+  }, [tab, subTab, loadCopyrightClaims, loadCopyrightApps, loadMonetizationApps]);
 
   const tabs = [
     { id: "review", label: t("review"), icon: Shield },
     { id: "panel", label: t("management"), icon: ShieldCheck },
     { id: "withdrawals", label: t("withdrawals"), icon: Wallet },
+    { id: "monetization", label: t("monetizationTab"), icon: Coins },
   ] as const;
 
   const POST_APPROVE_REASONS = [
@@ -307,7 +344,7 @@ export default function AdminPage() {
     <AppLayout headerTitle="Moderation" hideRightSidebar>
       <div className="pb-10">
         {/* Tabs */}
-        <div className="flex items-center gap-1 px-4 py-3 sticky top-0 z-10 bg-bg-primary sticky-ambient overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 px-4 py-3 z-10 bg-bg-primary overflow-x-auto no-scrollbar">
           {tabs.map(t => (
             <button key={t.id} onClick={() => { setTab(t.id); setPage(1); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.78rem] font-semibold transition whitespace-nowrap ${
@@ -655,21 +692,9 @@ export default function AdminPage() {
                     )}
                   </div>
                   <div className="flex gap-1.5 shrink-0 ml-3">
-                    <button
-                      onClick={() => takeAction("approve_content", "post", p.id)}
-                      disabled={actionLoading === String(p.id)}
-                      className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition"
-                      title="İncelemeyi kaldır"
-                    ><Check className="h-4 w-4" /></button>
-                    <button
-                      onClick={() => takeAction("dismiss_content", "post", p.id)}
-                      disabled={actionLoading === String(p.id)}
-                      className="p-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition"
-                      title="Sil (kararsız)"
-                    ><Trash2 className="h-4 w-4" /></button>
                     <Link href={`/${p.slug}`} target="_blank"
                       className="p-2 rounded-lg bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition"
-                      title="İçeriği gör"
+                      title={t("viewContent")}
                     ><Eye className="h-4 w-4" /></Link>
                   </div>
                 </div>
@@ -827,7 +852,7 @@ export default function AdminPage() {
                       {post?.slug && (
                         <Link href={`/${post.slug}`} target="_blank"
                           className="p-2 rounded-lg bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition"
-                          title="İçeriği gör"
+                          title={t("viewContent")}
                         ><Eye className="h-4 w-4" /></Link>
                       )}
                     </div>
@@ -961,7 +986,7 @@ export default function AdminPage() {
               const isBlocked = u.status === 'blocked';
               const isDeleted = u.status === 'deleted';
               const remainingDays = isDeleted && u.updated_at ? Math.max(0, 14 - Math.floor((Date.now() - new Date(u.updated_at).getTime()) / (1000 * 60 * 60 * 24))) : 0;
-              const statusLabel = isDeleted ? `silindi (${remainingDays} gün kaldı)` : isBlocked ? 'kapatıldı' : 'incelemede';
+              const statusLabel = isDeleted ? t("statusDeleted", { days: remainingDays }) : isBlocked ? t("statusBlocked") : t("statusUnderReview");
               const statusColor = (isDeleted || isBlocked) ? 'text-error' : 'text-warning';
               return (
               <div key={`${u.user_id || u.username || 'spam-user'}-${idx}`} className="bg-bg-secondary rounded-[15px] p-4">
@@ -974,7 +999,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0 ml-3">
-                    <Link href={`/u/${u.username}`} className="p-2 rounded-lg bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition" title="Profili gör"><Eye className="h-4 w-4" /></Link>
+                    <Link href={`/u/${u.username}`} className="p-2 rounded-lg bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition" title={t("viewProfile")}><Eye className="h-4 w-4" /></Link>
                   </div>
                 </div>
                 {u.moderation_reason && (
@@ -1060,6 +1085,15 @@ export default function AdminPage() {
               </div>
               );
             })}
+            {hasMore && (
+              <div className="flex justify-center py-3">
+                <button
+                  onClick={() => { const next = page + 1; setPage(next); loadData(tab, next, subTab, true); }}
+                  disabled={loadMoreLoading}
+                  className="px-4 py-2 rounded-lg text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
+                >{loadMoreLoading ? t("loading") : t("loadMore")}</button>
+              </div>
+            )}
           </div>
             ) : (
           <div className="px-4 space-y-2 py-2">
@@ -1075,30 +1109,18 @@ export default function AdminPage() {
                       ) : (
                         <img className="default-avatar-auto w-5 h-5 rounded-full object-cover" alt="" />
                       )}
-                      <span>yorum</span>
+                      <span>{t("comment")}</span>
                       <span className="truncate max-w-[60%]">@{c.author?.username || '—'}</span>
                     </div>
                     <p className="text-[0.78rem] text-text-primary whitespace-pre-wrap break-words line-clamp-3">{c.content || c.gif_url || ''}</p>
                     {c.moderation_reason && (
-                      <p className="text-[0.72rem] text-accent-main mt-1.5">Neden: {c.moderation_reason}</p>
+                      <p className="text-[0.72rem] text-accent-main mt-1.5">{t("reason")}: {c.moderation_reason}</p>
                     )}
                   </div>
                   <div className="flex gap-1.5 shrink-0 ml-3">
-                    <button
-                      onClick={() => takeAction("approve_content", "comment", c.id)}
-                      disabled={actionLoading === String(c.id)}
-                      className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition"
-                      title="İncelemeyi Kaldır"
-                    ><Check className="h-4 w-4" /></button>
-                    <button
-                      onClick={() => takeAction("dismiss_content", "comment", c.id)}
-                      disabled={actionLoading === String(c.id)}
-                      className="p-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition"
-                      title="Sil (kararsız)"
-                    ><Trash2 className="h-4 w-4" /></button>
                     <Link href={`/${c.post_slug || c.post_id}`} target="_blank"
                       className="p-2 rounded-lg bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition"
-                      title="İçeriği gör"
+                      title={t("viewContent")}
                     ><Eye className="h-4 w-4" /></Link>
                   </div>
                 </div>
@@ -1211,6 +1233,52 @@ export default function AdminPage() {
                       disabled={actionLoading === String(w.id)}
                       className="p-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition"
                       title="Reddet"
+                    ><X className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : tab === "monetization" ? (
+          <div className="px-4 space-y-2 py-2">
+            {monetizationAppsLoading ? (
+              <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+            ) : monetizationApps.length === 0 ? (
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingWithdrawals")}</div>
+            ) : monetizationApps.map((app: any) => (
+              <div key={app.user_id} className="bg-bg-secondary rounded-[15px] p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={app.avatar_url || "/imgs/default-avatar.jpg"}
+                        alt=""
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                      <div>
+                        <p className="text-[0.82rem] font-medium">{app.full_name || app.username}</p>
+                        <p className="text-[0.68rem] text-text-muted">@{app.username}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-1.5 text-[0.72rem]">
+                      <div><span className="text-text-muted">Puan:</span> <span className="font-semibold">{app.profile_score}</span></div>
+                      <div><span className="text-text-muted">Post:</span> <span className="font-semibold">{app.post_count || 0}</span></div>
+                      <div><span className="text-text-muted">Spam:</span> <span className="font-semibold">{app.spam_score || 0}</span></div>
+                      <div><span className="text-text-muted">Tarih:</span> <span className="font-semibold">{app.monetization_applied_at ? formatRelativeDate(app.monetization_applied_at) : "-"}</span></div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0 ml-3">
+                    <button
+                      onClick={() => takeMonetizationAction("approve_monetization", app.user_id)}
+                      disabled={monetizationActionLoading === app.user_id}
+                      className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition"
+                      title={t("approveMonetization")}
+                    ><Check className="h-4 w-4" /></button>
+                    <button
+                      onClick={() => takeMonetizationAction("reject_monetization", app.user_id)}
+                      disabled={monetizationActionLoading === app.user_id}
+                      className="p-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition"
+                      title={t("rejectMonetization")}
                     ><X className="h-4 w-4" /></button>
                   </div>
                 </div>

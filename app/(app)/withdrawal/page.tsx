@@ -5,7 +5,7 @@ import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Wallet, Check, Shield, Send, Coins,
-  AlertTriangle,
+  AlertTriangle, Lock,
 } from "lucide-react";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { COIN_MIN_WITHDRAWAL, COIN_TO_TRY_RATE, COIN_COMMISSION_RATE } from "@/lib/constants";
@@ -34,6 +34,9 @@ interface ProfileInfo {
   premium_plan: string | null;
   withdrawal_iban: string;
   withdrawal_holder_name: string;
+  monetization_enabled: boolean;
+  account_type: string;
+  account_private: boolean;
 }
 
 const ALLOWED_PLANS = ["pro", "max", "business"];
@@ -80,6 +83,9 @@ export default function WithdrawalPage() {
     : ALLOWED_PLANS.includes(currentUser?.premiumPlan || "");
   const isMfaEnabled = profile?.mfa_enabled || false;
   const hasIban = !!(profile?.withdrawal_iban && profile?.withdrawal_holder_name);
+  const isMonetizationEnabled = profile?.monetization_enabled || false;
+  const isProfessionalAccount = profile?.account_type === "creator" || profile?.account_type === "business";
+  const isPrivateAccount = profile?.account_private || false;
   const amountNum = Number(amount) || 0;
   const grossTry = amountNum * COIN_TO_TRY_RATE;
   const commissionTry = Math.round(grossTry * COIN_COMMISSION_RATE * 100) / 100;
@@ -184,6 +190,44 @@ export default function WithdrawalPage() {
               </p>
             </div>
 
+            {/* 0. Monetization / Professional / Private Gate */}
+            {!isMonetizationEnabled || !isProfessionalAccount || isPrivateAccount ? (
+              <div className="px-4 py-6 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
+                  <Lock className="h-7 w-7 text-accent-main" />
+                </div>
+                <h3 className="text-lg font-bold">
+                  {!isProfessionalAccount
+                    ? t("professionalRequired")
+                    : isPrivateAccount
+                      ? t("privateAccountWarning")
+                      : t("monetizationRequired")}
+                </h3>
+                <p className="text-sm text-text-muted leading-relaxed">
+                  {!isProfessionalAccount
+                    ? t("professionalRequiredDesc")
+                    : isPrivateAccount
+                      ? t("privateAccountWarningDesc")
+                      : t("monetizationRequiredDesc")}
+                </p>
+                <div className="space-y-2 pt-2">
+                  {!isProfessionalAccount ? (
+                    <Link href="/settings" className="block w-full t-btn accept">
+                      {t("goToSettings")}
+                    </Link>
+                  ) : isPrivateAccount ? (
+                    <Link href="/settings" className="block w-full t-btn accept">
+                      {t("goToSettings")}
+                    </Link>
+                  ) : (
+                    <Link href="/settings/monetization" className="block w-full t-btn accept">
+                      {t("goToMonetization")}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ) : (
+            <>
             {/* 1. Premium Gate */}
             {!isPremiumAllowed && (
               <div className="bg-bg-secondary rounded-2xl p-5">
@@ -357,6 +401,8 @@ export default function WithdrawalPage() {
                 <li>• {t("infoPendingIban")}</li>
               </ul>
             </div>
+            </>
+            )}
           </>
         )}
       </div>

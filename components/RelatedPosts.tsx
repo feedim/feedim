@@ -50,9 +50,9 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
     : t("featured");
 
   return (
-    <section className="mt-6 pt-6">
+    <section className="mt-6 pt-6 max-w-[565px] mx-auto">
       <h3 className="text-lg font-bold mb-6">{title}</h3>
-      <div className="-mx-4 flex flex-col gap-[40px]">
+      <div className="flex flex-col gap-[40px] mt-[10px]">
         {items.map(post => (
           <PostCard key={post.id} post={post} />
         ))}

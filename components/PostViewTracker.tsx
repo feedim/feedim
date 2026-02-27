@@ -12,11 +12,14 @@ import { useEffect, useRef, useCallback } from "react";
  * - Sends beacon on exit with accurate read_percentage + read_duration
  * - Tab visibility: pauses when tab is hidden
  */
+const MAX_SESSION = 1800; // 30 minutes max session cap
+
 export default function PostViewTracker({ postId }: { postId: number }) {
   const sent = useRef(false);
   const activeTime = useRef(0);           // Seconds of active reading
   const maxScrollPct = useRef(0);         // Max scroll % reached
   const lastActivityTs = useRef(Date.now());
+  const lastInteractionTs = useRef(0);    // Throttle: last interaction timestamp
   const isActive = useRef(true);          // Is user currently active?
   const isVisible = useRef(true);         // Is tab visible?
   const interactionCount = useRef(0);     // Bot gate: need ≥3 interactions
@@ -41,11 +44,15 @@ export default function PostViewTracker({ postId }: { postId: number }) {
     return Math.min(100, Math.max(0, Math.round((scrolledPast / totalScrollable) * 100)));
   }, []);
 
-  // Mark user as active
+  // Mark user as active (throttled: 2s between interaction increments)
   const markActive = useCallback(() => {
-    lastActivityTs.current = Date.now();
-    interactionCount.current++;
+    const now = Date.now();
+    lastActivityTs.current = now;
     if (!isActive.current) isActive.current = true;
+    if (now - lastInteractionTs.current >= 2000) {
+      interactionCount.current++;
+      lastInteractionTs.current = now;
+    }
   }, []);
 
   // Send the beacon
@@ -82,6 +89,7 @@ export default function PostViewTracker({ postId }: { postId: number }) {
     activeTime.current = 0;
     maxScrollPct.current = 0;
     lastActivityTs.current = Date.now();
+    lastInteractionTs.current = 0;
     isActive.current = true;
     isVisible.current = true;
     interactionCount.current = 0;
@@ -91,6 +99,12 @@ export default function PostViewTracker({ postId }: { postId: number }) {
     // Tick every second: accumulate active time
     tickInterval.current = setInterval(() => {
       if (!isVisible.current) return;
+
+      // Max session cap: auto-send beacon after 30 minutes
+      if (activeTime.current >= MAX_SESSION) {
+        sendView();
+        return;
+      }
 
       const idleMs = Date.now() - lastActivityTs.current;
       if (idleMs > IDLE_THRESHOLD) {

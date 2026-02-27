@@ -28,6 +28,7 @@ import AmbientLight from "@/components/AmbientLight";
 import ModerationBadge from "@/components/ModerationBadge";
 import { getTranslations } from "next-intl/server";
 import { getAlternateLanguages } from "@/lib/seo";
+import { renderMentionsAsHTML, renderMentionsInHTML } from "@/lib/mentionRenderer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -125,14 +126,14 @@ async function getFeaturedContent(currentPostId: number, authorId: string) {
 async function getNextVideos(currentPostId: number, authorId: string): Promise<VideoItem[]> {
   const admin = createAdminClient();
 
-  // Fetch videos + moments: prioritize same author, then others
+  // Fetch videos only (moments excluded — they belong in the moments feed)
   const { data: authorVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
+      id, title, slug, video_url, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
-    .in("content_type", ["video", "moment"])
+    .eq("content_type", "video")
     .eq("status", "published")
     .eq("is_nsfw", false)
     .eq("author_id", authorId)
@@ -143,10 +144,10 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: otherVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
+      id, title, slug, video_url, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
-    .in("content_type", ["video", "moment"])
+    .eq("content_type", "video")
     .eq("status", "published")
     .eq("is_nsfw", false)
     .neq("author_id", authorId)
@@ -409,7 +410,7 @@ export default async function PostPage({ params }: PageProps) {
         <PostHeaderActions
           postId={post.id} postUrl={`/${post.slug}`} postTitle={post.title}
           authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
-          isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
+          authorRole={author?.role} isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
           isVideo contentType={post.content_type}
         />
 
@@ -441,6 +442,7 @@ export default async function PostPage({ params }: PageProps) {
             <span>{t("viewCount", { count: formatCount(post.view_count || 0) })}</span>
             {post.published_at && (
               <>
+                <span className="text-text-muted/40">·</span>
                 <span>{formatRelativeDate(post.published_at)}</span>
               </>
             )}
@@ -450,9 +452,9 @@ export default async function PostPage({ params }: PageProps) {
           <div className="flex items-center gap-3">
             <Link href={`/u/${author?.username}`} className="shrink-0">
               {author?.avatar_url ? (
-                <img src={author.avatar_url} alt={authorName} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+                <img src={author.avatar_url} alt={authorName} loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover bg-bg-tertiary" />
               ) : (
-                <img className="default-avatar-auto h-10 w-10 rounded-full object-cover" alt="" loading="lazy" />
+                <img className="default-avatar-auto h-10 w-10 rounded-full object-cover" alt="" />
               )}
             </Link>
             <div className="flex-1 min-w-0">
@@ -461,6 +463,9 @@ export default async function PostPage({ params }: PageProps) {
                   @{author?.username}
                 </Link>
                 {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
+                {post.visibility && (
+                  <span className="text-[0.65rem] text-text-muted">{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+                )}
               </div>
               {author?.follower_count !== undefined && (
                 <p className="text-[0.72rem] text-text-muted">{t("followers", { count: formatCount(author.follower_count) })}</p>
@@ -484,7 +489,19 @@ export default async function PostPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Interaction bar — stats → buttons → tags → liked-by */}
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              {tags.map((tag: { id: number; name: string; slug: string }) => (
+                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Interaction bar */}
           <PostInteractionBar
             postId={post.id}
             initialLiked={interactions.liked}
@@ -503,19 +520,7 @@ export default async function PostPage({ params }: PageProps) {
             likedByBottom
             isVideo
             contentType={post.content_type}
-          >
-            {/* Tags */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                {tags.map((tag: { id: number; name: string; slug: string }) => (
-                  <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                    className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
-                    #{tag.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </PostInteractionBar>
+          />
 
           {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
           {nextVideos.length > 0 && (
@@ -565,6 +570,7 @@ export default async function PostPage({ params }: PageProps) {
             authorUsername={author?.username}
             authorUserId={author?.user_id}
             authorName={authorName}
+            authorRole={author?.role}
             isOwnPost={isOwnPost}
             postSlug={post.slug}
             portalToHeader
@@ -574,9 +580,9 @@ export default async function PostPage({ params }: PageProps) {
           {/* Author */}
           <div className="flex items-center gap-2 mb-4">
             {author?.avatar_url ? (
-              <img src={author.avatar_url} alt={authorName} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+              <img src={author.avatar_url} alt={authorName} loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover bg-bg-tertiary" />
             ) : (
-              <img className="default-avatar-auto h-10 w-10 rounded-full object-cover shrink-0" alt="" loading="lazy" />
+              <img className="default-avatar-auto h-10 w-10 rounded-full object-cover shrink-0" alt="" />
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
@@ -585,22 +591,38 @@ export default async function PostPage({ params }: PageProps) {
               </div>
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
                 {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
+                {post.visibility && (
+                  <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+                )}
               </div>
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
           </div>
 
           {/* Note content — large font, plain text */}
-          <p className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3">
-            {noteText}
-          </p>
+          <p
+            className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3"
+            dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
+          />
 
           {/* View count — below content */}
           {(post.view_count || 0) > 0 && (
             <p className="text-[0.75rem] text-text-muted mb-5">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}
 
-          {/* Interaction bar + tags */}
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              {tags.map((tag: { id: number; name: string; slug: string }) => (
+                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Interaction bar */}
           <PostInteractionBar
             postId={post.id}
             initialLiked={interactions.liked}
@@ -618,18 +640,7 @@ export default async function PostPage({ params }: PageProps) {
             authorUsername={author?.username}
             likedByBottom
             contentType={post.content_type}
-          >
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                {tags.map((tag: { id: number; name: string; slug: string }) => (
-                  <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                    className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
-                    #{tag.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </PostInteractionBar>
+          />
 
           {/* Related content — same as post page */}
           <RelatedPosts
@@ -673,6 +684,7 @@ export default async function PostPage({ params }: PageProps) {
             authorUsername={author?.username}
             authorUserId={author?.user_id}
             authorName={authorName}
+            authorRole={author?.role}
             isOwnPost={isOwnPost}
             postSlug={post.slug}
             portalToHeader
@@ -708,6 +720,9 @@ export default async function PostPage({ params }: PageProps) {
                 {post.published_at && (
                   <span>{formatRelativeDate(post.published_at)}</span>
                 )}
+                {post.visibility && (
+                  <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+                )}
               </div>
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
@@ -715,7 +730,7 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Featured Image + Content (for regular posts) */}
           <PostContentClient
-            html={sanitizedContent}
+            html={renderMentionsInHTML(sanitizedContent)}
             featuredImage={post.featured_image ? { src: post.featured_image, alt: post.title } : undefined}
             className={[
               // Base
@@ -767,6 +782,21 @@ export default async function PostPage({ params }: PageProps) {
             </div>
           )}
 
+          {/* Tags — right after content, before interaction bar */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              {tags.map((tag: { id: number; name: string; slug: string }) => (
+                <Link
+                  key={tag.id}
+                  href={`/explore/tag/${tag.slug}`}
+                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary"
+                >
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
           {/* PostNavBar — Like, Comment, Save, More */}
           <PostInteractionBar
             postId={post.id}
@@ -784,22 +814,7 @@ export default async function PostPage({ params }: PageProps) {
             postSlug={post.slug}
             authorUsername={author?.username}
             contentType={post.content_type}
-          >
-            {/* Tags — liked-by ile interaction bar arasında */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                {tags.map((tag: { id: number; name: string; slug: string }) => (
-                  <Link
-                    key={tag.id}
-                    href={`/explore/tag/${tag.slug}`}
-                    className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary"
-                  >
-                    #{tag.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </PostInteractionBar>
+          />
 
           {/* Related content */}
           <RelatedPosts

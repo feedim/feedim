@@ -25,37 +25,42 @@ export default function FreezeAccountPage() {
   const [otherText, setOtherText] = useState("");
   const [freezing, setFreezing] = useState(false);
 
-  const handleFreeze = async () => {
+  const handleFreeze = () => {
     if (!selectedReason) {
       feedimAlert("error", t("pleaseSelectReason"));
       return;
     }
 
-    setFreezing(true);
-    try {
-      const reason = selectedReason === t("freezeReasonOther") ? otherText.trim() || t("freezeReasonOther") : selectedReason;
-      const [res] = await Promise.all([
-        fetch("/api/account/freeze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason }),
-        }),
-        minDelay(2000),
-      ]);
+    feedimAlert("question", t("freezeConfirm"), {
+      showYesNo: true,
+      onYes: async () => {
+        setFreezing(true);
+        try {
+          const reason = selectedReason === t("freezeReasonOther") ? otherText.trim() || t("freezeReasonOther") : selectedReason;
+          const [res] = await Promise.all([
+            fetch("/api/account/freeze", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason }),
+            }),
+            minDelay(2000),
+          ]);
 
-      if (res.ok) {
-        const { signOutCleanup } = await import("@/lib/authClient");
-        await signOutCleanup();
-        window.location.replace("/");
-      } else {
-        const data = await res.json();
-        feedimAlert("error", data.error || t("freezeFailed"));
-      }
-    } catch {
-      feedimAlert("error", t("genericError"));
-    } finally {
-      setFreezing(false);
-    }
+          if (res.ok) {
+            const { signOutCleanup } = await import("@/lib/authClient");
+            await signOutCleanup();
+            window.location.replace("/");
+          } else {
+            const data = await res.json();
+            feedimAlert("error", data.error || t("freezeFailed"));
+          }
+        } catch {
+          feedimAlert("error", t("genericError"));
+        } finally {
+          setFreezing(false);
+        }
+      },
+    });
   };
 
   return (

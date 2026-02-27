@@ -185,7 +185,7 @@ export default function HelpContent() {
           <div className="grid grid-cols-2 gap-2.5">
           {(() => {
             const items = pageLinks.filter((p) =>
-              ["/help/copyright", "/help/moderation", "/help/coins", "/help/earning", "/help/analytics", "/help/data-sharing", "/help/access-restrictions", "/help/accessibility", "/help/ai"].includes(p.href)
+              ["/help/copyright", "/help/moderation", "/help/coins", "/help/earning", "/help/analytics", "/help/data-sharing", "/help/access-restrictions", "/help/accessibility", "/help/ai", "/help/profile-score"].includes(p.href)
             );
             // Only show complete pairs (even count)
             const visibleItems = items.slice(0, items.length - (items.length % 2));

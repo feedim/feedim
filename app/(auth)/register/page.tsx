@@ -8,7 +8,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordInput from "@/components/PasswordInput";
 import { VALIDATION } from "@/lib/constants";
-import { normalizeUsername, filterNameInput } from "@/lib/utils";
+import { normalizeUsername, filterNameInput, isValidEmail } from "@/lib/utils";
 import Turnstile from "@/components/Turnstile";
 import { useTranslations } from "next-intl";
 
@@ -62,6 +62,7 @@ function RegisterForm() {
   const [emailChecking, setEmailChecking] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRequired = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const router = useRouter();
   const supabase = createClient();
 
@@ -109,8 +110,7 @@ function RegisterForm() {
       setEmailAvailable(null);
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       setEmailAvailable(null);
       return;
     }
@@ -161,6 +161,12 @@ function RegisterForm() {
         return;
       }
 
+      if (!isValidEmail(email)) {
+        await waitMin();
+        feedimAlert("error", t('validEmailRequired'));
+        return;
+      }
+
       if (password !== confirmPassword) {
         await waitMin();
         feedimAlert("error", t('passwordsNoMatch'));
@@ -179,6 +185,7 @@ function RegisterForm() {
         options: {
           data: { name, surname: surname || undefined, full_name: surname ? `${name} ${surname}` : name, username: username || undefined },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          captchaToken: captchaToken || undefined,
         },
       });
 
@@ -276,7 +283,10 @@ function RegisterForm() {
             )}
           </div>
           {usernameAvailable === false && username.length >= 3 && !usernameChecking && (
-            <p className="text-xs text-error mt-1">{t('usernameTaken')}</p>
+            <p className="flex items-center gap-1 text-xs text-error mt-1.5 pl-1">
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              {t('usernameTaken')}
+            </p>
           )}
           {/* Suggestions */}
           {suggestions.length > 0 && !username && (
@@ -295,21 +305,26 @@ function RegisterForm() {
           )}
         </div>
 
-        <div className="relative">
-          <input type="email" placeholder={t('email')} value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} required maxLength={VALIDATION.email.max} autoComplete="email" className="input-modern w-full" />
-          {email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2">
-              {emailChecking ? (
-                <span className="text-xs text-text-muted">...</span>
-              ) : emailAvailable === true ? (
-                <svg className="h-4 w-4 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-              ) : emailAvailable === false ? (
-                <svg className="h-4 w-4 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              ) : null}
-            </span>
-          )}
+        <div>
+          <div className="relative">
+            <input type="email" placeholder={t('email')} value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, "").toLowerCase())} required maxLength={VALIDATION.email.max} autoComplete="email" className="input-modern w-full" />
+            {email.length >= 5 && isValidEmail(email) && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                {emailChecking ? (
+                  <span className="text-xs text-text-muted">...</span>
+                ) : emailAvailable === true ? (
+                  <svg className="h-4 w-4 text-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                ) : emailAvailable === false ? (
+                  <svg className="h-4 w-4 text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                ) : null}
+              </span>
+            )}
+          </div>
           {emailAvailable === false && (
-            <p className="text-xs text-error mt-1">{t('emailTaken')}</p>
+            <p className="flex items-center gap-1 text-xs text-error mt-1.5 pl-1">
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              {t('emailTaken')}
+            </p>
           )}
         </div>
         <PasswordInput placeholder={t('passwordHintDynamic', { min: VALIDATION.password.min })} value={password} onChange={(e) => setPassword(e.target.value.replace(/\s/g, ""))} required minLength={VALIDATION.password.min} maxLength={VALIDATION.password.max} autoComplete="new-password" className="input-modern w-full" />
@@ -325,7 +340,7 @@ function RegisterForm() {
           </span>
         </label>
         <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} className="flex justify-center" />
-        <button type="submit" className="t-btn accept w-full relative" disabled={loading || !termsAccepted || (password !== confirmPassword)} aria-label={t('signUp')}>
+        <button type="submit" className="t-btn accept w-full relative" disabled={loading || !termsAccepted || (captchaRequired && !captchaToken) || (password !== confirmPassword)} aria-label={t('signUp')}>
           {loading ? <span className="loader" /> : t('signUp')}
         </button>
       </form>

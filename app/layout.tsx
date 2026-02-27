@@ -8,6 +8,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import GlobalHotkeys from "@/components/GlobalHotkeys";
 import TopProgressBar from "@/components/TopProgressBar";
 import ModalsPreload from "@/components/ModalsPreload";
+
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
@@ -120,6 +121,7 @@ export default async function RootLayout({
             <ScrollToTop />
             <GlobalHotkeys />
             <ModalsPreload />
+
             {children}
           </AuthModalProvider>
           <FeedimAlertProvider />

@@ -141,20 +141,6 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
     >
       {view === "menu" ? (
         <div className="py-2 px-2">
-          {/* Yeni gönderi */}
-          <button
-            onClick={handleNewPost}
-            className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition text-left my-[3px]"
-          >
-            <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
-              <BookOpen className="h-[18px] w-[18px] text-accent-main" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">{t("postLabel")}</p>
-              <p className="text-xs text-text-muted mt-0.5">{t("postDesc")}</p>
-            </div>
-          </button>
-
           {/* Not */}
           <button
             onClick={() => go("/create/note")}
@@ -166,6 +152,20 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">{t("noteLabel")}</p>
               <p className="text-xs text-text-muted mt-0.5">{t("noteDesc")}</p>
+            </div>
+          </button>
+
+          {/* Yeni gönderi */}
+          <button
+            onClick={handleNewPost}
+            className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition text-left my-[3px]"
+          >
+            <div className="w-9 h-9 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
+              <BookOpen className="h-[18px] w-[18px] text-accent-main" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">{t("postLabel")}</p>
+              <p className="text-xs text-text-muted mt-0.5">{t("postDesc")}</p>
             </div>
           </button>
 
@@ -225,7 +225,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
           ) : drafts.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-10 w-10 text-text-muted mx-auto mb-3 opacity-40" />
-              <p className="text-sm text-text-muted">{t("noDrafts")}</p>
+              <p className="text-[0.74rem] text-text-muted">{t("noDrafts")}</p>
             </div>
           ) : (
             <>

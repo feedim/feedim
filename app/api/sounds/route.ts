@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") || "";
     const sort = searchParams.get("sort") || "popular";
-    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 50);
     const cursor = searchParams.get("cursor");
 
     const admin = createAdminClient();

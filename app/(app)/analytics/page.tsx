@@ -7,8 +7,8 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Bookmark, Users, TrendingUp,
   FileText, Eye, Briefcase, ArrowUpRight, ArrowDownRight, Minus, ChevronRight,
-  BarChart3, Activity, Clock, CalendarDays, Zap, Award, ChevronDown, ChevronUp,
-  Coins, Film, Play, CheckCircle,
+  BarChart3, Activity, Clock, CalendarDays, Zap, Award,
+  Coins, Film, Play, CheckCircle, Globe,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
@@ -30,12 +30,21 @@ interface PeriodCounts { views: number; likes: number; comments: number; saves: 
 interface DayData { date: string; count: number }
 interface HourData { hour: number; count: number }
 interface WeekdayData { day: number; views: number; likes: number }
-interface PostData { id: string; title: string; slug: string; views: number; likes: number; comments: number; saves: number; featured_image?: string; published_at: string }
+interface PostData { id: string; title: string; slug: string; views: number; likes: number; comments: number; saves: number; featured_image?: string; published_at: string; content_type?: string }
 interface EarningsData { coinBalance: number; totalEarned: number; periodEarned: number; qualifiedReads: number; premiumReads: number }
 interface VideoAnalyticsData {
   videoCount: number; totalWatchHours: number; avgWatchDuration: number;
   avgWatchPercentage: number; completionRate: number; totalWatchers: number;
   topVideos: { id: string; title: string; slug: string; featured_image?: string; views: number; watchHours: number; video_duration?: number }[];
+}
+interface FollowerDemographicsData {
+  totalFollowers: number;
+  countries: { code: string; count: number }[];
+  ageRanges: Record<string, number>;
+  ageUnknown: number;
+  gender: { male: number; female: number; unknown: number };
+  activePercentage: number;
+  activeCount: number;
 }
 type ChartMetric = "views" | "likes" | "comments" | "followers";
 
@@ -84,14 +93,15 @@ export default function AnalyticsPage() {
   const [topPosts, setTopPosts] = useState<PostData[]>([]);
   const [allPosts, setAllPosts] = useState<PostData[]>([]);
   const [chartMetric, setChartMetric] = useState<ChartMetric>("views");
-  const [showAllPosts, setShowAllPosts] = useState(false);
   const [earnings, setEarnings] = useState<EarningsData>({ coinBalance: 0, totalEarned: 0, periodEarned: 0, qualifiedReads: 0, premiumReads: 0 });
   const [videoAnalytics, setVideoAnalytics] = useState<VideoAnalyticsData | null>(null);
+  const [followerDemographics, setFollowerDemographics] = useState<FollowerDemographicsData | null>(null);
 
   const loadAnalytics = useCallback(async (p: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics?period=${p}`);
+      const tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+      const res = await fetch(`/api/analytics?period=${p}&tz=${tz}`);
       const data = await res.json();
       setOverview(data.overview); setPeriodCounts(data.periodCounts); setPrev(data.prev);
       setViewsByDay(data.viewsByDay || []); setLikesByDay(data.likesByDay || []);
@@ -100,6 +110,7 @@ export default function AnalyticsPage() {
       setTopPosts(data.topPosts || []); setAllPosts(data.allPosts || []);
       setEarnings(data.earnings || { coinBalance: 0, totalEarned: 0, periodEarned: 0, qualifiedReads: 0, premiumReads: 0 });
       setVideoAnalytics(data.videoAnalytics || null);
+      setFollowerDemographics(data.followerDemographics || null);
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -128,7 +139,7 @@ export default function AnalyticsPage() {
     <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="pb-10">
         {/* Period tabs */}
-        <div className="flex items-center gap-1 px-4 py-3 sticky top-0 z-10 bg-bg-primary sticky-ambient">
+        <div className="flex items-center gap-1 px-4 py-3 z-10 bg-bg-primary">
           {(["7d", "30d", "90d"] as const).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-4 py-1.5 rounded-full text-[0.8rem] font-semibold transition ${period === p ? "bg-text-primary text-bg-primary" : "text-text-muted hover:text-text-primary"}`}
@@ -167,9 +178,9 @@ export default function AnalyticsPage() {
             <div className="flex gap-2 mx-4 mt-3 overflow-x-auto no-scrollbar">
               <QuickStat icon={FileText} label={t("posts")} value={String(overview?.postCount || 0)} />
               <QuickStat icon={Users} label={t("followers")} value={formatCount(overview?.followerCount || 0)} />
-              <QuickStat icon={Activity} label={t("engagement")} value={`${Math.min(overview?.engagementRate || 0, 99)}%`} />
               <QuickStat icon={Eye} label={t("avgRead")} value={formatCount(overview?.avgViewsPerPost || 0)} />
-              <QuickStat icon={Clock} label={t("avgDuration")} value={`${overview?.avgReadingTime || 0} ${t("min")}`} />
+              <QuickStat icon={Clock} label={t("avgReadDuration")} value={`${overview?.avgReadingTime || 0} ${t("min")}`} />
+              {videoAnalytics && <QuickStat icon={Play} label={t("avgWatchDuration")} value={fmtDuration(videoAnalytics.avgWatchDuration)} />}
               <QuickStat icon={Heart} label={t("avgLikes")} value={String(overview?.avgLikesPerPost || 0)} />
             </div>
 
@@ -193,35 +204,28 @@ export default function AnalyticsPage() {
               periodLabel={periodLabel}
             />
 
+            {/* 8.5 Follower Demographics */}
+            {followerDemographics && <FollowerDemographicsCard data={followerDemographics} />}
+
             {/* 9. Video Analytics */}
             {videoAnalytics && <VideoAnalyticsCard data={videoAnalytics} periodLabel={periodLabel} />}
 
             {/* 10. Top Posts */}
             {topPosts.length > 0 && (
-              <Section icon={Award} title={t("topPosts")}>
+              <div className="mt-6">
+                <div className="px-4 flex items-center justify-between mb-2">
+                  <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5">
+                    <Award className="h-4 w-4 text-text-muted" /> {t("topPosts")}
+                  </h3>
+                  {allPosts.length > 5 && (
+                    <Link href="/analytics/top-posts" className="text-[0.72rem] font-semibold text-accent-main flex items-center gap-0.5">
+                      {t("seeAllPosts")} <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
+                </div>
                 {topPosts.map((post, i) => (
                   <TopPostRow key={post.id} post={post} rank={i + 1} maxViews={topPosts[0].views} />
                 ))}
-              </Section>
-            )}
-
-            {/* 10. All Posts */}
-            {allPosts.length > 5 && (
-              <div className="mt-2">
-                <button
-                  onClick={() => setShowAllPosts(!showAllPosts)}
-                  className="flex items-center gap-2 px-4 py-3 w-full text-left text-[0.82rem] font-semibold text-accent-main hover:bg-bg-secondary transition"
-                >
-                  {showAllPosts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  {showAllPosts ? t("showLess") : t("showAllPosts", { count: allPosts.length })}
-                </button>
-                {showAllPosts && (
-                  <div>
-                    {allPosts.slice(5).map((post, i) => (
-                      <TopPostRow key={post.id} post={post} rank={i + 6} maxViews={allPosts[0].views} />
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -731,23 +735,141 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
 }
 
 /* ─────────────────────────────────────
+   Follower Demographics Card
+───────────────────────────────────── */
+function FollowerDemographicsCard({ data }: { data: FollowerDemographicsData }) {
+  const t = useTranslations("analytics");
+  const locale = typeof window !== "undefined" ? navigator.language : "tr";
+
+  const totalCountryFollowers = data.countries.reduce((s, c) => s + c.count, 0);
+  const maxCountry = data.countries.length > 0 ? data.countries[0].count : 1;
+
+  const ageEntries = Object.entries(data.ageRanges).filter(([, v]) => v > 0);
+  const totalAgeKnown = ageEntries.reduce((s, [, v]) => s + v, 0);
+  const maxAge = ageEntries.length > 0 ? Math.max(...ageEntries.map(([, v]) => v)) : 1;
+
+  const genderTotal = data.gender.male + data.gender.female;
+
+  function getCountryName(code: string) {
+    if (code === "OTHER") return t("demographicsOther");
+    try {
+      return new Intl.DisplayNames([locale], { type: "region" }).of(code) || code;
+    } catch { return code; }
+  }
+
+  return (
+    <div className="mx-4 mt-5">
+      <div className="bg-bg-secondary rounded-[15px] p-4">
+        <h3 className="text-[0.82rem] font-semibold flex items-center gap-1.5 mb-4">
+          <Globe className="h-4 w-4 text-text-muted" /> {t("demographics")}
+        </h3>
+
+        {/* Countries */}
+        {data.countries.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider mb-2">{t("demographicsCountries")}</p>
+            <div className="space-y-1.5">
+              {data.countries.map(c => {
+                const barW = maxCountry > 0 ? (c.count / maxCountry) * 100 : 0;
+                const pct = totalCountryFollowers > 0 ? Math.round((c.count / totalCountryFollowers) * 100) : 0;
+                return (
+                  <div key={c.code} className="flex items-center gap-2">
+                    <span className="text-[0.72rem] font-medium w-24 truncate">{getCountryName(c.code)}</span>
+                    <div className="flex-1 h-4 bg-bg-tertiary rounded-full overflow-hidden">
+                      <div className="h-full bg-accent-main/70 rounded-full transition-all duration-500" style={{ width: `${Math.max(barW, 3)}%` }} />
+                    </div>
+                    <span className="text-[0.68rem] text-text-muted w-8 text-right">%{pct}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Age Ranges */}
+        {totalAgeKnown > 0 && (
+          <div className="mb-4">
+            <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider mb-2">{t("demographicsAgeRanges")}</p>
+            <div className="space-y-1.5">
+              {ageEntries.map(([range, count]) => {
+                const barW = maxAge > 0 ? (count / maxAge) * 100 : 0;
+                const pct = totalAgeKnown > 0 ? Math.round((count / totalAgeKnown) * 100) : 0;
+                return (
+                  <div key={range} className="flex items-center gap-2">
+                    <span className="text-[0.72rem] font-medium w-12">{range}</span>
+                    <div className="flex-1 h-4 bg-bg-tertiary rounded-full overflow-hidden">
+                      <div className="h-full bg-accent-main/70 rounded-full transition-all duration-500" style={{ width: `${Math.max(barW, 3)}%` }} />
+                    </div>
+                    <span className="text-[0.68rem] text-text-muted w-8 text-right">%{pct}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Gender */}
+        {genderTotal > 0 && (
+          <div className="mb-4">
+            <p className="text-[0.68rem] text-text-muted font-medium uppercase tracking-wider mb-2">{t("demographicsGender")}</p>
+            <div className="flex h-6 rounded-full overflow-hidden bg-bg-tertiary">
+              {data.gender.male > 0 && (
+                <div
+                  className="h-full bg-accent-main flex items-center justify-center text-[0.62rem] font-semibold text-white"
+                  style={{ width: `${(data.gender.male / genderTotal) * 100}%` }}
+                >
+                  {Math.round((data.gender.male / genderTotal) * 100)}% {t("demographicsMale")}
+                </div>
+              )}
+              {data.gender.female > 0 && (
+                <div
+                  className="h-full bg-accent-main/60 flex items-center justify-center text-[0.62rem] font-semibold text-white"
+                  style={{ width: `${(data.gender.female / genderTotal) * 100}%` }}
+                >
+                  {Math.round((data.gender.female / genderTotal) * 100)}% {t("demographicsFemale")}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Active Followers */}
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent-main/10 text-accent-main text-[0.68rem] font-semibold">
+            <Activity className="h-3 w-3" />
+            {t("demographicsActiveDesc", { percent: data.activePercentage })}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────
    Top Post Row
 ───────────────────────────────────── */
+function ContentTypeIcon({ type }: { type?: string }) {
+  switch (type) {
+    case "video": return <Film className="w-5 h-5 text-purple-500" />;
+    case "moment": return <Play className="w-5 h-5 text-accent-main" />;
+    case "note": return <FileText className="w-5 h-5 text-blue-500" />;
+    default: return <FileText className="w-5 h-5 text-text-muted" />;
+  }
+}
+
 function TopPostRow({ post, rank, maxViews }: { post: PostData; rank: number; maxViews: number }) {
   const barWidth = maxViews > 0 ? Math.max((post.views / maxViews) * 100, 6) : 6;
 
   return (
-    <Link href={`/${post.slug}`} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-secondary transition group">
-      <span className="text-sm font-bold text-text-muted w-5 text-center shrink-0">{rank}</span>
-      {post.featured_image ? (
-        <img src={post.featured_image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
-      ) : (
-        <NoImage className="w-12 h-12 rounded-lg shrink-0" />
-      )}
+    <Link href={`/${post.slug}`} className="flex items-center gap-3 mx-4 mb-2 px-3 py-3 rounded-xl border border-border-primary/20 hover:bg-bg-secondary transition group">
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-sm font-bold text-text-muted w-5 text-center">{rank}</span>
+        <ContentTypeIcon type={post.content_type} />
+      </div>
       <div className="flex-1 min-w-0">
         <p className="text-[0.84rem] font-medium truncate group-hover:text-accent-main transition">{post.title}</p>
         <div className="mt-1.5 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-          <div className="h-full bg-accent-main/50 rounded-full transition-all duration-500" style={{ width: `${barWidth}%` }} />
+          <div className="h-full bg-accent-main rounded-full transition-all duration-500" style={{ width: `${barWidth}%` }} />
         </div>
         <div className="flex items-center gap-2.5 mt-1">
           <span className="flex items-center gap-0.5 text-[0.66rem] text-text-muted"><Eye className="h-2.5 w-2.5" /> {formatCount(post.views)}</span>

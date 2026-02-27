@@ -115,23 +115,23 @@ export async function POST(request: NextRequest) {
   const MIN_TRUSTED_REPORTERS = 3;
   const MIN_PRIORITY_REPORTERS = 5;
 
-  // Check if the target belongs to an admin (immune to moderation)
+  // Check if the target belongs to an admin or moderator (immune to moderation)
   let targetIsAdmin = false;
   if (type === 'post') {
     const { data: postAuthor } = await admin.from('posts').select('author_id').eq('id', Number(target_id)).single();
     if (postAuthor) {
       const { data: ap } = await admin.from('profiles').select('role').eq('user_id', postAuthor.author_id).single();
-      if (ap?.role === 'admin') targetIsAdmin = true;
+      if (ap?.role === 'admin' || ap?.role === 'moderator') targetIsAdmin = true;
     }
   } else if (type === 'comment') {
     const { data: comAuthor } = await admin.from('comments').select('author_id').eq('id', Number(target_id)).single();
     if (comAuthor?.author_id) {
       const { data: ap } = await admin.from('profiles').select('role').eq('user_id', comAuthor.author_id).single();
-      if (ap?.role === 'admin') targetIsAdmin = true;
+      if (ap?.role === 'admin' || ap?.role === 'moderator') targetIsAdmin = true;
     }
   } else if (type === 'user') {
     const { data: ap } = await admin.from('profiles').select('role').eq('user_id', target_id).single();
-    if (ap?.role === 'admin') targetIsAdmin = true;
+    if (ap?.role === 'admin' || ap?.role === 'moderator') targetIsAdmin = true;
   }
 
   // Check if this content was previously approved by a moderator — skip re-flagging
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
             const aiResult = await evaluateUserReports(contentText, 'profile', reports, reportCount);
 
             if (aiResult.shouldModerate) {
-              await admin2.from('profiles').update({ status: 'moderation' }).eq('user_id', target_id);
+              await admin2.from('profiles').update({ status: 'moderation', moderation_reason: aiResult.reason || 'Topluluk şikayeti üzerine inceleme' }).eq('user_id', target_id);
             }
 
             const userDecCode = String(Math.floor(100000 + Math.random() * 900000));
@@ -441,7 +441,7 @@ export async function POST(request: NextRequest) {
       });
 
     } else if (type === "user") {
-      await admin.from("profiles").update({ status: "moderation" }).eq("user_id", target_id);
+      await admin.from("profiles").update({ status: "moderation", moderation_reason: 'Çok sayıda topluluk şikayeti' }).eq("user_id", target_id);
 
       let userDecisionId: string | null = null;
       try {

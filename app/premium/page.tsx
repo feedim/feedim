@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
 import Link from "next/link";
 import { ArrowLeft, Check, X, ChevronRight, Mail } from "lucide-react";
 import PublicFooter from "@/components/PublicFooter";
@@ -211,7 +212,7 @@ export default function PremiumPage() {
             <span className="text-lg font-semibold">Premium</span>
           </Link>
           <button
-            onClick={() => { if (window.history.length > 2) router.back(); else { emitNavigationStart(); router.push("/"); } }}
+            onClick={() => smartBack(router, "/")}
             className="flex items-center gap-2 text-text-muted hover:text-text-primary transition"
           >
             <ArrowLeft className="h-5 w-5" />

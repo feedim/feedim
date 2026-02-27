@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Yetkisiz" }, { status: 401 });
 
     if (!checkVideoLimit(user.id)) {
-      return NextResponse.json({ error: "Çok fazla yükleme. Lütfen bekleyin." }, { status: 429 });
+      return NextResponse.json({ error: "Topluluğumuzu korumak adına yükleme hızınız sınırlandırıldı, lütfen bekleyin" }, { status: 429 });
     }
 
     const { filename, contentType, fileSize } = await request.json();

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {useRouter, useSearchParams } from "next/navigation";
+import { smartBack } from "@/lib/smartBack";
 import { ArrowLeft, Ticket, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -106,9 +107,9 @@ export default function AdminCouponsPage() {
 
   return (
     <div className="min-h-screen text-text-primary">
-      <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient min-h-[73px]">
+      <header className="z-50 bg-bg-primary min-h-[73px]">
         <nav className="container mx-auto px-6 flex items-center justify-between min-h-[73px]">
-          <button onClick={() => router.back()} className="flex items-center gap-2 transition-colors">
+          <button onClick={() => smartBack(router)} className="flex items-center gap-2 transition-colors">
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">Geri</span>
           </button>

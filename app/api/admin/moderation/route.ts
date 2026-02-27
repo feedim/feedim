@@ -156,6 +156,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (tab === 'monetization_apps') {
+      const { data: applications } = await admin
+        .from('profiles')
+        .select('user_id, username, full_name, avatar_url, profile_score, spam_score, monetization_applied_at, account_type')
+        .eq('monetization_status', 'pending')
+        .order('monetization_applied_at', { ascending: true })
+        .limit(50);
+
+      // Get post counts for each applicant
+      const apps = await Promise.all(
+        (applications || []).map(async (app: any) => {
+          const { count } = await admin.from('posts').select('id', { count: 'exact', head: true })
+            .eq('author_id', app.user_id).eq('status', 'published');
+          return { ...app, post_count: count || 0 };
+        })
+      );
+
+      const resp = NextResponse.json({ applications: apps });
+      resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      return resp;
+    }
+
     if (tab === 'recent_users') {
       const rawQ = (request.nextUrl.searchParams.get('q') || '').trim();
       const q = rawQ.length >= 2 ? rawQ.slice(0, 50) : '';
@@ -587,6 +609,30 @@ export async function POST(request: NextRequest) {
             if (emailResult) {
               const tpl = await moderationRejectedEmail(rejectedPost.title, reason || '', decisionCode, emailResult.locale);
               await sendEmail({ to: emailResult.email, ...tpl, template: 'moderation_rejected', userId: rejectedPost.author_id });
+            }
+            // Copyright/telif strike — moderator-triggered only
+            const reasonLower = (reason || '').toLowerCase();
+            if (reasonLower.includes('telif') || reasonLower.includes('copyright')) {
+              try {
+                const { data: authorProfile } = await admin
+                  .from('profiles')
+                  .select('copyright_strike_count')
+                  .eq('user_id', rejectedPost.author_id)
+                  .single();
+                const newStrikeCount = (authorProfile?.copyright_strike_count || 0) + 1;
+                const strikeUpdate: Record<string, unknown> = { copyright_strike_count: newStrikeCount };
+                if (newStrikeCount >= 10) {
+                  strikeUpdate.status = 'moderation';
+                  strikeUpdate.moderation_reason = `Telif hakkı ihlali: ${newStrikeCount} strike`;
+                  try {
+                    const strikeCode = String(Math.floor(100000 + Math.random() * 900000));
+                    await admin.from('moderation_decisions').insert({
+                      target_type: 'user', target_id: rejectedPost.author_id, decision: 'moderation', reason: `Telif hakkı ihlali: ${newStrikeCount} strike`, moderator_id: user.id, decision_code: strikeCode,
+                    });
+                  } catch {}
+                }
+                await admin.from('profiles').update(strikeUpdate).eq('user_id', rejectedPost.author_id);
+              } catch {}
             }
           }
         } else if (target_type === 'comment') {
@@ -1153,6 +1199,28 @@ export async function POST(request: NextRequest) {
             target_type: 'user', target_id: String(target_id), decision: newVal ? 'restrict_comment' : 'unrestrict_comment', reason: reason || (newVal ? 'Yorum engeli atandı' : 'Yorum engeli kaldırıldı'), moderator_id: user.id, decision_code: rcCode,
           });
           await createNotification({ admin, user_id: target_id, actor_id: target_id, type: 'system', content: newVal ? `Yorum özelliğiniz kısıtlandı. Karar No: #${rcCode}` : `Yorum kısıtlamanız kaldırıldı. Karar No: #${rcCode}` });
+        } catch {}
+        break;
+      }
+
+      case 'approve_monetization': {
+        await admin.from('profiles').update({
+          monetization_enabled: true,
+          monetization_status: 'approved',
+          monetization_approved_at: new Date().toISOString(),
+        }).eq('user_id', target_id);
+        try {
+          await createNotification({ admin, user_id: target_id, actor_id: target_id, type: 'system', content: 'Para kazanma başvurunuz onaylandı!' });
+        } catch {}
+        break;
+      }
+
+      case 'reject_monetization': {
+        await admin.from('profiles').update({
+          monetization_status: 'rejected',
+        }).eq('user_id', target_id);
+        try {
+          await createNotification({ admin, user_id: target_id, actor_id: target_id, type: 'system', content: 'Para kazanma başvurunuz reddedildi.' });
         } catch {}
         break;
       }

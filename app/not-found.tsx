@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useTranslations } from "next-intl";
+import { smartBackRaw } from "@/lib/smartBack";
 
 export default function NotFound() {
   const t = useTranslations("errors");
@@ -28,7 +29,7 @@ export default function NotFound() {
           </p>
           <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
             <button
-              onClick={() => window.history.back()}
+              onClick={() => smartBackRaw("/")}
               className="t-btn cancel"
             >
               {t("goBack")}

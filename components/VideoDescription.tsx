@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 
 interface VideoDescriptionProps {
   text: string;
@@ -29,9 +30,8 @@ export default function VideoDescription({ text }: VideoDescriptionProps) {
         className={`text-[0.88rem] leading-[1.65] text-text-readable whitespace-pre-wrap ${
           expanded ? "" : "line-clamp-3"
         }`}
-      >
-        {text}
-      </div>
+        dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(text) }}
+      />
       {showToggle && (
         <button
           className="text-[0.82rem] font-semibold text-text-primary mt-1.5 hover:underline"

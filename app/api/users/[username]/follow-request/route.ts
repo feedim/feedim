@@ -3,12 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
 import { cache } from "@/lib/cache";
+import { safeError } from "@/lib/apiError";
 
 // POST — accept or reject a follow request
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -82,6 +84,9 @@ export async function POST(
     await admin.from("follow_requests").delete().eq("id", request.id);
     return NextResponse.json({ rejected: true });
   }
+  } catch (err) {
+    return safeError(err);
+  }
 }
 
 // GET — list pending follow requests for the current user
@@ -89,12 +94,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const page = parseInt(req.nextUrl.searchParams.get("page") || "1");
-  const limit = 20;
+  const limit = 10;
   const offset = (page - 1) * limit;
 
   const { data: requests } = await supabase
@@ -126,4 +132,7 @@ export async function GET(
     requests: enriched,
     hasMore: requests.length >= limit,
   });
+  } catch (err) {
+    return safeError(err);
+  }
 }

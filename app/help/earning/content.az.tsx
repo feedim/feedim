@@ -17,12 +17,13 @@ export default function ContentAz() {
         </p>
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Peşəkar hesab növü:</strong> Hesabınız peşəkar (müəllif) hesab növündə olmalıdır</li>
+            <li><strong>Peşəkar hesab:</strong> Hesabınız peşəkar (creator və ya business) hesab növündə olmalıdır</li>
+            <li><strong>Pul qazanma təsdiqi:</strong> Parametrlər &gt; Pul Qazanma bölməsindən müraciət etməli və moderator təsdiqi almalısınız</li>
             <li><strong>Premium üzvlük:</strong> Aktiv bir Premium abunəliyiniz olmalıdır</li>
           </ul>
         </div>
         <p>
-          Bu iki şərti ödəyən istifadəçilər, məzmunlarının oxunmasından avtomatik olaraq qazanc əldə etməyə başlayır.
+          Bu şərtləri ödəyən və müraciəti təsdiqlənən istifadəçilər, məzmunlarının oxunmasından avtomatik olaraq qazanc əldə etməyə başlayır.
         </p>
 
         {/* ── Qazanc Mənbələri ── */}

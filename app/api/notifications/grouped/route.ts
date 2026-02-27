@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NOTIFICATION_SOCIAL_TYPES, NOTIFICATION_SYSTEM_TYPES } from "@/lib/constants";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const GROUPABLE_TYPES = ["like", "follow"];
 
 export async function GET(req: NextRequest) {
@@ -50,7 +50,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const filtered = rawNotifs.filter(n => !n.actor_id || !blockedActors.has(n.actor_id));
+    // Filter out users blocked by current user
+    const { data: blockedByMe } = await admin
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id);
+    const blockedByMeSet = new Set((blockedByMe || []).map(b => b.blocked_id));
+
+    const filtered = rawNotifs.filter(n => !n.actor_id || (!blockedActors.has(n.actor_id) && !blockedByMeSet.has(n.actor_id)));
 
     // Group notifications
     interface GroupedItem {

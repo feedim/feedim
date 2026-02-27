@@ -46,7 +46,7 @@ export default function HotkeysHelpModal({ open, onClose }: HotkeysHelpModalProp
       animationType={3}
       infoText={t("infoText")}
     >
-      <div className="px-4 pb-4 space-y-5">
+      <div className="px-5 pb-5 space-y-5">
         <p className="text-[0.86rem] text-text-muted">
           {t("disclaimer")}
         </p>
@@ -98,6 +98,8 @@ export default function HotkeysHelpModal({ open, onClose }: HotkeysHelpModalProp
             ["f", t("fullscreen")],
             ["t", t("cinemaMode")],
             ["p", t("pip")],
+            ["<", t("speedDown")],
+            [">", t("speedUp")],
             ["0", t("goToStart")],
             ["1", t("goTo10")],
             ["9", t("goTo90")],

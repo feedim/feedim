@@ -69,7 +69,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
         {loading && visitors.length === 0 ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : visitors.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">{t("noVisitors")}</p>
+          <p className="text-center text-text-muted text-[0.74rem] py-8">{t("noVisitors")}</p>
         ) : (
           <div className="space-y-3">
             {visitors.map(v => {

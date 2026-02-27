@@ -69,7 +69,7 @@ export default function ContentEn() {
             <li><strong>Token Balance</strong> &mdash; Your current token balance</li>
             <li><strong>Period Earnings</strong> &mdash; Token amount earned in the selected period</li>
             <li><strong>Total Earnings</strong> &mdash; Your account&apos;s total earnings</li>
-            <li><strong>Qualified Reads</strong> &mdash; Number of reads that converted to earnings</li>
+            <li><strong>Verified Reads</strong> &mdash; Number of reads that converted to earnings</li>
           </ul>
         </div>
 

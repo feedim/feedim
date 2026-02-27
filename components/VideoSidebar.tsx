@@ -6,11 +6,13 @@ import BlurImage from "@/components/BlurImage";
 import WatchProgressBar from "@/components/WatchProgressBar";
 import { formatCount, formatRelativeDate, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
+import { useTranslations } from "next-intl";
 
 export interface VideoItem {
   id: number;
   title: string;
   slug: string;
+  video_url?: string;
   video_thumbnail?: string;
   featured_image?: string;
   blurhash?: string | null;
@@ -18,6 +20,7 @@ export interface VideoItem {
   view_count?: number;
   published_at?: string;
   content_type?: string;
+  visibility?: string;
   author_id?: string;
   profiles?: {
     user_id?: string;
@@ -42,6 +45,7 @@ interface VideoSidebarProps {
 }
 
 export default function VideoSidebar({ videos, title, compact }: VideoSidebarProps) {
+  const t = useTranslations();
   if (videos.length === 0) return null;
 
   return (
@@ -53,7 +57,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
         {videos.map(video => (
           <Link
             key={video.id}
-            href={`/${video.slug}`}
+            href={getPostUrl(video.slug, video.content_type)}
             className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
           >
             {/* Thumbnail */}
@@ -88,11 +92,12 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                     <span className="shrink-0 text-text-muted/70">· {formatRelativeDate(video.published_at)}</span>
                   )}
                 </p>
-                {video.view_count ? (
-                  <p className="text-[0.62rem] text-text-muted">
-                    {formatCount(video.view_count)} görüntülenme
-                  </p>
-                ) : null}
+                <p className="text-[0.62rem] text-text-muted">
+                  {video.view_count ? `${formatCount(video.view_count)} ${t('common.views')}` : ""}
+                  {video.visibility && (
+                    <span>{video.view_count ? " · " : ""}{video.visibility === 'followers' ? t('post.visibilityFollowers') : video.visibility === 'only_me' ? t('post.visibilityOnlyMe') : t('post.visibilityPublic')}</span>
+                  )}
+                </p>
               </div>
             </div>
           </Link>

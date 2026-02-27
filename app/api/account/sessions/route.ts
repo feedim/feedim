@@ -166,16 +166,23 @@ export async function DELETE(req: NextRequest) {
 
     const sessionId = req.nextUrl.searchParams.get("id");
     const all = req.nextUrl.searchParams.get("all") === "true";
+    const currentDeviceHash = req.nextUrl.searchParams.get("current_device");
 
     const admin = createAdminClient();
 
     if (all) {
-      // End all sessions except current
-      await admin
+      // End all sessions except current device
+      let query = admin
         .from("sessions")
         .update({ is_active: false, ended_at: new Date().toISOString() })
         .eq("user_id", user.id)
         .eq("is_active", true);
+
+      if (currentDeviceHash) {
+        query = query.neq("device_hash", currentDeviceHash);
+      }
+
+      await query;
       return NextResponse.json({ success: true, message: "Tüm oturumlar sonlandırıldı" });
     }
 

@@ -55,10 +55,10 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: authorVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
+      id, title, slug, video_url, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
-    .in("content_type", ["video", "moment"])
+    .eq("content_type", "video")
     .eq("status", "published")
     .eq("is_nsfw", false)
     .eq("author_id", authorId)
@@ -69,10 +69,10 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: otherVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
+      id, title, slug, video_url, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
-    .in("content_type", ["video", "moment"])
+    .eq("content_type", "video")
     .eq("status", "published")
     .eq("is_nsfw", false)
     .neq("author_id", authorId)
@@ -288,6 +288,9 @@ export default async function VideoPage({ params }: PageProps) {
     try { videoOrigin = new URL(post.video_url).origin; } catch {}
   }
 
+  // Prefetch first 4 next video URLs for faster navigation
+  const prefetchVideos = nextVideos.slice(0, 4).filter(v => v.video_url);
+
   return (
     <div suppressHydrationWarning>
       {post.video_url && (
@@ -296,6 +299,9 @@ export default async function VideoPage({ params }: PageProps) {
           {videoOrigin && <link rel="dns-prefetch" href={videoOrigin} />}
         </>
       )}
+      {prefetchVideos.map(v => (
+        <link key={v.id} rel="prefetch" as="video" href={v.video_url!} />
+      ))}
       <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
       <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
       <HeaderTitle title="Video" />
@@ -310,7 +316,7 @@ export default async function VideoPage({ params }: PageProps) {
       <PostHeaderActions
         postId={post.id} postUrl={`/video/${post.slug}`} postTitle={post.title}
         authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
-        isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
+        authorRole={author?.role} isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
         isVideo contentType={post.content_type}
       />
 
@@ -337,14 +343,17 @@ export default async function VideoPage({ params }: PageProps) {
         <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
           <span>{t("viewCount", { count: formatCount(post.view_count || 0) })}</span>
           {post.published_at && (
-            <span>{formatRelativeDate(post.published_at)}</span>
+            <>
+              <span className="text-text-muted/40">·</span>
+              <span>{formatRelativeDate(post.published_at)}</span>
+            </>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-[5px]">
           <Link href={`/u/${author?.username}`} className="shrink-0">
             {author?.avatar_url ? (
-              <img src={author.avatar_url} alt={authorName} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+              <img src={author.avatar_url} alt={authorName} loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover bg-bg-tertiary" />
             ) : (
               <img className="default-avatar-auto h-10 w-10 rounded-full object-cover" alt="" loading="lazy" />
             )}
@@ -357,7 +366,7 @@ export default async function VideoPage({ params }: PageProps) {
               {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
             </div>
             {author?.follower_count !== undefined && (
-              <p className="text-[0.72rem] text-text-muted">{t("followers", { count: formatCount(author.follower_count) })}</p>
+              <p className="text-[0.68rem] text-text-muted">{t("followers", { count: formatCount(author.follower_count) })}</p>
             )}
           </div>
           <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} />
@@ -373,6 +382,17 @@ export default async function VideoPage({ params }: PageProps) {
             <span className="text-xs text-text-muted">{t("copyrightProtected")}</span>
             <span className="text-text-muted/40 mx-0.5">·</span>
             <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">{t("moreInfo")}</Link>
+          </div>
+        )}
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2 mb-2">
+            {tags.map((tag: { id: number; name: string; slug: string }) => (
+              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
+                #{tag.name}
+              </Link>
+            ))}
           </div>
         )}
 
@@ -394,18 +414,7 @@ export default async function VideoPage({ params }: PageProps) {
           likedByBottom
           isVideo
           contentType={post.content_type}
-        >
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 mb-2">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
-                  #{tag.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </PostInteractionBar>
+        />
 
         {nextVideos.length > 0 && (
           <div className="xl:hidden mb-6 pt-3.5">

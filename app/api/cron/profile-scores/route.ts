@@ -115,13 +115,13 @@ export async function GET(request: NextRequest) {
             // 5. Blocks received
             admin.from("blocks").select("id", { count: "exact", head: true })
               .eq("blocked_id", userId),
-            // 6. Reports received
-            admin.from("reports").select("id", { count: "exact", head: true })
+            // 6. Reports received — status dahil (in-memory filtreleme)
+            admin.from("reports").select("id, status")
               .eq("content_author_id", userId).in("status", ["pending", "resolved"]),
-            // 7. Moderation actions against user
-            admin.from("moderation_logs").select("id", { count: "exact", head: true })
+            // 7. Moderation actions against user (moderation_decisions — decision, moderator_id)
+            admin.from("moderation_decisions").select("decision, moderator_id")
               .eq("target_type", "user").eq("target_id", userId)
-              .in("action", ["remove_post", "remove_comment", "ban_user", "warn_user", "mute_user"]),
+              .limit(50),
             // 8. Burst posts (last 1 hour)
             admin.from("posts").select("id", { count: "exact", head: true })
               .eq("author_id", userId).gte("created_at", oneHourAgo),
@@ -391,8 +391,13 @@ export async function GET(request: NextRequest) {
           }).length;
           const weirdCharPostRatio = textOnlyPosts.length > 0 ? weirdCharPosts / textOnlyPosts.length : 0;
 
-          // ═══ PHASE 2: Queries depending on Phase 1 (4 parallel) ═══
-          const [followerTrustData, readDurationData, postCommentsData, qualifiedReadsPhase2] = await Promise.all([
+          // Video post ID'leri (video analytics sorgusu için)
+          const videoPostIds = postStats
+            .filter(p => p.content_type === 'video' || p.content_type === 'moment')
+            .map(p => p.id).filter(Boolean);
+
+          // ═══ PHASE 2: Queries depending on Phase 1 (5 parallel) ═══
+          const [followerTrustData, readDurationData, postCommentsData, qualifiedReadsPhase2, videoWatchData] = await Promise.all([
             // Follower trust avg
             followerIds.length > 0
               ? admin.from("profiles").select("profile_score")
@@ -416,10 +421,24 @@ export async function GET(request: NextRequest) {
                   .in("post_id", postIds.slice(0, 50))
                   .eq("is_qualified_read", true)
               : Promise.resolve({ count: 0 } as any),
+            // Video watch analytics (video/moment postları için izlenme süresi)
+            videoPostIds.length > 0
+              ? admin.from("analytics_events").select("duration")
+                  .in("post_id", videoPostIds.slice(0, 50))
+                  .eq("event_type", "video_watch")
+                  .limit(500)
+              : Promise.resolve({ data: [] as any[] }),
           ]);
 
           // Qualified reads (Phase 2 — doğru postIds ile)
           const qualifiedReadCount = qualifiedReadsPhase2.count ?? 0;
+
+          // Video watch duration (ort. izlenme süresi)
+          const videoWatchEvents = videoWatchData.data || [];
+          const totalVideoViews = videoWatchEvents.length;
+          const avgWatchDurationOnVideos = videoWatchEvents.length > 0
+            ? videoWatchEvents.reduce((a: number, e: any) => a + (e.duration || 0), 0) / videoWatchEvents.length
+            : 0;
 
           // Network trust avg (based on follower profile scores, normalized to 0-5 scale)
           const followerScores = (followerTrustData.data || []).map((p: any) => p.profile_score || 0);
@@ -489,6 +508,21 @@ export async function GET(request: NextRequest) {
             total_views_received: user.total_views_received ?? 0,
           };
 
+          // Reports — ham ve kesinleşmiş ayrımı
+          const allReports = reportsReceived.data || [];
+          const reportsReceivedTotal = allReports.length;
+          const reportsReceivedResolved = allReports.filter((r: any) => r.status === 'resolved').length;
+
+          // Moderation decisions — insan vs AI ayrımı
+          const modDecisions = moderationActions.data || [];
+          const totalModerationCount = modDecisions.length;
+          const humanConfirmedModerationCount = modDecisions.filter(
+            (d: any) => d.moderator_id && d.moderator_id !== 'system'
+          ).length;
+          const aiOnlyModerationCount = modDecisions.filter(
+            (d: any) => d.moderator_id === 'system'
+          ).length;
+
           const inputs: ScoreInputs = {
             profile,
             publishedPostCount,
@@ -500,8 +534,11 @@ export async function GET(request: NextRequest) {
             recentCommentCount: recentComments.count ?? 0,
             totalUserCommentCount,
             blocksReceived: blocksReceived.count ?? 0,
-            reportsReceived: reportsReceived.count ?? 0,
-            moderationActionCount: moderationActions.count ?? 0,
+            reportsReceived: reportsReceivedTotal,
+            reportsReceivedResolved,
+            moderationActionCount: totalModerationCount,
+            humanConfirmedModerationCount,
+            aiOnlyModerationCount,
             burstPostCount: burstPosts.count ?? 0,
             avgWordCount: avgWc,
             lastModerationDate: lastModeration.data?.[0]?.created_at ?? null,
@@ -548,6 +585,9 @@ export async function GET(request: NextRequest) {
             weirdCharPostRatio,
             // v6 copyright strikes
             copyrightStrikeCount: user.copyright_strike_count ?? 0,
+            // v7 video watch quality
+            avgWatchDurationOnVideos,
+            totalVideoViews,
           };
 
           const profileScore = calculateProfileScore(inputs);

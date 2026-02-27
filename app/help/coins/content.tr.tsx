@@ -77,7 +77,7 @@ export default function ContentTr() {
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <p className="font-semibold text-text-primary text-xs uppercase tracking-wide">Çekim Koşulları</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li>Minimum çekim miktarı: <strong>100 jeton</strong> (10 TL)</li>
+            <li>Minimum çekim miktarı: <strong>600 jeton</strong> (200 TL)</li>
             <li>Çekim için hesabınıza <strong>IBAN bilgisi</strong> tanımlamanız gereklidir</li>
             <li>Çekim talepleri <strong>iş günlerinde</strong> işlenir</li>
             <li>Çekim tutarı belirttiğiniz IBAN numarasına havale/EFT yoluyla gönderilir</li>

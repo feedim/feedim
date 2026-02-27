@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserPlan } from "@/lib/limits";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,7 +34,7 @@ export async function GET(
 
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = 15;
+  const limit = 10;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -68,8 +70,17 @@ export async function GET(
     .in("user_id", uniqueVisitorIds)
     .eq("status", "active");
 
+  // Preserve original visit order (newest first)
+  const visitorMap = new Map((visitors || []).map(v => [v.user_id, v]));
+  const orderedVisitors = uniqueVisitorIds
+    .map(id => visitorMap.get(id))
+    .filter(Boolean);
+
   return NextResponse.json({
-    visitors: visitors || [],
+    visitors: orderedVisitors,
     hasMore: visits.length >= limit,
   });
+  } catch (err) {
+    return safeError(err);
+  }
 }

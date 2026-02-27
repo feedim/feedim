@@ -258,7 +258,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // --- Onboarding enforcement (only for non-API, non-auth, non-onboarding) ---
-    if (needOnboarding && onboardingCompleted !== null && !onboardingCompleted && !pathname.startsWith('/api/')) {
+    if (status === 'active' && needOnboarding && onboardingCompleted !== null && !onboardingCompleted && !pathname.startsWith('/api/')) {
       const redirect = (path: string) => {
         const response = NextResponse.redirect(new URL(path, request.url))
         supabaseResponse.cookies.getAll().forEach(c => response.cookies.set(c))
@@ -318,9 +318,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 4. Route protection ───
-  const publicAppPaths = ['/explore', '/moments', '/video', '/note', '/notes', '/posts', '/sounds']
-  const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/') || pathname.startsWith('/video/') || pathname.startsWith('/note/') || pathname.startsWith('/moments/')
-  const appPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create']
+  const publicAppPaths = ['/explore', '/moments', '/video', '/note', '/notes', '/posts', '/sounds', '/dashboard']
+  const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/') || pathname.startsWith('/video/') || pathname.startsWith('/note/') || pathname.startsWith('/moments/') || pathname.startsWith('/dashboard/')
+  const appPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create', '/dashboard']
   const isAppPath = appPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isProtected = isAppPath && !isPublicApp
 
@@ -401,6 +401,7 @@ export const config = {
     '/withdrawal',
     '/suggestions',
     '/create/:path*',
+    '/dashboard',
     // Auth & other
     '/landing',
     '/login',

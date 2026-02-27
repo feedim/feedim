@@ -207,7 +207,7 @@ function ExploreContent() {
   const loadMomentsTab = useCallback(async (cursor?: string) => {
     setMomentTabLoading(true);
     try {
-      let url = `/api/posts/moments?limit=12`;
+      let url = `/api/posts/moments?limit=10`;
       if (cursor) url += `&cursor=${cursor}`;
       const res = await fetch(url);
       if (!res.ok) return;
@@ -265,7 +265,7 @@ function ExploreContent() {
   const loadSoundsTab = useCallback(async (cursor?: string) => {
     setSoundsLoading(true);
     try {
-      let url = `/api/sounds?sort=popular&limit=20`;
+      let url = `/api/sounds?sort=popular&limit=10`;
       if (cursor) url += `&cursor=${cursor}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -593,7 +593,7 @@ function ExploreContent() {
             {searchResults.posts.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-text-muted mb-2">{t("posts")}</h3>
-                <div className="flex flex-col gap-[40px]">
+                <div className="flex flex-col gap-[40px] mt-[10px]">
                 {searchResults.posts.map(post => <PostCard key={post.id} post={post} />)}
                 </div>
               </div>
@@ -604,7 +604,7 @@ function ExploreContent() {
 
       if (activeTab === "latest") {
         return (
-          <div className="mt-1 flex flex-col gap-[40px]">
+          <div className="mt-1 flex flex-col gap-[40px] mt-[10px]">
             {searchResults.posts.length > 0 ? (
               searchResults.posts.map(post => <PostCard key={post.id} post={post} />)
             ) : (
@@ -656,7 +656,7 @@ function ExploreContent() {
           activeTab === "video" ? p.content_type === "video" : activeTab === "notes" ? p.content_type === "note" : p.content_type === "moment"
         );
         return (
-          <div className="mt-1 flex flex-col gap-[40px]">
+          <div className="mt-1 flex flex-col gap-[40px] mt-[10px]">
             {filtered.length > 0 ? (
               filtered.map(post => <PostCard key={post.id} post={post} />)
             ) : (
@@ -714,14 +714,14 @@ function ExploreContent() {
           </div>
           {trendingPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[40px]">
+              <div className="flex flex-col gap-[40px] mt-[10px]">
               {trendingPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                 </div>
               ))}
               </div>
-              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
+              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} minLoadingMs={1000} />
             </>
           ) : (
             <p className="text-sm text-text-muted py-8 text-center">{t("noPostsInTag")}</p>
@@ -736,14 +736,14 @@ function ExploreContent() {
           <MomentsCarousel />
           {trendingPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[40px]">
+              <div className="flex flex-col gap-[40px] mt-[10px]">
               {trendingPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                 </div>
               ))}
               </div>
-              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} />
+              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} minLoadingMs={1000} />
             </>
           ) : (
             <p className="text-sm text-text-muted py-8 text-center">{t("noPostsYet")}</p>
@@ -757,14 +757,14 @@ function ExploreContent() {
         <div className="mt-1">
           {latestPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[40px]">
+              <div className="flex flex-col gap-[40px] mt-[10px]">
               {latestPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                 </div>
               ))}
               </div>
-              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={latestHasMore} />
+              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={latestHasMore} minLoadingMs={1000} />
             </>
           ) : (
             <p className="text-sm text-text-muted py-8 text-center">{t("noPostsYet")}</p>
@@ -793,6 +793,7 @@ function ExploreContent() {
                 }}
                 loading={momentTabLoading}
                 hasMore={momentTabHasMore}
+                minLoadingMs={1000}
               />
             </>
           ) : (
@@ -807,14 +808,14 @@ function ExploreContent() {
         <div className="mt-1">
           {videoPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[40px]">
+              <div className="flex flex-col gap-[40px] mt-[10px]">
               {videoPosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                 </div>
               ))}
               </div>
-              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={videoHasMore} />
+              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={videoHasMore} minLoadingMs={1000} />
             </>
           ) : (
             <p className="text-sm text-text-muted py-8 text-center">{t("noVideosYet")}</p>
@@ -828,14 +829,14 @@ function ExploreContent() {
         <div className="mt-1">
           {notePosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[40px]">
+              <div className="flex flex-col gap-[40px] mt-[10px]">
               {notePosts.map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} />
                 </div>
               ))}
               </div>
-              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={noteHasMore} />
+              <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={noteHasMore} minLoadingMs={1000} />
             </>
           ) : (
             <p className="text-sm text-text-muted py-8 text-center">{t("noNotesYet")}</p>
@@ -866,6 +867,7 @@ function ExploreContent() {
                 }}
                 loading={soundsLoading}
                 hasMore={soundsHasMore}
+                minLoadingMs={1000}
               />
             </>
           ) : (
@@ -889,7 +891,7 @@ function ExploreContent() {
                 <span className="text-sm font-semibold text-text-muted">{t("trending")}</span>
               </div>
               <div className="space-y-0.5">
-                {trendingTags.map(tag => <TagRow key={tag.id} tag={tag} />)}
+                {trendingTags.slice(0, 6).map(tag => <TagRow key={tag.id} tag={tag} />)}
               </div>
             </>
           ) : (
@@ -936,7 +938,7 @@ function ExploreContent() {
       </div>
 
       {/* Tabs — always visible */}
-      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient px-3 sm:px-4 mt-1 overflow-x-auto scrollbar-hide">
+      <div className="z-20 px-3 sm:px-4 mt-1 overflow-x-auto scrollbar-hide">
         <div className="flex gap-0 min-w-max">
           {tabs.map(tab => (
             <button

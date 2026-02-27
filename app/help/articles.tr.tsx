@@ -46,6 +46,7 @@ export const pageLinks: HelpPageLink[] = [
   { title: "Veri Paylaşımı", href: "/help/data-sharing", description: "Üçüncü taraf ve devlet yetkilileriyle veri paylaşım politikası" },
   { title: "Erişim Kısıtlamaları", href: "/help/access-restrictions", description: "Yaş kısıtlamaları, bölge ve hesap sınırlamaları" },
   { title: "Erişilebilirlik", href: "/help/accessibility", description: "Erişilebilirlik özellikleri ve uyumluluk" },
+  { title: "Profil Puanı Sistemi", href: "/help/profile-score", description: "Profil güven puanı nedir, nasıl hesaplanır ve neden önemlidir" },
   { title: "Premium", href: "/premium", description: "Premium üyelik planları ve fiyatları" },
   { title: "Sorumluluk Reddi", href: "/help/disclaimer", description: "Yasal sorumluluk reddi beyanı" },
   { title: "Mesafeli Satış Sözleşmesi", href: "/help/distance-sales-contract", description: "Jeton ve premium satın alma sözleşmesi" },

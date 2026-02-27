@@ -124,7 +124,12 @@ export default function PostInteractionBar({
     fetch(`/api/posts/${postId}/stats`)
       .then(r => r.json())
       .then(data => {
-        if (data.readStats) setAvgDuration(data.readStats.avgReadDuration || 0);
+        const isVid = data.post?.content_type === "video" || data.post?.content_type === "moment";
+        if (isVid && data.videoStats) {
+          setAvgDuration(data.videoStats.avgWatchDuration || 0);
+        } else if (data.readStats) {
+          setAvgDuration(data.readStats.avgReadDuration || 0);
+        }
         if (data.engagementRate !== undefined) setEngagementRate(data.engagementRate || 0);
       })
       .catch(() => {});
@@ -244,20 +249,20 @@ export default function PostInteractionBar({
               <span>{t('interaction.seeMore')}</span>
             </Link>
           ) : (
-            <button onClick={handleLike} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error")}>
+            <button onClick={handleLike} aria-label={t('tooltip.like')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error")}>
               <Heart className={cn("h-[18px] w-[18px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
               <span>{formatCount(likeCount, locale)}</span>
             </button>
           )}
-          <button onClick={openComments} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
+          <button onClick={openComments} aria-label={t('tooltip.comment')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
             <MessageCircle className="h-[18px] w-[18px]" />
             <span>{formatCount(commentCount, locale)}</span>
           </button>
-          <button onClick={handleSave} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main")}>
+          <button onClick={handleSave} aria-label={t('tooltip.save')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main")}>
             <Bookmark className={cn("h-[18px] w-[18px]", saved && "fill-current")} />
             <span>{formatCount(saveCount, locale)}</span>
           </button>
-          <button onClick={() => { setShareMounted(true); setShareOpen(true); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
+          <button onClick={() => { setShareMounted(true); setShareOpen(true); }} aria-label={t('tooltip.share')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition">
             <ShareIcon className="h-[18px] w-[18px]" />
             <span>{formatCount(shareCount, locale)}</span>
           </button>
@@ -329,11 +334,10 @@ export default function PostInteractionBar({
               ? `${t('interaction.avgDuration')} ${avgDuration > 60 ? `${Math.round(avgDuration / 60)}${t('interaction.min')}` : `${avgDuration}${t('interaction.sec')}`}`
               : `${t('interaction.avgDuration')} —`
             }
-            {engagementRate !== null ? ` %${Math.min(engagementRate, 99)} ${t('interaction.engagement')}` : ""}
             {` ${formatCount(commentCount, locale)} ${t('interaction.comment')}`}
           </span>
         </button>
-      ) : contentType !== "note" ? (
+      ) : contentType === "post" || contentType === "video" ? (
         <button
           onClick={() => { setGiftOpen(true); setGiftMounted(true); }}
           className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
@@ -350,6 +354,8 @@ export default function PostInteractionBar({
         <button
           onClick={handleLike}
           data-hotkey="like"
+          data-tooltip={t('tooltip.like')}
+          aria-label={t('tooltip.like')}
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition",
             liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error"
@@ -363,6 +369,8 @@ export default function PostInteractionBar({
         <button
           onClick={openComments}
           data-hotkey="comments"
+          data-tooltip={t('tooltip.comment')}
+          aria-label={t('tooltip.comment')}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <MessageCircle className="h-[18px] w-[18px]" />
@@ -373,6 +381,8 @@ export default function PostInteractionBar({
         <button
           onClick={handleSave}
           data-hotkey="save"
+          data-tooltip={t('tooltip.save')}
+          aria-label={t('tooltip.save')}
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition",
             saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main"
@@ -386,6 +396,8 @@ export default function PostInteractionBar({
         <button
           onClick={() => { setShareMounted(true); setShareOpen(true); }}
           data-hotkey="share"
+          data-tooltip={t('tooltip.share')}
+          aria-label={t('tooltip.share')}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <ShareIcon className="h-[18px] w-[18px]" />

@@ -187,6 +187,7 @@ export async function POST(request: NextRequest) {
       const strikeUpdate: Record<string, unknown> = { copyright_strike_count: newStrikeCount };
       if (newStrikeCount >= 10) {
         strikeUpdate.status = 'moderation';
+        strikeUpdate.moderation_reason = `Telif hakkı ihlali: ${newStrikeCount} strike`;
         try {
           const strikeCode = String(Math.floor(100000 + Math.random() * 900000));
           await admin.from('moderation_decisions').insert({

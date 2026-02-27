@@ -41,7 +41,23 @@ export default async function ModerationStatusPage({ params, searchParams }: Pag
     .single();
 
   if (!post) notFound();
-  if (post.author_id !== currentUserId && !isStaff) notFound();
+
+  // Allow post author, staff, or comment author (when ?comment= param is present)
+  let isCommentAuthor = false;
+  if (commentParam && post.author_id !== currentUserId && !isStaff) {
+    const commentId = decodeId(commentParam) ?? Number(commentParam);
+    if (commentId && !isNaN(commentId)) {
+      const { data: commentCheck } = await admin
+        .from("comments")
+        .select("author_id")
+        .eq("id", commentId)
+        .eq("author_id", currentUserId)
+        .single();
+      isCommentAuthor = !!commentCheck;
+    }
+  }
+
+  if (post.author_id !== currentUserId && !isStaff && !isCommentAuthor) notFound();
 
   // 48-hour rule
   if (post.moderation_due_at) {

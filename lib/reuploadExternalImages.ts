@@ -1,5 +1,5 @@
 // Client-side — called at publish time to re-upload external images to our CDN
-const CDN_HOST = "cdn.feedim.com";
+const OWN_HOSTS = ["cdn.feedim.com", "imgspcdn.feedim.com"];
 
 export async function reuploadExternalImages(html: string): Promise<string> {
   const parser = new DOMParser();
@@ -8,20 +8,20 @@ export async function reuploadExternalImages(html: string): Promise<string> {
 
   const promises = imgs.map(async (img) => {
     const src = img.getAttribute("src") || "";
-    // Skip CDN images and non-http sources
-    if (!src.startsWith("http") || new URL(src).host === CDN_HOST) return;
+    if (!src.startsWith("http")) return;
+    try {
+      const host = new URL(src).host;
+      if (OWN_HOSTS.some(h => host.includes(h)) || host.includes("supabase.co")) return;
+    } catch { return; }
 
     try {
-      const res = await fetch(src);
-      if (!res.ok) return;
-      const blob = await res.blob();
-      if (!blob.type.startsWith("image/") || blob.size > 5 * 1024 * 1024) return;
-
-      const formData = new FormData();
-      formData.append("file", blob, `external-${Date.now()}.${blob.type.split("/")[1] || "jpg"}`);
-
-      const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
-      const data = await uploadRes.json();
+      // Server-side proxy — CORS sorunsuz
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: src }),
+      });
+      const data = await res.json();
       if (data.url) img.setAttribute("src", data.url);
     } catch {
       // External image upload failed — keep original URL

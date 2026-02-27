@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
     if (action === "enable") {
       // MFA is Pro/Max only
       const plan = await getUserPlan(admin, user.id);
-      if (plan !== "pro" && plan !== "max") {
-        return NextResponse.json({ error: "Bu özellik Pro ve Max abonelere özeldir" }, { status: 403 });
+      if (!["basic", "pro", "max", "business"].includes(plan)) {
+        return NextResponse.json({ error: "Bu özellik Premium abonelere özeldir" }, { status: 403 });
       }
 
       await admin

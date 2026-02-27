@@ -44,6 +44,7 @@ CATEGORIES:
 [copyright_piracy] Korsan link/yazılım → flag.
 
 RULES:
+- @mention (etiketleme) normal sosyal davranış. Sadece @mention içermek veya ardışık @mention kullanmak spam DEĞİL. Küfür+@mention hariç, @mention'ları ignore et.
 - Bypass detection: s*x, s3x, ѕеx, zero-width vb. tüm obfuscation tespit et.
 - Tüm dillere aynı standart. Humor/ironi savunması geçersiz.
 - Yeni hesap (ad<7 gün, rc>3) → spam eşiğini düşür.

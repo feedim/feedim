@@ -3,15 +3,16 @@
 import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
 import {
-  ArrowLeft, Menu, Home, Search, BookOpen, Users, Film, Clapperboard,
+  ArrowLeft, Menu, Home, Search,
   Bell, Bookmark, BarChart3, Wallet, Settings, User,
-  LayoutGrid, ChevronDown, Sun, Moon, CloudMoon, Monitor, LogIn
+  Sun, Moon, CloudMoon, Monitor, LogIn, Plus
 } from "lucide-react";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { useUser } from "@/components/UserContext";
 import Modal from "@/components/modals/Modal";
+import CreateMenuModal from "@/components/modals/CreateMenuModal";
 import { useTranslations } from "next-intl";
 
 interface ColumnHeaderProps {
@@ -26,6 +27,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const t = useTranslations();
 
   const pageTitles: Record<string, string> = {
@@ -46,18 +48,9 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
   };
 
   const mobileTopItems = [
-    { href: "/", icon: Home, label: t("nav.home") },
+    { href: "/dashboard", icon: Home, label: t("nav.home") },
     { href: "/explore", icon: Search, label: t("nav.explore") },
   ];
-
-  const mobileContentItems = [
-    { href: "/posts", icon: BookOpen, label: t("nav.posts") },
-    { href: "/notes", icon: Users, label: t("nav.communityNotes") },
-    { href: "/video", icon: Film, label: t("nav.video") },
-    { href: "/moments", icon: Clapperboard, label: t("nav.moments") },
-  ];
-
-  const mobileContentPaths = mobileContentItems.map(i => i.href);
 
   const mobileAuthNavItems = [
     { href: "/notifications", icon: Bell, label: t("nav.notifications") },
@@ -68,9 +61,6 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
     { href: "/profile", icon: User, label: t("nav.profile") },
   ];
 
-  const [contentExpanded, setContentExpanded] = useState(() =>
-    mobileContentPaths.some(p => pathname === p || pathname.startsWith(p + "/"))
-  );
   const [theme, setTheme] = useState("system");
 
   useEffect(() => {
@@ -78,20 +68,10 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
     setTheme(saved);
   }, []);
 
-  const isHome = pathname === "/";
+  const isHome = pathname === "/" || pathname === "/dashboard" || pathname === "/notifications";
   const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/u/") ? t("nav.profile") : null);
 
-  const handleBack = onBack || (() => {
-    try {
-      const ref = document.referrer;
-      if (ref && new URL(ref).origin === window.location.origin) {
-        router.back();
-        return;
-      }
-    } catch {}
-    emitNavigationStart();
-    router.push("/");
-  });
+  const handleBack = onBack || (() => smartBack(router));
 
   const themeIcon = () => {
     if (theme === "dark") return <Moon className="h-5 w-5" />;
@@ -109,11 +89,18 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
 
   return (
     <>
-    <header className={`${scrollable ? "" : "sticky top-0"} z-50 sticky-ambient mt-[4px]`}>
+    <header className="z-50 mt-[4px]">
       <nav className="relative flex items-center justify-between px-4 h-[53px]">
         {/* Left */}
         {isHome && !customTitle ? (
           <>
+            <button
+              onClick={() => isLoggedIn ? setCreateModalOpen(true) : router.push("/login")}
+              className="i-btn !w-8 !h-8 text-text-primary md:!hidden"
+              aria-label={t("common.create")}
+            >
+              <Plus className="h-6 w-6" strokeWidth={2.2} />
+            </button>
             <Link href="/" aria-label="Feedim" className="md:hidden absolute left-1/2 -translate-x-1/2 rounded-full hover:bg-bg-secondary transition">
               <FeedimIcon className="h-14 w-14" />
             </Link>
@@ -136,7 +123,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
           ) : isHome && !customTitle ? (
             <button
               onClick={() => setMobileNavOpen(true)}
-              className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary md:hidden"
+              className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary md:!hidden"
               aria-label={t("nav.menu")}
             >
               <Menu className="h-5 w-5" />
@@ -159,41 +146,6 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
             </Link>
           );
         })}
-
-        {/* Content accordion */}
-        <button
-          onClick={() => setContentExpanded(prev => !prev)}
-          className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
-            contentExpanded && mobileContentPaths.some(p => pathname === p || pathname.startsWith(p + "/"))
-              ? "text-text-primary"
-              : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
-          }`}
-        >
-          <LayoutGrid className="h-5 w-5 shrink-0" />
-          <span className="flex-1 text-left">{t("common.more")}</span>
-          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${contentExpanded ? "rotate-180" : ""}`} />
-        </button>
-        {contentExpanded && (
-          <div className="space-y-[2px]">
-            {mobileContentItems.map(item => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileNavOpen(false)}
-                  className={`flex items-center gap-3 pl-7 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
-                    active ? "bg-bg-secondary text-text-primary font-semibold" : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
-                  }`}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        )}
 
         {/* Auth items */}
         {isLoggedIn && (
@@ -242,6 +194,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
         )}
       </div>
     </Modal>
+    <CreateMenuModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
     </>
   );
 })

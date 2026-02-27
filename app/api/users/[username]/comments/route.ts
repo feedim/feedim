@@ -7,12 +7,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const admin = createAdminClient();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = 12;
+  const limit = 10;
 
   // Require auth for pagination (page > 1)
   if (page > 1) {
@@ -78,4 +79,7 @@ export async function GET(
     posts,
     hasMore: (comments || []).length >= limit,
   });
+  } catch (err) {
+    return safeError(err);
+  }
 }

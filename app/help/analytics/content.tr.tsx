@@ -69,7 +69,7 @@ export default function ContentTr() {
             <li><strong>Jeton Bakiyesi</strong> &mdash; Mevcut jeton bakiyeniz</li>
             <li><strong>Dönemlik Kazanç</strong> &mdash; Seçilen dönemde kazandığınız jeton miktarı</li>
             <li><strong>Toplam Kazanç</strong> &mdash; Hesabınızın toplam kazancı</li>
-            <li><strong>Nitelikli Okuma</strong> &mdash; Kazanca dönüşen okuma sayısı</li>
+            <li><strong>Onaylı Okuma</strong> &mdash; Kazanca dönüşen okuma sayısı</li>
           </ul>
         </div>
 

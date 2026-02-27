@@ -4,17 +4,14 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, lazy, useMem
 import { useRouter, useSearchParams } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { ArrowLeft } from "lucide-react";
+import { smartBack } from "@/lib/smartBack";
 import MomentCard from "@/components/MomentCard";
-import MomentAdCard from "@/components/MomentAdCard";
 import { useDashboardShell } from "@/components/DashboardShell";
-import { AD_MOMENTS_INTERVAL } from "@/lib/constants";
 
 import { useUser } from "@/components/UserContext";
 import { useTranslations } from "next-intl";
 
-type DisplayItem =
-  | { type: "moment"; moment: Moment; realIndex: number }
-  | { type: "ad"; adIndex: number };
+type DisplayItem = { type: "moment"; moment: Moment; realIndex: number };
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
 const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
@@ -49,6 +46,7 @@ interface Moment {
     avatar_url?: string;
     is_verified?: boolean;
     premium_plan?: string | null;
+    role?: string;
   };
   post_tags?: { tags: { id: number; name: string; slug: string } }[];
   sounds?: {
@@ -95,23 +93,15 @@ function MomentsContent() {
   // Modal states
   const [commentModal, setCommentModal] = useState<{ postId: number; count: number; slug: string } | null>(null);
   const [shareModal, setShareModal] = useState<{ url: string; title: string; postId: number; slug: string } | null>(null);
-  const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string; authorName?: string } | null>(null);
+  const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string; authorName?: string; authorRole?: string } | null>(null);
   const [likesModalPostId, setLikesModalPostId] = useState<number | null>(null);
 
   // Capture initial slug only on mount — ignore subsequent URL changes
   const startSlug = useMemo(() => searchParams.get("s"), []);
 
-  // Build display list with ad cards interleaved
+  // Build display list from moments (ads removed — only video post-roll)
   const displayItems = useMemo(() => {
-    const items: DisplayItem[] = [];
-    let adCount = 0;
-    moments.forEach((m, i) => {
-      if (i > 0 && i % AD_MOMENTS_INTERVAL === 0) {
-        items.push({ type: "ad", adIndex: adCount++ });
-      }
-      items.push({ type: "moment", moment: m, realIndex: i });
-    });
-    return items;
+    return moments.map((m, i) => ({ type: "moment" as const, moment: m, realIndex: i }));
   }, [moments]);
 
   const requireAuth = useCallback(() => {
@@ -121,14 +111,22 @@ function MomentsContent() {
     return false;
   }, [isLoggedIn]);
 
-  // Hide mobile bottom nav + remove parent padding
+  // Hide mobile bottom nav + remove parent padding + prevent main scroll
   useEffect(() => {
     setMobileNavVisible(false);
     const main = document.querySelector("main");
-    if (main) main.style.paddingBottom = "0";
+    if (main) {
+      main.style.paddingBottom = "0";
+      main.style.overflow = "hidden";
+      main.style.height = "100svh";
+    }
     return () => {
       setMobileNavVisible(true);
-      if (main) main.style.paddingBottom = "";
+      if (main) {
+        main.style.paddingBottom = "";
+        main.style.overflow = "";
+        main.style.height = "";
+      }
     };
   }, [setMobileNavVisible]);
 
@@ -205,32 +203,27 @@ function MomentsContent() {
       document.head.appendChild(preconnect);
       document.head.appendChild(dnsPrefetch);
     } catch {}
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "video";
-    link.href = first.video_url;
-    link.crossOrigin = "anonymous";
-    document.head.appendChild(link);
     return () => {
       try { if (preconnect) document.head.removeChild(preconnect); } catch {}
       try { if (dnsPrefetch) document.head.removeChild(dnsPrefetch); } catch {}
-      try { document.head.removeChild(link); } catch {}
     };
   }, [moments]);
 
-  // Prefetch video at activeIndex+2 during idle time for smoother scrolling
+  // Prefetch next 2 videos during idle time for smoother scrolling
   useEffect(() => {
-    const nextIndex = activeDisplayIndex + 2;
-    const item = displayItems[nextIndex];
-    if (item?.type !== "moment" || !item.moment.video_url) return;
-
-    const link = document.createElement("link");
-    link.rel = "prefetch";
-    link.as = "video";
-    link.href = item.moment.video_url;
-    document.head.appendChild(link);
-
-    return () => { try { document.head.removeChild(link); } catch {} };
+    const links: HTMLLinkElement[] = [];
+    for (let offset = 1; offset <= 2; offset++) {
+      const idx = activeDisplayIndex + offset;
+      const item = displayItems[idx];
+      if (item?.type !== "moment" || !item.moment.video_url) continue;
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.as = "video";
+      link.href = item.moment.video_url;
+      document.head.appendChild(link);
+      links.push(link);
+    }
+    return () => { links.forEach(l => { try { document.head.removeChild(l); } catch {} }); };
   }, [activeDisplayIndex, displayItems]);
 
   // IntersectionObserver
@@ -248,7 +241,7 @@ function MomentsContent() {
           }
         });
       },
-      { threshold: 0.8 }
+      { threshold: 0.6 }
     );
 
     const cards = containerRef.current?.querySelectorAll("[data-index]");
@@ -343,7 +336,7 @@ function MomentsContent() {
 
   const handleShare = useCallback((moment: Moment) => {
     setShareModal({
-      url: `/${moment.slug}`,
+      url: `/moments?s=${moment.slug}`,
       title: moment.title,
       postId: moment.id,
       slug: moment.slug,
@@ -362,6 +355,7 @@ function MomentsContent() {
       authorUsername: moment.profiles?.username,
       authorUserId: moment.profiles?.user_id,
       authorName: moment.profiles?.full_name || moment.profiles?.name || undefined,
+      authorRole: moment.profiles?.role,
     });
   }, []);
 
@@ -381,16 +375,7 @@ function MomentsContent() {
           <button onClick={() => { emitNavigationStart(); router.push("/create/moment"); }} className="t-btn accept !h-10 !px-6 !text-sm">
             {t("createMoment")}
           </button>
-          <button onClick={() => {
-            try {
-              const ref = document.referrer;
-              if (ref && new URL(ref).origin === window.location.origin) {
-                router.back();
-                return;
-              }
-            } catch {}
-            window.location.href = "/";
-          }} className="text-sm text-text-muted underline">{t("goBack")}</button>
+          <button onClick={() => smartBack(router)} className="text-sm text-text-muted underline">{t("goBack")}</button>
         </div>
       </div>
     );
@@ -406,7 +391,7 @@ function MomentsContent() {
         {/* Top bar — back button + Moments title */}
         <div className="absolute top-0 left-0 right-0 z-[60] flex items-center px-4 pt-4 pb-2 pointer-events-none">
           <button
-            onClick={() => router.back()}
+            onClick={() => smartBack(router)}
             className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center pointer-events-auto"
           >
             <ArrowLeft className="h-5 w-5 text-white" />
@@ -427,36 +412,26 @@ function MomentsContent() {
         >
       {displayItems.map((item, displayIndex) => {
         const distance = Math.abs(displayIndex - activeDisplayIndex);
-        const preloadHint: "auto" | "metadata" = distance <= 1 ? "auto" : "metadata";
+        const preloadHint: "auto" | "metadata" = distance <= 2 ? "auto" : "metadata";
         return (
-        <React.Fragment key={item.type === "moment" ? `m-${item.moment.id}` : `ad-${item.adIndex}`}>
+        <React.Fragment key={`m-${item.moment.id}`}>
           <div data-index={displayIndex}>
-                {item.type === "moment" ? (
-                  <MomentCard
-                    moment={item.moment}
-                    isActive={displayIndex === activeDisplayIndex}
-                    loadVideo={distance <= 3}
-                    liked={likedSet.has(item.moment.id)}
-                    saved={savedSet.has(item.moment.id)}
-                    muted={globalMuted}
-                    onToggleMute={handleToggleMute}
-                    onLike={() => handleLike(item.moment.id)}
-                    onLikesClick={() => handleLikesOpen(item.moment.id)}
-                    onComment={() => handleComment(item.moment)}
-                    onShare={() => handleShare(item.moment)}
-                    onSave={() => handleSave(item.moment.id)}
-                    onOptions={() => handleOptions(item.moment)}
-                    preloadHint={preloadHint}
-                  />
-                ) : (
-                  <MomentAdCard
-                    isActive={displayIndex === activeDisplayIndex}
-                    onSkip={() => {
-                      const next = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
-                      next?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  />
-                )}
+                <MomentCard
+                  moment={item.moment}
+                  isActive={displayIndex === activeDisplayIndex}
+                  loadVideo={distance <= 5}
+                  liked={likedSet.has(item.moment.id)}
+                  saved={savedSet.has(item.moment.id)}
+                  muted={globalMuted}
+                  onToggleMute={handleToggleMute}
+                  onLike={() => handleLike(item.moment.id)}
+                  onLikesClick={() => handleLikesOpen(item.moment.id)}
+                  onComment={() => handleComment(item.moment)}
+                  onShare={() => handleShare(item.moment)}
+                  onSave={() => handleSave(item.moment.id)}
+                  onOptions={() => handleOptions(item.moment)}
+                  preloadHint={preloadHint}
+                />
               </div>
             </React.Fragment>
           );
@@ -504,10 +479,11 @@ function MomentsContent() {
           open={!!optionsModal}
           onClose={() => setOptionsModal(null)}
           postId={optionsModal?.postId ?? 0}
-          postUrl={optionsModal ? `/${optionsModal.slug}` : ''}
+          postUrl={optionsModal ? `/moments?s=${optionsModal.slug}` : ''}
           authorUsername={optionsModal?.authorUsername}
           authorUserId={optionsModal?.authorUserId}
           authorName={optionsModal?.authorName}
+          authorRole={optionsModal?.authorRole}
           postSlug={optionsModal?.slug}
           contentType="moment"
           onDeleteSuccess={() => {

@@ -38,29 +38,68 @@ export async function POST(request: NextRequest) {
     }
 
     if (!checkUploadLimit(user.id)) {
-      return NextResponse.json({ error: 'Çok fazla yükleme. Lütfen bekleyin.' }, { status: 429 });
+      return NextResponse.json({ error: 'Topluluğumuzu korumak adına yükleme hızınız sınırlandırıldı, lütfen bekleyin' }, { status: 429 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const fileName = formData.get('fileName') as string | null;
+    const contentType = request.headers.get('content-type') || '';
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    let imageBuffer: Buffer;
+    let fileType: string;
+    let fileName: string | null = null;
+
+    if (contentType.includes('application/json')) {
+      // URL-based upload — server-side fetch (CORS bypass for external images)
+      const body = await request.json();
+      const { url } = body;
+      if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+        return NextResponse.json({ error: 'Geçersiz URL' }, { status: 400 });
+      }
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return NextResponse.json({ error: 'Görsel indirilemedi' }, { status: 400 });
+        const ct = res.headers.get('content-type') || '';
+        fileType = ALLOWED_TYPES.find(t => ct.includes(t.split('/')[1])) || '';
+        if (!fileType) {
+          // Fallback: detect from URL extension
+          const ext = url.split('?')[0].split('.').pop()?.toLowerCase();
+          if (ext === 'jpg' || ext === 'jpeg') fileType = 'image/jpeg';
+          else if (ext === 'png') fileType = 'image/png';
+          else if (ext === 'gif') fileType = 'image/gif';
+          else if (ext === 'webp') fileType = 'image/webp';
+          else return NextResponse.json({ error: 'Geçersiz dosya tipi' }, { status: 400 });
+        }
+        const arrayBuf = await res.arrayBuffer();
+        if (arrayBuf.byteLength > MAX_SIZE) return NextResponse.json({ error: 'Dosya çok büyük. Maksimum 5MB.' }, { status: 400 });
+        imageBuffer = Buffer.from(arrayBuf);
+        fileName = `external-${Date.now()}.${fileType.split('/')[1]}`;
+      } catch {
+        return NextResponse.json({ error: 'Görsel indirilemedi' }, { status: 400 });
+      }
+    } else {
+      // File-based upload (FormData)
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+      fileName = formData.get('fileName') as string | null;
+
+      if (!file) {
+        return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      }
+
+      fileType = file.type;
+      if (!ALLOWED_TYPES.includes(fileType)) {
+        return NextResponse.json({ error: 'Geçersiz dosya tipi. Sadece JPEG, PNG, GIF, WebP kabul edilir.' }, { status: 400 });
+      }
+
+      if (file.size > MAX_SIZE) {
+        return NextResponse.json({ error: 'Dosya çok büyük. Maksimum 5MB.' }, { status: 400 });
+      }
+
+      imageBuffer = Buffer.from(await file.arrayBuffer());
+      if (!fileName) fileName = file.name;
     }
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: 'Geçersiz dosya tipi. Sadece JPEG, PNG, GIF, WebP kabul edilir.' }, { status: 400 });
-    }
-
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'Dosya çok büyük. Maksimum 5MB.' }, { status: 400 });
-    }
-
-    const imageBuffer = Buffer.from(await file.arrayBuffer());
 
     // Magic bytes validation
-    if (!validateMagicBytes(imageBuffer, file.type)) {
+    if (!validateMagicBytes(imageBuffer, fileType)) {
       return NextResponse.json({ error: 'Geçersiz dosya içeriği' }, { status: 400 });
     }
 
@@ -77,7 +116,7 @@ export async function POST(request: NextRequest) {
     const feedimFileId = generateFeedimFileId();
 
     // Metadata strip + optimize (embeds new feedimFileId in EXIF)
-    const { buffer: cleanBuffer, mimeType: cleanType } = await stripMetadataAndOptimize(imageBuffer, file.type, feedimFileId);
+    const { buffer: cleanBuffer, mimeType: cleanType } = await stripMetadataAndOptimize(imageBuffer, fileType, feedimFileId);
 
     // NSFW pre-check — don't block upload, just tag it. Final check at publish time.
     let nsfwFlag = false;
@@ -86,7 +125,7 @@ export async function POST(request: NextRequest) {
       if (nsfwResult.action === 'flag') nsfwFlag = true;
     } catch {}
 
-    const safeName = (fileName || file.name).replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 100);
+    const safeName = (fileName || 'image').replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 100);
     const ext = cleanType === 'image/jpeg' ? '.jpg' : cleanType === 'image/png' ? '.png' : cleanType === 'image/gif' ? '.gif' : '.webp';
     const path = `${user.id}/${Date.now()}_${safeName}${safeName.includes('.') ? '' : ext}`;
 

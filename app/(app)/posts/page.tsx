@@ -49,7 +49,7 @@ export default function PostsPage() {
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : posts.length > 0 ? (
           <>
-            <div className="flex flex-col gap-[40px]">
+            <div className="flex flex-col gap-[40px] mt-[10px]">
               {posts.map((post: any) => (
                 <PostCard key={post.id} post={post} />
               ))}

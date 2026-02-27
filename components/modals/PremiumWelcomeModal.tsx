@@ -29,6 +29,7 @@ interface SuggestedUser {
   is_verified?: boolean;
   premium_plan?: string | null;
   bio?: string;
+  follows_me?: boolean;
 }
 
 const planPerkKeys: Record<string, string[]> = {
@@ -202,7 +203,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
                 autoSubtitle
                 onNavigate={onClose}
                 action={
-                  <FollowButton following={following.has(u.user_id) || requested.has(u.user_id)} isPrivate={requested.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
+                  <FollowButton following={following.has(u.user_id) || requested.has(u.user_id)} isPrivate={requested.has(u.user_id)} followsMe={u.follows_me && !following.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
                 }
               />
             ))}

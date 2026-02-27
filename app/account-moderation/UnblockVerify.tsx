@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { createClient } from "@/lib/supabase/client";
 import { Check } from "lucide-react";
+import DigitInput from "@/components/DigitInput";
 
 export default function UnblockVerify() {
   const t = useTranslations("moderation");
@@ -15,6 +15,7 @@ export default function UnblockVerify() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(0);
+  const [hasResent, setHasResent] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -23,19 +24,23 @@ export default function UnblockVerify() {
   }, [cooldown]);
 
   const sendOtp = useCallback(async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) return;
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: user.email,
-      options: { shouldCreateUser: false },
-    });
-    if (otpError) {
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 429) {
+        setError(t("otpRateLimited"));
+      } else if (!res.ok) {
+        setError(t("codeSendFailed"));
+      } else {
+        setCooldown(60);
+      }
+    } catch {
       setError(t("codeSendFailed"));
-    } else {
-      setCooldown(60);
     }
-  }, []);
+  }, [t]);
 
   const verifyPassword = async () => {
     if (password.length < 6) { setError(t("enterPassword")); return; }
@@ -64,8 +69,10 @@ export default function UnblockVerify() {
 
   const verifyCode = async () => {
     if (code.length < 6) { setError(t("enterCode")); return; }
+    const savedCode = code;
     setLoading(true);
     setError("");
+    let success = false;
     try {
       const res = await fetch("/api/account/unblock-verify", {
         method: "POST",
@@ -74,6 +81,7 @@ export default function UnblockVerify() {
       });
       const data = await res.json();
       if (res.ok) {
+        success = true;
         document.cookie = "fdm-status=; Max-Age=0; Path=/;";
         router.replace("/");
       } else {
@@ -83,6 +91,7 @@ export default function UnblockVerify() {
       setError(t("connectionError"));
     } finally {
       setLoading(false);
+      if (!success) setCode(savedCode);
     }
   };
 
@@ -117,19 +126,7 @@ export default function UnblockVerify() {
       {step === "code" && (
         <>
           <p className="text-xs text-text-muted text-center">{t("enterEmailCode")}</p>
-          <div>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={8}
-              value={code}
-              onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              onKeyDown={e => e.key === "Enter" && verifyCode()}
-              placeholder="00000000"
-              className="w-full text-center bg-transparent border-none outline-none focus:ring-0"
-              style={{ height: 50, fontSize: 50, fontWeight: 700, fontFamily: "sans-serif", letterSpacing: "0.3em" }}
-            />
-          </div>
+          <DigitInput value={code} onChange={setCode} autoFocus />
           <div className="flex gap-2">
             <button
               onClick={verifyCode}
@@ -141,8 +138,8 @@ export default function UnblockVerify() {
             </button>
           </div>
           <button
-            onClick={sendOtp}
-            disabled={cooldown > 0}
+            onClick={() => { if (!hasResent) { setHasResent(true); sendOtp(); } }}
+            disabled={hasResent || cooldown > 0}
             className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50 text-center w-full"
           >
             {cooldown > 0 ? t("resendCountdown", { seconds: cooldown }) : t("resendCode")}

@@ -9,6 +9,7 @@ import Modal from "./Modal";
 import { PROFESSIONAL_CATEGORIES } from "@/lib/constants";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useUser } from "@/components/UserContext";
+import PhoneInput from "@/components/PhoneInput";
 
 interface ProfessionalAccountModalProps {
   open: boolean;
@@ -289,18 +290,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
               <label className="flex items-center gap-2 text-xs text-text-muted mb-1">
                 <Phone className="h-3.5 w-3.5" /> {t("contactPhone")}
               </label>
-              <input
-                type="tel"
-                value={contactPhone}
-                onChange={e => {
-                  const val = e.target.value.replace(/[^0-9+\s()-]/g, "");
-                  setContactPhone(val);
-                }}
-                maxLength={20}
-                className="input-modern w-full"
-                placeholder="+90 5XX XXX XX XX"
-                inputMode="tel"
-              />
+              <PhoneInput value={contactPhone} onChange={setContactPhone} />
             </div>
             <div className="pt-2">
               <button

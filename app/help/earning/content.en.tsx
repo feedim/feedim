@@ -17,12 +17,13 @@ export default function ContentEn() {
         </p>
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Professional account type:</strong> Your account must be a professional (writer) account type</li>
+            <li><strong>Professional account:</strong> Your account must be a professional (creator or business) account type</li>
+            <li><strong>Monetization approval:</strong> You must apply from Settings &gt; Monetization and receive moderator approval</li>
             <li><strong>Premium membership:</strong> You must have an active Premium subscription</li>
           </ul>
         </div>
         <p>
-          Users who meet these two conditions automatically start earning from their content being read.
+          Users who meet these conditions and have their application approved automatically start earning from their content being read.
         </p>
 
         {/* ── Earning Sources ── */}

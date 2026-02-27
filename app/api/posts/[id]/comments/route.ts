@@ -7,6 +7,110 @@ import { checkTextContent } from '@/lib/moderation';
 import { safePage } from '@/lib/utils';
 import { safeError } from '@/lib/apiError';
 
+function isValidGifUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    return host === 'giphy.com' || host.endsWith('.giphy.com') || host === 'tenor.com' || host.endsWith('.tenor.com');
+  } catch { return false; }
+}
+
+interface ScoringInput {
+  likeCount: number;
+  replyCount: number;
+  profileScore: number;
+  spamScore: number;
+  isVerified: boolean;
+  isPremium: boolean;
+  contentLength: number; // word count
+  isGif: boolean;
+  ageHours: number;
+  hasSelfLike: boolean;
+}
+
+function scorePopular(c: ScoringInput): number {
+  // ENGAGEMENT (max 40)
+  const authorCredibility = Math.max(0.2, c.profileScore / 100);
+  const effectiveLikes = c.likeCount * authorCredibility;
+  const likeScore = Math.min(25, effectiveLikes * 3);
+  const replyScore = Math.min(15, c.replyCount * 5);
+  const engagement = likeScore + replyScore;
+
+  // AUTHOR TRUST (max 25)
+  let trust = (c.profileScore / 100) * 20;
+  if (c.isVerified) trust += 3;
+  if (c.isPremium) trust += 2;
+  trust = Math.min(25, trust);
+
+  // CONTENT QUALITY (max 15)
+  let content = 0;
+  if (c.isGif) { content = 3; }
+  else if (c.contentLength < 5) { content = 2; }
+  else if (c.contentLength <= 10) { content = 5; }
+  else if (c.contentLength <= 30) { content = 10; }
+  else if (c.contentLength <= 80) { content = 15; }
+  else { content = 12; }
+
+  // FRESHNESS (max 10)
+  let freshness = 0;
+  if (c.ageHours < 1) freshness = 10;
+  else if (c.ageHours < 6) freshness = 8;
+  else if (c.ageHours < 24) freshness = 5;
+  else if (c.ageHours < 72) freshness = 2;
+
+  // PENALTIES
+  const spamPenalty = (c.spamScore / 100) * 40;
+  const selfLikePenalty = c.hasSelfLike ? 8 : 0;
+  const noEngagementPenalty = (c.likeCount === 0 && c.replyCount === 0) ? 30 : 0;
+
+  return engagement + trust + content + freshness - spamPenalty - selfLikePenalty - noEngagementPenalty;
+}
+
+function scoreSmart(c: ScoringInput): number {
+  // RECENCY (max 35)
+  let recency = 0;
+  if (c.ageHours < 0.5) recency = 35;
+  else if (c.ageHours < 1) recency = 30;
+  else if (c.ageHours < 3) recency = 25;
+  else if (c.ageHours < 6) recency = 20;
+  else if (c.ageHours < 12) recency = 15;
+  else if (c.ageHours < 24) recency = 10;
+  else if (c.ageHours < 72) recency = 5;
+
+  // ENGAGEMENT (max 25)
+  const engagement = Math.min(25, c.likeCount * 2.5 + c.replyCount * 5);
+
+  // AUTHOR QUALITY (max 20)
+  let author = (c.profileScore / 100) * 15;
+  if (c.isVerified) author += 3;
+  if (c.isPremium) author += 2;
+  author = Math.min(20, author);
+
+  // CONTENT SUBSTANCE (max 10)
+  let substance = 0;
+  if (c.isGif) { substance = 2; }
+  else if (c.contentLength >= 10) { substance = 10; }
+  else if (c.contentLength >= 5) { substance = 6; }
+  else { substance = 2; }
+
+  // CONVERSATION STARTER (max 10)
+  let conversation = 0;
+  if (c.replyCount >= 5) conversation = 10;
+  else if (c.replyCount >= 3) conversation = 7;
+  else if (c.replyCount >= 1) conversation = 3;
+
+  // PENALTY
+  const spamPenalty = (c.spamScore / 100) * 35;
+
+  return recency + engagement + author + substance + conversation - spamPenalty;
+}
+
+function wordCount(text: string): number {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -43,11 +147,57 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Staff check (needed for reply pagination and comment filtering)
+    let isStaffViewer = false;
+    if (user) {
+      const { data: viewerP } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
+      isStaffViewer = viewerP?.role === 'admin' || viewerP?.role === 'moderator';
+    }
+
+    // Reply pagination: GET /api/posts/{id}/comments?parent_id=123&offset=5&limit=10
+    const parentIdParam = request.nextUrl.searchParams.get('parent_id');
+    if (parentIdParam) {
+      const parentId = parseInt(parentIdParam);
+      if (isNaN(parentId)) return NextResponse.json({ error: 'Invalid parent ID' }, { status: 400 });
+      const replyLimit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') || '10') || 10, 20);
+      const replyOffset = parseInt(request.nextUrl.searchParams.get('offset') || '0') || 0;
+
+      let replyQuery = admin
+        .from('comments')
+        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status, profile_score, spam_score)`)
+        .eq('parent_id', parentId)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: true })
+        .range(replyOffset, replyOffset + replyLimit);
+
+      if (blockedIds.length > 0) {
+        replyQuery = replyQuery.not('author_id', 'in', `(${blockedIds.join(',')})`);
+      }
+
+      const { data: replies, error: replyError } = await replyQuery;
+      if (replyError) return safeError(replyError);
+
+      const filteredReplies = (replies || []).filter((r: any) => {
+        if (isStaffViewer) return true;
+        const rProfile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+        if (rProfile?.status && rProfile.status !== 'active') return false;
+        if (r.is_nsfw && r.author_id !== user?.id) return false;
+        return true;
+      }).map((r: any) => {
+        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+        const { profile_score, spam_score, ...cleanProfile } = profile || {};
+        return { ...r, profiles: profile ? cleanProfile : profile };
+      });
+
+      const resultReplies = filteredReplies.slice(0, replyLimit);
+      return NextResponse.json({ replies: resultReplies, hasMore: filteredReplies.length > replyLimit });
+    }
+
     let query = admin
       .from('comments')
       .select(`
         id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw,
-        profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)
+        profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status, profile_score, spam_score)
       `)
       .eq('post_id', postId)
       .is('parent_id', null)
@@ -61,36 +211,65 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (sort === 'popular') {
       query = query.order('like_count', { ascending: false }).order('created_at', { ascending: false });
     } else if (sort === 'smart') {
-      // Smart sort: mix of engagement + recency
       query = query.order('created_at', { ascending: false });
     } else {
       query = query.order('created_at', { ascending: false });
     }
 
-    // For smart sort, fetch more to re-rank
-    const fetchLimit = sort === 'smart' ? Math.max(limit * 3, 30) : limit;
-    let { data: comments, error } = await query.range(sort === 'smart' ? 0 : offset, sort === 'smart' ? fetchLimit : offset + limit);
+    // Over-fetch for ranked sorts to re-rank in JS
+    const needsRanking = sort === 'smart' || sort === 'popular';
+    const fetchLimit = needsRanking ? 50 : limit;
+    let { data: comments, error } = await query.range(needsRanking ? 0 : offset, needsRanking ? fetchLimit : offset + limit);
 
     if (error) return safeError(error);
 
-    // Smart scoring: balance likes, replies, and recency
-    if (sort === 'smart' && comments && comments.length > 0) {
+    // Ranked scoring for smart and popular tabs
+    if (needsRanking && comments && comments.length > 0) {
       const now = Date.now();
-      const scored = comments.map((c: any) => {
-        const ageHours = (now - new Date(c.created_at).getTime()) / (1000 * 60 * 60);
-        const recency = Math.max(0, 100 - ageHours * 2);
-        const engagement = (c.like_count || 0) * 10 + (c.reply_count || 0) * 15;
-        return { ...c, _smart: recency + engagement };
-      });
-      scored.sort((a: any, b: any) => b._smart - a._smart);
-      comments = scored.slice(offset, offset + limit).map(({ _smart, ...rest }: any) => rest);
-    }
 
-    // Check if viewer is staff (admin/moderator)
-    let isStaffViewer = false;
-    if (user) {
-      const { data: viewerP } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
-      isStaffViewer = viewerP?.role === 'admin' || viewerP?.role === 'moderator';
+      // Self-like batch query: check which authors liked their own comment
+      const selfLikeSet = new Set<number>();
+      const commentAuthorPairs = comments.map((c: any) => ({ id: c.id, authorId: c.author_id })).filter((p: any) => p.authorId);
+      if (commentAuthorPairs.length > 0) {
+        const commentIds = commentAuthorPairs.map((p: any) => p.id);
+        const authorIds = [...new Set(commentAuthorPairs.map((p: any) => p.authorId))];
+        const { data: selfLikes } = await admin
+          .from('comment_likes')
+          .select('comment_id, user_id')
+          .in('comment_id', commentIds)
+          .in('user_id', authorIds);
+        if (selfLikes) {
+          const authorMap = new Map(commentAuthorPairs.map((p: any) => [p.id, p.authorId]));
+          for (const sl of selfLikes) {
+            if (authorMap.get(sl.comment_id) === sl.user_id) {
+              selfLikeSet.add(sl.comment_id);
+            }
+          }
+        }
+      }
+
+      const scoreFn = sort === 'popular' ? scorePopular : scoreSmart;
+
+      const scored = comments.map((c: any) => {
+        const profile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
+        const ageHours = (now - new Date(c.created_at).getTime()) / (1000 * 60 * 60);
+        const input: ScoringInput = {
+          likeCount: c.like_count || 0,
+          replyCount: c.reply_count || 0,
+          profileScore: profile?.profile_score ?? 50,
+          spamScore: profile?.spam_score ?? 0,
+          isVerified: !!profile?.is_verified,
+          isPremium: !!profile?.premium_plan,
+          contentLength: c.content_type === 'gif' ? 0 : wordCount(c.content),
+          isGif: c.content_type === 'gif',
+          ageHours,
+          hasSelfLike: selfLikeSet.has(c.id),
+        };
+        return { ...c, _score: scoreFn(input) };
+      });
+
+      scored.sort((a: any, b: any) => b._score - a._score);
+      comments = scored.slice(offset, offset + limit).map(({ _score, ...rest }: any) => rest);
     }
 
     // Filter out inactive authors and NSFW comments (staff sees all)
@@ -110,7 +289,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (commentIdsWithReplies.length > 0) {
       let replyQuery = admin
         .from('comments')
-        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)`)
+        .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status, profile_score, spam_score)`)
         .in('parent_id', commentIdsWithReplies)
         .eq('status', 'approved')
         .order('created_at', { ascending: true });
@@ -130,20 +309,113 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const parentId = r.parent_id as number;
         if (!replyMap.has(parentId)) replyMap.set(parentId, []);
         const bucket = replyMap.get(parentId)!;
-        if (bucket.length < 5) {
+        if (bucket.length < 10) {
           bucket.push({ ...r, profiles: rAuthor });
         }
       }
     }
 
+    const stripScores = (profile: any) => {
+      if (!profile) return profile;
+      const { profile_score, spam_score, ...rest } = profile;
+      return rest;
+    };
+
     const result = activeComments.map((c: any) => ({
       ...c,
-      profiles: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles,
-      replies: replyMap.get(c.id) || [],
+      profiles: stripScores(Array.isArray(c.profiles) ? c.profiles[0] : c.profiles),
+      replies: (replyMap.get(c.id) || []).map((r: any) => ({
+        ...r,
+        profiles: stripScores(r.profiles),
+      })),
     }));
 
-    const response = NextResponse.json({ comments: result, hasMore: (comments || []).length > limit });
-    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    // Include user's liked comment IDs so client can show liked state
+    let userLikedIds: number[] = [];
+    if (user) {
+      const commentIds = result.map((c: any) => c.id);
+      const replyIds = result.flatMap((c: any) => (c.replies || []).map((r: any) => r.id));
+      const allIds = [...commentIds, ...replyIds];
+      if (allIds.length > 0) {
+        const { data: likes } = await admin
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', user.id)
+          .in('comment_id', allIds);
+        userLikedIds = (likes || []).map((l: any) => l.comment_id);
+      }
+    }
+
+    // Deep-link: if target comment is a reply, ensure its parent is in results
+    const targetParam = request.nextUrl.searchParams.get('target');
+    let targetParentId: number | null = null;
+
+    if (targetParam) {
+      const targetId = parseInt(targetParam);
+      if (!isNaN(targetId)) {
+        // Check if target is a top-level comment already in results
+        const isTopLevel = result.some((c: any) => c.id === targetId);
+        if (!isTopLevel) {
+          // Check if it's already in a loaded reply
+          const parentWithReply = result.find((c: any) => c.replies?.some((r: any) => r.id === targetId));
+          if (parentWithReply) {
+            targetParentId = parentWithReply.id;
+          } else {
+            // Fetch the target comment to check if it's a reply
+            const { data: targetComment } = await admin
+              .from('comments')
+              .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)`)
+              .eq('id', targetId)
+              .eq('status', 'approved')
+              .single();
+
+            if (targetComment?.parent_id) {
+              targetParentId = targetComment.parent_id;
+              const targetProfile = Array.isArray(targetComment.profiles) ? targetComment.profiles[0] : targetComment.profiles;
+              const cleanTarget = { ...targetComment, profiles: targetProfile };
+
+              // Check if parent is already in results
+              const parentIdx = result.findIndex((c: any) => c.id === targetParentId);
+              if (parentIdx >= 0) {
+                // Parent exists, add target reply if not already there
+                if (!result[parentIdx].replies.some((r: any) => r.id === targetId)) {
+                  result[parentIdx].replies.push(cleanTarget);
+                }
+              } else {
+                // Fetch parent comment and prepend to results
+                const { data: parentComment } = await admin
+                  .from('comments')
+                  .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)`)
+                  .eq('id', targetParentId)
+                  .eq('status', 'approved')
+                  .single();
+
+                if (parentComment) {
+                  const parentProfile = Array.isArray(parentComment.profiles) ? parentComment.profiles[0] : parentComment.profiles;
+                  result.unshift({
+                    ...parentComment,
+                    profiles: parentProfile,
+                    replies: [cleanTarget],
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const response = NextResponse.json({
+      comments: result,
+      hasMore: (comments || []).length > limit,
+      userLikedIds,
+      ...(targetParentId && { targetParentId }),
+    });
+    if (user) {
+      response.headers.set('Cache-Control', 'private, no-store');
+    } else {
+      response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    }
     return response;
   } catch {
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
@@ -180,7 +452,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const maxCommentLength = COMMENT_CHAR_LIMITS[plan];
 
     if (isGif) {
-      if (!gif_url || typeof gif_url !== 'string' || !(gif_url.includes('tenor.com') || gif_url.includes('giphy.com'))) {
+      if (!gif_url || typeof gif_url !== 'string' || !isValidGifUrl(gif_url)) {
         return NextResponse.json({ error: 'Geçersiz GIF URL' }, { status: 400 });
       }
     } else {
@@ -227,7 +499,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('author_id', user.id)
       .gte('created_at', oneMinuteAgo);
     if (recentCount && recentCount >= 5) {
-      return NextResponse.json({ error: 'Çok hızlı yorum yapıyorsunuz, biraz bekleyin' }, { status: 429 });
+      return NextResponse.json({ error: 'Topluluğumuzu korumak adına yorum hızınız sınırlandırıldı, lütfen biraz bekleyin' }, { status: 429 });
     }
 
     // Daily comment limit check (plan zaten yukarida alinmisti)
@@ -235,7 +507,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!allowed) {
       logRateLimitHit(admin, user.id, 'comment', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
       return NextResponse.json(
-        { error: `Günlük yorum limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
+        { error: `Topluluğumuzu korumak adına günlük yorum limitine ulaştın (${limit}). Premium ile artır.`, limit, remaining: 0 },
         { status: 429 }
       );
     }
@@ -257,7 +529,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const { count: dupeCount } = await dupeQuery;
     if (dupeCount && dupeCount > 0) {
-      return NextResponse.json({ error: 'Aynı yorumu tekrar gönderemezsiniz' }, { status: 429 });
+      return NextResponse.json({ error: 'Topluluğumuzu korumak adına aynı yorumu tekrar gönderemezsiniz' }, { status: 429 });
     }
 
     // Admin bypass for AI moderation
@@ -359,7 +631,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Create mention notifications
+    // Create mention notifications (only for followers/following)
     const mentionMatches = (content || '').trim().match(/@([A-Za-z0-9._-]+)/g);
     if (mentionMatches) {
       const mentionedUsernames = [...new Set(mentionMatches.map((m: string) => m.slice(1).toLowerCase()))];
@@ -369,8 +641,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           .select('user_id')
           .eq('username', mentionedUsername)
           .single();
-        if (mentionedUser) {
-          await createNotification({ admin, user_id: mentionedUser.user_id, actor_id: user.id, type: 'mention', object_type: 'comment', object_id: postId, content: (content || '').trim().slice(0, 80) });
+        if (mentionedUser && mentionedUser.user_id !== user.id) {
+          // Verify follow relationship (either direction)
+          const { count } = await admin
+            .from('follows')
+            .select('id', { count: 'exact', head: true })
+            .or(
+              `and(follower_id.eq.${user.id},following_id.eq.${mentionedUser.user_id}),and(follower_id.eq.${mentionedUser.user_id},following_id.eq.${user.id})`
+            );
+          if (count && count > 0) {
+            await createNotification({ admin, user_id: mentionedUser.user_id, actor_id: user.id, type: 'mention', object_type: 'comment', object_id: postId, content: (content || '').trim().slice(0, 80) });
+          }
         }
       }
     }

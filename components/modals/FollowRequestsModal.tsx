@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Modal from "./Modal";
-
+import { feedimAlert } from "@/components/FeedimAlert";
 
 import UserListItem from "@/components/UserListItem";
 
@@ -53,8 +53,7 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
     }
   };
 
-  const handleAction = async (requestId: number, username: string, action: "accept" | "reject") => {
-    // Optimistic: remove from list immediately
+  const doAction = async (requestId: number, username: string, action: "accept" | "reject") => {
     const removed = requests.find(r => r.id === requestId);
     setRequests(prev => prev.filter(r => r.id !== requestId));
 
@@ -66,13 +65,22 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
         keepalive: true,
       });
       if (!res.ok && removed) {
-        // Rollback on failure
         setRequests(prev => [...prev, removed]);
       }
     } catch {
-      // Rollback on error
       if (removed) setRequests(prev => [...prev, removed]);
     }
+  };
+
+  const handleAction = (requestId: number, username: string, action: "accept" | "reject") => {
+    if (action === "reject") {
+      feedimAlert("question", t("rejectFollowConfirm", { username }), {
+        showYesNo: true,
+        onYes: () => doAction(requestId, username, action),
+      });
+      return;
+    }
+    doAction(requestId, username, action);
   };
 
   return (
@@ -81,7 +89,7 @@ export default function FollowRequestsModal({ open, onClose }: FollowRequestsMod
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : requests.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">{t("noFollowRequestsPending")}</p>
+          <p className="text-center text-text-muted text-[0.74rem] py-8">{t("noFollowRequestsPending")}</p>
         ) : (
           <div className="space-y-1">
             {requests.map(r => {

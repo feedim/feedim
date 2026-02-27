@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Modal from "./Modal";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowButton from "@/components/FollowButton";
 import UserListItem from "@/components/UserListItem";
@@ -20,8 +21,10 @@ interface User {
   premium_plan?: string | null;
   is_following?: boolean;
   is_requested?: boolean;
+  follows_me?: boolean;
   account_private?: boolean;
   is_own?: boolean;
+  is_own_profile?: boolean;
 }
 
 export interface FilterTab {
@@ -62,6 +65,7 @@ export default function UserListModal({
   const [filter, setFilter] = useState(filterTabs[0]?.key || "all");
   const [tabSwitching, setTabSwitching] = useState(false);
   const { requireAuth } = useAuthModal();
+  const t = useTranslations("userList");
 
   useEffect(() => {
     if (open) {
@@ -131,16 +135,15 @@ export default function UserListModal({
   const handleFollow = (targetUsername: string, userId: string) => {
     const user = users.find(u => u.user_id === userId);
     if (user?.is_following || user?.is_requested) {
-      feedimAlert("question", "Takibi bırakmak istiyor musunuz?", { showYesNo: true, onYes: () => doUnfollow(targetUsername, userId) });
+      feedimAlert("question", t("confirmUnfollow"), { showYesNo: true, onYes: () => doUnfollow(targetUsername, userId) });
       return;
     }
     doFollow(targetUsername, userId);
   };
 
-  const filterEmptyText = (key: string) => {
-    if (key === "verified") return "Doğrulanmış hesap yok";
-    if (key === "following") return "Takip ettiğiniz kimse yok";
-    return "Sonuç yok";
+
+  const filterEmptyText = () => {
+    return t("noResults");
   };
 
   return (
@@ -168,14 +171,14 @@ export default function UserListModal({
         ))}
       </div>
 
-      <div className="px-2 py-2 min-h-[300px]">
+      <div className="px-1 py-2 min-h-[300px]">
         {(loading && users.length === 0) || tabSwitching ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
         ) : users.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">{emptyText}</p>
+          <p className="text-center text-text-muted text-[0.74rem] py-8">{emptyText}</p>
         ) : filteredUsers.length === 0 ? (
-          <p className="text-center text-text-muted text-sm py-8">
-            {filterEmptyText(filter)}
+          <p className="text-center text-text-muted text-[0.74rem] py-8">
+            {filterEmptyText()}
           </p>
         ) : (
           <div className="space-y-1">
@@ -184,10 +187,12 @@ export default function UserListModal({
                 key={u.user_id}
                 user={u}
                 onNavigate={onClose}
+                subtitle={u.follows_me && !u.is_own ? t("followsYou") : undefined}
                 action={!u.is_own ? (
                   <FollowButton
                     following={!!u.is_following || !!u.is_requested}
                     isPrivate={!!u.is_requested}
+                    followsMe={!!u.follows_me && !u.is_following}
                     onClick={() => handleFollow(u.username, u.user_id)}
                     disabled={toggling.has(u.user_id)}
                   />

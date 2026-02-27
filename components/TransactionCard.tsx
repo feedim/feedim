@@ -28,7 +28,7 @@ export default function TransactionCard({ transaction }: TransactionCardProps) {
         </div>
 
         <div className="text-right ml-4">
-          <div className={`text-lg font-bold ${isPositive ? 'text-accent-main' : 'text-error'}`}>
+          <div className={`text-lg font-bold ${isPositive ? 'text-accent-main' : 'text-text-muted'}`}>
             {isPositive ? '+' : ''}{transaction.amount?.toLocaleString() || 0}
           </div>
           {transaction.balance_after !== undefined && transaction.balance_after !== null && (

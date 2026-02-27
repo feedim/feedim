@@ -86,6 +86,9 @@ export default function AccountHealthPage() {
                       ? t("healthScoreMedium")
                       : t("healthScoreRisk")}
                 </p>
+                <Link href="/help/profile-score" className="text-[0.72rem] text-accent-main hover:underline mt-2 inline-block">
+                  {t("healthLearnMore")} &rarr;
+                </Link>
               </div>
               <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border-primary">
                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-success" /><span className="text-[0.65rem] text-text-muted">{t("healthLabelHealthy")}</span></div>
@@ -134,7 +137,7 @@ export default function AccountHealthPage() {
 
             {/* Links */}
             <div className="space-y-2">
-              <Link href="/settings/copyright" className="block text-xs text-accent-main hover:underline">
+              <Link href="/help/moderation" className="block text-xs text-accent-main hover:underline">
                 {t("healthCopyrightLink")} &rarr;
               </Link>
               <Link href="/help/community-guidelines" className="block text-xs text-accent-main hover:underline">

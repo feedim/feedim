@@ -8,7 +8,9 @@ import { useTranslations } from "next-intl";
 interface ThumbnailPickerModalProps {
   open: boolean;
   onClose: () => void;
-  videoFile: File;
+  videoFile?: File | null;
+  /** Fallback video URL when videoFile is not available (edit mode) */
+  videoSrc?: string;
   duration: number;
   /** Aspect ratio of the video — "16:9" or "9:16" */
   aspectRatio?: "16:9" | "9:16";
@@ -19,6 +21,7 @@ export default function ThumbnailPickerModal({
   open,
   onClose,
   videoFile,
+  videoSrc,
   duration,
   aspectRatio = "9:16",
   onSelect,
@@ -40,13 +43,19 @@ export default function ThumbnailPickerModal({
 
   // Create preview URL
   useEffect(() => {
-    if (!open || !videoFile) return;
-    const url = URL.createObjectURL(videoFile);
-    setPreviewUrl(url);
-    setCurrentTime(0);
-    setFramePreview("");
-    return () => URL.revokeObjectURL(url);
-  }, [open, videoFile]);
+    if (!open) return;
+    if (videoFile) {
+      const url = URL.createObjectURL(videoFile);
+      setPreviewUrl(url);
+      setCurrentTime(0);
+      setFramePreview("");
+      return () => URL.revokeObjectURL(url);
+    } else if (videoSrc) {
+      setPreviewUrl(videoSrc);
+      setCurrentTime(0);
+      setFramePreview("");
+    }
+  }, [open, videoFile, videoSrc]);
 
   // Capture current frame whenever time changes
   const captureFrame = useCallback(() => {
@@ -61,9 +70,13 @@ export default function ThumbnailPickerModal({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0, w, h);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    setFramePreview(dataUrl);
+    try {
+      ctx.drawImage(video, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      setFramePreview(dataUrl);
+    } catch {
+      // CORS tainted canvas — cannot extract frame from remote URL
+    }
   }, []);
 
   // Seek video and capture frame when currentTime changes
@@ -132,8 +145,10 @@ export default function ThumbnailPickerModal({
 
   // Extract frame thumbnails for timeline background
   useEffect(() => {
-    if (!open || !videoFile || !duration) return;
+    if (!open || !duration) return;
+    if (!videoFile && !videoSrc) return;
     let cancelled = false;
+    let objectUrl = "";
     setFrameThumbs([]);
 
     const extract = async () => {
@@ -141,8 +156,13 @@ export default function ThumbnailPickerModal({
       vid.muted = true;
       vid.preload = "auto";
       vid.playsInline = true;
-      const url = URL.createObjectURL(videoFile);
-      vid.src = url;
+      vid.crossOrigin = "anonymous";
+      if (videoFile) {
+        objectUrl = URL.createObjectURL(videoFile);
+        vid.src = objectUrl;
+      } else {
+        vid.src = videoSrc!;
+      }
 
       await new Promise<void>((resolve) => {
         vid.onloadeddata = () => resolve();
@@ -150,7 +170,7 @@ export default function ThumbnailPickerModal({
         setTimeout(resolve, 5000);
         vid.load();
       });
-      if (cancelled) { URL.revokeObjectURL(url); return; }
+      if (cancelled) { if (objectUrl) URL.revokeObjectURL(objectUrl); return; }
 
       const count = Math.min(Math.max(Math.ceil(duration / 2), 6), 12);
       const canvas = document.createElement("canvas");
@@ -161,7 +181,7 @@ export default function ThumbnailPickerModal({
       canvas.width = cw;
       canvas.height = ch;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { URL.revokeObjectURL(url); return; }
+      if (!ctx) { if (objectUrl) URL.revokeObjectURL(objectUrl); return; }
 
       const frames: string[] = [];
       for (let i = 0; i < count && !cancelled; i++) {
@@ -172,17 +192,22 @@ export default function ThumbnailPickerModal({
           setTimeout(done, 1000);
         });
         if (cancelled) break;
-        ctx.drawImage(vid, 0, 0, cw, ch);
-        frames.push(canvas.toDataURL("image/jpeg", 0.4));
+        try {
+          ctx.drawImage(vid, 0, 0, cw, ch);
+          frames.push(canvas.toDataURL("image/jpeg", 0.4));
+        } catch {
+          // CORS tainted canvas — skip frame extraction for remote URLs
+          break;
+        }
       }
 
-      URL.revokeObjectURL(url);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
       if (!cancelled && frames.length > 0) setFrameThumbs(frames);
     };
 
     extract().catch(() => {});
     return () => { cancelled = true; };
-  }, [open, videoFile, duration]);
+  }, [open, videoFile, videoSrc, duration]);
 
   // Handle custom image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,7 +248,8 @@ export default function ThumbnailPickerModal({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex flex-col bg-bg-primary">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="relative flex flex-col bg-bg-primary rounded-2xl overflow-hidden w-full max-w-lg" style={{ maxHeight: "min(90vh, 720px)" }} onClick={e => e.stopPropagation()}>
       {/* Top bar — matches CropModal style */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border-primary" style={{ touchAction: "auto" }}>
         <button
@@ -251,6 +277,7 @@ export default function ThumbnailPickerModal({
           muted
           playsInline
           preload="auto"
+          crossOrigin="anonymous"
           className="hidden"
         />
       )}
@@ -258,7 +285,7 @@ export default function ThumbnailPickerModal({
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Preview area — fills available space */}
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black/5 dark:bg-black/30">
+      <div className="flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black/5 dark:bg-black/30">
         <div
           className="relative overflow-hidden rounded-lg"
           style={{
@@ -339,6 +366,7 @@ export default function ThumbnailPickerModal({
           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
         </label>
       </div>
+    </div>
     </div>,
     document.body
   );

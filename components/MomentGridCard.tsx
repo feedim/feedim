@@ -3,6 +3,7 @@
 import { memo } from "react";
 import Link from "next/link";
 import { formatCount } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface MomentGridCardProps {
   moment: {
@@ -17,6 +18,7 @@ interface MomentGridCardProps {
 }
 
 export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
+  const t = useTranslations();
   const thumb = moment.video_thumbnail || moment.featured_image;
 
   const fmtDuration = (s: number) => {
@@ -44,7 +46,7 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
       {/* View count — bottom left */}
       {moment.view_count !== undefined && moment.view_count > 0 && (
         <div className="absolute bottom-1.5 left-1.5 text-white text-[0.66rem] font-medium" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-          {formatCount(moment.view_count)} görüntülenme
+          {formatCount(moment.view_count)} {t('common.views')}
         </div>
       )}
     </Link>

@@ -5,13 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { X, Plus, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
 import { formatCount, getPostUrl } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
-import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
+import { useMention } from "@/lib/useMention";
+import MentionDropdown from "@/components/MentionDropdown";
 
 interface Tag {
   id: number | string;
@@ -35,6 +37,7 @@ function NoteWriteContent() {
   const supabase = createClient();
   const { user } = useUser();
   const t = useTranslations("create");
+  const tc = useTranslations("common");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,18 +55,12 @@ function NoteWriteContent() {
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
   const [tagHighlight, setTagHighlight] = useState(-1);
   const [tagCreating, setTagCreating] = useState(false);
-  const [popularTags, setPopularTags] = useState<Tag[]>([]);
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
-  const [isForKids, setIsForKids] = useState(false);
   const [isAiContent, setIsAiContent] = useState(false);
 
   // Mention system
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionUsers, setMentionUsers] = useState<{ user_id: string; username: string; avatar_url?: string; is_verified?: boolean; premium_plan?: string | null; role?: string }[]>([]);
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [mentionPos, setMentionPos] = useState(-1);
-  const mentionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   // State
   const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
@@ -109,7 +106,6 @@ function NoteWriteContent() {
         setNoteText(plainText);
         setDraftId(data.post.id);
         setAllowComments(data.post.allow_comments !== false);
-        setIsForKids(data.post.is_for_kids === true);
         setIsAiContent(data.post.is_ai_content === true);
         setVisibility(data.post.visibility || "public");
         const postTags = (data.post.post_tags || [])
@@ -145,7 +141,6 @@ function NoteWriteContent() {
             status: "draft",
             tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
             allow_comments: allowComments,
-            is_for_kids: isForKids,
             is_ai_content: isAiContent,
             visibility,
           }),
@@ -154,103 +149,39 @@ function NoteWriteContent() {
         if (res.ok) {
           if (!draftId && data.post?.id) setDraftId(data.post.id);
           setHasUnsavedChanges(false);
+        } else if (res.status === 400 && !draftId) {
+          setHasUnsavedChanges(false);
         }
       } catch {}
       setAutoSaving(false);
     }, 30000);
     return () => clearInterval(timer);
-  }, [noteText, hasUnsavedChanges, savingAs, autoSaving, draftId, tags, allowComments, isForKids, isAiContent, visibility]);
+  }, [noteText, hasUnsavedChanges, savingAs, autoSaving, draftId, tags, allowComments, isAiContent, visibility]);
 
   // — Mention helpers —
-  const searchMentionUsers = useCallback(async (query: string) => {
-    if (query.length < 1) { setMentionUsers([]); return; }
-    try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      setMentionUsers(data.users || []);
-      setMentionIndex(0);
-    } catch { setMentionUsers([]); }
-  }, []);
-
   const handleNoteChange = (value: string) => {
     if (value.length <= MAX_CHARS) {
       setNoteText(value);
     }
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const cursorPos = textarea.selectionStart;
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const mentionMatch = textBeforeCursor.match(/(^|[^A-Za-z0-9._-])@(\w*)$/);
-    if (mentionMatch) {
-      const query = mentionMatch[2];
-      setMentionPos(cursorPos - query.length - 1);
-      setMentionQuery(query);
-      if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current);
-      mentionTimerRef.current = setTimeout(() => searchMentionUsers(query), 200);
-    } else {
-      setMentionUsers([]);
-      setMentionQuery("");
-      setMentionPos(-1);
-    }
+    mention.handleTextChange(value, textareaRef.current);
   };
 
   const selectMentionUser = (username: string) => {
-    if (mentionPos < 0) return;
-    const before = noteText.substring(0, mentionPos);
-    const after = noteText.substring(mentionPos + 1 + mentionQuery.length);
-    const newValue = before + "@" + username + " " + after;
-    if (newValue.length <= MAX_CHARS) {
-      setNoteText(newValue);
-    }
-    setMentionUsers([]);
-    setMentionQuery("");
-    setMentionPos(-1);
-    textareaRef.current?.focus();
+    mention.selectUser(username, noteText, (v) => {
+      if (v.length <= MAX_CHARS) setNoteText(v);
+      textareaRef.current?.focus();
+    });
   };
 
   const handleMentionKeyDown = (e: React.KeyboardEvent) => {
-    if (mentionUsers.length > 0) {
-      if (e.key === "ArrowDown") {
+    if (mention.mentionUsers.length > 0) {
+      if ((e.key === "Enter" || e.key === "Tab") && mention.mentionUsers[mention.mentionIndex]) {
         e.preventDefault();
-        const newIndex = mentionIndex < mentionUsers.length - 1 ? mentionIndex + 1 : 0;
-        setMentionIndex(newIndex);
-        const el = document.querySelector(`[data-mention-index="${newIndex}"]`);
-        el?.scrollIntoView({ block: "nearest" });
+        selectMentionUser(mention.mentionUsers[mention.mentionIndex].username);
         return;
       }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const newIndex = mentionIndex > 0 ? mentionIndex - 1 : mentionUsers.length - 1;
-        setMentionIndex(newIndex);
-        const el = document.querySelector(`[data-mention-index="${newIndex}"]`);
-        el?.scrollIntoView({ block: "nearest" });
-        return;
-      }
-      if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        selectMentionUser(mentionUsers[mentionIndex].username);
-        return;
-      }
-      if (e.key === "Escape") {
-        setMentionUsers([]);
-        return;
-      }
+      if (mention.handleKeyDown(e)) return;
     }
-  };
-
-  // Load popular tags on step 2
-  useEffect(() => {
-    if (step === 2 && popularTags.length === 0) {
-      loadPopularTags();
-    }
-  }, [step]);
-
-  const loadPopularTags = async () => {
-    try {
-      const res = await fetch("/api/tags?q=");
-      const data = await res.json();
-      setPopularTags((data.tags || []).slice(0, 8));
-    } catch {}
   };
 
   const searchTags = useCallback(async (q: string) => {
@@ -375,20 +306,29 @@ function NoteWriteContent() {
       const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
       const method = draftId ? "PUT" : "POST";
 
-      const res = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const body: Record<string, any> = {
           title: autoTitle,
           content,
           content_type: "note",
           status,
           tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           allow_comments: allowComments,
-          is_for_kids: isForKids,
           is_ai_content: isAiContent,
           visibility,
-        }),
+      };
+
+      if (status === "published") {
+        body.meta_title = trimmed.slice(0, 60);
+        body.meta_description = trimmed.slice(0, 155);
+        if (tags.length > 0) {
+          body.meta_keywords = tags.map(t => t.name).join(", ").slice(0, 200);
+        }
+      }
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -465,7 +405,7 @@ function NoteWriteContent() {
       hideRightSidebar
       headerRightAction={headerRight}
       headerTitle={step === 1 ? t("headerNote") : t("headerDetails")}
-      headerOnBack={() => { if (step === 2) setStep(1); else router.back(); }}
+      headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
     >
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
         {/* Step 1: Note content */}
@@ -500,7 +440,7 @@ function NoteWriteContent() {
                       onKeyDown={handleMentionKeyDown}
                       placeholder={t("whatsOnYourMind")}
                       className="w-full bg-transparent text-[1rem] leading-[1.55] text-text-primary placeholder:text-text-muted/50 resize-none min-h-[200px]"
-                      style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto" }}
+                      style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto", fontSize: "1rem" }}
                       maxLength={MAX_CHARS}
                       autoFocus
                       onInput={(e) => {
@@ -511,31 +451,13 @@ function NoteWriteContent() {
                     />
 
                     {/* Mention dropdown */}
-                    {mentionUsers.length > 0 && (
-                      <div className="absolute left-0 right-0 bg-bg-elevated bg-solid border border-border-primary rounded-xl shadow-xl z-50 max-h-[200px] overflow-y-auto">
-                        {mentionUsers.map((u, i) => (
-                          <button
-                            key={u.user_id}
-                            data-mention-index={i}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              selectMentionUser(u.username);
-                            }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition text-sm ${
-                              i === mentionIndex ? "bg-accent-main/10" : "hover:bg-bg-tertiary"
-                            }`}
-                          >
-                            {u.avatar_url ? (
-                              <img src={u.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
-                            ) : (
-                              <img className="default-avatar-auto h-7 w-7 rounded-full object-cover shrink-0" alt="" />
-                            )}
-                            <span className="font-medium">@{u.username}</span>
-                            {u.is_verified && <VerifiedBadge variant={getBadgeVariant(u.premium_plan)} role={u.role} />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <MentionDropdown
+                      users={mention.mentionUsers}
+                      activeIndex={mention.mentionIndex}
+                      onSelect={selectMentionUser}
+                      className="absolute left-0 right-0"
+                      style={mention.mentionDropdownTop !== null ? { top: mention.mentionDropdownTop } : undefined}
+                    />
                   </div>
                 </div>
               </div>
@@ -609,26 +531,6 @@ function NoteWriteContent() {
               )}
               <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
 
-              {/* Popular tags */}
-              {tags.length < VALIDATION.postTags.max && !tagSearch && popularTags.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs text-text-muted mb-2">{t("popularTags")}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {popularTags
-                      .filter(pt => !tags.some(t => t.id === pt.id))
-                      .slice(0, 6)
-                      .map(pt => (
-                        <button
-                          key={pt.id}
-                          onClick={() => addTag(pt)}
-                          className="text-xs px-2.5 py-1.5 rounded-full border border-border-primary text-text-muted hover:text-accent-main hover:border-accent-main/50 transition"
-                        >
-                          #{pt.name}
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Visibility */}
@@ -662,18 +564,6 @@ function NoteWriteContent() {
                   </div>
                   <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
                     <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
-                <button
-                  onClick={() => setIsForKids(!isForKids)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-bg-tertiary transition text-left"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{t("forKids")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
                   </div>
                 </button>
                 <div>

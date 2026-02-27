@@ -15,7 +15,7 @@ export default function ContentEn() {
         <p>
           The Feedim moderation system consists of two core components: artificial intelligence (AI) scanning and human moderation.
           Every piece of content is automatically scanned by AI when published. The AI analyzes content
-          for policy violations and flags or directly blocks content when necessary.
+          for policy violations and flags content for the moderation team to review.
         </p>
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <div className="flex items-start gap-3">
@@ -29,7 +29,7 @@ export default function ContentEn() {
             <span className="text-accent-main font-bold text-xs mt-0.5 shrink-0">2.</span>
             <div>
               <p className="font-semibold text-text-primary">Detection and/or Blocking</p>
-              <p className="text-text-muted text-xs mt-0.5">If a policy violation is detected, content is hidden or directly blocked.</p>
+              <p className="text-text-muted text-xs mt-0.5">If a policy violation is detected, content is hidden and sent to the moderation team for review.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">

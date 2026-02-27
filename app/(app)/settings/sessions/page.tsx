@@ -94,7 +94,9 @@ export default function SessionsPage() {
     if (!confirmed) return;
 
     try {
-      await fetch("/api/account/sessions?all=true", { method: "DELETE" });
+      const params = new URLSearchParams({ all: "true" });
+      if (currentDeviceHash) params.set("current_device", currentDeviceHash);
+      await fetch(`/api/account/sessions?${params}`, { method: "DELETE" });
       setSessions(prev => prev.filter(s => s.device_hash === currentDeviceHash));
       feedimAlert("success", t("allSessionsEnded"));
     } catch {

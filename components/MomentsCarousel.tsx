@@ -108,7 +108,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
               <div className="absolute bottom-2 left-2 right-2 z-10">
                 <div className="flex items-center gap-1.5 mb-1">
                   {author?.avatar_url ? (
-                    <img src={author.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover border border-white/30" loading="lazy" />
+                    <img src={author.avatar_url} alt="" loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover border border-white/30 bg-bg-tertiary" />
                   ) : (
                     <img className="default-avatar-auto w-5 h-5 rounded-full object-cover border border-white/30" alt="" loading="lazy" />
                   )}

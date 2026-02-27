@@ -1737,3 +1737,42 @@ html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-so
   .animate-marquee { animation: none !important; }
   .animate-spin-slow { animation: none !important; }
 }
+
+/* ── Tooltip ── */
+@media (hover: hover) {
+  [data-tooltip] {
+    position: relative;
+  }
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 9px;
+    border-radius: 7px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 9999;
+    background-color: var(--bg-inverse);
+    color: var(--text-inverse);
+  }
+  [data-tooltip]:hover::after {
+    opacity: 1;
+    transition-delay: 0.6s;
+  }
+  [data-tooltip-pos="bottom"]::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+  }
+}
+
+/* ── Global: images & GIFs get pointer cursor ── */
+img:not(.default-avatar-auto):not([class*="rounded-full"]) {
+  cursor: pointer;
+}

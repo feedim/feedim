@@ -45,6 +45,7 @@ interface SuggestedUser {
   premium_plan?: string | null;
   role?: string;
   bio?: string;
+  follows_me?: boolean;
 }
 
 type NotifTab = "social" | "system";
@@ -95,6 +96,12 @@ function getGroupedNotificationLink(n: GroupedNotification): string | null {
   if ((n.type === "moderation_review" || n.type === "moderation_approved" || n.type === "moderation_rejected") && n.object_type === "comment" && n.comment_post_slug && n.object_id) {
     return `/${n.comment_post_slug}/moderation?comment=${encodeId(n.object_id)}`;
   }
+  if (n.type === "mention" && n.object_type === "comment" && n.comment_post_slug && n.object_id) {
+    return `/${n.comment_post_slug}?comment=${encodeId(n.object_id)}`;
+  }
+  if (n.type === "mention" && n.object_type === "comment" && n.post_slug && n.object_id) {
+    return `/${n.post_slug}?comment=${encodeId(n.object_id)}`;
+  }
   if ((n.type === "like" || n.type === "comment" || n.type === "reply" || n.type === "mention" || n.type === "first_post" || n.type === "comeback_post" || n.type === "milestone" || n.type === "view_milestone") && n.post_slug) {
     return `/${n.post_slug}`;
   }
@@ -133,6 +140,17 @@ function getGroupedText(n: GroupedNotification, t: (key: string, values?: Record
   // Single notification
   const actorName = n.actor?.username ? `@${n.actor.username}` : "";
   const isSystem = ["system", "account_moderation", "device_login", "premium_expired", "view_milestone"].includes(n.type);
+
+  // Mention: differentiate between post and comment mentions
+  if (n.type === "mention") {
+    const mentionText = n.object_type === "comment" ? t("mentionedInComment") : t("mentionedInPost");
+    return (
+      <>
+        {actorName && <><span className="font-semibold">{actorName}</span>{" "}</>}
+        <span className="text-text-muted">{mentionText}</span>
+      </>
+    );
+  }
 
   return (
     <>
@@ -325,7 +343,7 @@ export default function NotificationsPage() {
   return (
     <AppLayout headerTitle={t("title")} hideRightSidebar>
       {/* Tab bar */}
-      <div className="sticky top-[53px] z-20 bg-bg-primary sticky-ambient border-b border-border-primary">
+      <div className="border-b border-border-primary">
         <div className="flex">
           <button
             onClick={() => handleTabChange("social")}
@@ -478,7 +496,7 @@ export default function NotificationsPage() {
                               {n.actors.slice(0, 3).map((actor, i) => (
                                 <div key={i} className="absolute top-0" style={{ left: i * 10, zIndex: 3 - i }}>
                                   {actor.avatar_url ? (
-                                    <img src={actor.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border border-bg-primary" />
+                                    <img src={actor.avatar_url} alt="" loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover border border-bg-primary bg-bg-tertiary" />
                                   ) : (
                                     <img className="default-avatar-auto h-10 w-10 rounded-full object-cover border border-bg-primary" alt="" />
                                   )}
@@ -486,7 +504,7 @@ export default function NotificationsPage() {
                               ))}
                             </div>
                           ) : n.actor?.avatar_url ? (
-                            <img src={n.actor.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                            <img src={n.actor.avatar_url} alt="" loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover bg-bg-tertiary" />
                           ) : (
                             <div className="h-10 w-10 rounded-full bg-bg-secondary flex items-center justify-center">
                               {iconMap[n.type] || <Bell className="h-4 w-4 text-text-muted" />}
@@ -517,7 +535,7 @@ export default function NotificationsPage() {
                           )}
                           <button
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteNotification(n.notification_ids); }}
-                            className="opacity-0 group-hover:opacity-100 sm:opacity-0 active:opacity-100 p-1.5 rounded-full hover:bg-bg-tertiary text-text-muted hover:text-error transition z-[2] pointer-events-auto"
+                            className="p-1.5 rounded-full hover:bg-bg-tertiary text-text-muted hover:text-error transition z-[2] pointer-events-auto"
                             aria-label={tc("delete")}
                           >
                             <X className="h-3.5 w-3.5" />
@@ -556,6 +574,7 @@ export default function NotificationsPage() {
                   action={
                     <FollowButton
                       following={followingSet.has(user.user_id)}
+                      followsMe={user.follows_me && !followingSet.has(user.user_id)}
                       onClick={() => handleFollow(user.user_id)}
                     />
                   }

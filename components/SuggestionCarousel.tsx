@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { X, UserPlus, Check, ChevronRight } from "lucide-react";
+import { X, ChevronRight } from "lucide-react";
+import FollowButton from "@/components/FollowButton";
 import { feedimAlert } from "@/components/FeedimAlert";
 
 interface SuggestedUser {
@@ -131,14 +132,14 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
                   <img
                     src={u.avatar_url}
                     alt=""
-                    className="w-[72px] h-[72px] rounded-full object-cover mb-2"
                     loading="lazy"
+                    decoding="async"
+                    className="w-[72px] h-[72px] rounded-full object-cover mb-2 bg-bg-tertiary"
                   />
                 ) : (
                   <img
                     className="default-avatar-auto w-[72px] h-[72px] rounded-full object-cover mb-2"
                     alt=""
-                    loading="lazy"
                   />
                 )}
               </Link>
@@ -146,20 +147,12 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
                 <p className="text-[0.78rem] font-semibold truncate">{displayName}</p>
                 <p className="text-[0.68rem] text-text-muted truncate">@{u.username}</p>
               </Link>
-              <button
+              <FollowButton
+                following={isFollowing}
+                followsMe={u.follows_me && !isFollowing}
                 onClick={() => handleFollow(u.username, u.user_id)}
-                className={`mt-2 w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[0.75rem] font-semibold transition ${
-                  isFollowing
-                    ? "bg-bg-secondary text-text-primary"
-                    : "bg-accent-main text-white"
-                }`}
-              >
-                {isFollowing ? (
-                  <><Check className="h-3 w-3" /> {t("following")}</>
-                ) : (
-                  <><UserPlus className="h-3 w-3" /> {t("follow")}</>
-                )}
-              </button>
+                className="mt-2 w-full !h-[34px] !text-[0.75rem] !rounded-lg"
+              />
             </div>
           );
         })}

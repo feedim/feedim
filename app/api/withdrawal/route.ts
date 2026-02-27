@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Get profile with MFA and IBAN info
     const { data: profile } = await admin
       .from('profiles')
-      .select('coin_balance, profile_score, mfa_enabled, withdrawal_iban, withdrawal_holder_name')
+      .select('coin_balance, profile_score, mfa_enabled, withdrawal_iban, withdrawal_holder_name, total_spent')
       .eq('user_id', user.id)
       .single();
 
@@ -165,10 +165,21 @@ export async function GET() {
         .limit(50),
       admin
         .from('profiles')
-        .select('coin_balance, mfa_enabled, is_premium, premium_plan, withdrawal_iban, withdrawal_holder_name')
+        .select('coin_balance, mfa_enabled, is_premium, premium_plan, withdrawal_iban, withdrawal_holder_name, account_type, account_private')
         .eq('user_id', user.id)
         .single(),
     ]);
+
+    // Fetch monetization_enabled separately (column may not exist yet)
+    let monetizationEnabled = false;
+    try {
+      const { data: monData } = await admin
+        .from('profiles')
+        .select('monetization_enabled')
+        .eq('user_id', user.id)
+        .single();
+      monetizationEnabled = monData?.monetization_enabled || false;
+    } catch {}
 
     return NextResponse.json({
       requests: requests || [],
@@ -179,6 +190,9 @@ export async function GET() {
         premium_plan: profile.premium_plan || null,
         withdrawal_iban: profile.withdrawal_iban || '',
         withdrawal_holder_name: profile.withdrawal_holder_name || '',
+        monetization_enabled: monetizationEnabled,
+        account_type: profile.account_type || 'personal',
+        account_private: profile.account_private || false,
       } : null,
     });
   } catch {

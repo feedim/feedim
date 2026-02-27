@@ -270,7 +270,7 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
             {loading ? (
               <div className="flex items-center justify-center py-32"><span className="loader" style={{ width: 22, height: 22 }} /></div>
             ) : sounds.length === 0 ? (
-              <div className="text-center py-12 text-text-muted text-sm">
+              <div className="text-center py-12 text-text-muted text-[0.74rem]">
                 {tab === "search" && searchQuery ? t("soundNoResults") : t("soundNoSounds")}
               </div>
             ) : (

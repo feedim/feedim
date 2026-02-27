@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import PasswordInput from "@/components/PasswordInput";
 import AppLayout from "@/components/AppLayout";
+import DigitInput from "@/components/DigitInput";
 import { useUser } from "@/components/UserContext";
 
 const minDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -43,11 +44,13 @@ export default function SecurityPage() {
   const [disabling, setDisabling] = useState(false);
   const [disableSending, setDisableSending] = useState(false);
   const [mfaCooldown, setMfaCooldown] = useState(0);
+  const [mfaHasResent, setMfaHasResent] = useState(false);
+  const [emailHasResent, setEmailHasResent] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
   const { user: currentUser } = useUser();
-  const canUseMfa = currentUser?.premiumPlan === "pro" || currentUser?.premiumPlan === "max";
+  const canUseMfa = ["basic", "pro", "max", "business"].includes(currentUser?.premiumPlan || "");
 
   useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -91,16 +94,20 @@ export default function SecurityPage() {
         minDelay(2000),
       ]);
       if (authError) { feedimAlert("error", t("wrongPassword")); return; }
-      const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", t("codeSendFailed")); return; }
+      const res = await fetch("/api/auth/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      if (res.status === 429) { feedimAlert("error", t("otpRateLimited")); return; }
+      if (!res.ok) { feedimAlert("error", t("codeSendFailed")); return; }
       setEnableStep(2);
       setMfaCooldown(60);
+      setMfaHasResent(false);
     } catch { feedimAlert("error", t("genericError")); } finally { setEnableSending(false); }
   };
 
   const handleEnableOtpStep = async () => {
     if (enableCode.length < 6) return;
+    const savedCode = enableCode;
     setEnabling(true);
+    let success = false;
     try {
       const [{ error }] = await Promise.all([
         supabase.auth.verifyOtp({ email: userEmail, token: enableCode, type: "email" }),
@@ -110,9 +117,13 @@ export default function SecurityPage() {
       const res = await fetch("/api/auth/mfa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "enable" }) });
       const data = await res.json();
       if (!res.ok) { feedimAlert("error",data.error || t("mfaEnableFailed")); return; }
+      success = true;
       feedimAlert("success", t("mfaEnabled"));
       setMfaEnabled(true); setEnableStep(0); setEnablePassword(""); setEnableCode("");
-    } catch { feedimAlert("error", t("genericError")); } finally { setEnabling(false); }
+    } catch { feedimAlert("error", t("genericError")); } finally {
+      setEnabling(false);
+      if (!success) setEnableCode(savedCode);
+    }
   };
 
   const handleDisablePasswordStep = async () => {
@@ -124,16 +135,20 @@ export default function SecurityPage() {
         minDelay(2000),
       ]);
       if (authError) { feedimAlert("error", t("wrongPassword")); return; }
-      const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", t("codeSendFailed")); return; }
+      const res = await fetch("/api/auth/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      if (res.status === 429) { feedimAlert("error", t("otpRateLimited")); return; }
+      if (!res.ok) { feedimAlert("error", t("codeSendFailed")); return; }
       setDisableStep(2);
       setMfaCooldown(60);
+      setMfaHasResent(false);
     } catch { feedimAlert("error", t("genericError")); } finally { setDisableSending(false); }
   };
 
   const handleDisableOtpStep = async () => {
     if (disableCode.length < 6) return;
+    const savedCode = disableCode;
     setDisabling(true);
+    let success = false;
     try {
       const [{ error }] = await Promise.all([
         supabase.auth.verifyOtp({ email: userEmail, token: disableCode, type: "email" }),
@@ -143,16 +158,22 @@ export default function SecurityPage() {
       const res = await fetch("/api/auth/mfa", { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) { feedimAlert("error",data.error || t("mfaDisableFailed")); return; }
+      success = true;
       feedimAlert("success", t("mfaDisabled"));
       setMfaEnabled(false); setDisableStep(0); setDisablePassword(""); setDisableCode("");
-    } catch { feedimAlert("error", t("genericError")); } finally { setDisabling(false); }
+    } catch { feedimAlert("error", t("genericError")); } finally {
+      setDisabling(false);
+      if (!success) setDisableCode(savedCode);
+    }
   };
 
   const handleResendMfaOtp = async () => {
-    if (mfaCooldown > 0 || !userEmail) return;
+    if (mfaCooldown > 0 || mfaHasResent || !userEmail) return;
+    setMfaHasResent(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", t("codeSendFailed")); return; }
+      const res = await fetch("/api/auth/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      if (res.status === 429) { feedimAlert("error", t("otpRateLimited")); return; }
+      if (!res.ok) { feedimAlert("error", t("codeSendFailed")); return; }
       feedimAlert("success", t("codeResent"));
       setMfaCooldown(60);
     } catch { feedimAlert("error", t("genericError")); }
@@ -199,8 +220,9 @@ export default function SecurityPage() {
     if (!userEmail) return;
     setSendingCode(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: userEmail, options: { shouldCreateUser: false } });
-      if (error) { feedimAlert("error", t("codeSendFailed")); return; }
+      const res = await fetch("/api/auth/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      if (res.status === 429) { feedimAlert("error", t("otpRateLimited")); return; }
+      if (!res.ok) { feedimAlert("error", t("codeSendFailed")); return; }
       setVerifyingEmail(true);
       setEditEmail(false); setNewEmail("");
       setEmailCooldown(60);
@@ -209,7 +231,9 @@ export default function SecurityPage() {
 
   const handleVerifyEmailCode = async () => {
     if (emailCode.length < 6 || !userEmail) return;
+    const savedCode = emailCode;
     setVerifyingCode(true);
+    let success = false;
     try {
       const [res] = await Promise.all([
         fetch("/api/auth/verify-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: emailCode }) }),
@@ -217,9 +241,13 @@ export default function SecurityPage() {
       ]);
       const data = await res.json();
       if (!res.ok) { feedimAlert("error",data.error || t("codeInvalidOrExpired")); return; }
+      success = true;
       setEmailVerified(true); setVerifyingEmail(false); setEmailCode("");
       feedimAlert("success", t("emailVerified"));
-    } catch { feedimAlert("error", t("genericError")); } finally { setVerifyingCode(false); }
+    } catch { feedimAlert("error", t("genericError")); } finally {
+      setVerifyingCode(false);
+      if (!success) setEmailCode(savedCode);
+    }
   };
 
   return (
@@ -280,13 +308,11 @@ export default function SecurityPage() {
               {verifyingEmail && !emailVerified && (
                 <div className="mt-3 space-y-3">
                   <p className="text-xs text-text-muted">{t("enterCodeSent")}</p>
-                  <div className="flex gap-2">
-                    <input type="text" inputMode="numeric" value={emailCode} onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" maxLength={8} className="input-modern flex-1 text-center font-mono tracking-[0.3em]" />
-                    <button onClick={handleVerifyEmailCode} disabled={verifyingCode || emailCode.length < 6} className="t-btn accept px-4 py-2 text-sm flex items-center justify-center gap-1.5 min-w-[90px]" aria-label={t("verifyEmailCode")}>
-                      {verifyingCode ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Check className="h-3.5 w-3.5" /> {t("verify")}</>}
-                    </button>
-                  </div>
-                  <button onClick={handleSendEmailCode} disabled={emailCooldown > 0 || sendingCode} className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50">
+                  <DigitInput value={emailCode} onChange={setEmailCode} autoFocus />
+                  <button onClick={handleVerifyEmailCode} disabled={verifyingCode || emailCode.length < 6} className="t-btn accept w-full py-2.5 text-sm flex items-center justify-center gap-1.5" aria-label={t("verifyEmailCode")}>
+                    {verifyingCode ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Check className="h-3.5 w-3.5" /> {t("verify")}</>}
+                  </button>
+                  <button onClick={() => { if (!emailHasResent) { setEmailHasResent(true); handleSendEmailCode(); } }} disabled={emailHasResent || emailCooldown > 0 || sendingCode} className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50">
                     {emailCooldown > 0 ? t("resendCodeTimer", { seconds: emailCooldown }) : t("resendCode")}
                   </button>
                 </div>
@@ -405,14 +431,12 @@ export default function SecurityPage() {
                   {disableStep === 2 && (
                     <div className="space-y-3 bg-bg-secondary rounded-[15px] p-4">
                       <p className="text-xs text-text-muted">{t("enterCodeSent")}</p>
-                      <div className="flex gap-2">
-                        <input type="text" inputMode="numeric" value={disableCode} onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" maxLength={8} className="input-modern flex-1 text-center font-mono tracking-[0.3em]" />
-                        <button onClick={handleDisableOtpStep} disabled={disabling || disableCode.length < 6} className="t-btn accept px-4 py-2.5 text-sm flex items-center justify-center gap-1.5 min-w-[80px]" aria-label={t("disableMfa")}>
-                          {disabling ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Check className="h-3.5 w-3.5" /> {t("turnOff")}</>}
-                        </button>
-                      </div>
+                      <DigitInput value={disableCode} onChange={setDisableCode} autoFocus />
+                      <button onClick={handleDisableOtpStep} disabled={disabling || disableCode.length < 6} className="t-btn accept w-full py-2.5 text-sm flex items-center justify-center gap-1.5" aria-label={t("disableMfa")}>
+                        {disabling ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Check className="h-3.5 w-3.5" /> {t("turnOff")}</>}
+                      </button>
                       <div className="flex items-center justify-between">
-                        <button onClick={handleResendMfaOtp} disabled={mfaCooldown > 0} className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50">
+                        <button onClick={handleResendMfaOtp} disabled={mfaHasResent || mfaCooldown > 0} className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50">
                           {mfaCooldown > 0 ? t("resendCodeTimer", { seconds: mfaCooldown }) : t("resendCode")}
                         </button>
                         <button onClick={() => { setDisableStep(0); setDisablePassword(""); setDisableCode(""); }} className="text-xs text-text-muted hover:text-text-primary transition">{t("cancel")}</button>
@@ -448,14 +472,12 @@ export default function SecurityPage() {
                   {enableStep === 2 && (
                     <div className="space-y-3 bg-bg-secondary rounded-[15px] p-4">
                       <p className="text-xs text-text-muted">{t("enterCodeSent")}</p>
-                      <div className="flex gap-2">
-                        <input type="text" inputMode="numeric" value={enableCode} onChange={(e) => setEnableCode(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" maxLength={8} className="input-modern flex-1 text-center font-mono tracking-[0.3em]" />
-                        <button onClick={handleEnableOtpStep} disabled={enabling || enableCode.length < 6} className="t-btn accept px-4 py-2.5 text-sm flex items-center justify-center gap-1.5 min-w-[110px]" aria-label={t("enableMfa")}>
-                          {enabling ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Shield className="h-3.5 w-3.5" /> {t("enable")}</>}
-                        </button>
-                      </div>
+                      <DigitInput value={enableCode} onChange={setEnableCode} autoFocus />
+                      <button onClick={handleEnableOtpStep} disabled={enabling || enableCode.length < 6} className="t-btn accept w-full py-2.5 text-sm flex items-center justify-center gap-1.5" aria-label={t("enableMfa")}>
+                        {enabling ? <span className="loader" style={{ width: 14, height: 14 }} /> : <><Shield className="h-3.5 w-3.5" /> {t("enable")}</>}
+                      </button>
                       <div className="flex items-center justify-between">
-                        <button onClick={handleResendMfaOtp} disabled={mfaCooldown > 0} className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50">
+                        <button onClick={handleResendMfaOtp} disabled={mfaHasResent || mfaCooldown > 0} className="text-xs text-text-muted hover:text-text-primary transition disabled:opacity-50">
                           {mfaCooldown > 0 ? t("resendCodeTimer", { seconds: mfaCooldown }) : t("resendCode")}
                         </button>
                         <button onClick={() => { setEnableStep(0); setEnablePassword(""); setEnableCode(""); }} className="text-xs text-text-muted hover:text-text-primary transition">{t("cancel")}</button>

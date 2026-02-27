@@ -65,7 +65,7 @@ export default function ContentAz() {
             <li><strong>Jeton Balansı</strong> &mdash; Mövcud jeton balansınız</li>
             <li><strong>Dövr Qazancı</strong> &mdash; Seçilən dövrdə qazandığınız jeton miqdarı</li>
             <li><strong>Toplam Qazanc</strong> &mdash; Hesabınızın toplam qazancı</li>
-            <li><strong>Keyfiyyətli Oxuma</strong> &mdash; Qazanca çevrilən oxuma sayı</li>
+            <li><strong>Təsdiqlənmiş Oxumalar</strong> &mdash; Qazanca çevrilən oxuma sayı</li>
           </ul>
         </div>
 

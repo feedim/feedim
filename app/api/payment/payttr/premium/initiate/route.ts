@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!checkPaymentLimit(user.id)) {
-      return NextResponse.json({ success: false, error: 'Çok fazla ödeme denemesi. Lütfen bir dakika bekleyin.' }, { status: 429 });
+      return NextResponse.json({ success: false, error: 'Topluluğumuzu korumak adına ödeme denemeleri sınırlandırıldı, lütfen bir dakika bekleyin' }, { status: 429 });
     }
 
     const body = await request.json();

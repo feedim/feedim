@@ -3,6 +3,7 @@
 import { AlertCircle, RefreshCw, Home, ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { smartBackRaw } from "@/lib/smartBack";
 
 interface ErrorStateProps {
   title?: string;
@@ -82,13 +83,7 @@ export default function ErrorState({
 
         {showBackLink && (
           <button
-            onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.href = "/";
-              }
-            }}
+            onClick={() => smartBackRaw("/")}
             className="w-full bg-bg-secondary hover:bg-bg-tertiary text-text-primary py-3 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-2"
             aria-label={t("goBack")}
           >

@@ -223,7 +223,7 @@ export default function SuggestionWidget() {
                 user={u}
                 autoSubtitle
                 action={
-                  <FollowButton following={following.has(u.user_id) || requested.has(u.user_id)} isPrivate={requested.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
+                  <FollowButton following={following.has(u.user_id) || requested.has(u.user_id)} isPrivate={requested.has(u.user_id)} followsMe={u.follows_me && !following.has(u.user_id)} onClick={() => handleFollow(u.username, u.user_id)} />
                 }
               />
             ))}
@@ -250,7 +250,7 @@ export default function SuggestionWidget() {
                 >
                   <div className="flex items-center gap-[2px]" style={{ columnGap: "2px" }}>
                     {post.author.avatar_url ? (
-                      <img src={post.author.avatar_url} alt="" className="h-[26px] w-[26px] rounded-full object-cover" loading="lazy" />
+                      <img src={post.author.avatar_url} alt="" loading="lazy" decoding="async" className="h-[26px] w-[26px] rounded-full object-cover bg-bg-tertiary" />
                     ) : (
                       <img className="default-avatar-auto h-[26px] w-[26px] rounded-full object-cover" alt="" loading="lazy" />
                     )}

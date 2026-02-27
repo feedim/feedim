@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!checkAvatarLimit(user.id)) {
-    return NextResponse.json({ error: "Çok fazla yükleme. Lütfen bekleyin." }, { status: 429 });
+    return NextResponse.json({ error: "Topluluğumuzu korumak adına yükleme hızınız sınırlandırıldı, lütfen bekleyin" }, { status: 429 });
   }
 
   const formData = await req.formData();
@@ -59,9 +59,10 @@ export async function POST(req: NextRequest) {
 
   const adminClient = createAdminClient();
 
-  // Check if user is admin (immune to moderation)
-  const { data: userProfile } = await adminClient.from('profiles').select('role').eq('user_id', user.id).single();
+  // Check if user is admin (immune to moderation) and onboarding status
+  const { data: userProfile } = await adminClient.from('profiles').select('role, onboarding_completed').eq('user_id', user.id).single();
   const isAdmin = userProfile?.role === 'admin';
+  const isOnboarding = userProfile?.onboarding_completed === false;
 
   // NSFW check
   let isNsfwAvatar = false;
@@ -96,8 +97,10 @@ export async function POST(req: NextRequest) {
     avatar_url: url,
     updated_at: new Date().toISOString(),
   };
-  if (isNsfwAvatar) {
+  // During onboarding, don't set moderation status — defer to onboarding completion check
+  if (isNsfwAvatar && !isOnboarding) {
     profileUpdate.status = 'moderation';
+    profileUpdate.moderation_reason = 'Profil fotoğrafında uygunsuz içerik tespit edildi';
   }
 
   const { error: updateError } = await adminClient

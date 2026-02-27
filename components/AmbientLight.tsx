@@ -110,6 +110,23 @@ export default function AmbientLight({ imageSrc, videoMode }: AmbientLightProps)
     };
   }, []);
 
+  // ── Listen for live toggle from settings ──
+  useEffect(() => {
+    const handler = () => {
+      const isOn = localStorage.getItem("fdm-ambient-light") !== "off";
+      if (isOn) {
+        setMounted(true);
+        document.documentElement.dataset.ambientLight = "1";
+      } else {
+        setMounted(false);
+        delete document.documentElement.dataset.ambientLight;
+        restoreThemeColor();
+      }
+    };
+    window.addEventListener("fdm-ambient-toggle", handler);
+    return () => window.removeEventListener("fdm-ambient-toggle", handler);
+  }, []);
+
   // ── Sync theme-color after canvas draw ──
   const syncThemeColor = useCallback(() => {
     const canvas = canvasRef.current;

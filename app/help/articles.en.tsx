@@ -46,6 +46,7 @@ export const pageLinks: HelpPageLink[] = [
   { title: "Data Sharing", href: "/help/data-sharing", description: "Data sharing policy with third parties and authorities" },
   { title: "Access Restrictions", href: "/help/access-restrictions", description: "Age restrictions, region and account limitations" },
   { title: "Accessibility", href: "/help/accessibility", description: "Accessibility features and compliance" },
+  { title: "Profile Score System", href: "/help/profile-score", description: "What is the profile trust score, how is it calculated and why does it matter" },
   { title: "Premium", href: "/premium", description: "Premium membership plans and pricing" },
   { title: "Disclaimer", href: "/help/disclaimer", description: "Legal disclaimer" },
   { title: "Distance Sales Agreement", href: "/help/distance-sales-contract", description: "Token and premium purchase agreement" },

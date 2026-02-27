@@ -27,7 +27,7 @@ interface PostGridProps {
 
 export default function PostGrid({ posts }: PostGridProps) {
   return (
-    <div className="flex flex-col gap-[40px]">
+    <div className="flex flex-col gap-[40px] mt-[10px]">
       {posts.map(post => (
         <PostCard key={post.id} post={post} />
       ))}

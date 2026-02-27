@@ -6,6 +6,8 @@ import {
   MIN_READ_DURATION, MIN_READ_PERCENTAGE,
   COIN_BASE_EARNING, COIN_DAILY_LIMIT, COIN_POST_LIMIT,
   MILESTONES, SPAM_THRESHOLDS,
+  MAX_READ_DURATION, MAX_VIDEO_WATCH_DURATION,
+  DURATION_SANITY_MULTIPLIER, VIDEO_DURATION_SANITY_MULTIPLIER,
 } from '@/lib/constants';
 
 /**
@@ -62,15 +64,36 @@ export async function POST(
 
     const body = await request.json();
     const readPercentage = Math.min(100, Math.max(0, Number(body.read_percentage) || 0));
-    const readDuration = Math.max(0, Number(body.read_duration) || 0);
+    let readDuration = Math.max(0, Number(body.read_duration) || 0);
     const isBotLikely = body.is_bot_likely === true;
 
     if (isBotLikely) {
       return NextResponse.json({ recorded: false });
     }
 
-    const isQualifiedRead = readDuration >= MIN_READ_DURATION && readPercentage >= MIN_READ_PERCENTAGE;
     const admin = createAdminClient();
+
+    // Fetch post info for duration capping
+    const { data: postInfo } = await admin
+      .from('posts')
+      .select('content_type, reading_time, video_duration')
+      .eq('id', postId)
+      .single();
+
+    const isVideoContent = postInfo?.content_type === 'video' || postInfo?.content_type === 'moment';
+
+    // Clamp duration to prevent manipulation
+    if (isVideoContent) {
+      const vDur = postInfo?.video_duration || 0;
+      const dynamicCap = vDur > 0 ? vDur * VIDEO_DURATION_SANITY_MULTIPLIER : MAX_VIDEO_WATCH_DURATION;
+      readDuration = Math.min(readDuration, dynamicCap, MAX_VIDEO_WATCH_DURATION);
+    } else {
+      const readingTimeSec = (postInfo?.reading_time || 0) * 60;
+      const dynamicCap = readingTimeSec > 0 ? readingTimeSec * DURATION_SANITY_MULTIPLIER : MAX_READ_DURATION;
+      readDuration = Math.min(readDuration, dynamicCap, MAX_READ_DURATION);
+    }
+
+    const isQualifiedRead = readDuration >= MIN_READ_DURATION && readPercentage >= MIN_READ_PERCENTAGE;
 
     // Check if this user already has a view record for this post
     const { data: existingView } = await admin
@@ -82,7 +105,10 @@ export async function POST(
 
     if (existingView) {
       const newPercentage = Math.max(existingView.read_percentage || 0, readPercentage);
-      const newDuration = Math.max(existingView.read_duration || 0, readDuration);
+      const newDuration = Math.min(
+        Math.max(existingView.read_duration || 0, readDuration),
+        isVideoContent ? MAX_VIDEO_WATCH_DURATION : MAX_READ_DURATION
+      );
 
       if (newPercentage > (existingView.read_percentage || 0) || newDuration > (existingView.read_duration || 0)) {
         await admin
@@ -110,7 +136,10 @@ export async function POST(
 
     viewerIsPremium = viewerProfile?.is_premium || false;
 
-    if (isQualifiedRead && viewerIsPremium) {
+    // Only posts and videos can earn — notes and moments are excluded
+    const earningEligibleType = postInfo?.content_type === 'post' || postInfo?.content_type === 'video';
+
+    if (isQualifiedRead && viewerIsPremium && earningEligibleType) {
       const { data: post } = await admin
         .from('posts')
         .select('author_id, total_coins_earned, spam_score')
@@ -118,8 +147,29 @@ export async function POST(
         .single();
 
       if (post && post.author_id !== user.id) {
-        // Block earning if post spam score is too high
-        if ((post.spam_score || 0) >= SPAM_THRESHOLDS.earningStop) {
+        // Check if author has monetization enabled, is professional, and not private
+        const { data: authorMeta } = await admin
+          .from('profiles')
+          .select('account_type, account_private')
+          .eq('user_id', post.author_id)
+          .single();
+
+        let authorMonetizationEnabled = false;
+        try {
+          const { data: monCheck } = await admin
+            .from('profiles')
+            .select('monetization_enabled')
+            .eq('user_id', post.author_id)
+            .single();
+          authorMonetizationEnabled = monCheck?.monetization_enabled || false;
+        } catch {}
+
+        const authorIsProfessional = authorMeta?.account_type === 'creator' || authorMeta?.account_type === 'business';
+        const authorIsPrivate = authorMeta?.account_private === true;
+
+        if (!authorMonetizationEnabled || !authorIsProfessional || authorIsPrivate) {
+          // Author monetization not active — skip earning
+        } else if ((post.spam_score || 0) >= SPAM_THRESHOLDS.earningStop) {
           // Spam content — no earning
         } else if ((post.total_coins_earned || 0) < COIN_POST_LIMIT) {
           const todayStart = new Date();
@@ -210,18 +260,23 @@ export async function POST(
     // Store video analytics event if present
     const videoAnalytics = body.video_analytics;
     if (videoAnalytics && typeof videoAnalytics === 'object') {
-      admin.from('analytics_events').insert({
-        event_type: 'video_watch',
-        user_id: user.id,
-        post_id: postId,
-        data: {
-          watch_duration: readDuration,
-          watch_percentage: readPercentage,
-          exit_time: Number(videoAnalytics.exit_time) || 0,
-          video_duration: Number(videoAnalytics.video_duration) || 0,
-          completed: videoAnalytics.completed === true,
-        },
-      }).then(() => {});  // Fire and forget
+      const clampedWatchDuration = Math.min(readDuration, MAX_VIDEO_WATCH_DURATION);
+      try {
+        await admin.from('analytics_events').insert({
+          event_type: 'video_watch',
+          user_id: user.id,
+          post_id: postId,
+          data: {
+            watch_duration: clampedWatchDuration,
+            watch_percentage: readPercentage,
+            exit_time: Number(videoAnalytics.exit_time) || 0,
+            video_duration: Number(videoAnalytics.video_duration) || 0,
+            completed: videoAnalytics.completed === true,
+          },
+        });
+      } catch (err) {
+        console.error('[view] analytics_events insert failed:', err);
+      }
     }
 
     // Milestone notification check

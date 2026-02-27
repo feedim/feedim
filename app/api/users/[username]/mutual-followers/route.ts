@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeError } from "@/lib/apiError";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,7 +14,7 @@ export async function GET(
 
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = 20;
+  const limit = 10;
 
   // Get target profile
   const { data: target } = await supabase
@@ -75,4 +77,7 @@ export async function GET(
     users: enrichedUsers,
     hasMore: mutualIds.length > to + 1,
   });
+  } catch (err) {
+    return safeError(err);
+  }
 }

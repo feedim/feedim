@@ -14,6 +14,7 @@ interface PostHeaderActionsProps {
   authorUsername?: string;
   authorUserId?: string;
   authorName?: string;
+  authorRole?: string;
   isOwnPost?: boolean;
   postSlug?: string;
   portalToHeader?: boolean;
@@ -22,7 +23,7 @@ interface PostHeaderActionsProps {
   onDeleteSuccess?: () => void;
 }
 
-export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, authorUserId, authorName, isOwnPost, postSlug, portalToHeader, isVideo, contentType, onDeleteSuccess }: PostHeaderActionsProps) {
+export default function PostHeaderActions({ postId, postUrl, postTitle, authorUsername, authorUserId, authorName, authorRole, isOwnPost, postSlug, portalToHeader, isVideo, contentType, onDeleteSuccess }: PostHeaderActionsProps) {
   const t = useTranslations("common");
   const [moreOpen, setMoreOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -67,6 +68,7 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
         authorUsername={authorUsername}
         authorUserId={authorUserId}
         authorName={authorName}
+        authorRole={authorRole}
         onShare={() => setShareOpen(true)}
         isOwnPost={isOwnPost}
         postSlug={postSlug}

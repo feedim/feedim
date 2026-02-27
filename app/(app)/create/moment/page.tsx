@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { smartBack } from "@/lib/smartBack";
 import { X, Plus, Upload, Film, Music, Clapperboard, Scissors, ChevronDown } from "lucide-react";
 import PostMetaFields from "@/components/PostMetaFields";
 import VideoEditorPreview from "@/components/VideoEditorPreview";
@@ -22,6 +23,8 @@ import SoundPickerModal, { type SoundItem } from "@/components/modals/SoundPicke
 import VideoTrimModal from "@/components/modals/VideoTrimModal";
 import ThumbnailPickerModal from "@/components/modals/ThumbnailPickerModal";
 import SoundPreviewButton from "@/components/SoundPreviewButton";
+import { useMention } from "@/lib/useMention";
+import MentionDropdown from "@/components/MentionDropdown";
 
 interface Tag {
   id: number | string;
@@ -53,11 +56,14 @@ function MomentWriteContent() {
   const supabase = createClient();
   const { user } = useUser();
   const t = useTranslations("create");
+  const tc = useTranslations("common");
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   const [step, setStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -79,7 +85,6 @@ function MomentWriteContent() {
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
   const [tagHighlight, setTagHighlight] = useState(-1);
   const [tagCreating, setTagCreating] = useState(false);
-  const [popularTags, setPopularTags] = useState<Tag[]>([]);
   const [thumbnail, setThumbnail] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
@@ -529,19 +534,6 @@ function MomentWriteContent() {
     setVideoUrl(""); // re-upload will happen at goToStep2
   };
 
-  // Tags
-  useEffect(() => {
-    if (step === 2 && popularTags.length === 0) loadPopularTags();
-  }, [step]);
-
-  const loadPopularTags = async () => {
-    try {
-      const res = await fetch("/api/tags?q=");
-      const data = await res.json();
-      setPopularTags((data.tags || []).slice(0, 8));
-    } catch {}
-  };
-
   const searchTagsFn = useCallback(async (q: string) => {
     if (q.trim().length < 1) { setTagSuggestions([]); setTagHighlight(-1); return; }
     try {
@@ -743,7 +735,7 @@ function MomentWriteContent() {
       hideRightSidebar
       headerRightAction={headerRight}
       headerTitle={step === 1 ? "Moment" : t("headerDetails")}
-      headerOnBack={() => { if (step === 2) setStep(1); else router.back(); }}
+      headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
     >
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
 
@@ -899,7 +891,7 @@ function MomentWriteContent() {
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                  {videoFile && (
+                  {(videoFile || videoUrl) && (
                     <button
                       type="button"
                       onClick={() => setShowThumbPicker(true)}
@@ -916,7 +908,7 @@ function MomentWriteContent() {
                     <p className="text-xs text-text-muted text-center">{t("thumbnailUpload")}</p>
                     <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
                   </label>
-                  {videoFile && (
+                  {(videoFile || videoUrl) && (
                     <button
                       type="button"
                       onClick={() => setShowThumbPicker(true)}
@@ -930,15 +922,45 @@ function MomentWriteContent() {
             </div>
 
             {/* Description (no border) */}
-            <div>
+            <div className="relative">
               <textarea
+                ref={titleRef}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.length <= VALIDATION.postTitle.max) setTitle(v);
+                  mention.handleTextChange(v, titleRef.current);
+                }}
+                onKeyDown={(e) => {
+                  if (mention.mentionUsers.length > 0) {
+                    if ((e.key === "Enter" || e.key === "Tab") && mention.mentionUsers[mention.mentionIndex]) {
+                      e.preventDefault();
+                      mention.selectUser(mention.mentionUsers[mention.mentionIndex].username, title, (v) => {
+                        if (v.length <= VALIDATION.postTitle.max) setTitle(v);
+                        titleRef.current?.focus();
+                      });
+                      return;
+                    }
+                    if (mention.handleKeyDown(e)) return;
+                  }
+                }}
                 maxLength={VALIDATION.postTitle.max}
                 placeholder={t("momentDescPlaceholder")}
                 rows={3}
-                className="w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px] pt-3 bg-transparent outline-none placeholder:text-text-muted/50"
+                className="w-full resize-none text-[0.95rem] leading-relaxed min-h-[80px] pt-3 bg-transparent text-text-primary outline-none placeholder:text-text-muted/50"
                 autoFocus
+              />
+              <MentionDropdown
+                users={mention.mentionUsers}
+                activeIndex={mention.mentionIndex}
+                onSelect={(username) => {
+                  mention.selectUser(username, title, (v) => {
+                    if (v.length <= VALIDATION.postTitle.max) setTitle(v);
+                    titleRef.current?.focus();
+                  });
+                }}
+                className="absolute left-0 right-0"
+                style={mention.mentionDropdownTop !== null ? { top: mention.mentionDropdownTop } : undefined}
               />
               <div className="flex justify-end mt-1">
                 <span className={`text-[0.66rem] tabular-nums ${title.length >= VALIDATION.postTitle.max - 20 ? "text-error" : "text-text-muted/60"}`}>
@@ -1001,18 +1023,6 @@ function MomentWriteContent() {
                 </div>
               )}
               <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
-              {tags.length < VALIDATION.postTags.max && !tagSearch && popularTags.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs text-text-muted mb-2">{t("popularTags")}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {popularTags.filter(pt => !tags.some(t => t.id === pt.id)).slice(0, 6).map(pt => (
-                      <button key={pt.id} onClick={() => addTag(pt)} className="text-xs px-2.5 py-1.5 rounded-full border border-border-primary text-text-muted hover:text-accent-main hover:border-accent-main/50 transition">
-                        #{pt.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Visibility */}
@@ -1142,11 +1152,12 @@ function MomentWriteContent() {
       )}
 
       {/* Thumbnail Picker Modal */}
-      {videoFile && (
+      {(videoFile || videoUrl) && (
         <ThumbnailPickerModal
           open={showThumbPicker}
           onClose={() => setShowThumbPicker(false)}
           videoFile={videoFile}
+          videoSrc={!videoFile ? videoUrl : undefined}
           duration={videoDuration}
           aspectRatio="9:16"
           onSelect={(dataUrl) => setThumbnail(dataUrl)}

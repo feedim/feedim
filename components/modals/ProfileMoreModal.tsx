@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link as LinkIcon, Ban, Flag, Check, Shield, ShieldOff, Snowflake, Sun, Trash2, AlertTriangle, Eye, ImageOff, MessageCircleOff, HeartOff, UserX } from "lucide-react";
+import { Link as LinkIcon, Ban, Flag, Check, Shield, ShieldOff, Snowflake, Sun, Trash2, AlertTriangle, Eye, ImageOff, MessageCircleOff, HeartOff, UserX, UserMinus } from "lucide-react";
 import ShareIcon from "@/components/ShareIcon";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
@@ -21,6 +21,9 @@ interface ProfileMoreModalProps {
   onShare: () => void;
   onVisitors: () => void;
   isOwn: boolean;
+  targetRole?: string;
+  followsMe?: boolean;
+  onRemoveFollower?: () => void;
 }
 
 export default function ProfileMoreModal({
@@ -33,6 +36,9 @@ export default function ProfileMoreModal({
   onShare,
   onVisitors,
   isOwn,
+  targetRole,
+  followsMe,
+  onRemoveFollower,
 }: ProfileMoreModalProps) {
   const t = useTranslations("modals");
   const [copied, setCopied] = useState(false);
@@ -43,6 +49,7 @@ export default function ProfileMoreModal({
 
   const isAdmin = currentUser?.role === "admin";
   const isMod = currentUser?.role === "moderator" || isAdmin;
+  const targetIsStaff = targetRole === "admin" || targetRole === "moderator";
 
   const handleCopyUrl = async () => {
     const url = `${window.location.origin}/u/${username}`;
@@ -126,7 +133,7 @@ export default function ProfileMoreModal({
   return (
     <>
       <Modal open={open} onClose={onClose} size="sm" title={t("profileMoreTitle")} infoText={t("profileMoreInfoText")}>
-        <div className="py-2 px-2.5">
+        <div className="py-2 px-2.5 space-y-[3px]">
           <button onClick={handleCopyUrl} className={btnClass}>
             {copied ? <Check className={`${iconClass} text-text-primary`} /> : <LinkIcon className={`${iconClass} text-text-muted`} />}
             <span className={labelClass}>{copied ? t("copied") : t("copyProfileUrl")}</span>
@@ -144,9 +151,22 @@ export default function ProfileMoreModal({
             </button>
           )}
 
-          {!isOwn && (
+          {!isOwn && !targetIsStaff && (
             <>
               <div className="border-t border-border-primary mx-4 my-1" />
+
+              {followsMe && onRemoveFollower && (
+                <button onClick={() => {
+                  feedimAlert("question", t("confirmRemoveFollower", { username }), {
+                    showYesNo: true,
+                    onYes: () => { onRemoveFollower(); onClose(); },
+                  });
+                }} className={btnClass}>
+                  <UserMinus className={`${iconClass} text-text-muted`} />
+                  <span className={labelClass}>{t("removeFollower")}</span>
+                </button>
+              )}
+
               <button onClick={handleBlock} className={btnClass}>
                 <Ban className={`${iconClass} ${isBlocked ? "text-text-muted" : "text-error"}`} />
                 <span className={`${labelClass} ${isBlocked ? "" : "text-error"}`}>
@@ -184,12 +204,12 @@ export default function ProfileMoreModal({
                 <span className={labelClass}>{t("openAccount")}</span>
               </button>
 
-              <button onClick={() => doModAction("freeze_user", t("freezeAccount"))} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("freeze_user", t("freezeAccount"))} disabled={actionLoading} className={btnClass}>
                 <Snowflake className={`${iconClass} text-info`} />
                 <span className={labelClass}>{t("freezeAccount")}</span>
               </button>
 
-              <button onClick={() => doModAction("unfreeze_user", t("unfreezeAccount"))} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("unfreeze_user", t("unfreezeAccount"))} disabled={actionLoading} className={btnClass}>
                 <Sun className={`${iconClass} text-warning`} />
                 <span className={labelClass}>{t("unfreezeAccount")}</span>
               </button>
@@ -200,7 +220,7 @@ export default function ProfileMoreModal({
                 <span className={labelClass}>{t("moderateAccount")}</span>
               </button>
 
-              <button onClick={() => doModAction("activate_user", t("removeModerationLabel"))} disabled={actionLoading} className={btnClass}>
+              <button onClick={() => confirmAction("activate_user", t("removeModerationLabel"))} disabled={actionLoading} className={btnClass}>
                 <Check className={`${iconClass} text-success`} />
                 <span className={labelClass}>{t("removeModerationLabel")}</span>
               </button>

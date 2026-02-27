@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import {
   User, Mail, LogOut, Clock, Calendar, Wallet, Bookmark,
   Shield, HelpCircle, FileText, MessageCircle, ScrollText,
   ChevronRight, Check, Lock, Briefcase, Ban, Bell,
-  Smartphone, Link2, EyeOff, MapPin,
+  Smartphone, Link2, EyeOff, MapPin, Coins,
   Sun, Moon, CloudMoon, Monitor, Sparkles, Keyboard, Globe
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -26,7 +26,6 @@ export default function SettingsPage() {
   useSearchParams();
   const t = useTranslations("settings");
   const tTheme = useTranslations("theme");
-  const tLang = useTranslations("languages");
   const locale = useLocale();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -42,11 +41,12 @@ export default function SettingsPage() {
   const [copyrightEligible, setCopyrightEligible] = useState(false);
   const [copyrightEligibleSince, setCopyrightEligibleSince] = useState<string | null>(null);
   const [copyrightApplicationStatus, setCopyrightApplicationStatus] = useState<string | null>(null);
+  const [monetizationEnabled, setMonetizationEnabled] = useState(false);
+  const [monetizationStatus, setMonetizationStatus] = useState<string | null>(null);
   const [currentTheme, setCurrentTheme] = useState("system");
   const [ambientLight, setAmbientLight] = useState("on");
-  const [langOpen, setLangOpen] = useState(false);
   const [locationText, setLocationText] = useState<string | null>(null);
-  const langRef = useRef<HTMLDivElement>(null);
+  const [locationUpdating, setLocationUpdating] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -54,19 +54,6 @@ export default function SettingsPage() {
     loadProfile();
     setCurrentTheme(localStorage.getItem("fdm-theme") || "dark");
     setAmbientLight(localStorage.getItem("fdm-ambient-light") || "on");
-    // Fetch user location
-    let cancelled = false;
-    fetch("/api/location")
-      .then(r => r.json())
-      .then(d => {
-        if (cancelled) return;
-        if (d.location) {
-          const parts = [d.location.city, d.location.region, d.location.country_code].filter(Boolean);
-          if (parts.length > 0) setLocationText(parts.join(", "));
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
   }, []);
 
   const loadProfile = async () => {
@@ -94,10 +81,28 @@ export default function SettingsPage() {
         setCopyrightEligibleSince(data.copyright_eligible_since || null);
       }
 
+      // Fetch location after auth is confirmed (avoids 401 race condition)
+      fetch("/api/location")
+        .then(r => { if (!r.ok) return null; return r.json(); })
+        .then(d => {
+          if (d?.location) {
+            const parts = [d.location.city, d.location.region, d.location.country_code].filter(Boolean);
+            if (parts.length > 0) setLocationText(parts.join(", "));
+          }
+        })
+        .catch(() => {});
+
       try {
         const appRes = await fetch("/api/copyright-applications");
         const appData = await appRes.json();
         if (appData.application) setCopyrightApplicationStatus(appData.application.status);
+      } catch {}
+
+      try {
+        const monRes = await fetch("/api/monetization");
+        const monData = await monRes.json();
+        setMonetizationEnabled(monData.monetization_enabled || false);
+        setMonetizationStatus(monData.monetization_status || null);
       } catch {}
 
     } finally {
@@ -105,12 +110,44 @@ export default function SettingsPage() {
     }
   };
 
+  const updateLocation = async () => {
+    if (!navigator.geolocation) {
+      feedimAlert("error", t("locationNotSupported"));
+      return;
+    }
+    setLocationUpdating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch("/api/location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          });
+          const data = await res.json();
+          if (data.location) {
+            const parts = [data.location.city, data.location.region, data.location.country_code].filter(Boolean);
+            if (parts.length > 0) setLocationText(parts.join(", "));
+            feedimAlert("success", t("locationUpdated"));
+          }
+        } catch {} finally {
+          setLocationUpdating(false);
+        }
+      },
+      () => {
+        feedimAlert("error", t("locationPermissionDenied"));
+        setLocationUpdating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   const handlePrivacyToggle = async () => {
     const newValue = !isPrivate;
 
     // Professional accounts cannot be made private
     if (newValue && isProfessional(accountType)) {
-      feedimAlert("question", "Profesyonel hesaplar gizli olamaz. Kişisel hesaba geçmek ister misiniz? Profesyonel hesap özellikleri (istatistikler, kategori, iletişim butonları) kaldırılacak.", {
+      feedimAlert("question", t("proAccountPrivateConfirm"), {
         showYesNo: true,
         onYes: async () => {
           await handleSwitchToPersonal(true);
@@ -120,8 +157,8 @@ export default function SettingsPage() {
     }
 
     const message = newValue
-      ? "Hesabınızı gizli yapmak istediğinize emin misiniz? Sadece onayladığınız kişiler gönderilerinizi görebilecek."
-      : "Hesabınızı herkese açık yapmak istediğinize emin misiniz? Herkes gönderilerinizi görebilecek.";
+      ? t("makePrivateConfirm")
+      : t("makePublicConfirm");
 
     feedimAlert("question", message, {
       showYesNo: true,
@@ -138,7 +175,7 @@ export default function SettingsPage() {
           ]);
           if (!res.ok) {
             setIsPrivate(!newValue);
-            feedimAlert("error", "Ayar güncellenemedi, lütfen daha sonra tekrar deneyin");
+            feedimAlert("error", t("settingUpdateFailed"));
           }
         } catch {
           setIsPrivate(!newValue);
@@ -168,15 +205,15 @@ export default function SettingsPage() {
           if (makePrivate) setIsPrivate(true);
           // silent
         } else {
-          feedimAlert("error", "Hesap türü değiştirilemedi, lütfen daha sonra tekrar deneyin");
+          feedimAlert("error", t("accountTypeChangeFailed"));
         }
       } catch {
-        feedimAlert("error", "Bir hata oluştu, lütfen daha sonra tekrar deneyin");
+        feedimAlert("error", t("genericErrorRetry"));
       }
     };
 
     if (!makePrivate) {
-      feedimAlert("question", "Kişisel hesaba geçmek istediğinize emin misiniz? Profesyonel hesap özellikleri (istatistikler, kategori, iletişim butonları) kaldırılacak.", {
+      feedimAlert("question", t("switchToPersonalConfirm"), {
         showYesNo: true,
         onYes: doSwitch,
       });
@@ -192,7 +229,6 @@ export default function SettingsPage() {
   };
 
   const handleLanguageChange = async (lang: string) => {
-    setLangOpen(false);
     if (lang === locale) return;
     try {
       await fetch("/api/profile", {
@@ -206,16 +242,6 @@ export default function SettingsPage() {
       feedimAlert("error", t("settingUpdateFailed"));
     }
   };
-
-  // Close language dropdown on outside click
-  useEffect(() => {
-    if (!langOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [langOpen]);
 
   const displayName = profile?.full_name || profile?.username || "Kullanıcı";
 
@@ -350,6 +376,7 @@ export default function SettingsPage() {
                   const next = ambientLight === "on" ? "off" : "on";
                   setAmbientLight(next);
                   localStorage.setItem("fdm-ambient-light", next);
+                  window.dispatchEvent(new Event("fdm-ambient-toggle"));
                 }}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${ambientLight === "on" ? "bg-accent-main" : "bg-bg-tertiary"}`}
               >
@@ -358,35 +385,20 @@ export default function SettingsPage() {
             </div>
 
             {/* Language selector */}
-            <div className="relative" ref={langRef}>
-              <button
-                onClick={() => setLangOpen(!langOpen)}
-                className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
+            <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
+              <div className="flex items-center gap-3">
+                <Globe className="h-5 w-5 text-text-muted" />
+                <span className="text-sm font-medium">{t("language")}</span>
+              </div>
+              <select
+                value={locale}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="select-modern !w-auto !py-1.5 !px-3 !text-sm !rounded-[10px] min-w-[130px]"
               >
-                <div className="flex items-center gap-3">
-                  <Globe className="h-5 w-5 text-text-muted" />
-                  <div>
-                    <span className="text-sm font-medium">{t("language")}</span>
-                    <p className="text-xs text-text-muted mt-0.5">{tLang(locale)}</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-text-muted" />
-              </button>
-
-              {langOpen && (
-                <div className="absolute left-4 right-4 mt-1 bg-bg-secondary rounded-[13px] border border-border-primary shadow-lg z-20 overflow-hidden">
-                  {(["tr", "en", "az"] as const).map(lang => (
-                    <button
-                      key={lang}
-                      onClick={() => handleLanguageChange(lang)}
-                      className={`flex items-center justify-between w-full px-4 py-3 text-sm hover:bg-bg-tertiary transition-colors ${lang === locale ? "text-accent-main font-semibold" : ""}`}
-                    >
-                      {tLang(lang)}
-                      {lang === locale && <Check className="h-4 w-4 text-accent-main" />}
-                    </button>
-                  ))}
-                </div>
-              )}
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+                <option value="az">Azərbaycanca</option>
+              </select>
             </div>
 
             {/* Gizlilik */}
@@ -510,7 +522,30 @@ export default function SettingsPage() {
                 </div>
               </div>
               {copyrightEligible ? (
-                <span className="flex items-center gap-1 text-xs text-success font-semibold"><Check className="h-3.5 w-3.5" />{t("copyrightActive")}</span>
+                <span className="flex items-center gap-1 text-xs text-accent-main font-semibold"><Check className="h-3.5 w-3.5" />{t("copyrightActive")}</span>
+              ) : (
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              )}
+            </Link>
+
+            {/* Para Kazanma */}
+            <h3 className="px-4 pt-6 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("monetization")}</h3>
+            <Link href="/settings/monetization" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
+              <div className="flex items-center gap-3">
+                <Coins className="h-5 w-5 text-text-muted" />
+                <div>
+                  <span className="text-sm font-medium">{t("monetization")}</span>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {monetizationEnabled
+                      ? ""
+                      : monetizationStatus === "pending"
+                        ? t("monetizationUnderReview")
+                        : t("monetizationAutoDesc")}
+                  </p>
+                </div>
+              </div>
+              {monetizationEnabled ? (
+                <span className="flex items-center gap-1 text-xs text-accent-main font-semibold"><Check className="h-3.5 w-3.5" />{t("monetizationActive")}</span>
               ) : (
                 <ChevronRight className="h-4 w-4 text-text-muted" />
               )}
@@ -568,7 +603,16 @@ export default function SettingsPage() {
                 <MapPin className="h-5 w-5 text-text-muted" />
                 <span className="text-sm text-text-muted">{t("location")}</span>
               </div>
-              <span className="text-xs">{locationText || t("locationUnknown")}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs">{locationText || t("locationUnknown")}</span>
+                <button
+                  onClick={updateLocation}
+                  disabled={locationUpdating}
+                  className="text-[0.7rem] font-medium text-accent-main hover:opacity-80 transition disabled:opacity-50"
+                >
+                  {locationUpdating ? <span className="loader" style={{ width: 12, height: 12 }} /> : t("changeLocation")}
+                </button>
+              </div>
             </div>
             <button
               onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
@@ -660,7 +704,7 @@ export default function SettingsPage() {
               setIsPrivate(false);
               return true;
             }
-            feedimAlert("error", "Ayar güncellenemedi, lütfen daha sonra tekrar deneyin");
+            feedimAlert("error", t("settingUpdateFailed"));
             return false;
           } catch {
             return false;

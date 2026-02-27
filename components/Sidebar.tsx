@@ -83,7 +83,7 @@ export default memo(function Sidebar() {
   };
 
   const topNavItems = [
-    { href: "/", icon: Home, label: t("nav.home") },
+    { href: "/dashboard", icon: Home, label: t("nav.home") },
   ];
 
   const afterContentNavItems = [
@@ -186,6 +186,7 @@ export default memo(function Sidebar() {
         {/* Theme toggle */}
         <button
           onClick={() => setDarkModeOpen(true)}
+          aria-label={t("tooltip.theme")}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium"
         >
           {themeIcon()}
@@ -195,6 +196,7 @@ export default memo(function Sidebar() {
         {/* Shortcuts */}
         <button
           onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
+          aria-label={t("tooltip.shortcuts")}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium text-left"
         >
           <Keyboard className="h-5 w-5 shrink-0" />

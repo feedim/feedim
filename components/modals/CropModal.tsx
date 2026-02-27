@@ -293,7 +293,8 @@ export default function CropModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex flex-col bg-bg-primary">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="relative flex flex-col bg-bg-primary rounded-2xl overflow-hidden w-full max-w-lg" style={{ maxHeight: "min(90vh, 720px)" }} onClick={e => e.stopPropagation()}>
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border-primary" style={{ touchAction: "auto" }}>
         <button
@@ -316,7 +317,7 @@ export default function CropModal({
       {/* Crop area */}
       <div
         ref={containerRef}
-        className="flex-1 relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
+        className="flex-1 min-h-0 relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
         style={{ touchAction: "none" }}
         onMouseDown={handleMouseDown}
       >
@@ -447,6 +448,7 @@ export default function CropModal({
           </button>
         )}
       </div>
+    </div>
     </div>,
     document.body
   );

@@ -2,6 +2,10 @@
 
 import { useRef, useCallback, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useTranslations } from "next-intl";
+import MentionDropdown from "@/components/MentionDropdown";
+import type { MentionUser as MentionDropdownUser } from "@/components/MentionDropdown";
+import { feedimAlert } from "@/components/FeedimAlert";
+import { countMentions, extractMentions } from "@/lib/mentionRenderer";
 
 interface MentionUser {
   user_id: string;
@@ -49,8 +53,9 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onCropImage, onSave, onPublish, placeholder }, ref) {
+const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onMentionSearch, onCropImage, onSave, onPublish, placeholder }, ref) {
   const t = useTranslations("editor");
+  const tc = useTranslations("common");
   const resolvedPlaceholder = placeholder || t("defaultPlaceholder");
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +66,13 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
   const [isMac, setIsMac] = useState(false);
   const [editorEmpty, setEditorEmpty] = useState(!value);
   const isInternalUpdate = useRef(false);
+
+  // Mention system for contentEditable
+  const [mentionUsers, setMentionUsers] = useState<MentionDropdownUser[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionDropdownPos, setMentionDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const mentionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mentionRangeRef = useRef<Range | null>(null);
 
   // Undo/Redo history
   const historyRef = useRef<{ content: string }[]>([]);
@@ -479,6 +491,98 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       scheduleHistory();
     }
   }, [onChange, scheduleHistory, ensureEditorIntegrity]);
+
+  // --- Mention detection for contentEditable ---
+  const clearMentionState = useCallback(() => {
+    if (mentionTimerRef.current) {
+      clearTimeout(mentionTimerRef.current);
+      mentionTimerRef.current = null;
+    }
+    setMentionUsers([]);
+    setMentionIndex(0);
+    setMentionDropdownPos(null);
+    mentionRangeRef.current = null;
+  }, []);
+
+  const detectMention = useCallback(() => {
+    if (!onMentionSearch || !editorRef.current) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.isCollapsed || !sel.anchorNode) { clearMentionState(); return; }
+
+    // Get text before cursor in the current text node
+    const node = sel.anchorNode;
+    if (node.nodeType !== Node.TEXT_NODE) { clearMentionState(); return; }
+    const textBefore = (node.textContent || "").substring(0, sel.anchorOffset);
+    const match = textBefore.match(/(^|[^A-Za-z0-9._-])@(\w*)$/);
+
+    if (!match) { clearMentionState(); return; }
+
+    // Check 3-mention limit (subtract 1: currently-being-typed @query is included in count)
+    const fullText = editorRef.current.textContent || "";
+    const completedMentions = Math.max(0, countMentions(fullText) - 1);
+    if (completedMentions >= 3) {
+      feedimAlert("error", tc("mentionLimit"));
+      clearMentionState();
+      return;
+    }
+
+    const query = match[2];
+
+    // Save the range for later insertion
+    const range = document.createRange();
+    range.setStart(node, sel.anchorOffset - query.length - 1); // include @
+    range.setEnd(node, sel.anchorOffset);
+    mentionRangeRef.current = range;
+
+    // Get dropdown position
+    const rect = range.getBoundingClientRect();
+    const editorRect = editorRef.current.getBoundingClientRect();
+    setMentionDropdownPos({
+      top: rect.bottom - editorRect.top + 4,
+      left: rect.left - editorRect.left,
+    });
+
+    // Get already-mentioned usernames to exclude from suggestions
+    const alreadyMentioned = new Set(extractMentions(fullText, 999).map(u => u.toLowerCase()));
+
+    if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current);
+    mentionTimerRef.current = setTimeout(async () => {
+      try {
+        const users = await onMentionSearch(query);
+        const filtered = users.filter(u => !alreadyMentioned.has(u.username.toLowerCase()));
+        setMentionUsers(filtered.map(u => ({
+          user_id: u.user_id,
+          username: u.username,
+          avatar_url: u.avatar_url,
+          is_verified: u.is_verified,
+        })));
+        setMentionIndex(0);
+      } catch {
+        setMentionUsers([]);
+      }
+    }, 200);
+  }, [onMentionSearch, clearMentionState, tc]);
+
+  const insertMentionUser = useCallback((username: string) => {
+    if (!editorRef.current || !mentionRangeRef.current) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+
+    sel.removeAllRanges();
+    sel.addRange(mentionRangeRef.current);
+    document.execCommand("insertText", false, `@${username} `);
+
+    clearMentionState();
+    isInternalUpdate.current = true;
+    onChange(editorRef.current.innerHTML);
+    scheduleHistory();
+  }, [clearMentionState, onChange, scheduleHistory]);
+
+  // Trigger mention detection after each input
+  const handleInputWithMention = useCallback(() => {
+    handleInput();
+    detectMention();
+  }, [handleInput, detectMention]);
 
   // --- Media selection system (WordPress birebir) ---
 
@@ -993,7 +1097,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       ) as HTMLElement | null;
       if (captionEl) {
         const current = (captionEl.textContent || "").length;
-        const remaining = Math.max(0, 150 - current);
+        const remaining = Math.max(0, 500 - current);
         plainText = plainText.slice(0, remaining);
         if (!plainText) return;
       }
@@ -1014,6 +1118,47 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
           isInternalUpdate.current = true;
           onChange(editorRef.current!.innerHTML);
           scheduleHistory();
+
+          // Yapıştırılan dış kaynak görselleri server-side proxy ile CDN'e yükle
+          if (editorRef.current) {
+            const editor = editorRef.current;
+            const OWN_HOSTS = ["cdn.feedim.com", "imgspcdn.feedim.com"];
+            const externalImgs = Array.from(editor.querySelectorAll("img[src]")).filter(img => {
+              const src = img.getAttribute("src") || "";
+              if (!src.startsWith("http")) return false;
+              try {
+                const host = new URL(src).host;
+                return !OWN_HOSTS.some(h => host.includes(h)) && !host.includes("supabase.co");
+              } catch { return true; }
+            });
+
+            for (const img of externalImgs) {
+              const src = img.getAttribute("src") || "";
+              img.style.opacity = "0.5";
+              (async () => {
+                try {
+                  // Server-side proxy — CORS sorunsuz
+                  const res = await fetch("/api/upload/image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: src }),
+                  });
+                  const data = await res.json();
+                  if (data.url && img.isConnected) {
+                    img.setAttribute("src", data.url);
+                    img.style.opacity = "";
+                    isInternalUpdate.current = true;
+                    onChange(editor.innerHTML);
+                  } else {
+                    if (img.isConnected) img.style.opacity = "";
+                  }
+                } catch {
+                  if (img.isConnected) img.style.opacity = "";
+                }
+              })();
+            }
+          }
+
           return;
         }
       } catch {
@@ -1049,6 +1194,31 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
 
   // Keyboard shortcuts — WordPress birebir
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Mention keyboard navigation
+    if (mentionUsers.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex(i => (i < mentionUsers.length - 1 ? i + 1 : 0));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex(i => (i > 0 ? i - 1 : mentionUsers.length - 1));
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        if (mentionUsers[mentionIndex]) {
+          insertMentionUser(mentionUsers[mentionIndex].username);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        clearMentionState();
+        return;
+      }
+    }
+
     const isMod = e.metaKey || e.ctrlKey;
 
     // Delete selected media with Backspace/Delete
@@ -1146,7 +1316,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         : anchorNode?.parentElement?.closest(".image-caption")) as HTMLElement | null;
       if (captionEl && !e.metaKey && !e.ctrlKey && e.key.length === 1 && !sel?.toString()) {
         const text = captionEl.textContent || "";
-        if (text.length >= 150) { e.preventDefault(); return; }
+        if (text.length >= 500) { e.preventDefault(); return; }
       }
     }
 
@@ -1345,7 +1515,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         });
       }, 0);
     }
-  }, [undo, redo, selectedMedia, handleBlockDelete, deselectAllMedia, exec, onSave, onPublish, onBackspaceAtStart, handleLink, selectWordUnderCursor, getTableContext]);
+  }, [undo, redo, selectedMedia, handleBlockDelete, deselectAllMedia, exec, onSave, onPublish, onBackspaceAtStart, handleLink, selectWordUnderCursor, getTableContext, mentionUsers, mentionIndex, insertMentionUser, clearMentionState]);
 
   // Sync value from parent (only when not internal)
   useEffect(() => {
@@ -1512,7 +1682,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        onInput={handleInput}
+        onInput={handleInputWithMention}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         onClick={handleEditorClick}
@@ -1522,6 +1692,17 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         className={`feedim-editor-content flex-1 min-h-screen px-4 py-2 pb-[15%] text-text-primary text-[1.05rem] leading-[1.6] focus:outline-none
           ${dragging ? "ring-2 ring-accent-main/30 ring-inset rounded-xl" : ""}`}
       />
+
+      {/* Mention dropdown */}
+      {mentionDropdownPos && (
+        <MentionDropdown
+          users={mentionUsers}
+          activeIndex={mentionIndex}
+          onSelect={insertMentionUser}
+          className="absolute left-0 right-0 mx-4"
+          style={{ top: mentionDropdownPos.top }}
+        />
+      )}
 
       {/* Floating Toolbar — WordPress birebir pill design — hidden when editing captions */}
       <div className={`feedim-toolbar ${captionFocused ? "!hidden" : ""}`}>
@@ -1726,9 +1907,9 @@ function cleanContentForSave(html: string): string {
     }
   });
 
-  // Boş <a> kaldır (href olmayan)
+  // Görseli saran <a> kaldır — görsellerde link olamaz
   div.querySelectorAll("a").forEach(a => {
-    if (!a.getAttribute("href")) {
+    if (a.querySelector("img") || !a.getAttribute("href")) {
       while (a.firstChild) a.parentNode?.insertBefore(a.firstChild, a);
       a.remove();
     }

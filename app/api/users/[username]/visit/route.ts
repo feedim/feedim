@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeError } from "@/lib/apiError";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  try {
   const { username } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,4 +26,7 @@ export async function POST(
   });
 
   return NextResponse.json({ success: true });
+  } catch (err) {
+    return safeError(err);
+  }
 }

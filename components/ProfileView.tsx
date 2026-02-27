@@ -3,8 +3,9 @@
 import { useState, useEffect, lazy, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, Lock, Briefcase, Mail, Phone, Clock } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Link as LinkIcon, MoreHorizontal, Lock, Briefcase, Mail, Phone, Clock, UserRoundPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { smartBack } from "@/lib/smartBack";
 import { formatCount } from "@/lib/utils";
 import EditableAvatar from "@/components/EditableAvatar";
 import PostListSection from "@/components/PostListSection";
@@ -15,6 +16,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import FollowButton from "@/components/FollowButton";
 import { getCategoryLabel, isProfessional } from "@/lib/professional";
 import SuggestionCarousel from "@/components/SuggestionCarousel";
+import SimilarAccountsCarousel from "@/components/SimilarAccountsCarousel";
 import ShareIcon from "@/components/ShareIcon";
 import MomentGridCard from "@/components/MomentGridCard";
 
@@ -50,6 +52,7 @@ interface Profile {
   created_at?: string;
   coin_balance?: number;
   is_following?: boolean;
+  follows_me?: boolean;
   is_own?: boolean;
   is_blocked?: boolean;
   is_blocked_by?: boolean;
@@ -123,6 +126,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [followRequestsOpen, setFollowRequestsOpen] = useState(false);
   const [mutualFollowersOpen, setMutualFollowersOpen] = useState(false);
   const [profileLinksOpen, setProfileLinksOpen] = useState(false);
+  const [similarOpen, setSimilarOpen] = useState(false);
   const [totalViews, setTotalViews] = useState<number | null>(null);
 
   // Admin panel
@@ -391,6 +395,9 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         setFollowing(false);
         setFollowerCount(c => Math.max(0, c - 1));
         setRequested(true);
+      } else if (!data.requested) {
+        // Successfully followed — show similar accounts carousel
+        setSimilarOpen(true);
       }
     } else {
       if (profile.account_private) {
@@ -462,11 +469,11 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   return (
     <div>
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-bg-primary sticky-ambient">
+      <header className="z-30 bg-bg-primary">
         <nav className="px-4 flex items-center justify-between h-[53px]">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => router.back()}
+              onClick={() => smartBack(router)}
               className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
               aria-label={t("back")}
             >
@@ -546,16 +553,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                   ? profile.links
                   : profile.website ? [{ title: "", url: profile.website }] : [];
                 if (resolvedLinks.length === 0) return null;
-                const firstDomain = (() => {
-                  try { return new URL(resolvedLinks[0].url).hostname.replace(/^www\./, ""); }
-                  catch { return resolvedLinks[0].url.replace(/https?:\/\//, "").split("/")[0]; }
-                })();
+                const firstUrl = resolvedLinks[0].url;
+                const displayUrl = firstUrl.length > 30 ? firstUrl.slice(0, 30) + "…" : firstUrl;
                 const extraCount = resolvedLinks.length - 1;
                 return (
                   <button onClick={() => setProfileLinksOpen(true)} className="flex items-center gap-1 text-[0.8rem] text-accent-main hover:underline">
                     <LinkIcon className="h-3.5 w-3.5" />
-                    {resolvedLinks[0].title || firstDomain}
-                    {extraCount > 0 && <span className="text-text-muted">{t("otherLinks", { count: extraCount })}</span>}
+                    {displayUrl}
+                    {extraCount > 0 && <span className="text-text-muted"> {t("otherLinks", { count: extraCount })}</span>}
                   </button>
                 );
               })()}
@@ -595,11 +600,11 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
 
           {/* Mutual followers */}
           {!isAnyBlocked && !profile.is_own && profile.mutual_followers && profile.mutual_followers.length > 0 && (
-            <button onClick={() => setMutualFollowersOpen(true)} className="flex items-center gap-1.5 mt-2.5 w-full text-left hover:opacity-80 transition">
+            <button onClick={() => setMutualFollowersOpen(true)} className="flex items-center gap-1.5 mt-2.5 w-full text-left hover:underline hover:opacity-80 transition">
               <div className="flex -space-x-2">
                 {profile.mutual_followers.slice(0, 3).map((m) => (
                   m.avatar_url ? (
-                    <img key={m.username} src={m.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover border-2 border-bg-primary" loading="lazy" />
+                    <img key={m.username} src={m.avatar_url} alt="" loading="lazy" decoding="async" className="h-7 w-7 rounded-full object-cover border-2 border-bg-primary bg-bg-tertiary" />
                   ) : (
                     <img key={m.username} className="default-avatar-auto h-7 w-7 rounded-full object-cover border-2 border-bg-primary" alt="" loading="lazy" />
                   )
@@ -640,14 +645,14 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         <div className="flex gap-2 mb-3">
           {profile.is_own ? (
             <>
-              <button onClick={() => setEditOpen(true)} data-hotkey="edit-profile" className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
+              <button onClick={() => setEditOpen(true)} data-hotkey="edit-profile" data-tooltip={t("editProfile")} aria-label={t("editProfile")} className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                 </svg>
                 {t("editProfile")}
               </button>
-              <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
+              <button onClick={() => setShareOpen(true)} data-hotkey="share" aria-label={t("shareProfile")} className="flex-1 t-btn cancel" style={{ padding: "0 14px", fontSize: "0.82rem" }}>
                 <ShareIcon className="h-4 w-4" /> {t("shareProfile")}
               </button>
             </>
@@ -679,16 +684,26 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             </>
           ) : (
             <>
-              <FollowButton following={following} onClick={handleFollow} variant="profile" className="flex-1" />
+              <FollowButton following={following} followsMe={!!initialProfile.follows_me && !following} onClick={handleFollow} variant="profile" className="flex-1" />
               <button onClick={() => setShareOpen(true)} data-hotkey="share" className="flex-1 t-btn cancel">
                 <ShareIcon className="h-4 w-4" /> {t("share")}
+              </button>
+              <button onClick={() => setSimilarOpen(o => !o)} aria-label={t("similarAccountsSuggestions")} className="t-btn cancel !min-w-[47px] !w-[47px] !px-0 shrink-0">
+                <UserRoundPlus className="h-4 w-4" />
               </button>
             </>
           )}
         </div>
 
+        {/* Similar accounts carousel — shown after follow or via button */}
+        {!profile.is_own && !isAnyBlocked && similarOpen && (
+          <div className="-mx-4 mb-3">
+            <SimilarAccountsCarousel userId={profile.user_id} username={profile.username} onClose={() => setSimilarOpen(false)} />
+          </div>
+        )}
+
         {/* Suggestion carousel for 0-follower profiles */}
-        {!profile.is_own && !isAnyBlocked && followerCount === 0 && (
+        {!profile.is_own && !isAnyBlocked && followerCount === 0 && !similarOpen && (
           <div className="-mx-4 mb-3">
             <SuggestionCarousel excludeUserId={profile.user_id} />
           </div>
@@ -921,8 +936,10 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         isOwn={!!profile.is_own}
         onEdit={() => {
           setAvatarViewOpen(false);
-          setEditAvatarOnOpen(true);
-          setEditOpen(true);
+          setTimeout(() => {
+            setEditAvatarOnOpen(true);
+            setEditOpen(true);
+          }, 1000);
         }}
       />
 
@@ -936,6 +953,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         onShare={() => setShareOpen(true)}
         onVisitors={() => setVisitorsOpen(true)}
         isOwn={profile.is_own || false}
+        targetRole={profile.role}
+        followsMe={!!initialProfile.follows_me}
+        onRemoveFollower={async () => {
+          try {
+            await fetch(`/api/users/${profile.username}/follow?action=remove-follower`, { method: "DELETE" });
+          } catch {}
+        }}
       />
 
       <ShareModal
@@ -976,6 +1000,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         }
         displayName={displayName}
       />
+
     </div>
   );
 }

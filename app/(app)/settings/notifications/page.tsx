@@ -88,9 +88,12 @@ export default function NotificationSettingsPage() {
     { type: "mention", labelKey: "notifMention" as const },
     { type: "follow", labelKey: "notifFollow" as const },
     { type: "follow_request", labelKey: "notifFollowRequest" as const },
+    { type: "follow_accepted", labelKey: "notifFollowAccepted" as const },
     { type: "milestone", labelKey: "notifMilestone" as const },
+    { type: "view_milestone", labelKey: "notifViewMilestone" as const },
     { type: "coin_earned", labelKey: "notifCoinEarned" as const },
     { type: "gift_received", labelKey: "notifGift" as const },
+    { type: "device_login", labelKey: "notifDeviceLogin" as const },
     { type: "system", labelKey: "notifSystem" as const },
   ];
 

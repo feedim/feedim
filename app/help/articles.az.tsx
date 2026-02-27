@@ -46,6 +46,7 @@ export const pageLinks: HelpPageLink[] = [
   { title: "Məlumat Paylaşımı", href: "/help/data-sharing", description: "Üçüncü tərəflər və dövlət orqanları ilə məlumat paylaşım siyasəti" },
   { title: "Giriş Məhdudiyyətləri", href: "/help/access-restrictions", description: "Yaş məhdudiyyətləri, bölgə və hesab məhdudiyyətləri" },
   { title: "Əlçatanlıq", href: "/help/accessibility", description: "Əlçatanlıq xüsusiyyətləri və uyğunluq" },
+  { title: "Profil Xalı Sistemi", href: "/help/profile-score", description: "Profil etibar xalı nədir, necə hesablanır və niyə vacibdir" },
   { title: "Premium", href: "/premium", description: "Premium üzvlük planları və qiymətlər" },
   { title: "Məsuliyyətdən İmtina", href: "/help/disclaimer", description: "Hüquqi məsuliyyətdən imtina bəyanatı" },
   { title: "Məsafəli Satış Müqaviləsi", href: "/help/distance-sales-contract", description: "Jeton və premium satın alma müqaviləsi" },

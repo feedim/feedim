@@ -77,7 +77,7 @@ export default function ContentAz() {
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <p className="font-semibold text-text-primary text-xs uppercase tracking-wide">Çəkim Şərtləri</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li>Minimum çəkim məbləği: <strong>100 jeton</strong> (10 TL)</li>
+            <li>Minimum çəkim məbləği: <strong>600 jeton</strong> (200 TL)</li>
             <li>Çəkim üçün hesabınıza <strong>IBAN məlumatı</strong> təyin etməlisiniz</li>
             <li>Çəkim tələbləri <strong>iş günlərində</strong> emal edilir</li>
             <li>Çəkim məbləği göstərdiyiniz IBAN nömrəsinə köçürmə yolu ilə göndərilir</li>

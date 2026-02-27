@@ -2,25 +2,20 @@
 
 import { useState, useEffect, memo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Search, Bell, User } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, Search, Bell, User, BookOpen, Users, Film, Clapperboard, LayoutGrid } from "lucide-react";
 import { useUser } from "@/components/UserContext";
-import CreateMenuModal from "@/components/modals/CreateMenuModal";
+import Modal from "@/components/modals/Modal";
 import { useTranslations } from "next-intl";
+import { emitNavigationStart } from "@/lib/navigationProgress";
 
 export default memo(function MobileBottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isLoggedIn } = useUser();
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const t = useTranslations();
-
-  useEffect(() => {
-    if (sessionStorage.getItem("fdm-open-create-modal")) {
-      sessionStorage.removeItem("fdm-open-create-modal");
-      setCreateModalOpen(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -39,13 +34,27 @@ export default memo(function MobileBottomNav() {
   const notificationsLabel = t("nav.notifications");
 
   const navItems = [
-    { href: "/", icon: Home, label: t("nav.home"), active: pathname === "/" },
+    { href: "/dashboard", icon: Home, label: t("nav.home"), active: pathname === "/dashboard" },
     { href: "/explore", icon: Search, label: t("nav.explore"), active: pathname === "/explore" },
     { href: "/notifications", icon: Bell, label: notificationsLabel, active: pathname === "/notifications" },
     { href: "/profile", icon: User, label: t("nav.profile"), active: pathname === "/profile" },
   ];
 
+  const contentItems = [
+    { href: "/posts", icon: BookOpen, label: t("nav.posts") },
+    { href: "/notes", icon: Users, label: t("nav.communityNotes") },
+    { href: "/video", icon: Film, label: t("nav.video") },
+    { href: "/moments", icon: Clapperboard, label: t("nav.moments") },
+  ];
+
   const publicPaths = ["/", "/explore", "/moments", "/video"];
+  const moreActive = ["/posts", "/notes", "/video", "/moments"].some(p => pathname === p || pathname.startsWith(p + "/"));
+
+  const handleContentNav = (href: string) => {
+    setMoreOpen(false);
+    emitNavigationStart();
+    router.push(href);
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid-primary border-t border-border-primary/30 md:hidden">
@@ -68,15 +77,15 @@ export default memo(function MobileBottomNav() {
           );
         })}
 
-        {/* Center: Create button */}
+        {/* Center: More button */}
         <button
-          onClick={() => isLoggedIn ? setCreateModalOpen(true) : window.location.href = "/login"}
-          className="flex items-center justify-center flex-1 h-full transition-colors text-text-primary"
-          aria-label={t("common.create")}
+          onClick={() => setMoreOpen(true)}
+          className={`flex items-center justify-center flex-1 h-full transition-colors ${
+            moreActive ? "text-accent-main" : "text-text-primary"
+          }`}
+          aria-label={t("common.more")}
         >
-          <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 12H20M12 4V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <LayoutGrid className="h-[26px] w-[26px]" strokeWidth={moreActive ? 2.3 : 2} aria-hidden="true" />
         </button>
 
         {/* Last two nav items */}
@@ -114,7 +123,32 @@ export default memo(function MobileBottomNav() {
           );
         })}
       </div>
-      <CreateMenuModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+
+      {/* More modal */}
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title={t("common.more")} size="sm">
+        <div className="py-2 px-2 space-y-[2px]">
+          {contentItems.map(item => {
+            const Icon = item.icon;
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <button
+                key={item.href}
+                onClick={() => handleContentNav(item.href)}
+                className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] transition text-left ${
+                  active ? "bg-bg-secondary text-text-primary font-semibold" : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                  active ? "bg-accent-main/15" : "bg-bg-tertiary"
+                }`}>
+                  <Icon className={`h-[18px] w-[18px] ${active ? "text-accent-main" : "text-text-muted"}`} />
+                </div>
+                <span className="text-[0.93rem] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Modal>
     </nav>
   );
 })

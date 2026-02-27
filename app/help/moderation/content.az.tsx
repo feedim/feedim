@@ -15,7 +15,7 @@ export default function ContentAz() {
         <p>
           Feedim moderasiya sistemi iki əsas komponentdən ibarətdir: süni intellekt (AI) yoxlaması və insan moderasiyası.
           Hər məzmun dərc edildikdə avtomatik olaraq AI yoxlamasından keçir. AI, məzmunu siyasət pozuntuları
-          baxımından təhlil edir və lazım gəldikdə məzmunu aşkarlayır və ya birbaşa bloklayır.
+          baxımından təhlil edir və lazım gəldikdə məzmunu aşkarlayaraq moderasiya komandasına ötürür.
         </p>
         <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
           <div className="flex items-start gap-3">
@@ -29,7 +29,7 @@ export default function ContentAz() {
             <span className="text-accent-main font-bold text-xs mt-0.5 shrink-0">2.</span>
             <div>
               <p className="font-semibold text-text-primary">Aşkarlama və/və ya Bloklama</p>
-              <p className="text-text-muted text-xs mt-0.5">Siyasət pozuntusu aşkar edilərsə məzmun gizlədilir və ya birbaşa bloklanır.</p>
+              <p className="text-text-muted text-xs mt-0.5">Siyasət pozuntusu aşkar edilərsə məzmun gizlədilir və moderasiya komandasına göndərilir.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">

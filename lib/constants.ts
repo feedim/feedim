@@ -8,14 +8,31 @@ export const PREMIUM_YEARLY_PRICE = 399; // TL
 export const COIN_BASE_EARNING = 1;        // Geçerli okuma başına temel Jeton
 export const COIN_DAILY_LIMIT = 500;       // Kullanıcı başına günlük max kazanç
 export const COIN_POST_LIMIT = 10000;      // Gönderi başına toplam max kazanç
-export const COIN_MIN_WITHDRAWAL = 500;    // Minimum çekim miktarı
-export const COIN_TO_TRY_RATE = 0.10;     // 1 Jeton = 0.10 TL
+export const COIN_MIN_WITHDRAWAL = 600;    // Minimum çekim miktarı
+export const COIN_TO_TRY_RATE = 0.3333;   // 1 Jeton ≈ 0.33 TL
 export const COIN_COMMISSION_RATE = 0.20;  // %20 Feedim komisyonu
+
+// Jeton satın alma
+export const COIN_PRICE_PER_TRY = 3;      // 1 TL = 3 jeton
+export const COIN_MIN_PURCHASE = 50;       // Minimum ₺50
+export const COIN_MAX_PURCHASE = 10000;    // Maximum ₺10.000
+export const COIN_BONUS_TIERS = [
+  { minTRY: 1000, bonusPercent: 20 },
+  { minTRY: 500,  bonusPercent: 15 },
+  { minTRY: 250,  bonusPercent: 10 },
+  { minTRY: 100,  bonusPercent: 5 },
+] as const; // Büyükten küçüğe sıralı — ilk eşleşen kazanır
 
 // Okuma kazanç koşulları
 export const MIN_READ_DURATION = 30;       // saniye
 export const MIN_READ_PERCENTAGE = 40;     // %
 export const READ_COOLDOWN_HOURS = 24;     // Aynı okuyucu aynı gönderi
+
+// Anti-spam: sunucu tarafı süre limitleri
+export const MAX_READ_DURATION = 3600;            // 1 saat (metin yazılar)
+export const MAX_VIDEO_WATCH_DURATION = 900;      // 15 dakika (video)
+export const DURATION_SANITY_MULTIPLIER = 3;      // reading_time * 3 (metin)
+export const VIDEO_DURATION_SANITY_MULTIPLIER = 2; // video_duration * 2 (video)
 
 // Hediye tipleri
 export const GIFT_TYPES = {
@@ -83,6 +100,9 @@ export const SPAM_THRESHOLDS = {
   autoBlock: 90,
 };
 
+// Taslak limiti
+export const MAX_DRAFTS = 10;
+
 // Rate limiting
 export const RATE_LIMITS = {
   api: { limit: 60, window: 60_000 },           // 60 req/dakika
@@ -109,13 +129,13 @@ export const VALIDATION = {
   bio: { max: 150 },
   website: { max: 255 },
   birthDate: { minAge: 13, maxAge: 120 },
-  gender: ['male', 'female', 'other'] as const,
+  gender: ['male', 'female'] as const,
   postTitle: { min: 3, max: 200 },
   postContent: { minChars: 50, maxWords: 5000, maxWordsMax: 15000, maxListItems: 300 },
   noteContent: { min: 1, max: 280 },
   postTags: { max: 5 },
   tagName: { min: 2, max: 50, pattern: /^[a-zA-ZçÇğĞıİöÖşŞüÜâÂêÊîÎôÔûÛäÄëËïÏ0-9\s\-_.&#+]+$/ },
-  imageCaption: { max: 200 },
+  imageCaption: { max: 500 },
   mentions: { max: 3 },
   comment: { max: 250, maxPremium: 500, maxLinks: 2 },
   tagFollow: { max: 10 },
@@ -133,17 +153,16 @@ export const ALLOWED_EMAIL_DOMAINS = [
   'live.com', 'msn.com', 'yandex.com', 'mail.com', 'protonmail.com',
 ];
 
-// Reklam (YouTube-style ad breaks)
+// Reklam — sadece video post-roll (4–10 dk arası)
 export const AD_SKIP_DELAY = 8;            // saniye — skip butonu gecikmesi
-export const AD_MOMENTS_INTERVAL = 7;      // her 7 moment'ta 1 reklam kartı
-export const AD_NO_MIDROLL_MAX = 180;      // < 3:00 = mid-roll yok (sadece post-roll)
-export const AD_ONE_MIDROLL_MAX = 600;     // 3:00–10:00 = 1 mid-roll; > 10:00 = 2 mid-roll
+export const AD_POSTROLL_MIN = 240;        // 4:00 — altındaki videolarda reklam yok
+export const AD_POSTROLL_MAX = 600;        // 10:00 — üstündeki videolarda reklam yok
 
 // Video
 export const VIDEO_MAX_DURATION = 600; // 10 dakika (saniye)
 export const VIDEO_MAX_SIZE_MB = 200; // MB (R2 storage)
 export const VIDEO_ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/3gpp', 'video/x-m4v', 'video/ogg', 'video/mpeg'] as const;
-export const VIDEO_PAGE_SIZE = 12;
+export const VIDEO_PAGE_SIZE = 10;
 
 // Moment
 export const MOMENT_MAX_DURATION = 60; // saniye
@@ -210,9 +229,9 @@ export const SHARE_PLATFORMS = [
 export const MILESTONES = [1000, 10000, 100000, 1000000, 10000000];
 
 // Feed
-export const FEED_PAGE_SIZE = 12;
+export const FEED_PAGE_SIZE = 10;
 export const COMMENTS_PAGE_SIZE = 10;
-export const NOTIFICATIONS_PAGE_SIZE = 20;
+export const NOTIFICATIONS_PAGE_SIZE = 10;
 export const NOTIFICATION_CLEANUP_DAYS = 90;
 
 

@@ -14,6 +14,7 @@ import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { VALIDATION } from "@/lib/constants";
 import { normalizeUsername, filterNameInput } from "@/lib/utils";
 import { isProfessional, getCategoryLabel } from "@/lib/professional";
+import PhoneInput from "@/components/PhoneInput";
 import { Briefcase, ChevronRight, Mail, Phone, Link as LinkIcon } from "lucide-react";
 
 
@@ -317,7 +318,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                   {isVerified && <VerifiedBadge variant={getBadgeVariant(premiumPlan)} role={role} />}
                 </div>
                 {avatarUrl && (
-                  <button onClick={handleRemoveAvatar} className="text-xs text-error font-semibold flex items-center gap-1 mt-1 hover:underline">
+                  <button onClick={handleRemoveAvatar} className="text-xs text-error font-semibold flex items-center gap-1 hover:underline">
                     {t("removeAvatar")}
                   </button>
                 )}
@@ -415,25 +416,13 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                 <option value="">{t("genderNone")}</option>
                 <option value="male">{t("genderMale")}</option>
                 <option value="female">{t("genderFemale")}</option>
-                <option value="other">{t("genderOther")}</option>
               </select>
             </div>
 
             {/* Phone */}
             <div>
               <label className="block text-xs text-text-muted mb-1">{t("phoneLabel")}</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => {
-                  const val = e.target.value.replace(/[^0-9+\s()-]/g, "");
-                  setPhone(val);
-                }}
-                maxLength={20}
-                className="input-modern w-full"
-                placeholder="+90 5XX XXX XX XX"
-                inputMode="tel"
-              />
+              <PhoneInput value={phone} onChange={setPhone} />
             </div>
 
             {/* Professional Account Section */}
@@ -449,7 +438,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                       <label className="block text-xs text-text-muted mb-1">{t("category")}</label>
                       <button
                         onClick={() => setProModalOpen(true)}
-                        className="w-full text-left text-sm text-text-secondary py-2 px-3 bg-bg-tertiary rounded-lg hover:bg-bg-tertiary transition flex items-center justify-between"
+                        className="w-full text-left text-sm text-text-secondary h-[50px] px-[18px] bg-transparent rounded-[14px] border-[1.5px] border-[var(--border-primary)] hover:border-[var(--text-muted)] transition flex items-center justify-between"
                       >
                         <span>{getCategoryLabel(accountType, professionalCategory)}</span>
                         <ChevronRight className="h-3.5 w-3.5 text-text-muted shrink-0" />
@@ -474,18 +463,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                         <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1">
                           <Phone className="h-3 w-3" /> {t("contactPhone")}
                         </label>
-                        <input
-                          type="tel"
-                          value={contactPhone}
-                          onChange={e => {
-                            const val = e.target.value.replace(/[^0-9+\s()-]/g, "");
-                            setContactPhone(val);
-                          }}
-                          maxLength={20}
-                          className="input-modern w-full"
-                          placeholder="+90 5XX XXX XX XX"
-                          inputMode="tel"
-                        />
+                        <PhoneInput value={contactPhone} onChange={setContactPhone} />
                       </div>
                     </>
                   )}

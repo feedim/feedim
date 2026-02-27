@@ -6,6 +6,7 @@ import { getUserPlan } from "@/lib/limits";
 import { revalidateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { safeError } from "@/lib/apiError";
+import { isValidEmail } from "@/lib/utils";
 
 export async function GET() {
   const supabase = await createClient();
@@ -161,6 +162,8 @@ export async function PUT(req: NextRequest) {
       updates.professional_category = null;
       updates.contact_email = null;
       updates.contact_phone = null;
+      updates.monetization_enabled = false;
+      updates.monetization_status = null;
     } else if (updates.account_type === "creator" || updates.account_type === "business") {
       updates.account_private = false;
       const admin = createAdminClient();
@@ -183,11 +186,10 @@ export async function PUT(req: NextRequest) {
 
   // Contact email format validation
   if (updates.contact_email && updates.contact_email.trim()) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(updates.contact_email.trim())) {
+    if (!isValidEmail(updates.contact_email.trim().toLowerCase())) {
       return NextResponse.json({ error: tErrors("invalidContactEmail") }, { status: 400 });
     }
-    updates.contact_email = updates.contact_email.trim();
+    updates.contact_email = updates.contact_email.trim().toLowerCase();
   }
 
   updates.updated_at = new Date().toISOString();
@@ -261,7 +263,7 @@ export async function PUT(req: NextRequest) {
     .single();
 
   if (error) return safeError(error);
-  revalidateTag("profiles", { expire: 0 });
+  revalidateTag("profiles");
 
   // AI moderation on profile text fields — runs async after response
   const TEXT_FIELDS = ['name', 'surname', 'username', 'bio'];
@@ -296,7 +298,7 @@ export async function PUT(req: NextRequest) {
         });
         if (overall.safe === false) {
           let flaggedCount = 0;
-          for (const value of [fields.username, fields.bio]) {
+          for (const value of [fields.name, fields.surname, fields.username, fields.bio]) {
             if (value && value.trim().length >= 2) {
               try {
                 const res = await checkTextContent('', value, { contentType: 'profile', linkCount: (value.match(/https?:\/\//g) || []).length });
@@ -304,7 +306,7 @@ export async function PUT(req: NextRequest) {
               } catch {}
             }
           }
-          if (flaggedCount >= 2) {
+          if (flaggedCount >= 1) {
             await admin.from("profiles").update({
               status: 'moderation',
               moderation_reason: overall.reason || 'Profil alanlarında ihlal tespit edildi',

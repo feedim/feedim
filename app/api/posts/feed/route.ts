@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     let feedQuery = admin
       .from('posts')
       .select(`
-        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash,
+        id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash, visibility,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
       `)
       .in('id', pageIds)

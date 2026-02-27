@@ -148,12 +148,17 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 
     // Background API call
     try {
-      const res = await fetch(`/api/posts/${postId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, parent_id: parentId }),
-      });
-      const data = await res.json();
+      const reqInit = { method: "POST" as const, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, parent_id: parentId }) };
+      let res = await fetch(`/api/posts/${postId}/comments`, reqInit);
+
+      // Retry once on 401 — session may need refresh after login redirect
+      if (res.status === 401) {
+        await supabase.auth.refreshSession();
+        res = await fetch(`/api/posts/${postId}/comments`, reqInit);
+      }
+
+      let data: Record<string, any>;
+      try { data = await res.json(); } catch { data = {}; }
 
       if (!res.ok) {
         // Rollback
@@ -361,6 +366,7 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-semibold">{getAuthorName(comment)}</span>
+          <span className="text-text-muted/40 text-xs">·</span>
           <span className="text-[0.7rem] text-text-muted">{formatRelativeDate(comment.created_at)}</span>
         </div>
         <p className="text-sm text-text-secondary mt-0.5 break-words">{comment.content}</p>

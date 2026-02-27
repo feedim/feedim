@@ -1008,7 +1008,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
             {/* Buttons row */}
               <div className="flex items-center gap-2 text-white">
                 {/* Play/Pause */}
-                <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={playing ? `${t("pause")} (k)` : `${t("play")} (k)`} title={playing ? `${t("pause")} (k)` : `${t("play")} (k)`}>
+                <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={playing ? `${t("pause")} (k)` : `${t("play")} (k)`} data-tooltip={playing ? `${t("pause")} (k)` : `${t("play")} (k)`}>
                   {playing ? (
                     <svg className="h-6 w-6" fill="white" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
                   ) : (
@@ -1018,7 +1018,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
                 {/* Volume */}
                 <div className="flex items-center gap-0.5 group/vol">
-                  <button onClick={toggleMute} aria-label={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} title={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <button onClick={toggleMute} aria-label={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} data-tooltip={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                     {muted || volume === 0 ? (
                       <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.23-1.22.86v.19c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.33-1.71-.7zM16.5 12A4.5 4.5 0 0014 7.97v1.79l2.48 2.48c.01-.08.02-.16.02-.24z" /></svg>
                     ) : volume < 0.5 ? (
@@ -1035,7 +1035,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
                 {/* Settings (speed + cinema mode) */}
                 <div className="relative" ref={settingsMenuRef}>
-                  <button onClick={() => { const next = !settingsMenu; setSettingsMenu(next); settingsOpenRef.current = next; setSettingsTab("main"); if (next) showControls(true); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" title={t("settings")}>
+                  <button onClick={() => { const next = !settingsMenu; setSettingsMenu(next); settingsOpenRef.current = next; setSettingsTab("main"); if (next) showControls(true); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" data-tooltip={t("settings")} aria-label={t("settings")}>
                     {speed !== 1 ? (
                       <span className="text-[0.8rem] font-semibold min-w-[36px]">{speed}x</span>
                     ) : (
@@ -1155,7 +1155,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 </div>
 
                 {/* PiP — float above all windows */}
-                <button onClick={togglePiP} className="flex p-2 hover:bg-white/10 rounded-full transition-colors items-center justify-center" title={`${t("pip")} (p)`}>
+                <button onClick={togglePiP} className="flex p-2 hover:bg-white/10 rounded-full transition-colors items-center justify-center" data-tooltip={`${t("pip")} (p)`} aria-label={`${t("pip")} (p)`}>
                   <svg className="h-[21px] w-[21px]" fill="none" stroke="white" strokeWidth={1.8} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="7" y="7" width="10" height="10" rx="1.5" />
                     <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
@@ -1163,7 +1163,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 </button>
 
                 {/* Fullscreen — h-5 w-5 */}
-                <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={fullscreen ? `${t("exitFullscreen")} (f)` : `${t("fullscreen")} (f)`} title={fullscreen ? `${t("exitFullscreen")} (f)` : `${t("fullscreen")} (f)`}>
+                <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={fullscreen ? `${t("exitFullscreen")} (f)` : `${t("fullscreen")} (f)`} data-tooltip={fullscreen ? `${t("exitFullscreen")} (f)` : `${t("fullscreen")} (f)`}>
                   {fullscreen ? (
                     <svg className="h-5 w-5" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" /></svg>
                   ) : (

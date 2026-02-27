@@ -183,11 +183,11 @@ export default function LandingPage() {
                   ))}
                 </div>
 
-                <Link href="/login" className="t-btn accept w-full mt-2">
+                <Link href="/login?switch=1" className="t-btn accept w-full mt-2">
                   {t("loginDifferent")}
                 </Link>
 
-                <Link href="/explore" className="t-btn cancel w-full mt-2">
+                <Link href="/dashboard" className="t-btn cancel w-full mt-2">
                   {t("browseWithoutLogin")}
                 </Link>
 
@@ -261,7 +261,7 @@ export default function LandingPage() {
                   </Link>
                 </div>
 
-                <Link href="/explore" className="t-btn cancel w-full mt-3">
+                <Link href="/dashboard" className="t-btn cancel w-full mt-3">
                   {t("browseWithoutLogin")}
                 </Link>
               </>

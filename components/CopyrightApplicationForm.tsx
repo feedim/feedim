@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
+import PhoneInput from "@/components/PhoneInput";
 
 interface CopyrightApplicationFormProps {
   onSubmit: () => void;
@@ -101,14 +102,7 @@ export default function CopyrightApplicationForm({ onSubmit }: CopyrightApplicat
       </div>
       <div>
         <label className="text-xs text-text-muted mb-1 block">{t("phoneLabel")}</label>
-        <input
-          type="tel"
-          value={contactPhone}
-          onChange={e => setContactPhone(e.target.value)}
-          className="input-modern w-full"
-          placeholder="+90 5xx xxx xx xx"
-          maxLength={50}
-        />
+        <PhoneInput value={contactPhone} onChange={setContactPhone} />
       </div>
       <div>
         <label className="text-xs text-text-muted mb-1 block">{t("websiteLabel")}</label>

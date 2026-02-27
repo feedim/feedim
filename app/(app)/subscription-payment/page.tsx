@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import {useRouter, useSearchParams } from "next/navigation";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Lock, AlertCircle, Check, Tag, Shield, Sparkles, BarChart3, Eye } from "lucide-react";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -178,10 +179,10 @@ export default function SubscriptionPaymentPage() {
   return (
     <div className="min-h-screen text-text-primary">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-bg-primary sticky-ambient border-b border-border-primary/50">
+      <header className="z-50 bg-bg-primary border-b border-border-primary/50">
         <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
           <button
-            onClick={() => { if (window.history.length > 1) router.back(); else { emitNavigationStart(); router.push("/premium"); } }}
+            onClick={() => smartBack(router, "/premium")}
             className="i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -347,12 +348,6 @@ export default function SubscriptionPaymentPage() {
         <div className="mt-10 space-y-2 text-center">
           <div className="mt-6 bg-bg-secondary rounded-[15px] px-4 py-3 space-y-1.5 text-xs text-text-muted font-medium">
             <p>{t("sslSecure")}</p>
-            <p>{t("paytrProvider")}</p>
-          </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[0.72rem] text-text-muted font-medium pt-2">
-            <Link href="/help/terms" className="hover:text-text-primary transition">{t("terms")}</Link>
-            <Link href="/help/privacy" className="hover:text-text-primary transition">{t("privacy")}</Link>
-            <Link href="/help" className="hover:text-text-primary transition">{t("helpCenter")}</Link>
           </div>
         </div>
       </main>

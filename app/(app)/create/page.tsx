@@ -6,6 +6,7 @@ import { X, Plus, Upload, Smile, ChevronDown, Undo2, Redo2 } from "lucide-react"
 import PostMetaFields from "@/components/PostMetaFields";
 import { createClient } from "@/lib/supabase/client";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
 import dynamic from "next/dynamic";
 import type { RichTextEditorHandle } from "@/components/RichTextEditor";
 
@@ -70,7 +71,6 @@ function WritePageContent() {
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
   const [tagHighlight, setTagHighlight] = useState(-1);
   const [tagCreating, setTagCreating] = useState(false);
-  const [popularTags, setPopularTags] = useState<Tag[]>([]);
   const [featuredImage, setFeaturedImage] = useState("");
   const [coverDragging, setCoverDragging] = useState(false);
   const [visibility, setVisibility] = useState("public");
@@ -188,27 +188,15 @@ function WritePageContent() {
         if (res.ok) {
           if (!draftId && data.post?.id) setDraftId(data.post.id);
           setHasUnsavedChanges(false);
+        } else if (res.status === 400 && !draftId) {
+          // Draft limit reached — stop auto-saving silently
+          setHasUnsavedChanges(false);
         }
       } catch {}
       setAutoSaving(false);
     }, 30000);
     return () => clearInterval(timer);
   }, [title, content, hasUnsavedChanges, savingAs, autoSaving, draftId, tags, featuredImage]);
-
-  // Load popular tags on step 2
-  useEffect(() => {
-    if (step === 2 && popularTags.length === 0) {
-      loadPopularTags();
-    }
-  }, [step]);
-
-  const loadPopularTags = async () => {
-    try {
-      const res = await fetch("/api/tags?q=");
-      const data = await res.json();
-      setPopularTags((data.tags || []).slice(0, 8));
-    } catch {}
-  };
 
   const searchTags = useCallback(async (q: string) => {
     if (q.trim().length < 1) {
@@ -681,7 +669,7 @@ function WritePageContent() {
       hideRightSidebar
       headerRightAction={headerRight}
       headerTitle={step === 1 ? t("headerPost") : t("headerDetails")}
-      headerOnBack={() => { if (step === 2) setStep(1); else router.back(); }}
+      headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
     >
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
         {/* Step 1: Title + Content */}
@@ -728,6 +716,13 @@ function WritePageContent() {
               onEmojiClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowEmojiPicker(true); }}
               onGifClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowGifPicker(true); }}
               onCropImage={handleEditorCropImage}
+              onMentionSearch={async (query) => {
+                try {
+                  const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&mention=1`);
+                  const data = await res.json();
+                  return data.users || [];
+                } catch { return []; }
+              }}
               onSave={() => savePost("draft")}
               onPublish={() => savePost("published")}
               placeholder={t("whatsOnYourMind")}
@@ -802,26 +797,6 @@ function WritePageContent() {
                 )}
                 <p className="text-xs text-text-muted mt-1.5">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
 
-                {/* Popular tags */}
-                {tags.length < VALIDATION.postTags.max && !tagSearch && popularTags.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs text-text-muted mb-2">{t("popularTags")}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {popularTags
-                        .filter(pt => !tags.some(t => t.id === pt.id))
-                        .slice(0, 6)
-                        .map(pt => (
-                          <button
-                            key={pt.id}
-                            onClick={() => addTag(pt)}
-                            className="text-xs px-2.5 py-1.5 rounded-full border border-border-primary text-text-muted hover:text-accent-main hover:border-accent-main/50 transition"
-                          >
-                            #{pt.name}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Cover Image with drag & drop */}

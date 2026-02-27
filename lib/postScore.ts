@@ -1,6 +1,7 @@
-// Feedim — Post Scoring Engine v1
+// Feedim — Post Scoring Engine v2
 // 6 quality + 2 penalty dimensions → quality_score (0-100)
 // 5 spam dimensions → spam_score (0-100)
+// Content-type aware: post, note, video, moment
 
 // ─── HTML Content Analysis ───────────────────────────────────────────
 
@@ -43,6 +44,9 @@ export interface PostData {
   total_coins_earned: number;
   allow_comments: boolean;
   published_at: string;
+  content_type: string;    // 'post' | 'note' | 'video' | 'moment'
+  video_duration: number;  // saniye (video/moment için)
+  reading_time: number;    // dakika (post için)
 }
 
 export interface PostScoreInputs {
@@ -58,6 +62,10 @@ export interface PostScoreInputs {
   avgReadDuration: number;
   avgReadPercentage: number;
   qualifiedReadCount: number;
+  // Video/moment watch metrics
+  avgWatchDuration: number;        // ort. izlenme süresi (saniye)
+  avgWatchPercentage: number;      // ort. izlenme yüzdesi
+  completionRate: number;          // tamamlama oranı
   // Engagement
   uniqueCommentersCount: number;
   replyCount: number;
@@ -67,6 +75,11 @@ export interface PostScoreInputs {
   activeVisitorRatio: number;
   premiumViewerRatio: number;
   newAccountViewerRatio: number;
+  // Liker quality
+  avgLikerProfileScore: number;        // beğenenlerin ort. profil puanı
+  highScoreLikerRatio: number;         // profile_score >= 40 olan beğenen oranı
+  likerLanguageDiversity: number;      // kaç farklı dilden beğenen var
+  likerLanguageMismatchRatio: number;  // yazar dili ile uyumsuz beğenen oranı
   // Okumadan etkileşim (quick engagement detection)
   quickLikerRatio: number;
   quickSaverRatio: number;
@@ -77,9 +90,10 @@ export interface PostScoreInputs {
   // Economic
   giftCount: number;
   giftDiversity: number;
-  // Moderation / flags
-  reportCount: number;
-  wasInModeration: boolean;
+  // Moderation / flags — kesinleşmiş cezalar
+  reportCount: number;               // ham rapor sayısı (spam score'da kullanılır)
+  confirmedReportCount: number;       // status='resolved' raporlar (quality'de kullanılır)
+  humanRemovedDecision: boolean;      // insan moderatör onaylı removal
   aiFlagged: boolean;
   // IP-based manipulation
   sameIpClusterRatio: number;
@@ -91,15 +105,79 @@ export interface PostScoreInputs {
   // Comment quality (yorum kalitesi)
   qualityCommentCount: number;
   shortCommentRatio: number;
+  // Reciprocal engagement (karşılıklı etkileşim tarlaması)
+  reciprocalEngagementRatio: number;
 }
 
 // ─── Post Quality Score (0-100) — 8 Dimensions ──────────────────────
 
 /**
  * 1. İçerik Yapısı (max 15)
- *    Resim, başlık, etiket, kelime sayısı, kaynak, çeşitlilik
+ *    İçerik tipine göre dallanır: post, note, video/moment
  */
 function calcContentStructure(inputs: PostScoreInputs): number {
+  const ct = inputs.post.content_type;
+  if (ct === 'video' || ct === 'moment') return calcVideoContentStructure(inputs);
+  if (ct === 'note') return calcNoteContentStructure(inputs);
+  return calcTextPostContentStructure(inputs);
+}
+
+function calcVideoContentStructure(inputs: PostScoreInputs): number {
+  const { post } = inputs;
+  let score = 0;
+
+  // Etiketler
+  if (inputs.tagCount >= 3) score += 2;
+  else if (inputs.tagCount >= 1) score += 1;
+
+  // Thumbnail/featured_image
+  if (post.featured_image) score += 2;
+
+  // Video süresi sweet spot
+  const dur = post.video_duration;
+  if (post.content_type === 'moment') {
+    // Moment: 15-60s ideal
+    if (dur >= 15 && dur <= 60) score += 3;
+    else if (dur > 0) score += 1;
+  } else {
+    // Video: 2-10dk (120-600s) ideal
+    if (dur >= 120 && dur <= 600) score += 3;
+    else if (dur > 0) score += 1;
+  }
+
+  // Açıklama word_count > 10
+  if (post.word_count > 10) score += 2;
+
+  // Kaynak linkleri
+  if (Array.isArray(post.source_links) && post.source_links.length > 0) score += 1;
+
+  return Math.min(score, 15);
+}
+
+function calcNoteContentStructure(inputs: PostScoreInputs): number {
+  const { post } = inputs;
+  let score = 0;
+
+  // Etiketler
+  if (inputs.tagCount >= 3) score += 2;
+  else if (inputs.tagCount >= 1) score += 1;
+
+  // Görsel
+  if (post.featured_image) score += 2;
+  if (inputs.imageCount >= 1) score += 1;
+
+  // Note uzunluk sweet spot (10-56 kelime ≈ 50-280 karakter)
+  if (post.word_count >= 10 && post.word_count <= 56) score += 5;
+  else if (post.word_count >= 10) score += 3;
+  else if (post.word_count > 0) score += 1;
+
+  // Kaynak link
+  if (Array.isArray(post.source_links) && post.source_links.length > 0) score += 1;
+
+  return Math.min(score, 15);
+}
+
+function calcTextPostContentStructure(inputs: PostScoreInputs): number {
   const { post } = inputs;
   let score = 0;
 
@@ -138,10 +216,85 @@ function calcContentStructure(inputs: PostScoreInputs): number {
 }
 
 /**
- * 2. Okuma Kalitesi (max 20)
- *    Okuma süresi, scroll derinliği, nitelikli okuma oranı
+ * 2. Okuma/İzleme Kalitesi (max 20)
+ *    İçerik tipine göre dallanır
  */
 function calcReadQuality(inputs: PostScoreInputs): number {
+  const ct = inputs.post.content_type;
+  if (ct === 'video' || ct === 'moment') return calcWatchQuality(inputs);
+  if (ct === 'note') return calcNoteReadQuality(inputs);
+  return calcTextReadQuality(inputs);
+}
+
+function calcWatchQuality(inputs: PostScoreInputs): number {
+  if (inputs.post.unique_view_count < 3) return 0;
+  const views = inputs.post.unique_view_count;
+  let score = 0;
+
+  // Ort. izlenme yüzdesi
+  if (inputs.avgWatchPercentage >= 70) score += 5;
+  else if (inputs.avgWatchPercentage >= 50) score += 3;
+  else if (inputs.avgWatchPercentage >= 30) score += 1;
+
+  // Ort. izlenme süresi
+  if (inputs.post.content_type === 'moment') {
+    // Moment (≤60s): daha kısa eşikler
+    if (inputs.avgWatchDuration >= 30) score += 5;
+    else if (inputs.avgWatchDuration >= 15) score += 3;
+    else if (inputs.avgWatchDuration >= 8) score += 1;
+  } else {
+    // Video: daha uzun eşikler
+    if (inputs.avgWatchDuration >= 120) score += 6;
+    else if (inputs.avgWatchDuration >= 60) score += 4;
+    else if (inputs.avgWatchDuration >= 30) score += 2;
+  }
+
+  // Tamamlama oranı
+  if (inputs.completionRate >= 0.40) score += 5;
+  else if (inputs.completionRate >= 0.20) score += 3;
+  else if (inputs.completionRate >= 0.10) score += 1;
+
+  // Çok kısa izlenme cezası (<5s, 50+ view)
+  if (inputs.avgWatchDuration > 0 && inputs.avgWatchDuration < 5 && views >= 50) {
+    score -= 4;
+  }
+
+  // Bounce rate (read_duration <3s)
+  if (views >= 20 && inputs.bounceRate > 0.50) score -= 3;
+  else if (views >= 20 && inputs.bounceRate > 0.30) score -= 1;
+
+  return Math.min(score, 20);
+}
+
+function calcNoteReadQuality(inputs: PostScoreInputs): number {
+  if (inputs.post.unique_view_count < 3) return 0;
+  const views = inputs.post.unique_view_count;
+  let score = 0;
+
+  // Ort. okuma süresi (notlar kısa, 10s yeterli)
+  if (inputs.avgReadDuration >= 10) score += 6;
+  else if (inputs.avgReadDuration >= 5) score += 4;
+  else if (inputs.avgReadDuration >= 3) score += 2;
+
+  // Ort. okuma yüzdesi
+  if (inputs.avgReadPercentage >= 80) score += 5;
+  else if (inputs.avgReadPercentage >= 60) score += 3;
+  else if (inputs.avgReadPercentage >= 40) score += 1;
+
+  // Nitelikli okuma oranı (≥5s AND ≥50%)
+  const qrRatio = views > 0 ? inputs.qualifiedReadCount / views : 0;
+  if (qrRatio >= 0.50) score += 5;
+  else if (qrRatio >= 0.30) score += 3;
+  else if (qrRatio >= 0.15) score += 1;
+
+  // Bounce (<2s)
+  if (views >= 20 && inputs.bounceRate > 0.50) score -= 3;
+  else if (views >= 20 && inputs.bounceRate > 0.30) score -= 1;
+
+  return Math.min(score, 20);
+}
+
+function calcTextReadQuality(inputs: PostScoreInputs): number {
   if (inputs.post.unique_view_count < 3) return 0;
   let score = 0;
 
@@ -226,35 +379,54 @@ function calcEngagementQuality(inputs: PostScoreInputs): number {
 }
 
 /**
- * 4. Ziyaretçi Kalitesi (max 20) — EN ÖNEMLİ BOYUT
+ * 4. Ziyaretçi + Beğenen Kalitesi (max 20) — EN ÖNEMLİ BOYUT
  *    Ziyaretçi profil puanı, hesap yaşı, aktiflik, premium oranı
+ *    + Beğenen profil puanı, dil sağlığı
  */
 function calcVisitorQuality(inputs: PostScoreInputs): number {
   if (inputs.post.unique_view_count < 3) return 0;
   let score = 0;
 
-  // Ziyaretçilerin ortalama profil puanı — EN YÜKSEK AĞIRLIK
-  if (inputs.avgVisitorProfileScore >= 60) score += 8;
-  else if (inputs.avgVisitorProfileScore >= 40) score += 6;
-  else if (inputs.avgVisitorProfileScore >= 20) score += 4;
+  // Ziyaretçilerin ortalama profil puanı (max 6, eski 8'den düşürüldü)
+  if (inputs.avgVisitorProfileScore >= 60) score += 6;
+  else if (inputs.avgVisitorProfileScore >= 40) score += 5;
+  else if (inputs.avgVisitorProfileScore >= 20) score += 3;
   else if (inputs.avgVisitorProfileScore > 0) score += 1;
 
-  // Ziyaretçi hesap yaşı ortalaması
-  if (inputs.avgVisitorAccountAgeDays >= 365) score += 3;
-  else if (inputs.avgVisitorAccountAgeDays >= 180) score += 2;
-  else if (inputs.avgVisitorAccountAgeDays >= 30) score += 1;
+  // Ziyaretçi hesap yaşı ortalaması (max 2, eski 3'ten düşürüldü)
+  if (inputs.avgVisitorAccountAgeDays >= 365) score += 2;
+  else if (inputs.avgVisitorAccountAgeDays >= 180) score += 1;
 
-  // Aktif ziyaretçi oranı (son 30 günde giriş yapmış)
-  if (inputs.activeVisitorRatio >= 0.50) score += 3;
-  else if (inputs.activeVisitorRatio >= 0.25) score += 2;
+  // Aktif ziyaretçi oranı (max 2, eski 3'ten düşürüldü)
+  if (inputs.activeVisitorRatio >= 0.50) score += 2;
+  else if (inputs.activeVisitorRatio >= 0.25) score += 1;
 
-  // Premium izleyici oranı
+  // Premium izleyici oranı (max 2, aynı)
   if (inputs.premiumViewerRatio >= 0.20) score += 2;
   else if (inputs.premiumViewerRatio >= 0.10) score += 1;
+
+  // Beğenen profil puanı (max 4, YENİ)
+  if (inputs.avgLikerProfileScore >= 50) score += 4;
+  else if (inputs.avgLikerProfileScore >= 30) score += 3;
+  else if (inputs.avgLikerProfileScore >= 15) score += 2;
+  else if (inputs.avgLikerProfileScore > 0) score += 1;
+
+  // Beğenen dil sağlığı (max 2, YENİ)
+  if (inputs.likerLanguageDiversity >= 2 && inputs.likerLanguageMismatchRatio < 0.70) {
+    score += 2; // Sağlıklı çeşitlilik
+  }
+  if (inputs.likerLanguageMismatchRatio > 0.80 && inputs.post.like_count >= 10) {
+    score -= 1; // Şüpheli tek dil grubu
+  }
 
   // Yeni hesap seli cezası (botlar / sahte hesaplar)
   if (inputs.newAccountViewerRatio > 0.30 && inputs.post.unique_view_count >= 20) {
     score -= 4;
+  }
+
+  // Düşük kalite beğenen cezası (YENİ)
+  if (inputs.post.like_count >= 10 && inputs.highScoreLikerRatio < 0.20) {
+    score -= 2;
   }
 
   return Math.min(score, 20);
@@ -317,28 +489,33 @@ function calcEconomicSignals(inputs: PostScoreInputs): number {
 }
 
 /**
- * 7. İçerik Cezaları (max -20)
- *    NSFW, şikayet, moderasyon, AI flag, yorum kapalı
+ * 7. İçerik Cezaları (max -21)
+ *    NSFW, kesinleşmiş şikayetler, insan moderatör kararı, AI flag, yorum kapalı
  */
 function calcContentPenalties(inputs: PostScoreInputs): number {
   let penalty = 0;
 
   if (inputs.post.is_nsfw) penalty -= 5;
 
-  if (inputs.reportCount >= 5) penalty -= 8;
-  else if (inputs.reportCount >= 3) penalty -= 5;
-  else if (inputs.reportCount >= 1) penalty -= 2;
+  // Sadece kesinleşmiş (resolved) raporlar
+  if (inputs.confirmedReportCount >= 5) penalty -= 8;
+  else if (inputs.confirmedReportCount >= 3) penalty -= 5;
+  else if (inputs.confirmedReportCount >= 1) penalty -= 2;
 
-  if (inputs.wasInModeration) penalty -= 3;
+  // İnsan moderatör onaylı removal (kesinleşmiş — ağırlığı artırıldı)
+  if (inputs.humanRemovedDecision) penalty -= 5;
+
+  // AI flag (sistem kararı — düşük ama geçerli ceza)
   if (inputs.aiFlagged) penalty -= 2;
+
   if (!inputs.post.allow_comments) penalty -= 1;
 
   return penalty;
 }
 
 /**
- * 8. Manipülasyon Tespiti (max -25)
- *    Okumadan etkileşim, aynı IP, niteliksiz okuma
+ * 8. Manipülasyon Tespiti (max -33)
+ *    Okumadan etkileşim, aynı IP, niteliksiz okuma, karşılıklı etkileşim tarlaması
  */
 function calcManipulationPenalty(inputs: PostScoreInputs): number {
   const { post } = inputs;
@@ -365,6 +542,13 @@ function calcManipulationPenalty(inputs: PostScoreInputs): number {
     penalty -= 5;
   }
 
+  // Karşılıklı etkileşim tarlaması (YENİ)
+  if (post.like_count >= 5) {
+    if (inputs.reciprocalEngagementRatio > 0.60) penalty -= 8;
+    else if (inputs.reciprocalEngagementRatio > 0.40) penalty -= 5;
+    else if (inputs.reciprocalEngagementRatio > 0.25) penalty -= 3;
+  }
+
   return penalty;
 }
 
@@ -385,13 +569,16 @@ export function calculatePostQualityScore(inputs: PostScoreInputs): number {
 
 /**
  * 1. Hızlı Etkileşim (max 30)
- *    Okumadan beğenme/kaydetme oranı
+ *    Okumadan beğenme/kaydetme oranı + karşılıklı etkileşim tarlaması
  */
 function calcQuickEngagement(inputs: PostScoreInputs): number {
   const { post } = inputs;
   let score = 0;
 
-  // Okumadan beğenme (read < 10s veya hiç view kaydı yok)
+  // quickLikerRatio/quickSaverRatio already computed in cron with content-type thresholds:
+  // post: 10s, note: 3s, video: 5s, moment: 3s
+
+  // Okumadan beğenme
   if (post.like_count >= 5) {
     if (inputs.quickLikerRatio > 0.60) score += 20;
     else if (inputs.quickLikerRatio > 0.40) score += 12;
@@ -402,6 +589,12 @@ function calcQuickEngagement(inputs: PostScoreInputs): number {
   if (post.save_count >= 3) {
     if (inputs.quickSaverRatio > 0.50) score += 10;
     else if (inputs.quickSaverRatio > 0.30) score += 5;
+  }
+
+  // Karşılıklı etkileşim tarlaması (YENİ)
+  if (post.like_count >= 5) {
+    if (inputs.reciprocalEngagementRatio > 0.50) score += 15;
+    else if (inputs.reciprocalEngagementRatio > 0.30) score += 8;
   }
 
   return Math.min(score, 30);
@@ -460,16 +653,17 @@ function calcEngagementAnomalies(inputs: PostScoreInputs): number {
 
 /**
  * 4. Moderasyon Geçmişi (max 15)
- *    Şikayetler, moderasyon, AI flag, yazar spam katkısı
+ *    Şikayetler (ham — agresif tespit), moderasyon, AI flag, yazar spam katkısı
  */
 function calcPostModerationHistory(inputs: PostScoreInputs): number {
   let score = 0;
 
+  // Ham rapor sayısı (spam tespiti agresif olmalı)
   if (inputs.reportCount >= 5) score += 10;
   else if (inputs.reportCount >= 3) score += 6;
   else if (inputs.reportCount >= 1) score += 3;
 
-  if (inputs.wasInModeration) score += 3;
+  if (inputs.humanRemovedDecision) score += 3;
   if (inputs.aiFlagged) score += 2;
 
   // Yazar spam katkısı

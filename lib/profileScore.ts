@@ -40,7 +40,10 @@ export interface ScoreInputs {
   // Community signals
   blocksReceived: number;
   reportsReceived: number;
+  reportsReceivedResolved: number;    // Sadece resolved raporlar (quality cezası)
   moderationActionCount: number;
+  humanConfirmedModerationCount: number;  // moderator_id != 'system'
+  aiOnlyModerationCount: number;          // moderator_id = 'system'
   // Behavioral
   burstPostCount: number;
   avgWordCount: number;
@@ -97,6 +100,9 @@ export interface ScoreInputs {
   weirdCharPostRatio: number;       // Ratio of posts with excessive unicode/special chars
   // ─── v6: Copyright Strike Penalty ───
   copyrightStrikeCount: number;     // Total copyright strikes from copyright system
+  // ─── v7: Video Watch Quality ───
+  avgWatchDurationOnVideos: number;  // video postlarının ort. izlenme süresi
+  totalVideoViews: number;           // toplam video görüntüleme sayısı
 }
 
 export interface PostStat {
@@ -268,6 +274,13 @@ function calcContentQuality(inputs: ScoreInputs): number {
       a + p.like_count + p.comment_count + p.save_count, 0) / videoPosts.length;
     if (avgEngagement >= 20) score += 2;
     else if (avgEngagement >= 5) score += 1;
+
+    // Video izlenme kalitesi (v7)
+    if (inputs.avgWatchDurationOnVideos >= 60) score += 2;
+    else if (inputs.avgWatchDurationOnVideos >= 30) score += 1;
+    if (inputs.avgWatchDurationOnVideos > 0 && inputs.avgWatchDurationOnVideos < 5 && inputs.totalVideoViews >= 50) {
+      score -= 2;
+    }
   }
 
   // Ortalama okuma süresi — sadece yazılı içerik için uygula
@@ -380,15 +393,20 @@ function calcPenalties(inputs: ScoreInputs): number {
   else if (inputs.blocksReceived >= 3) penalty -= 5;
   else if (inputs.blocksReceived >= 1) penalty -= 2;
 
-  // Reports received
-  if (inputs.reportsReceived > 5) penalty -= 15;
-  else if (inputs.reportsReceived >= 3) penalty -= 8;
-  else if (inputs.reportsReceived >= 1) penalty -= 3;
+  // Reports received — sadece kesinleşmiş (resolved) raporlar quality cezası verir
+  if (inputs.reportsReceivedResolved > 5) penalty -= 15;
+  else if (inputs.reportsReceivedResolved >= 3) penalty -= 8;
+  else if (inputs.reportsReceivedResolved >= 1) penalty -= 3;
 
-  // Moderation history
-  if (inputs.moderationActionCount >= 4) penalty -= 20;
-  else if (inputs.moderationActionCount >= 2) penalty -= 10;
-  else if (inputs.moderationActionCount >= 1) penalty -= 5;
+  // Moderation history — insan onaylı moderasyonlar (tam ağırlık)
+  if (inputs.humanConfirmedModerationCount >= 4) penalty -= 20;
+  else if (inputs.humanConfirmedModerationCount >= 2) penalty -= 10;
+  else if (inputs.humanConfirmedModerationCount >= 1) penalty -= 5;
+
+  // AI-only moderasyonlar — daha hafif ceza (max -5)
+  if (inputs.aiOnlyModerationCount >= 3) penalty -= 5;
+  else if (inputs.aiOnlyModerationCount >= 2) penalty -= 3;
+  else if (inputs.aiOnlyModerationCount >= 1) penalty -= 2;
 
   // Account status
   switch (p.status) {
@@ -396,6 +414,12 @@ function calcPenalties(inputs: ScoreInputs): number {
     case 'moderation': penalty -= 15; break;
     case 'frozen': penalty -= 10; break;
   }
+
+  // Kaldırılan yorum doğrudan cezası (kılcal, her kaldırılan yorum için)
+  if (inputs.removedCommentCount >= 5) penalty -= 4;
+  else if (inputs.removedCommentCount >= 3) penalty -= 3;
+  else if (inputs.removedCommentCount >= 2) penalty -= 2;
+  else if (inputs.removedCommentCount >= 1) penalty -= 1;
 
   // Küfür/hakaret yorum oranı (removed+spam / total)
   if (inputs.totalUserCommentCount > 5) {

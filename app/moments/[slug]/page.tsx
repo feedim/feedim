@@ -23,6 +23,7 @@ import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 import ModerationBadge from "@/components/ModerationBadge";
 import { getTranslations } from "next-intl/server";
+import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -55,10 +56,10 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: authorVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
+      id, title, slug, video_url, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
-    .in("content_type", ["video", "moment"])
+    .eq("content_type", "video")
     .eq("status", "published")
     .eq("is_nsfw", false)
     .eq("author_id", authorId)
@@ -69,10 +70,10 @@ async function getNextVideos(currentPostId: number, authorId: string): Promise<V
   const { data: otherVideos } = await admin
     .from("posts")
     .select(`
-      id, title, slug, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
+      id, title, slug, video_url, video_thumbnail, featured_image, video_duration, view_count, published_at, author_id, content_type,
       profiles!posts_author_id_fkey(user_id, username, avatar_url, is_verified, premium_plan, role, status)
     `)
-    .in("content_type", ["video", "moment"])
+    .eq("content_type", "video")
     .eq("status", "published")
     .eq("is_nsfw", false)
     .neq("author_id", authorId)
@@ -123,7 +124,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
   const title = post.meta_title || post.title;
   const description = post.meta_description || post.excerpt || "";
-  const url = `${baseUrl}/moments/${encodeURIComponent(post.slug)}`;
+  const url = `${baseUrl}/moments?s=${encodeURIComponent(post.slug)}`;
   const authorName = post.profiles?.full_name || post.profiles?.username || "Feedim";
 
   const keywords = post.meta_keywords
@@ -308,9 +309,9 @@ export default async function MomentPage({ params }: PageProps) {
         </Link>
       )}
       <PostHeaderActions
-        postId={post.id} postUrl={`/moments/${post.slug}`} postTitle={post.title}
+        postId={post.id} postUrl={`/moments?s=${post.slug}`} postTitle={post.title}
         authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
-        isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
+        authorRole={author?.role} isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
         isVideo contentType={post.content_type}
       />
 
@@ -332,19 +333,22 @@ export default async function MomentPage({ params }: PageProps) {
           </div>
         )}
 
-        <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-2">{post.title}</h1>
+        <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-2" dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(post.title) }} />
 
         <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
           <span>{t("viewCount", { count: formatCount(post.view_count || 0) })}</span>
           {post.published_at && (
-            <span>{formatRelativeDate(post.published_at)}</span>
+            <>
+              <span className="text-text-muted/40">·</span>
+              <span>{formatRelativeDate(post.published_at)}</span>
+            </>
           )}
         </div>
 
         <div className="flex items-center gap-3">
           <Link href={`/u/${author?.username}`} className="shrink-0">
             {author?.avatar_url ? (
-              <img src={author.avatar_url} alt={authorName} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+              <img src={author.avatar_url} alt={authorName} loading="lazy" decoding="async" className="h-10 w-10 rounded-full object-cover bg-bg-tertiary" />
             ) : (
               <img className="default-avatar-auto h-10 w-10 rounded-full object-cover" alt="" loading="lazy" />
             )}
@@ -376,6 +380,17 @@ export default async function MomentPage({ params }: PageProps) {
           </div>
         )}
 
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2 mb-2">
+            {tags.map((tag: { id: number; name: string; slug: string }) => (
+              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <PostInteractionBar
           postId={post.id}
           initialLiked={interactions.liked}
@@ -387,25 +402,14 @@ export default async function MomentPage({ params }: PageProps) {
           viewCount={post.view_count || 0}
           hideStats
           isOwnPost={isOwnPost}
-          postUrl={`/moments/${post.slug}`}
+          postUrl={`/moments?s=${post.slug}`}
           postTitle={post.title}
           postSlug={post.slug}
           authorUsername={author?.username}
           likedByBottom
           isVideo
           contentType={post.content_type}
-        >
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 mb-2">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-2 rounded-full transition hover:bg-bg-tertiary">
-                  #{tag.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </PostInteractionBar>
+        />
 
         {nextVideos.length > 0 && (
           <div className="xl:hidden mb-6 pt-3.5">

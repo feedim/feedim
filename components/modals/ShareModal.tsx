@@ -88,7 +88,10 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
         break;
       case "native":
         if (navigator.share) {
-          navigator.share({ title, url: fullUrl });
+          try {
+            const shareUrl = fullUrl.startsWith("http") ? fullUrl : `${window.location.origin}${fullUrl}`;
+            navigator.share({ title, url: shareUrl }).catch(() => {});
+          } catch {}
         }
         break;
     }

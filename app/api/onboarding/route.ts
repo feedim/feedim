@@ -40,6 +40,56 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id);
     if (completeErr) return safeError(completeErr);
 
+    // Background: full AI check after onboarding completion
+    after(async () => {
+      try {
+        const adminBg = createAdminClient();
+        const { data: p } = await adminBg
+          .from('profiles')
+          .select('user_id, name, surname, full_name, username, bio, role')
+          .eq('user_id', user.id)
+          .single();
+        if (!p || p.role === 'admin') return;
+
+        let shouldModerate = false;
+        let moderationReason = '';
+
+        // 1. AI text check on profile fields
+        const text = [p.full_name, p.name, p.surname, p.username, p.bio].filter(Boolean).join(' ').slice(0, 500);
+        if (text.length >= 2) {
+          const textResult = await checkTextContent('', text);
+          if (textResult.safe === false) {
+            shouldModerate = true;
+            moderationReason = textResult.reason || 'Profil bilgileri otomatik kontrol tarafından işaretlendi';
+          }
+        }
+
+        // 2. Check if avatar was NSFW-flagged during onboarding
+        if (!shouldModerate) {
+          const { data: nsfwEvents } = await adminBg
+            .from('security_events')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('event_type', 'avatar_nsfw_flagged')
+            .limit(1);
+          if (nsfwEvents && nsfwEvents.length > 0) {
+            shouldModerate = true;
+            moderationReason = 'Profil fotoğrafında uygunsuz içerik tespit edildi';
+          }
+        }
+
+        if (shouldModerate) {
+          await adminBg.from('profiles').update({ status: 'moderation', moderation_reason: moderationReason }).eq('user_id', p.user_id);
+          try {
+            const aiCode = String(Math.floor(100000 + Math.random() * 900000));
+            await adminBg.from('moderation_decisions').insert({
+              target_type: 'user', target_id: p.user_id, decision: 'moderation', reason: moderationReason, moderator_id: 'system', decision_code: aiCode,
+            });
+          } catch {}
+        }
+      } catch {}
+    });
+
     // Set onboarding cookie so middleware skips DB check
     const res = NextResponse.json({ completed: true });
     res.cookies.set('fdm-onboarding', '1', {
@@ -124,7 +174,7 @@ export async function POST(req: NextRequest) {
     }
     case 5: {
       const gender = payload.gender;
-      if (!gender || !["male", "female", "other"].includes(gender)) {
+      if (!gender || !["male", "female"].includes(gender)) {
         return NextResponse.json({ error: t("genderRequired") }, { status: 400 });
       }
       updates.gender = gender;
@@ -146,39 +196,10 @@ export async function POST(req: NextRequest) {
       break;
   }
 
-  // Check if user is admin (immune to moderation)
-  const { data: onbProfile } = await (createAdminClient()).from('profiles').select('role').eq('user_id', user.id).single();
-  const isAdminUser = onbProfile?.role === 'admin';
-
   if (Object.keys(updates).length > 0) {
     const { error } = await supabase.from("profiles").update(updates).eq("user_id", user.id);
     if (error) return safeError(error);
   }
-
-  // Background AI check on public profile fields during onboarding only (first signup) — admin immune
-  if (!isAdminUser) after(async () => {
-    try {
-      const admin = createAdminClient();
-      const { data: p } = await admin
-        .from('profiles')
-        .select('user_id, name, surname, full_name, username, bio, onboarding_completed, status, role')
-        .eq('user_id', user.id)
-        .single();
-      if (!p || p.onboarding_completed || p.role === 'admin') return;
-      const text = [p.full_name, p.name, p.surname, p.username, p.bio].filter(Boolean).join(' ').slice(0, 500);
-      if (text.length < 2) return;
-      const res = await checkTextContent('', text);
-      if (res.safe === false) {
-        await admin.from('profiles').update({ status: 'moderation' }).eq('user_id', p.user_id);
-        try {
-          const aiCode = String(Math.floor(100000 + Math.random() * 900000));
-          await admin.from('moderation_decisions').insert({
-            target_type: 'user', target_id: p.user_id, decision: 'moderation', reason: res.reason || 'Onboarding profil bilgileri AI tarafından işaretlendi', moderator_id: 'system', decision_code: aiCode,
-          });
-        } catch {}
-      }
-    } catch {}
-  });
 
   // Advance progression
   const nextStep = Math.min(10, step + 1);
