@@ -335,22 +335,6 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                 {post.title}
               </h3>
 
-              {/* Tags */}
-              {post.post_tags && post.post_tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1 relative z-[1]">
-                  {post.post_tags.map((pt) => (
-                    <Link
-                      key={pt.tag_id}
-                      href={`/explore/tag/${pt.tags.slug}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[0.72rem] text-accent-main hover:underline pointer-events-auto"
-                    >
-                      #{pt.tags.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-
               {/* Excerpt */}
               {post.excerpt && (
                 <p className="text-[0.77rem] text-text-muted leading-snug line-clamp-2 mt-[3px]">
