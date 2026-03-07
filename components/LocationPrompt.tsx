@@ -6,6 +6,7 @@ const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
 
 export default function LocationPrompt() {
   useEffect(() => {
+    const ac = new AbortController();
     try {
       // Quick cache check — avoid API call on every page load
       const lastSaved = localStorage.getItem("fdm-location-saved");
@@ -15,13 +16,13 @@ export default function LocationPrompt() {
       }
 
       // Check current location status in DB (only works for logged-in users)
-      fetch("/api/location")
+      fetch("/api/location", { signal: ac.signal })
         .then((r) => {
           if (!r.ok) return null;
           return r.json();
         })
         .then((data) => {
-          if (!data) return;
+          if (!data || ac.signal.aborted) return;
 
           if (data.location) {
             // Check freshness via created_at
@@ -42,6 +43,7 @@ export default function LocationPrompt() {
         })
         .catch(() => {});
     } catch {}
+    return () => ac.abort();
   }, []);
 
   return null;
