@@ -203,6 +203,9 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   useEffect(() => {
     if (!isActive) return;
     const handler = (e: KeyboardEvent) => {
+      // Skip when a modal is open — let modal handle its own keyboard events
+      if (document.querySelector("[data-modal]")) return;
+
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
         return;

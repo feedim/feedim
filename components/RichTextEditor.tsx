@@ -54,6 +54,85 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/**
+ * Safari-safe text/HTML insertion helpers.
+ *
+ * `document.execCommand("insertText")` and `insertHTML` push entries onto
+ * Safari's native undo manager. When the app later programmatically changes
+ * the content, Safari shows an "Undo Typing" (Geri Al: Yazma) confirmation
+ * alert that cannot be suppressed.
+ *
+ * These helpers bypass the browser undo stack by manipulating the Selection /
+ * Range API directly.  They work in all modern browsers (Chrome, Firefox,
+ * Safari 15.4+).
+ */
+function safariInsertText(text: string) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  sel.deleteFromDocument();
+  const range = sel.getRangeAt(0);
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  // Collapse cursor after the inserted text
+  range.setStartAfter(textNode);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function safariInsertHTML(html: string) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  sel.deleteFromDocument();
+  const range = sel.getRangeAt(0);
+  const temp = document.createElement("div");
+  temp.innerHTML = html;
+  const fragment = document.createDocumentFragment();
+  let lastInserted: Node | null = null;
+  while (temp.firstChild) {
+    lastInserted = temp.firstChild;
+    fragment.appendChild(lastInserted);
+  }
+  range.insertNode(fragment);
+  // Collapse cursor after the inserted content
+  if (lastInserted) {
+    range.setStartAfter(lastInserted);
+    range.collapse(true);
+  }
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function safariInsertLineBreak() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  sel.deleteFromDocument();
+  const range = sel.getRangeAt(0);
+  const br = document.createElement("br");
+  range.insertNode(br);
+  // Place cursor after the <br>
+  range.setStartAfter(br);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function safariInsertParagraph() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  sel.deleteFromDocument();
+  const range = sel.getRangeAt(0);
+  const p = document.createElement("p");
+  p.innerHTML = "<br>";
+  range.insertNode(p);
+  // Place cursor inside the new paragraph
+  const innerRange = document.createRange();
+  innerRange.setStart(p, 0);
+  innerRange.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(innerRange);
+}
+
 const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onMentionSearch, onCropImage, onSave, onPublish, placeholder }, ref) {
   const t = useTranslations("editor");
   const tc = useTranslations("common");
@@ -113,7 +192,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       if (lastRangeRef.current && editorRef.current.contains(lastRangeRef.current.startContainer)) {
         sel?.removeAllRanges();
         sel?.addRange(lastRangeRef.current);
-        document.execCommand("insertText", false, emoji);
+        safariInsertText(emoji);
       } else {
         // Fallback: insert at end
         let lastEl = editorRef.current.lastElementChild;
@@ -491,7 +570,21 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
   }, [onChange]);
 
   const exec = useCallback((command: string, val?: string) => {
-    document.execCommand(command, false, val);
+    // Route text/HTML insertion commands through Safari-safe helpers
+    // to avoid triggering Safari's "Undo Typing" popup
+    if (command === "insertText") {
+      safariInsertText(val || "");
+    } else if (command === "insertHTML") {
+      safariInsertHTML(val || "");
+    } else if (command === "insertLineBreak") {
+      safariInsertLineBreak();
+    } else if (command === "insertParagraph") {
+      safariInsertParagraph();
+    } else {
+      // Formatting commands (bold, italic, formatBlock, etc.) are fine
+      // to keep on execCommand — users expect to undo these
+      document.execCommand(command, false, val);
+    }
     editorRef.current?.focus();
     if (editorRef.current) {
       // Post-exec: kısıtlı bloklardan inline formatlama temizle
@@ -654,7 +747,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
 
     sel.removeAllRanges();
     sel.addRange(mentionRangeRef.current);
-    document.execCommand("insertText", false, `@${username} `);
+    safariInsertText(`@${username} `);
 
     clearMentionState();
     isInternalUpdate.current = true;
@@ -800,7 +893,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     if (!editorRef.current) return;
     addToHistory();
     const tableHtml = `<table><thead><tr><th>${t("tableHeader")}</th><th>${t("tableHeader")}</th></tr></thead><tbody><tr><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td></tr></tbody></table><p><br></p>`;
-    document.execCommand("insertHTML", false, tableHtml);
+    safariInsertHTML(tableHtml);
     isInternalUpdate.current = true;
     onChange(editorRef.current.innerHTML);
     scheduleHistory();
@@ -1197,7 +1290,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         plainText = plainText.slice(0, remaining);
         if (!plainText) return;
       }
-      document.execCommand("insertText", false, plainText);
+      safariInsertText(plainText);
       return;
     }
 
@@ -1209,7 +1302,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         const clean = sanitizePastedHTML(html, t("captionPlaceholder"));
         if (clean) {
           addToHistory();
-          document.execCommand("insertHTML", false, clean);
+          safariInsertHTML(clean);
           ensureEditorIntegrity();
           isInternalUpdate.current = true;
           onChange(editorRef.current!.innerHTML);
@@ -1312,14 +1405,14 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
         }
       } catch {
         // Fallback: düz metin olarak yapıştır
-        document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+        safariInsertText(e.clipboardData.getData("text/plain"));
         return;
       }
     }
 
     // 3. Fallback: düz metin
     const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
+    safariInsertText(text);
   }, [onImageUpload, insertImage, addToHistory, onChange, scheduleHistory, ensureEditorIntegrity]);
 
   // Seçim yokken cursor'daki kelimeyi seç (zengin editör standardı)
@@ -1414,7 +1507,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
           sel?.addRange(range);
         }
       } else {
-        document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
+        safariInsertHTML("&nbsp;&nbsp;&nbsp;&nbsp;");
       }
       return;
     }
@@ -1607,7 +1700,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     // Table cell Enter → insert line break instead of new paragraph
     if (e.key === "Enter" && !isMod && isInTableCell) {
       e.preventDefault();
-      document.execCommand("insertLineBreak");
+      safariInsertLineBreak();
       return;
     }
 
@@ -1650,7 +1743,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       if (block === "h2" || block === "h3") {
         e.preventDefault();
         exec("formatBlock", "p");
-        document.execCommand("insertParagraph", false);
+        safariInsertParagraph();
         exec("formatBlock", "p");
         return;
       }
