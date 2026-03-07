@@ -226,7 +226,7 @@ export function FeedAdSlot({ index }: FeedAdProps) {
   if (!isLoggedIn) return null;
   if (!feedDebug && (user?.role === "admin" || (user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan)))) return null;
 
-  const interval = 10;
+  const interval = 5;
   if ((index + 1) % interval !== 0) return null;
 
   return <AdBanner slot="feed" className="my-3 px-3" />;
