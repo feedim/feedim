@@ -1,0 +1,125 @@
+import NewTabLink from "@/components/NewTabLink";
+
+export default function ContentTr() {
+  return (
+    <>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">AI</h1>
+      <div className="space-y-6 text-sm text-text-secondary leading-relaxed">
+        <p>
+          Feedim AI, platformdaki içeriklerin güvenliğini ve kalitesini artırmak için tasarlanmış yapay zeka destekli bir sistemdir.
+          AI, içerik moderasyonundan SEO üretimine, telif hakkı taramasından profil puanı hesaplamaya kadar birçok alanda kullanılır.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Yapay Zeka ile Oluşturulan İçerikler</h2>
+        <p>
+          Feedim, yapay zeka ile oluşturulan içeriklerin (metin, görsel, video) şeffaf bir şekilde bildirilmesini talep eder.
+          İçerik oluştururken <strong>&ldquo;Yapay zeka içeriği&rdquo;</strong> seçeneğini açarak içeriğinizin AI tarafından üretildiğini beyan edebilirsiniz.
+        </p>
+
+        <h3 className="text-sm font-bold text-text-primary mt-4">Neden ayırıyoruz?</h3>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Şeffaflık</strong> — Kullanıcıların bir içeriğin insan mı yoksa AI tarafından mı oluşturulduğunu bilme hakkı vardır</li>
+          <li><strong>Güven</strong> — Orijinal insan emeği ile üretilen içerikler ile AI içeriklerinin ayırt edilmesi platform güvenini artırır</li>
+          <li><strong>Adil keşif</strong> — İçerik önerme algoritmaları, AI içeriklerini orijinal içeriklerden ayrı değerlendirerek adil bir keşif deneyimi sunar</li>
+          <li><strong>Yasal uyum</strong> — Birçok ülkede yapay zeka ile üretilen içeriklerin etiketlenmesi yasal zorunluluk haline gelmektedir</li>
+        </ul>
+
+        <h3 className="text-sm font-bold text-text-primary mt-4">Bildirilmezse ne olur?</h3>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>Feedim AI, metin ve görsellerde yapay zeka üretim kalıplarını otomatik olarak tespit edebilir</li>
+          <li>AI tarafından üretildiği tespit edilen ancak bildirilmemiş içerikler, <strong>profil güven puanını düşürür</strong></li>
+          <li>Tekrarlayan durumlarda içerik moderasyona alınabilir ve hesap kısıtlamaları uygulanabilir</li>
+          <li>AI ile oluşturulmuş içeriklerde telif hakkı koruması talep edilemez</li>
+        </ul>
+
+        <p className="text-xs text-text-muted italic">
+          Not: AI araçlarını yardımcı olarak kullanan (örn. yazım düzeltme, dil kontrolü) ancak içeriğin özünü kendi oluşturan kullanıcıların
+          bu seçeneği açması gerekmez. Seçenek, içeriğin büyük ölçüde veya tamamen AI tarafından üretildiği durumlar içindir.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Metin Analizi</h2>
+        <p>
+          Her gönderi, moment veya yorum yayınlanırken metin içeriği AI tarafından otomatik olarak taranır.
+          Sistem, içeriği çeşitli kategorilerde analiz eder ve topluluk kurallarına aykırı içerikleri tespit eder.
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Nefret söylemi</strong> &mdash; Irk, din, cinsiyet veya etnik kökene yönelik nefret içeren ifadeler</li>
+          <li><strong>Küfür ve hakaret</strong> &mdash; Argo, küfür ve kişisel saldırı içeren dil</li>
+          <li><strong>Cinsel içerik</strong> &mdash; Yetişkinlere yönelik veya müstehcen ifadeler</li>
+          <li><strong>Spam</strong> &mdash; Tekrarlayan, anlamsız veya tanıtım amaçlı içerikler</li>
+          <li><strong>Yanıltıcı bilgi</strong> &mdash; Kasıtlı olarak yanlış veya dezenformasyon niteliğinde içerikler</li>
+        </ul>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Görsel Analizi</h2>
+        <p>
+          Gönderilere eklenen görseller yayınlanmadan önce AI tarafından otomatik olarak taranır.
+          Görsel analizi aşağıdaki kategorilerde uygunsuz içerikleri tespit eder:
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Cinsel içerik</strong> &mdash; Müstehcen veya yetişkinlere yönelik görseller</li>
+          <li><strong>Şiddet</strong> &mdash; Kan, yaralanma veya fiziksel şiddet içeren görseller</li>
+          <li><strong>Uygunsuz görsel</strong> &mdash; Topluluk kurallarına aykırı diğer görsel içerikler</li>
+        </ul>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI SEO Üretimi</h2>
+        <p>
+          Feedim AI, yayınlanan her gönderi için otomatik olarak SEO meta verileri oluşturur. Bu sayede içerikleriniz
+          arama motorlarında daha iyi sıralanır ve daha fazla kişiye ulaşır.
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Başlık</strong> — İçeriğinize uygun SEO başlığı AI tarafından otomatik oluşturulur</li>
+          <li><strong>Açıklama</strong> — Meta description AI tarafından içerikten özetlenerek üretilir</li>
+          <li><strong>Anahtar Kelimeler</strong> — İçeriğe uygun anahtar kelimeler AI tarafından belirlenir</li>
+        </ul>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Telif Hakkı Taraması</h2>
+        <p>
+          Feedim AI, telif hakkı koruması açık olan içeriklerde metin, görsel ve video benzerlik taraması gerçekleştirir.
+          Kopya içerik tespit edildiğinde içerik moderasyona alınabilir. Detaylar için{" "}
+          <NewTabLink href="/help/copyright" className="text-accent-main hover:opacity-80 font-semibold">Telif Hakkı Koruması</NewTabLink> sayfasını inceleyebilirsiniz.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Profil Puanı Hesaplama</h2>
+        <p>
+          Her kullanıcının güvenilirlik puanı AI tarafından otomatik olarak hesaplanır. Profil puanı; içerik kalitesi,
+          topluluk etkileşimi, hesap yaşı ve moderasyon geçmişi gibi birçok faktöre göre belirlenir.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI Onboarding Kontrolü</h2>
+        <p>
+          Yeni kullanıcılar kayıt olurken seçtikleri kullanıcı adı ve yazdıkları biyografi AI tarafından kontrol edilir.
+          Uygunsuz, küfür içeren veya yanıltıcı kullanıcı adları ve biyografiler tespit edildiğinde hesap moderasyona alınır.
+          Bu sayede platform en başından itibaren güvenli bir ortam sunar.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Fail-Open Tasarım</h2>
+        <p>
+          Feedim AI, <strong>fail-open</strong> prensibi ile çalışır. Bu, AI sisteminde herhangi bir
+          teknik hata veya gecikme yaşandığında içeriklerin engellenmeyeceği anlamına gelir. Kullanıcı deneyimi her zaman
+          önceliklidir; AI&apos;da oluşabilecek bir sorun, içerik yayınlama sürecini aksatmaz.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">AI ve İnsan Moderasyonu</h2>
+        <p>
+          Feedim AI, insan moderasyonunun yerine geçmez; onu destekler ve güçlendirir. AI tarafından tespit edilen içerikler
+          moderasyon ekibine iletilir ve nihai kararlar insan moderatörler tarafından verilir. AI, moderatörlerin iş yükünü
+          azaltarak daha hızlı ve tutarlı bir moderasyon süreci sağlar.
+        </p>
+
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Gizlilik ve Veri Güvenliği</h2>
+        <p>
+          Feedim AI tarafından analiz edilen içerikler ve veriler yalnızca platform içi moderasyon ve güvenlik amacıyla
+          kullanılır. AI süreçlerinde elde edilen veriler üçüncü taraflarla paylaşılmaz, satılmaz veya reklam amacıyla
+          kullanılmaz. Tüm AI analizleri Feedim altyapısı dahilinde gerçekleştirilir.
+        </p>
+
+        <p className="text-xs text-text-muted mt-8">
+            Feedim AI hakkında sorularınız için{" "}
+            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">İletişim</NewTabLink> sayfamızdan
+            veya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a> adresinden
+            bize ulaşabilirsiniz.
+        </p>
+      </div>
+    </>
+  );
+}

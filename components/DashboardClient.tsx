@@ -1,0 +1,350 @@
+"use client";
+
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
+import { useRouter } from "next/navigation";
+import { emitNavigationStart } from "@/lib/navigationProgress";
+import { useTranslations } from "next-intl";
+import { PenLine, Smile } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import AppLayout from "@/components/AppLayout";
+import PostCard from "@/components/PostCard";
+import PostCardSkeleton from "@/components/PostCardSkeleton";
+import FeedTabs from "@/components/FeedTabs";
+import SuggestionCarousel from "@/components/SuggestionCarousel";
+import MomentsCarousel from "@/components/MomentsCarousel";
+import { isBlockedContent } from "@/lib/blockedWords";
+import { FEED_MAX_SEEN_IDS } from "@/lib/constants";
+import { redirectToLogin } from "@/lib/loginNext";
+
+import EmptyState from "@/components/EmptyState";
+import LoadMoreTrigger from "@/components/LoadMoreTrigger";
+import { useUser } from "@/components/UserContext";
+import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
+import { FeedAdSlot } from "@/components/AdBanner";
+const PremiumWelcomeModal = lazy(() => import("@/components/modals/PremiumWelcomeModal"));
+
+interface FeedPost {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  featured_image?: string;
+  reading_time?: number;
+  like_count?: number;
+  comment_count?: number;
+  view_count?: number;
+  save_count?: number;
+  published_at?: string;
+  content_type?: string;
+  video_duration?: number;
+  video_thumbnail?: string;
+  video_url?: string;
+  blurhash?: string | null;
+  is_nsfw?: boolean;
+  moderation_category?: string | null;
+  is_boosted?: boolean;
+  is_sponsored?: boolean;
+  profiles?: {
+    user_id: string;
+    name?: string;
+    surname?: string;
+    full_name?: string;
+    username: string;
+    avatar_url?: string;
+    is_verified?: boolean;
+    premium_plan?: string | null;
+    role?: string;
+  };
+}
+
+interface DashboardClientProps {
+  initialMoments?: any[];
+}
+
+export default function DashboardClient({ initialMoments }: DashboardClientProps) {
+  const t = useTranslations("dashboard");
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [activeTab, setActiveTab] = useState("for-you");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [followedTags, setFollowedTags] = useState<{ id: number; name: string; slug: string }[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [welcomeModal, setWelcomeModal] = useState<{ planName: string; planId: string } | null>(null);
+  const router = useRouter();
+  const supabase = createClient();
+  const { user: ctxUser, isLoggedIn } = useUser();
+  const [isDiscoveryFeed, setIsDiscoveryFeed] = useState(false);
+  const [deletedPostIds, setDeletedPostIds] = useState<Set<number>>(new Set());
+  const [interactions, setInteractions] = useState<Record<number, { liked: boolean; saved: boolean }>>({});
+  const fetchedInteractionIds = useRef(new Set<number>());
+  const seenPostIds = useRef(new Set<number>());
+
+  // Check sessionStorage for optimistically deleted posts
+  useEffect(() => {
+    try {
+      const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
+      if (deleted.length > 0) setDeletedPostIds(new Set(deleted));
+    } catch {}
+    const onDeleted = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      if (typeof id === "number") setDeletedPostIds(prev => new Set(prev).add(id));
+    };
+    window.addEventListener("fdm-post-deleted", onDeleted);
+    window.addEventListener("storage", () => {
+      try {
+        const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
+        setDeletedPostIds(new Set(deleted));
+      } catch {}
+    });
+    return () => window.removeEventListener("fdm-post-deleted", onDeleted);
+  }, []);
+
+  const visiblePosts = (() => {
+    const seen = new Set<number>();
+    return posts.filter(p => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return !deletedPostIds.has(p.id) && !isBlockedContent(`${p.title || ""} ${p.excerpt || ""}`, p.profiles?.user_id, ctxUser?.id);
+    });
+  })();
+
+  // Batch-fetch liked/saved status for new posts
+  useEffect(() => {
+    if (!isLoggedIn || posts.length === 0) return;
+    const newIds = posts.map(p => p.id).filter(id => !fetchedInteractionIds.current.has(id));
+    if (newIds.length === 0) return;
+    const toFetch = newIds.slice(0, 50);
+    toFetch.forEach(id => fetchedInteractionIds.current.add(id));
+    let cancelled = false;
+    fetch(`/api/posts/batch-interactions?ids=${toFetch.join(",")}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data.interactions) {
+          setInteractions(prev => ({ ...prev, ...data.interactions }));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [posts, isLoggedIn]);
+
+  // Premium hoşgeldin modalı
+  useEffect(() => {
+    const raw = sessionStorage.getItem("fdm_welcome_premium");
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        setWelcomeModal({ planName: data.plan_name, planId: data.plan_id });
+      } catch {}
+      sessionStorage.removeItem("fdm_welcome_premium");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && ctxUser?.id) {
+      // Load followed tags for feed tabs (use ctxUser.id — no extra getUser round-trip)
+      supabase
+        .from("tag_follows")
+        .select("tag_id, tags(id, name, slug)")
+        .eq("user_id", ctxUser.id)
+        .limit(10)
+        .then(({ data: tagFollows }) => {
+          if (tagFollows) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const tags = tagFollows.map((tf: any) => tf.tags).filter(Boolean);
+            setFollowedTags(tags);
+          }
+          setTagsLoading(false);
+        });
+    }
+    loadFeed("for-you", 1);
+  }, []);
+
+  const filterBlockedWords = useCallback((items: FeedPost[]) => {
+    try {
+      const raw = localStorage.getItem("fdm-blocked-words");
+      if (!raw) return items;
+      const words: string[] = JSON.parse(raw);
+      if (!words.length) return items;
+      return items.filter(post => {
+        if (ctxUser?.id && post.profiles?.user_id === ctxUser.id) return true;
+        const text = ((post.title || "") + " " + (post.excerpt || "")).toLowerCase();
+        return !words.some(w => text.includes(w));
+      });
+    } catch { return items; }
+  }, [ctxUser?.id]);
+
+  const cacheScope = ctxUser?.id ? `user:${ctxUser.id}` : "guest";
+
+  const getFeedEndpoint = useCallback((tab: string, pageNum: number, includeSeenIds = true) => {
+    let endpoint = "/api/posts/feed?tab=for-you&page=" + pageNum;
+
+    if (tab === "followed") {
+      endpoint = "/api/posts/feed?tab=following&page=" + pageNum;
+    } else if (tab.startsWith("tag-")) {
+      const tagSlug = tab.replace("tag-", "");
+      endpoint = `/api/posts/explore?page=${pageNum}&tag=${encodeURIComponent(tagSlug)}`;
+    }
+
+    if ((tab === "for-you" || tab === "followed") && includeSeenIds && seenPostIds.current.size > 0) {
+      const ids = Array.from(seenPostIds.current).slice(-FEED_MAX_SEEN_IDS).join(",");
+      endpoint += `&seen_ids=${ids}`;
+    }
+
+    return withCacheScope(endpoint, cacheScope);
+  }, [cacheScope]);
+
+  const applyFeedPayload = useCallback((data: any, pageNum: number) => {
+    if (pageNum === 1) {
+      setIsDiscoveryFeed(!!data.is_discovery);
+    }
+
+    const filtered = filterBlockedWords(data.posts || []);
+    for (const post of filtered) {
+      seenPostIds.current.add(post.id);
+    }
+
+    if (pageNum === 1) {
+      setPosts(filtered);
+    } else {
+      setPosts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        return [...prev, ...filtered.filter(p => !existingIds.has(p.id))];
+      });
+    }
+
+    setHasMore(data.hasMore || false);
+    setPage(pageNum);
+  }, [filterBlockedWords]);
+
+  useLayoutEffect(() => {
+    const cached = readCache(getFeedEndpoint("for-you", 1, false)) as any;
+    if (!cached?.posts) return;
+    applyFeedPayload(cached, 1);
+    setLoading(false);
+  }, [applyFeedPayload, getFeedEndpoint]);
+
+  const loadFeed = useCallback(async (tab: string, pageNum: number) => {
+    const endpoint = getFeedEndpoint(tab, pageNum);
+    if (pageNum === 1) {
+    }
+
+    try {
+      const data = await fetchWithCache(endpoint, { ttlSeconds: 30, forceRefresh: pageNum > 1 }) as any;
+      applyFeedPayload(data, pageNum);
+    } catch {
+      // Silent
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFeedPayload, getFeedEndpoint]);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setPage(1);
+    setIsDiscoveryFeed(false);
+    setInteractions({});
+    fetchedInteractionIds.current.clear();
+    seenPostIds.current.clear();
+    const cached = readCache(getFeedEndpoint(tab, 1, false)) as any;
+    if (cached?.posts) {
+      applyFeedPayload(cached, 1);
+      setLoading(false);
+    } else {
+      setPosts([]);
+      setHasMore(false);
+      setLoading(true);
+    }
+    loadFeed(tab, 1);
+  }, [applyFeedPayload, getFeedEndpoint, loadFeed]);
+
+  const loadMore = async () => {
+    if (!isLoggedIn) {
+      redirectToLogin("/");
+      return;
+    }
+    setLoadingMore(true);
+    await loadFeed(activeTab, page + 1);
+    setLoadingMore(false);
+  };
+
+  return (
+    <AppLayout scrollableHeader>
+      {/* Feed Tabs */}
+      <FeedTabs activeTab={activeTab} onTabChange={handleTabChange} followedTags={followedTags} isLoggedIn={isLoggedIn} tagsLoading={tagsLoading} />
+
+      {/* Create Post Box — only on "for you" tab */}
+      {activeTab === "for-you" && (
+        <div className="px-2.5 sm:px-3 mt-4 mb-3">
+        <button
+          onClick={() => { emitNavigationStart(); router.push(isLoggedIn ? "/create/note" : "/login"); }}
+          className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary rounded-[18px]"
+        >
+          {ctxUser?.avatarUrl ? (
+            <img suppressHydrationWarning data-src={ctxUser.avatarUrl} alt="" className="lazyload h-9 w-9 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" decoding="async" />
+          ) : (
+            <div className="h-9 w-9 rounded-full bg-accent-main/10 text-accent-main flex items-center justify-center shrink-0">
+              <PenLine className="h-4 w-4" />
+            </div>
+          )}
+          <span className="flex-1 text-left text-[0.95rem] text-text-muted">{t("whatsOnYourMind")}</span>
+          <div className="flex items-center gap-[2px] shrink-0">
+            <span className="flex items-center justify-center h-[32px] w-[32px] rounded-full text-text-muted">
+              <Smile className="h-[18px] w-[18px]" />
+            </span>
+          </div>
+        </button>
+        </div>
+      )}
+
+      {/* Moments carousel — only on "for you" tab */}
+      {activeTab === "for-you" && <MomentsCarousel />}
+
+      {/* Content */}
+      {loading ? (
+        <PostCardSkeleton count={5} />
+      ) : visiblePosts.length > 0 ? (
+        <>
+          {isDiscoveryFeed && activeTab === "followed" && <SuggestionCarousel />}
+          <div className="flex flex-col gap-[16px] mt-[10px]">
+            {visiblePosts.map((post, index) => (
+              <div key={post.id}>
+                <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} onDelete={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />
+                {index === 4 && isLoggedIn && <SuggestionCarousel />}
+                <FeedAdSlot index={index} />
+              </div>
+            ))}
+          </div>
+          <LoadMoreTrigger onLoadMore={loadMore} loading={loadingMore} hasMore={hasMore} minLoadingMs={1000} />
+        </>
+      ) : (
+        <EmptyState
+          title={
+            activeTab === "for-you" ? t("emptyForYouTitle") :
+            activeTab === "followed" ? t("emptyFollowedTitle") :
+            t("emptyTagTitle")
+          }
+          description={
+            activeTab === "for-you" ? t("emptyForYouDesc") :
+            activeTab === "followed" ? t("emptyFollowedDesc") :
+            t("emptyTagDesc")
+          }
+        />
+      )}
+      {welcomeModal && (
+        <Suspense fallback={null}>
+          <PremiumWelcomeModal
+            open
+            onClose={() => setWelcomeModal(null)}
+            planName={welcomeModal.planName}
+            planId={welcomeModal.planId}
+            avatarUrl={ctxUser?.avatarUrl}
+            fullName={ctxUser?.fullName}
+          />
+        </Suspense>
+      )}
+    </AppLayout>
+  );
+}

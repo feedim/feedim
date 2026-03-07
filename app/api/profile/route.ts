@@ -1,0 +1,348 @@
+import { NextRequest, NextResponse, after } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { checkTextContent } from "@/lib/moderation";
+import { canUseBusinessAccount, canUseMultipleLinks, getUserPlan, isAdminPlan } from "@/lib/limits";
+import { revalidateTag } from "next/cache";
+import { getTranslations } from "next-intl/server";
+import { safeError } from "@/lib/apiError";
+import { isValidEmail } from "@/lib/utils";
+import { createNotification } from "@/lib/notifications";
+
+export async function GET() {
+  const tErrors = await getTranslations("apiErrors");
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, username, full_name, name, surname, email, avatar_url, bio, website, links, account_type, gender, birth_date, phone_number, language, is_premium, premium_plan, premium_until, is_verified, role, account_private, email_verified, google_linked, mfa_enabled, coin_balance, total_earned, total_spent, follower_count, following_count, post_count, profile_score, copyright_eligible, onboarding_completed, created_at, professional_category, contact_email, contact_phone, username_changed_at")
+    .eq("user_id", user.id)
+    .single();
+
+  if (error) return safeError(error);
+  return NextResponse.json({ profile: data }, {
+    headers: { 'Cache-Control': 'private, no-store, must-revalidate' },
+  });
+}
+
+export async function PUT(req: NextRequest) {
+  const tErrors = await getTranslations("apiErrors");
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+  const admin = createAdminClient();
+  const plan = await getUserPlan(admin, user.id);
+  const isAdminUser = isAdminPlan(plan);
+  const body = await req.json();
+  const allowed = ["name", "surname", "username", "bio", "website", "links", "birth_date", "gender", "phone_number", "account_private", "account_type", "professional_category", "contact_email", "contact_phone", "language"];
+  const updates: Record<string, any> = {};
+
+  for (const key of allowed) {
+    if (body[key] !== undefined) {
+      updates[key] = body[key];
+    }
+  }
+
+  // Birth date validation
+  if (updates.birth_date) {
+    const d = new Date(updates.birth_date);
+    if (isNaN(d.getTime())) {
+      return NextResponse.json({ error: tErrors("invalidDateFormat") }, { status: 400 });
+    }
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const monthDiff = now.getMonth() - d.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) {
+      age--;
+    }
+    if (age < 15 || age > 120) {
+      return NextResponse.json({ error: tErrors("ageRange") }, { status: 400 });
+    }
+  }
+
+  // Links validation
+  if (updates.links !== undefined) {
+    if (!Array.isArray(updates.links)) {
+      return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+    }
+    // Premium check: only max/business can have >1 link
+    if (updates.links.length > 1) {
+      if (!canUseMultipleLinks(plan)) {
+        return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+      }
+    }
+    if (updates.links.length > 5) {
+      return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+    }
+    for (const link of updates.links) {
+      if (!link.url || typeof link.url !== "string" || link.url.length > 255) {
+        return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+      }
+      // URL must start with http:// or https://
+      if (!/^https?:\/\//i.test(link.url.trim())) {
+        return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+      }
+      // Title is required and must be 5-30 characters
+      if (!link.title || typeof link.title !== "string" || link.title.trim().length < 5 || link.title.length > 30) {
+        return NextResponse.json({ error: tErrors("linkTitleRequired") }, { status: 400 });
+      }
+    }
+    // Backward compatibility: write first link URL to website field
+    updates.website = updates.links[0]?.url || "";
+  }
+
+  if (updates.name || updates.surname) {
+    const { data: current } = await supabase
+      .from("profiles")
+      .select("name, surname, name_changed_at, name_change_count")
+      .eq("user_id", user.id)
+      .single();
+
+    const nameChanged = (updates.name && updates.name !== current?.name) || (updates.surname && updates.surname !== current?.surname);
+    if (nameChanged && current) {
+      const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+      const lastChange = current.name_changed_at ? new Date(current.name_changed_at).getTime() : 0;
+      const withinWindow = Date.now() - lastChange < fourteenDays;
+      if (!isAdminUser && withinWindow && (current.name_change_count || 0) >= 2) {
+        return NextResponse.json({ error: tErrors("nameChangeLimit") }, { status: 429 });
+      }
+      updates.name_changed_at = new Date().toISOString();
+      updates.name_change_count = withinWindow ? (current.name_change_count || 0) + 1 : 1;
+    }
+
+    const name = updates.name || current?.name || "";
+    const surname = updates.surname || current?.surname || "";
+    updates.full_name = [name, surname].filter(Boolean).join(" ");
+  }
+
+  if (updates.username) {
+    const usernameRegex = /^(?!.*[._]{2})[A-Za-z0-9](?:[A-Za-z0-9._]{1,13})[A-Za-z0-9]$/;
+    if (!usernameRegex.test(updates.username)) {
+      return NextResponse.json({ error: tErrors("invalidUsername") }, { status: 400 });
+    }
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("username", updates.username)
+      .neq("user_id", user.id)
+      .single();
+    if (existing) {
+      return NextResponse.json({ error: tErrors("usernameTaken") }, { status: 409 });
+    }
+    // Username change limit: 7 days
+    const { data: currentProfile } = await supabase
+      .from("profiles")
+      .select("username, username_changed_at")
+      .eq("user_id", user.id)
+      .single();
+    if (currentProfile && currentProfile.username !== updates.username && currentProfile.username_changed_at) {
+      const lastChange = new Date(currentProfile.username_changed_at).getTime();
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      if (!isAdminUser && Date.now() - lastChange < sevenDays) {
+        const daysLeft = Math.ceil((sevenDays - (Date.now() - lastChange)) / (24 * 60 * 60 * 1000));
+        return NextResponse.json({ error: tErrors("usernameChangeWait", { days: daysLeft }) }, { status: 429 });
+      }
+    }
+    if (currentProfile && currentProfile.username !== updates.username) {
+      updates.username_changed_at = new Date().toISOString();
+      // Save old username for redirect
+      // Update any existing redirects pointing to the old username
+      await admin.from("username_redirects").update({ new_username: updates.username }).eq("new_username", currentProfile.username);
+      // Insert new redirect
+      await admin.from("username_redirects").insert({
+        old_username: currentProfile.username,
+        new_username: updates.username,
+        user_id: user.id,
+      });
+    }
+  }
+
+  // Professional account validation
+  if (updates.account_type) {
+    if (updates.account_type === "personal") {
+      updates.professional_category = null;
+      updates.contact_email = null;
+      updates.contact_phone = null;
+    } else if (updates.account_type === "creator" || updates.account_type === "business") {
+      updates.account_private = false;
+      // Creator accounts cannot add contact info
+      if (updates.account_type === "creator") {
+        updates.contact_email = null;
+        updates.contact_phone = null;
+      }
+      // Business account requires Business subscription
+      if (updates.account_type === "business") {
+        if (!canUseBusinessAccount(plan)) {
+          return NextResponse.json({ error: tErrors("businessRequiresPlan") }, { status: 403 });
+        }
+      }
+    }
+  }
+
+  // Contact email format validation
+  if (updates.contact_email && updates.contact_email.trim()) {
+    if (!isValidEmail(updates.contact_email.trim().toLowerCase())) {
+      return NextResponse.json({ error: tErrors("invalidContactEmail") }, { status: 400 });
+    }
+    updates.contact_email = updates.contact_email.trim().toLowerCase();
+  }
+
+  updates.updated_at = new Date().toISOString();
+
+  // Auto-approve pending follow requests when disabling private account
+  // Process in batches of 50 to avoid overwhelming the database
+  if (updates.account_private === false) {
+    // Kick off batch approval in the background — don't block the response
+    (async () => {
+      const BATCH_SIZE = 50;
+      let hasMore = true;
+      const tNotif = await getTranslations("notifications");
+
+      while (hasMore) {
+        const { data: batch } = await admin
+          .from("follow_requests")
+          .select("id, requester_id")
+          .eq("target_id", user.id)
+          .eq("status", "pending")
+          .limit(BATCH_SIZE);
+
+        if (!batch || batch.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Create follows for this batch
+        const follows = batch.map(r => ({
+          follower_id: r.requester_id,
+          following_id: user.id,
+        }));
+        await admin.from("follows").upsert(follows, { onConflict: "follower_id,following_id" });
+
+        // Mark this batch as accepted
+        const batchIds = batch.map(r => r.id);
+        await admin
+          .from("follow_requests")
+          .update({ status: "accepted" })
+          .in("id", batchIds);
+
+        // Update following count for each requester in this batch
+        // and send follow_accepted notifications
+        for (const r of batch) {
+          const { count: followingCount } = await admin
+            .from("follows")
+            .select("id", { count: "exact", head: true })
+            .eq("follower_id", r.requester_id);
+          await admin.from("profiles").update({ following_count: followingCount || 0 }).eq("user_id", r.requester_id);
+
+          // Notify each requester that their request was accepted
+          await createNotification({
+            admin,
+            user_id: r.requester_id,
+            actor_id: user.id,
+            type: "follow_accepted",
+            content: tNotif("followRequestAccepted"),
+          });
+        }
+
+        // Clean up old follow_request notifications for this batch
+        const requesterIds = batch.map(r => r.requester_id);
+        await admin.from("notifications").delete()
+          .in("actor_id", requesterIds)
+          .eq("user_id", user.id)
+          .eq("type", "follow_request");
+
+        // If we got fewer than BATCH_SIZE, we're done
+        if (batch.length < BATCH_SIZE) {
+          hasMore = false;
+        }
+      }
+
+      // Recount follower count once at the end
+      const { count: followerCount } = await admin
+        .from("follows")
+        .select("id", { count: "exact", head: true })
+        .eq("following_id", user.id);
+      await admin.from("profiles").update({ follower_count: followerCount || 0 }).eq("user_id", user.id);
+    })().catch(() => {});
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) return safeError(error);
+  revalidateTag("profiles", "max");
+
+  // AI moderation on profile text fields — runs async after response
+  const TEXT_FIELDS = ['name', 'surname', 'username', 'bio'];
+  const hasTextUpdates = Object.keys(updates).some(k => TEXT_FIELDS.includes(k));
+  if (hasTextUpdates) {
+    const userId = user.id;
+    after(async () => {
+      try {
+        const admin = createAdminClient();
+        const { data: current } = await admin
+          .from("profiles")
+          .select("name, surname, username, bio, profile_score, spam_score, status")
+          .eq("user_id", userId)
+          .single();
+        if (!current) return;
+        // Check if user is admin (immune to moderation)
+        const { data: roleCheck } = await admin.from("profiles").select("role").eq("user_id", userId).single();
+        if (roleCheck?.role === 'admin') return;
+
+        const fields = {
+          name: (current.name ?? '') as string,
+          surname: (current.surname ?? '') as string,
+          username: (current.username ?? '') as string,
+          bio: (current.bio ?? '') as string,
+        };
+        const linkCount = (fields.bio.match(/https?:\/\//g) || []).length;
+        const overall = await checkTextContent('', [fields.name, fields.surname, fields.username, fields.bio].filter(Boolean).join(' '), {
+          contentType: 'profile',
+          linkCount,
+          profileScore: current.profile_score,
+          spamScore: current.spam_score,
+        });
+        if (overall.safe === false) {
+          let flaggedCount = 0;
+          for (const value of [fields.name, fields.surname, fields.username, fields.bio]) {
+            if (value && value.trim().length >= 2) {
+              try {
+                const res = await checkTextContent('', value, { contentType: 'profile', linkCount: (value.match(/https?:\/\//g) || []).length });
+                if (res.safe === false) flaggedCount++;
+              } catch {}
+            }
+          }
+          if (flaggedCount >= 1) {
+            await admin.from("profiles").update({
+              status: 'moderation',
+              moderation_reason: overall.reason || tErrors("profileFieldViolation"),
+            }).eq("user_id", userId);
+          }
+        } else {
+          if (current.status === 'moderation') {
+            await admin.from("profiles").update({
+              status: 'active',
+              moderation_reason: null,
+            }).eq("user_id", userId);
+            try {
+              await Promise.all([
+                admin.from("reports").delete().eq("content_type", "user").eq("content_id", userId),
+                admin.from("moderation_decisions").delete().eq("target_type", "user").eq("target_id", String(userId)),
+                admin.from("moderation_logs").delete().eq("target_type", "user").eq("target_id", String(userId)),
+              ]);
+            } catch {}
+          }
+        }
+      } catch {}
+    });
+  }
+
+  return NextResponse.json({ profile: data });
+}

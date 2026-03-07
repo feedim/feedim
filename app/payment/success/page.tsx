@@ -1,0 +1,205 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { CheckCircle, Coins, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useTranslations, useLocale } from "next-intl";
+import { useHydrated } from "@/lib/useHydrated";
+
+export default function PaymentSuccessPage() {
+  const t = useTranslations("payment");
+  const locale = useLocale();
+  const hydrated = useHydrated();
+  const [verifying, setVerifying] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [paymentType, setPaymentType] = useState<"coin" | "premium" | null>(null);
+  const [coinBalance, setCoinBalance] = useState<number | null>(null);
+  const [coinsAdded, setCoinsAdded] = useState<number | null>(null);
+  const [planName, setPlanName] = useState<string | null>(null);
+  const router = useRouter();
+  const authorized = useMemo(() => {
+    if (!hydrated) return false;
+    try {
+      return sessionStorage.getItem("fdm_payment_pending") !== null;
+    } catch {
+      return false;
+    }
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!authorized) {
+      router.push("/");
+      return;
+    }
+
+    const supabase = createClient();
+    sessionStorage.removeItem("fdm_payment_pending");
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) { setVerifying(false); return; }
+
+        const start = Date.now();
+        while (!cancelled && Date.now() - start < 30000) {
+          const res = await fetch("/api/payment/verify", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${session.access_token}` },
+          });
+          const body = await res.json().catch(() => null);
+
+          if (!res.ok) {
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+          }
+
+          if (body?.status === "completed") {
+            setVerified(true);
+            setPaymentType(body.type || "coin");
+
+            if (body.type === "premium") {
+              setPlanName(body.plan_name);
+              // Premium satın alma sonrası welcome flag
+              sessionStorage.setItem("fdm_welcome_premium", JSON.stringify({
+                plan_name: body.plan_name,
+                plan_id: body.premium_plan,
+              }));
+            } else {
+              setCoinBalance(body.coin_balance);
+              setCoinsAdded(body.coins_added);
+            }
+
+            setVerifying(false);
+            return;
+          }
+
+          if (body?.status !== "pending" && body?.status !== "rate_limited") {
+            break;
+          }
+
+          await new Promise(r => setTimeout(r, 3000));
+        }
+        setVerifying(false);
+      } catch {
+        setVerifying(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authorized, hydrated, router]);
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <Loader2 className="h-12 w-12 text-accent-main animate-spin" />
+      </div>
+    );
+  }
+
+  const isPremium = paymentType === "premium";
+
+  return (
+    <div className="min-h-screen bg-bg-primary text-text-primary flex items-center justify-center px-6 py-12">
+      <div className="max-w-md w-full text-center space-y-8">
+        {/* Icon */}
+        <div className="flex justify-center">
+          <div className="relative">
+            <div className={`absolute inset-0 ${verified ? "bg-accent-main/20" : verifying ? "bg-accent-main/10" : "bg-error/20"} rounded-full blur-2xl animate-pulse`} />
+            {verified ? (
+              isPremium ? (
+                <Sparkles className="h-24 w-24 text-accent-main relative" />
+              ) : (
+                <CheckCircle className="h-24 w-24 text-accent-main relative" />
+              )
+            ) : verifying ? (
+              <Coins className="h-24 w-24 text-accent-main relative animate-pulse" />
+            ) : (
+              <AlertCircle className="h-24 w-24 text-error relative" />
+            )}
+          </div>
+        </div>
+
+        {/* Message */}
+        <div className="space-y-4">
+          {verified ? (
+            <>
+              <h1 className="text-4xl font-bold text-accent-main">
+                {t("paymentSuccessful")}
+              </h1>
+              {isPremium ? (
+                <>
+                  <p className="text-base text-text-muted">
+                    {t("premiumPlanActivated", { plan: planName || "" })}
+                  </p>
+                  <p className="text-sm text-text-muted">
+                    {t("premiumFeaturesAccess")}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-base text-text-muted">
+                    {coinsAdded != null
+                      ? t("tokensAdded", { amount: coinsAdded.toLocaleString(locale) })
+                      : t("tokensAddedGeneric")}
+                  </p>
+                  {coinBalance != null && (
+                    <p className="text-sm text-text-muted">
+                      {t("currentBalanceLabel")}: <span className="text-accent-main font-semibold">{coinBalance.toLocaleString(locale)} {t("token")}</span>
+                    </p>
+                  )}
+                </>
+              )}
+            </>
+          ) : verifying ? (
+            <>
+              <h1 className="text-3xl font-bold text-accent-main">
+                {t("paymentVerifying")}
+              </h1>
+              <p className="text-base text-text-muted">
+                {t("paymentProcessing")}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold text-error">
+                {t("verificationTimeout")}
+              </h1>
+              <p className="text-base text-text-muted">
+                {t("verificationTimeoutDesc")}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="space-y-3">
+          <Link
+            href="/"
+            className="t-btn accept w-full block text-center"
+          >
+            {t("goHome")}
+          </Link>
+
+          {isPremium ? (
+            <Link
+              href="/premium"
+              className="t-btn cancel w-full block text-center"
+            >
+              {t("viewPremiumFeatures")}
+            </Link>
+          ) : (
+            <Link
+              href="/coins"
+              className="t-btn cancel w-full block text-center"
+            >
+              {t("viewBalance")}
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

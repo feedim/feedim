@@ -1,0 +1,892 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createNotification } from '@/lib/notifications';
+import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
+import { getProfileSignals } from '@/lib/modSignals';
+import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
+import { VALIDATION, MOMENT_MAX_DURATION, CONTENT_TYPES, MAX_DRAFTS } from '@/lib/constants';
+import { getUserPlan, checkHourlyPostLimit, logRateLimitHit } from '@/lib/limits';
+import { checkEmailVerified } from '@/lib/emailGate';
+import { checkNsfwContent } from '@/lib/nsfwCheck';
+import { checkTextContent, checkMetadataContent, checkAutoAccountModeration } from '@/lib/moderation';
+import { checkCopyrightUnified, computeContentHash, stripHtmlToText, normalizeForComparison, computeImageHashFromUrl, COPYRIGHT_THRESHOLDS } from '@/lib/copyright';
+import { sendEmail, getEmailIfEnabled, moderationReviewEmail } from '@/lib/email';
+import { revalidateTag } from 'next/cache';
+import { after } from 'next/server';
+import { extractMentions } from '@/lib/mentionRenderer';
+import sanitizeHtml from 'sanitize-html';
+import { getTranslations } from 'next-intl/server';
+import { safeError } from '@/lib/apiError';
+import { reconcileSoundStatus } from '@/lib/soundLifecycle';
+import { logServerError } from '@/lib/runtimeLogger';
+
+export async function POST(request: NextRequest) {
+  const tErrors = await getTranslations('apiErrors');
+  const tNotif = await getTranslations('notifications');
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+    }
+
+    const admin = createAdminClient();
+
+    // Email verification check
+    const emailCheck = await checkEmailVerified(admin, user.id, 'post');
+    if (!emailCheck.allowed) {
+      return NextResponse.json({ error: emailCheck.error }, { status: 403 });
+    }
+
+    // Check if user is admin (immune to moderation, copyright, rate limits)
+    const { data: userProfile } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
+    const isAdmin = userProfile?.role === 'admin';
+
+    // Hourly post rate limit
+    const plan = await getUserPlan(admin, user.id);
+    const { allowed: postAllowed, limit: postLimit } = await checkHourlyPostLimit(admin, user.id, plan);
+    if (!postAllowed && !isAdmin) {
+      logRateLimitHit(admin, user.id, 'post', request.headers.get('x-forwarded-for')?.split(',')[0]?.trim());
+      return NextResponse.json(
+        { error: tErrors('postRateLimit', { limit: postLimit }) },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json();
+    const { title, content, status, tags, featured_image, allow_comments, is_for_kids, is_ai_content, meta_title, meta_description, meta_keywords, content_type, video_url, video_duration, video_thumbnail, blurhash, image_hash: clientImageHash, copyright_protected, sound_id, frame_hashes: clientFrameHashes, audio_hashes: clientAudioHashes, video_feedim_id, image_feedim_id, audio_feedim_id, video_origin_id, image_origin_id, visibility, nsfw_frame_urls } = body;
+    const isVideo = content_type === 'video' || content_type === 'moment';
+    const isMoment = content_type === 'moment';
+    const isNote = content_type === 'note';
+
+    // Draft limit check — only when creating a new draft
+    if (status === 'draft' && !isAdmin) {
+      const { count: draftCount } = await admin
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', user.id)
+        .eq('status', 'draft');
+      if ((draftCount || 0) >= MAX_DRAFTS) {
+        return NextResponse.json(
+          { error: tErrors('draftLimitReached', { max: MAX_DRAFTS }) },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate title (optional for moments, relaxed for drafts)
+    if (!isMoment && status !== 'draft' && (!title || typeof title !== 'string' || title.trim().length === 0)) {
+      return NextResponse.json({ error: tErrors('titleRequired') }, { status: 400 });
+    }
+    const trimmedTitle = (title || '').trim();
+    if (status !== 'draft' && !isNote && !isMoment && trimmedTitle.length < VALIDATION.postTitle.min) {
+      return NextResponse.json({ error: tErrors('titleMinLength', { min: VALIDATION.postTitle.min }) }, { status: 400 });
+    }
+    if (trimmedTitle.length > VALIDATION.postTitle.max) {
+      return NextResponse.json({ error: tErrors('titleMaxLength', { max: VALIDATION.postTitle.max }) }, { status: 400 });
+    }
+    if (/<[^>]+>/.test(trimmedTitle)) {
+      return NextResponse.json({ error: tErrors('titleNoHtml') }, { status: 400 });
+    }
+    if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedTitle)) {
+      return NextResponse.json({ error: tErrors('titleNoUrl') }, { status: 400 });
+    }
+
+    // Validate note content
+    if (isNote && status !== 'draft') {
+      const noteText = (content || '').replace(/<[^>]+>/g, '').trim();
+      if (!noteText) {
+        return NextResponse.json({ error: tErrors('noteContentRequired') }, { status: 400 });
+      }
+      if (noteText.length > VALIDATION.noteContent.max) {
+        return NextResponse.json({ error: tErrors('noteMaxLength', { max: VALIDATION.noteContent.max }) }, { status: 400 });
+      }
+    }
+
+    // Validate content (video posts can have empty content/description, drafts are relaxed)
+    if (status !== 'draft' && !isVideo && !isNote && (!content || typeof content !== 'string' || content.trim().length === 0)) {
+      return NextResponse.json({ error: tErrors('contentRequired') }, { status: 400 });
+    }
+
+    // Validate video fields
+    if (isVideo && status === 'published' && !video_url) {
+      return NextResponse.json({ error: tErrors('videoUrlRequired') }, { status: 400 });
+    }
+
+    // Moment: 60s duration limit
+    if (isMoment && video_duration && video_duration > MOMENT_MAX_DURATION) {
+      return NextResponse.json({ error: tErrors('momentMaxDuration', { max: MOMENT_MAX_DURATION }) }, { status: 400 });
+    }
+
+    // Generate slug
+    const slugBase = slugify(trimmedTitle);
+    const slugHash = generateSlugHash();
+    const slug = `${slugBase}-${slugHash}`;
+
+    // Sanitize content — no iframe support
+    let sanitizedContent = isNote
+      ? sanitizeHtml(content || '', { allowedTags: ['br', 'p', 'a'], allowedAttributes: { 'a': ['href', 'target', 'rel'] } })
+      : isVideo
+      ? sanitizeHtml(content || '', { allowedTags: ['br', 'strong', 'p'], allowedAttributes: {} })
+      : sanitizeHtml(content, {
+          allowedTags: ['h2', 'h3', 'p', 'br', 'strong', 'em', 'u', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'figure', 'figcaption'],
+          allowedAttributes: { 'a': ['href', 'target', 'rel'], 'img': ['src', 'alt'], '*': ['class'] },
+        });
+
+    // Görseli saran <a> etiketlerini kaldır — görsellerde link olamaz
+    sanitizedContent = sanitizedContent.replace(/<a[^>]*>\s*(<img[^>]*\/?>)\s*<\/a>/gi, '$1');
+
+    // Truncate figcaption text to max 60 chars
+    sanitizedContent = sanitizedContent.replace(/<figcaption>([\s\S]*?)<\/figcaption>/gi, (_, text) => {
+      const trimmed = text.trim();
+      if (!trimmed) return '';
+      return `<figcaption>${trimmed.slice(0, 60)}</figcaption>`;
+    });
+
+    // Server-side content validation for published posts (skip for video and note posts)
+    if (status === 'published' && !isVideo && !isNote) {
+      const textContent = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, '').trim();
+      const hasImage = /<img\s/i.test(sanitizedContent);
+
+      if (!textContent && !hasImage) {
+        return NextResponse.json({ error: tErrors('postContentRequired') }, { status: 400 });
+      }
+      if (!hasImage && textContent.length < VALIDATION.postContent.minChars) {
+        return NextResponse.json({ error: tErrors('postMinChars', { min: VALIDATION.postContent.minChars }) }, { status: 400 });
+      }
+      // Plan-based word limit: Max/Business users get extended limit, others get 5000
+      const maxWords = (plan === 'admin' || plan === 'max' || plan === 'business') ? VALIDATION.postContent.maxWordsMax : VALIDATION.postContent.maxWords;
+      const wordText = sanitizedContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const wCount = wordText ? wordText.split(' ').length : 0;
+      if (wCount > maxWords) {
+        return NextResponse.json({ error: (plan !== 'admin' && plan !== 'max' && plan !== 'business') ? tErrors('postMaxWordsWithUpgrade', { max: maxWords.toLocaleString() }) : tErrors('postMaxWords', { max: maxWords.toLocaleString() }) }, { status: 400 });
+      }
+      const listItemCount = (sanitizedContent.match(/<li[\s>]/gi) || []).length;
+      if (listItemCount > VALIDATION.postContent.maxListItems) {
+        return NextResponse.json({ error: tErrors('postMaxListItems', { max: VALIDATION.postContent.maxListItems }) }, { status: 400 });
+      }
+      if (textContent.length > 0 && /^\d+$/.test(textContent)) {
+        return NextResponse.json({ error: tErrors('postOnlyNumbers') }, { status: 400 });
+      }
+    }
+
+    // Auto-reupload external images to R2 on publish (server-side fallback)
+    if (status === 'published' && !isVideo && !isNote && sanitizedContent) {
+      const { reuploadExternalImagesServer } = await import('@/lib/reuploadExternalImages.server');
+      sanitizedContent = await reuploadExternalImagesServer(sanitizedContent);
+    }
+
+    // Server-side copyright_protected eligibility check
+    let copyrightProtectedFinal = copyright_protected === true;
+    if (copyrightProtectedFinal && !isAdmin) {
+      const { data: cpProfile } = await admin
+        .from('profiles')
+        .select('copyright_eligible')
+        .eq('user_id', user.id)
+        .single();
+      if (!cpProfile?.copyright_eligible) {
+        copyrightProtectedFinal = false;
+      }
+    }
+
+    // Copyright check (only for published posts — fast, runs before AI moderation)
+    let copyrightFlagged = false;
+    let copyrightMatchId: number | null = null;
+    let copyrightSimilarity: number | null = null;
+    let copyrightMatchAuthorId: string | null = null;
+    let contentHash: string | null = null;
+    let imageHash: string | null = typeof clientImageHash === 'string' && clientImageHash.length === 16 ? clientImageHash : null;
+    let copyrightClaimStatus: string | null = null;
+
+    // Validate frame_hashes
+    const frameHashes: { frameIndex: number; hash: string }[] = Array.isArray(clientFrameHashes)
+      ? clientFrameHashes.filter((fh: any) => typeof fh.frameIndex === 'number' && typeof fh.hash === 'string' && fh.hash.length === 16).slice(0, 600)
+      : [];
+
+    // Validate audio_hashes
+    const audioHashes: { chunkIndex: number; hash: string }[] = Array.isArray(clientAudioHashes)
+      ? clientAudioHashes.filter((ah: any) => typeof ah.chunkIndex === 'number' && typeof ah.hash === 'string' && ah.hash.length === 16).slice(0, 600)
+      : [];
+
+    // Content moderation (only for published posts)
+    let moderationAction: 'allow' | 'moderation' = 'allow';
+    let isNsfw = false;
+    let modReason: string | null = null;
+    let modCategory: string | null = null;
+    if (status === 'published' && !isAdmin) {
+      // Unified copyright check with content-type routing (admin bypass)
+      try {
+        const { wordCount: wc } = calculateReadingTime(sanitizedContent);
+        const contentTypeVal = isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post';
+        const imgUrl = featured_image || (isVideo ? video_thumbnail : null);
+        if (!imageHash && imgUrl) imageHash = await computeImageHashFromUrl(imgUrl);
+
+        // Compute content hash for storage (body-only for posts and videos, title+body for moments)
+        const plainText = stripHtmlToText(sanitizedContent);
+        const normalizedForHash = contentTypeVal === 'moment'
+          ? normalizeForComparison(`${trimmedTitle} ${plainText}`)
+          : normalizeForComparison(plainText);
+        contentHash = normalizedForHash.split(/\s+/).filter(Boolean).length >= 8 ? computeContentHash(normalizedForHash) : null;
+
+        const originFileId = image_origin_id || video_origin_id || null;
+        const copyrightResult = await checkCopyrightUnified(
+          admin, trimmedTitle, sanitizedContent, user.id, contentTypeVal, wc, {
+            featuredImage: featured_image || null,
+            videoUrl: isVideo ? (video_url || null) : null,
+            videoDuration: isVideo ? (video_duration || null) : null,
+            videoThumbnail: isVideo ? (video_thumbnail || null) : null,
+            imageHash,
+            frameHashes: frameHashes.length > 0 ? frameHashes : undefined,
+            audioHashes: audioHashes.length > 0 ? audioHashes : undefined,
+            originFileId,
+          },
+        );
+
+        if (copyrightResult.flagged) {
+          copyrightFlagged = true;
+          copyrightMatchId = copyrightResult.matchedPostId;
+          copyrightSimilarity = copyrightResult.similarity;
+          copyrightMatchAuthorId = copyrightResult.matchedAuthorId;
+          modReason = copyrightResult.reason;
+          modCategory = copyrightResult.category || 'kopya_icerik';
+          if (copyrightResult.matchType === 'exact') {
+            isNsfw = true;
+            moderationAction = 'moderation';
+          }
+        }
+      } catch (err) {
+        logServerError('[Copyright] POST check error', err, {
+          operation: 'post_copyright_precheck',
+        });
+      }
+
+      // AI moderation — skip if already flagged by copyright (save cost, notes always run moderation)
+      if (!copyrightFlagged) {
+        let profileMeta: { profileScore?: number; spamScore?: number } = {};
+        try { profileMeta = await getProfileSignals(user.id); } catch {}
+        // Include featured image + video thumbnail + video frame samples in NSFW scan
+        let moderationHtml = sanitizedContent;
+        if (featured_image && typeof featured_image === 'string') moderationHtml += `<img src="${featured_image.replace(/"/g, '&quot;')}" />`;
+        if (isVideo && video_thumbnail && typeof video_thumbnail === 'string') moderationHtml += `<img src="${video_thumbnail.replace(/"/g, '&quot;')}" />`;
+        // Video frame samples for NSFW check
+        if ((isVideo || isMoment) && Array.isArray(nsfw_frame_urls)) {
+          const ALLOWED_CDN = /^https:\/\/(r2-cdn|cdn)\.feedim\.com\//;
+          const validFrameUrls = nsfw_frame_urls
+            .filter((u: unknown) => typeof u === 'string' && ALLOWED_CDN.test(u as string))
+            .slice(0, 8);
+          for (const frameUrl of validFrameUrls) {
+            moderationHtml += `<img src="${(frameUrl as string).replace(/"/g, '&quot;')}" />`;
+          }
+        }
+
+        // 1. NSFW image scan
+        const nsfwResult = await checkNsfwContent(moderationHtml);
+
+        // 2. Text moderation (with NSFW scores as hint)
+        const imageHint = nsfwResult.action !== 'allow'
+          ? `flagged,count=${nsfwResult.flaggedCount},reason=${nsfwResult.reason || 'n/a'}`
+          : 'none';
+        const textResult = await checkTextContent(trimmedTitle, moderationHtml, {
+          contentType: isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post',
+          imageHint,
+          ...profileMeta,
+        });
+
+        // Decision: either flags → moderation
+        if (!textResult.safe || nsfwResult.action !== 'allow') {
+          moderationAction = 'moderation';
+          isNsfw = true;
+          modReason = textResult.reason || nsfwResult.reason || tErrors('contentReviewRequired');
+          modCategory = textResult.category || (nsfwResult.action !== 'allow' ? 'nsfw_image' : null);
+        }
+      }
+
+      // Metadata moderation (tags + meta fields + sound title) — only if not already flagged
+      if (!copyrightFlagged && moderationAction === 'allow') {
+        const tagStrings = (tags || []).filter((t: unknown) => typeof t === 'string' && (t as string).trim()) as string[];
+        const metaResult = await checkMetadataContent({
+          tags: tagStrings.length > 0 ? tagStrings : undefined,
+          metaTitle: typeof meta_title === 'string' && meta_title.trim() ? meta_title.trim() : undefined,
+          metaDescription: typeof meta_description === 'string' && meta_description.trim() ? meta_description.trim() : undefined,
+          soundTitle: isMoment ? trimmedTitle : undefined,
+        });
+        if (!metaResult.safe) {
+          moderationAction = 'moderation';
+          isNsfw = true;
+          modReason = metaResult.reason || tErrors('metadataViolation');
+          modCategory = metaResult.category || null;
+        }
+      }
+    }
+
+    // Calculate reading time & word count
+    const { wordCount, readingTime } = calculateReadingTime(sanitizedContent);
+
+    // Generate excerpt
+    const excerpt = generateExcerpt(sanitizedContent);
+
+    // Determine status — copyright stays published+nsfw, AI moderation holds in queue
+    const postStatus = status === 'published'
+      ? (moderationAction === 'moderation' && !copyrightFlagged ? 'moderation' : 'published')
+      : 'draft';
+
+    // Server-side SEO
+    const finalMetaTitle = (typeof meta_title === 'string' && meta_title.trim()) ? meta_title.trim() : generateMetaTitle(trimmedTitle, sanitizedContent);
+    const tagNames = (tags || []).filter((t: unknown) => typeof t === 'string' && (t as string).trim()) as string[];
+    const manualDesc = typeof meta_description === 'string' && meta_description.trim();
+    const manualKw = typeof meta_keywords === 'string' && meta_keywords.trim();
+
+    let finalMetaDescription = manualDesc || '';
+    let finalMetaKeywords = manualKw || '';
+
+    // Notes: skip AI, derive directly from content
+    // Other types: AI SEO generation on publish (only if not manually provided)
+    if (isNote) {
+      if (!finalMetaDescription) finalMetaDescription = generateMetaDescription(trimmedTitle, sanitizedContent);
+      if (!finalMetaKeywords) {
+        const cands = generateMetaKeywords(trimmedTitle, sanitizedContent, { slug: slugBase, tags: tagNames });
+        finalMetaKeywords = cands.split(', ')[0] || trimmedTitle;
+      }
+    } else {
+      if (status === 'published' && (!manualDesc || !manualKw)) {
+        try {
+          const seo = await generateSeoFieldsAI(trimmedTitle, sanitizedContent, {
+            slug: slugBase,
+            tags: tagNames,
+          });
+          if (!manualDesc) finalMetaDescription = seo.description;
+          if (!manualKw) finalMetaKeywords = seo.keyword;
+        } catch (err) {
+          logServerError('[SEO] AI generation fallback', err, {
+            operation: 'post_generate_seo',
+          });
+        }
+      }
+      // Algorithmic fallback
+      if (!finalMetaDescription) finalMetaDescription = generateMetaDescription(trimmedTitle, sanitizedContent);
+      if (!finalMetaKeywords) {
+        const cands = generateMetaKeywords(trimmedTitle, sanitizedContent, { slug: slugBase, tags: tagNames });
+        finalMetaKeywords = cands.split(', ')[0] || trimmedTitle;
+      }
+    }
+
+    // Sound handling for moments
+    let resolvedSoundId: number | null = null;
+    if (isMoment) {
+      if (sound_id) {
+        // User selected an existing sound — verify it's active
+        const { data: snd } = await admin.from('sounds').select('id, status, cover_image_url').eq('id', sound_id).single();
+        if (snd && snd.status === 'active') {
+          resolvedSoundId = snd.id;
+          // Kapak görseli yoksa ilk videonun thumbnail'ini kullan
+          if (!snd.cover_image_url && video_thumbnail) {
+            await admin.from('sounds').update({ cover_image_url: video_thumbnail }).eq('id', snd.id);
+          }
+        }
+      } else if (video_url && video_duration && video_duration > 0) {
+        // No sound selected — auto-create "original sound" (skip if no duration = likely no audio)
+        try {
+          // Dedup: if audio_hashes were sent, build a fingerprint and check for existing sound
+          let audioFingerprint: string | null = null;
+          if (audioHashes.length >= 10) {
+            audioFingerprint = audioHashes
+              .slice(0, 10)
+              .map(ah => ah.hash)
+              .join('');
+          }
+
+          if (audioFingerprint) {
+            const { data: existingSound } = await admin
+              .from('sounds')
+              .select('id')
+              .eq('audio_hash', audioFingerprint)
+              .in('status', ['active', 'muted'])
+              .single();
+            if (existingSound) {
+              resolvedSoundId = existingSound.id;
+            }
+          }
+
+          if (!resolvedSoundId) {
+            const { data: profile } = await admin.from('profiles').select('username, country').eq('user_id', user.id).single();
+            const username = profile?.username || 'user';
+            const soundTitle = trimmedTitle
+              ? `${trimmedTitle.slice(0, 50)} - @${username}`
+              : `Original sound - @${username}`;
+            const { data: origSound } = await admin.from('sounds').insert({
+              title: soundTitle,
+              audio_url: video_url,
+              duration: video_duration || null,
+              cover_image_url: video_thumbnail || null,
+              is_original: true,
+              created_by: user.id,
+              usage_count: 1,
+              audio_hash: audioFingerprint || null,
+              country: profile?.country || null,
+            }).select('id').single();
+            if (origSound) resolvedSoundId = origSound.id;
+          }
+        } catch {}
+      }
+    }
+
+    // Insert post
+    const { data: post, error: postError } = await admin
+      .from('posts')
+      .insert({
+        author_id: user.id,
+        title: trimmedTitle,
+        slug,
+        content: sanitizedContent,
+        excerpt,
+        content_type: isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post',
+        featured_image: (featured_image && typeof featured_image === 'string' && featured_image.toLowerCase().endsWith('.gif')) ? null : (featured_image || (isVideo ? video_thumbnail : null) || null),
+        video_url: isVideo ? (video_url || null) : null,
+        video_duration: isVideo ? (video_duration || null) : null,
+        video_thumbnail: isVideo ? (video_thumbnail || null) : null,
+        blurhash: typeof blurhash === 'string' && blurhash.length > 0 ? blurhash : null,
+        sound_id: resolvedSoundId,
+        status: postStatus,
+        reading_time: isVideo ? null : isNote ? 1 : readingTime,
+        word_count: wordCount,
+        allow_comments: allow_comments !== false,
+        is_for_kids: is_for_kids === true,
+        is_ai_content: is_ai_content === true,
+        visibility: ['public', 'followers', 'only_me'].includes(visibility) ? visibility : 'public',
+        is_nsfw: isNsfw,
+        copyright_protected: copyrightProtectedFinal,
+        moderation_reason: modReason,
+        moderation_category: modCategory,
+        moderation_due_at: (isNsfw || postStatus === 'moderation') ? new Date().toISOString() : null,
+        published_at: postStatus === 'published' ? new Date().toISOString() : null,
+        meta_title: finalMetaTitle,
+        meta_description: finalMetaDescription,
+        meta_keywords: finalMetaKeywords,
+      })
+      .select('id, slug, status')
+      .single();
+
+    if (postError) {
+      return safeError(postError);
+    }
+
+    // Reconcile sound status (runs after response is sent)
+    if (resolvedSoundId) {
+      const capturedSoundId = resolvedSoundId;
+      after(async () => {
+        try {
+          await reconcileSoundStatus(createAdminClient(), capturedSoundId);
+        } catch {}
+      });
+    }
+
+    // AI moderation decision record
+    if (postStatus === 'moderation' && moderationAction === 'moderation') {
+      try {
+        await admin.from('moderation_decisions').insert({
+          target_type: 'post', target_id: String(post.id), decision: 'flagged', reason: modReason || tErrors('flaggedByAi'), moderator_id: 'system',
+        });
+      } catch {}
+      // 10dk içinde 5+ flag → hesabı moderasyona al
+      after(() => checkAutoAccountModeration(admin, user.id));
+    }
+
+    // Store copyright data separately (columns may not exist yet)
+    if (contentHash || copyrightMatchId || imageHash) {
+      try {
+        const copyrightData: Record<string, unknown> = {};
+        if (contentHash) copyrightData.content_hash = contentHash;
+        if (imageHash) copyrightData.image_hash = imageHash;
+        if (copyrightMatchId) copyrightData.copyright_match_id = copyrightMatchId;
+        if (copyrightSimilarity) copyrightData.copyright_similarity = copyrightSimilarity;
+        await admin.from('posts').update(copyrightData).eq('id', post.id);
+      } catch (err) {
+        logServerError('[Copyright] Failed to store copyright data', err, {
+          operation: 'store_copyright_data',
+        });
+      }
+    }
+
+    // Store Feedim file IDs in posts table
+    const feedimIdData: Record<string, unknown> = {};
+    if (typeof video_feedim_id === 'string' && video_feedim_id) feedimIdData.video_feedim_id = video_feedim_id;
+    if (typeof image_feedim_id === 'string' && image_feedim_id) feedimIdData.image_feedim_id = image_feedim_id;
+    if (Object.keys(feedimIdData).length > 0) {
+      try {
+        await admin.from('posts').update(feedimIdData).eq('id', post.id);
+      } catch (err) {
+        logServerError('[FileId] Failed to store feedim IDs on post', err, {
+          operation: 'store_post_file_ids',
+        });
+      }
+    }
+
+    // Register file identifiers for lookup
+    const fileIdInserts: { feedim_id: string; file_type: string; uploader_id: string; post_id: number; storage_key: string }[] = [];
+    if (typeof image_feedim_id === 'string' && image_feedim_id) {
+      fileIdInserts.push({ feedim_id: image_feedim_id, file_type: 'image', uploader_id: user.id, post_id: post.id, storage_key: featured_image || '' });
+    }
+    if (typeof video_feedim_id === 'string' && video_feedim_id) {
+      fileIdInserts.push({ feedim_id: video_feedim_id, file_type: 'video', uploader_id: user.id, post_id: post.id, storage_key: video_url || '' });
+    }
+    if (typeof audio_feedim_id === 'string' && audio_feedim_id) {
+      fileIdInserts.push({ feedim_id: audio_feedim_id, file_type: 'audio', uploader_id: user.id, post_id: post.id, storage_key: '' });
+    }
+    if (fileIdInserts.length > 0) {
+      try {
+        for (const fid of fileIdInserts) {
+          const { data: existing } = await admin.from('file_identifiers')
+            .select('id').eq('feedim_id', fid.feedim_id).maybeSingle();
+          if (existing) {
+            await admin.from('file_identifiers')
+              .update({ post_id: fid.post_id, storage_key: fid.storage_key })
+              .eq('feedim_id', fid.feedim_id);
+          } else {
+            await admin.from('file_identifiers').insert(fid);
+          }
+        }
+      } catch (err) {
+        logServerError('[FileId] Failed to register file identifiers', err, {
+          operation: 'register_file_identifiers',
+        });
+      }
+    }
+
+    // Store video frame hashes
+    if (frameHashes.length > 0 && (isVideo || isMoment)) {
+      try {
+        await admin.from('video_frame_hashes').insert(
+          frameHashes.map(fh => ({
+            post_id: post.id,
+            frame_index: fh.frameIndex,
+            frame_hash: fh.hash,
+          }))
+        );
+      } catch (err) {
+        logServerError('[Copyright] Failed to store frame hashes', err, {
+          operation: 'store_video_frame_hashes',
+        });
+      }
+    }
+
+    // Store audio fingerprints
+    if (audioHashes.length > 0 && (isVideo || isMoment)) {
+      try {
+        await admin.from('audio_fingerprints').insert(
+          audioHashes.map(ah => ({
+            post_id: post.id,
+            chunk_index: ah.chunkIndex,
+            chunk_hash: ah.hash,
+          }))
+        );
+      } catch (err) {
+        logServerError('[Copyright] Failed to store audio fingerprints', err, {
+          operation: 'store_audio_fingerprints',
+        });
+      }
+    }
+
+    // Copyright claim + verification handling
+    if (copyrightProtectedFinal && status === 'published') {
+      if (copyrightFlagged && copyrightMatchId && copyrightMatchAuthorId) {
+        // Eşleşme VAR → copyright_claim oluştur, post'u pending_verification yap
+        copyrightClaimStatus = 'pending_verification';
+        try {
+          await admin.from('copyright_claims').insert({
+            post_id: post.id,
+            claimant_id: user.id,
+            matched_post_id: copyrightMatchId,
+            matched_author_id: copyrightMatchAuthorId,
+            status: 'pending',
+            claim_type: 'ownership',
+            similarity_percent: copyrightSimilarity,
+            content_type: isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post',
+          });
+          await admin.from('posts').update({
+            copyright_claim_status: 'pending_verification',
+          }).eq('id', post.id);
+        } catch (err) {
+          logServerError('[Copyright] Failed to create copyright claim', err, {
+            operation: 'create_copyright_claim',
+          });
+        }
+      } else {
+        // Eşleşme YOK → otomatik Feedim Telif Hakkı
+        try {
+          const { data: profile } = await admin.from('profiles').select('username').eq('user_id', user.id).single();
+          await admin.from('copyright_verifications').upsert({
+            post_id: post.id,
+            verified_by: user.id,
+            owner_name: profile?.username || tErrors('feedimUser'),
+          }, { onConflict: 'post_id' });
+          await admin.from('posts').update({
+            copyright_claim_status: 'verified',
+          }).eq('id', post.id);
+        } catch (err) {
+          logServerError('[Copyright] Failed to auto-verify', err, {
+            operation: 'auto_verify_copyright',
+          });
+        }
+      }
+    }
+
+    // Handle tags
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      const rawTagIds: number[] = [];
+      for (const tagItem of tags.slice(0, VALIDATION.postTags.max)) {
+        if (typeof tagItem === 'number') {
+          rawTagIds.push(tagItem);
+        } else if (typeof tagItem === 'string' && tagItem.trim()) {
+          const sanitizedTag = formatTagName(tagItem.trim());
+          if (!sanitizedTag || sanitizedTag.length < 2) continue;
+          const { data: existing } = await admin
+            .from('tags')
+            .select('id')
+            .eq('slug', sanitizedTag)
+            .single();
+
+          if (existing) {
+            rawTagIds.push(existing.id);
+          } else {
+            const { data: newTag } = await admin
+              .from('tags')
+              .insert({ name: sanitizedTag, slug: sanitizedTag })
+              .select('id')
+              .single();
+            if (newTag) rawTagIds.push(newTag.id);
+          }
+        }
+      }
+
+      const tagIds = [...new Set(rawTagIds)];
+
+      if (tagIds.length > 0) {
+        await admin
+          .from('post_tags')
+          .insert(tagIds.map(tag_id => ({ post_id: post.id, tag_id })));
+
+        // Increment post_count for each tag (parallel)
+        if (postStatus === 'published') {
+          await Promise.all(tagIds.map(async (tagId) => {
+            const { data: tag } = await admin.from('tags').select('post_count').eq('id', tagId).single();
+            if (tag) {
+              await admin.from('tags').update({ post_count: (tag.post_count || 0) + 1 }).eq('id', tagId);
+            }
+          }));
+        }
+
+        // Classify post by interest categories (background)
+        const capturedTagIds = [...tagIds];
+        const capturedPostId = post.id;
+        after(async () => {
+          const { classifyAndStorePostInterests } = await import('@/lib/interests');
+          await classifyAndStorePostInterests(createAdminClient(), capturedPostId, capturedTagIds);
+        });
+      }
+    }
+
+    // First post / Comeback post notification for followers
+    if (postStatus === 'published') {
+      const { count: publishedCount } = await admin
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', user.id)
+        .eq('status', 'published');
+
+      // Check if a first_post notification was ever sent for this user
+      const { count: firstPostNotifCount } = await admin
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('actor_id', user.id)
+        .eq('type', 'first_post');
+      const isFirstPost = publishedCount === 1 && (firstPostNotifCount === 0 || firstPostNotifCount === null);
+
+      let isComebackPost = false;
+      if (!isFirstPost) {
+        const { data: lastPost } = await admin
+          .from('posts')
+          .select('published_at')
+          .eq('author_id', user.id)
+          .eq('status', 'published')
+          .neq('id', post.id)
+          .order('published_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (lastPost?.published_at) {
+          const daysSinceLast = (Date.now() - new Date(lastPost.published_at).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceLast >= 30) {
+            // Check if a comeback_post notification was already sent in last 30 days
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+            const { count: recentComebackCount } = await admin
+              .from('notifications')
+              .select('id', { count: 'exact', head: true })
+              .eq('actor_id', user.id)
+              .eq('type', 'comeback_post')
+              .gte('created_at', thirtyDaysAgo);
+            isComebackPost = (recentComebackCount === 0 || recentComebackCount === null);
+          }
+        }
+      }
+
+      if (isFirstPost || isComebackPost) {
+        const { data: followers } = await admin
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', user.id);
+
+        const notifType = isFirstPost ? 'first_post' : 'comeback_post';
+        const notifContent = isFirstPost ? tNotif('firstPost') : tNotif('comebackPost');
+
+        await Promise.all((followers || []).slice(0, 100).map(f =>
+          createNotification({
+            admin,
+            user_id: f.follower_id,
+            actor_id: user.id,
+            type: notifType,
+            object_type: 'post',
+            object_id: post.id,
+            content: notifContent,
+          })
+        ));
+      }
+    }
+
+    // Mention notifications for published posts
+    if (postStatus === 'published') {
+      try {
+        // Extract mentions from title and content
+        const mentionSource = isNote
+          ? (content || '')
+          : isMoment
+          ? trimmedTitle
+          : `${trimmedTitle} ${(content || '').replace(/<[^>]+>/g, '')}`;
+        const mentionedUsernames = extractMentions(mentionSource, 3);
+
+        await Promise.all(mentionedUsernames.map(async (mentionedUsername) => {
+          const { data: mentionedProfile } = await admin
+            .from('profiles')
+            .select('user_id')
+            .eq('username', mentionedUsername)
+            .single();
+
+          if (mentionedProfile && mentionedProfile.user_id !== user.id) {
+            const { count } = await admin
+              .from('follows')
+              .select('id', { count: 'exact', head: true })
+              .or(
+                `and(follower_id.eq.${user.id},following_id.eq.${mentionedProfile.user_id}),and(follower_id.eq.${mentionedProfile.user_id},following_id.eq.${user.id})`
+              );
+
+            if (count && count > 0) {
+              await createNotification({
+                admin,
+                user_id: mentionedProfile.user_id,
+                actor_id: user.id,
+                type: 'mention',
+                object_type: 'post',
+                object_id: post.id,
+                content: trimmedTitle?.slice(0, 80) || (content || '').replace(/<[^>]+>/g, '').slice(0, 80),
+              });
+            }
+          }
+        }));
+      } catch {}
+    }
+
+    if (postStatus === 'published') {
+      revalidateTag('posts', 'max');
+    }
+
+    const response: Record<string, unknown> = { post };
+    if (isNsfw) {
+      // System notification: post is under review
+      try {
+        await createNotification({
+          admin,
+          user_id: user.id,
+          actor_id: user.id,
+          type: 'moderation_review',
+          object_type: 'post',
+          object_id: post.id,
+          content: tNotif('moderationReview'),
+        });
+        // Send moderation review email
+        const emailResult = await getEmailIfEnabled(user.id, 'moderation_review');
+        if (emailResult) {
+          const tpl = await moderationReviewEmail(trimmedTitle, slug, emailResult.locale);
+          await sendEmail({ to: emailResult.email, ...tpl, template: 'moderation_review', userId: user.id });
+        }
+      } catch {}
+      response.moderation = true;
+      response.message = tNotif('postPublishedReview') + tErrors('riskyContent');
+    }
+    // Notify original content author about copyright match (both NSFW and badge-only)
+    if (copyrightFlagged && copyrightMatchAuthorId && copyrightMatchId) {
+      try {
+        await createNotification({
+          admin,
+          user_id: copyrightMatchAuthorId,
+          actor_id: copyrightMatchAuthorId,
+          type: 'copyright_similar_detected',
+          object_type: 'post',
+          object_id: post.id,
+          content: tNotif('copyrightSimilarDetected', { similarity: String(copyrightSimilarity || 0) }),
+        });
+      } catch {}
+    }
+    // Notify the poster if verification is needed
+    if (copyrightClaimStatus === 'pending_verification') {
+      try {
+        await createNotification({
+          admin,
+          user_id: user.id,
+          actor_id: user.id,
+          type: 'copyright_verification_needed',
+          object_type: 'post',
+          object_id: post.id,
+          content: tNotif('copyrightVerificationNeeded'),
+        });
+      } catch {}
+    }
+    // Trigger HLS transcode for video posts (runs after response is sent)
+    if (isVideo && postStatus === 'published' && video_url && post.id) {
+      const transcodeWorkerUrl = process.env.TRANSCODE_WORKER_URL;
+      const transcodeSecret = process.env.TRANSCODE_CALLBACK_SECRET;
+      if (transcodeWorkerUrl && transcodeSecret) {
+        // Mark video as processing
+        await admin.from('posts').update({ video_status: 'processing' }).eq('id', post.id);
+        after(async () => {
+          try {
+            await fetch(transcodeWorkerUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${transcodeSecret}`,
+              },
+              body: JSON.stringify({
+                postId: post.id,
+                videoUrl: video_url,
+                userId: user.id,
+                callbackUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/api/posts/${post.id}/transcode-complete`,
+              }),
+            });
+          } catch (err) {
+            logServerError('[Transcode] Failed to trigger worker', err, {
+              operation: 'trigger_transcode_worker',
+            });
+            await admin.from('posts').update({ video_status: 'error' }).eq('id', post.id);
+          }
+        });
+      }
+    }
+
+    return NextResponse.json(response, { status: 201 });
+  } catch (err) {
+    logServerError('[POST /api/posts] Error', err, {
+      operation: 'create_post',
+    });
+    return NextResponse.json({ error: tErrors('serverError') }, { status: 500 });
+  }
+}

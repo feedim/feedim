@@ -1,0 +1,119 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createNotification } from '@/lib/notifications';
+import { safeError } from '@/lib/apiError';
+import { getTranslations } from 'next-intl/server';
+
+// GET: Return the authenticated user's own copyright claims
+export async function GET() {
+  try {
+    const tErrors = await getTranslations("apiErrors");
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+
+    const admin = createAdminClient();
+
+    const { data: claims } = await admin
+      .from('copyright_claims')
+      .select('*, post:posts!copyright_claims_post_id_fkey(id, title, slug), matched_post:posts!copyright_claims_matched_post_id_fkey(id, title, slug)')
+      .eq('claimant_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    return NextResponse.json({ claims: claims || [] });
+  } catch {
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
+}
+
+// POST: Submit a copyright verification form for a pending claim
+export async function POST(request: NextRequest) {
+  try {
+    const tErrors = await getTranslations("apiErrors");
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+    const admin = createAdminClient();
+
+    const body = await request.json();
+    const { post_id, owner_name, owner_email, company_name, proof_description, proof_urls } = body;
+
+    // Validate required fields
+    if (!post_id || !owner_name || !owner_email || !proof_description) {
+      return NextResponse.json({ error: tErrors("missingParameters") }, { status: 400 });
+    }
+
+    // Validate proof_urls max 5
+    if (proof_urls && Array.isArray(proof_urls) && proof_urls.length > 5) {
+      return NextResponse.json({ error: tErrors("maxProofUrls") }, { status: 400 });
+    }
+
+    // Verify the post belongs to the user
+    const { data: post } = await admin
+      .from('posts')
+      .select('id, author_id')
+      .eq('id', Number(post_id))
+      .single();
+
+    if (!post) {
+      return NextResponse.json({ error: tErrors("postNotFound") }, { status: 404 });
+    }
+
+    if (post.author_id !== user.id) {
+      return NextResponse.json({ error: tErrors("postNotOwned") }, { status: 403 });
+    }
+
+    // Check there's an existing pending copyright_claim for this post
+    const { data: existingClaim } = await admin
+      .from('copyright_claims')
+      .select('id, status')
+      .eq('post_id', Number(post_id))
+      .eq('claimant_id', user.id)
+      .eq('status', 'pending')
+      .single();
+
+    if (!existingClaim) {
+      return NextResponse.json({ error: tErrors("noPendingCopyrightClaim") }, { status: 404 });
+    }
+
+    // Update the copyright_claim with verification details
+    const sanitizedProofUrls = Array.isArray(proof_urls)
+      ? proof_urls.filter((u: unknown) => typeof u === 'string' && (u as string).trim()).slice(0, 5)
+      : [];
+
+    const { error: updateError } = await admin
+      .from('copyright_claims')
+      .update({
+        owner_name: String(owner_name).trim().slice(0, 200),
+        owner_email: String(owner_email).trim().slice(0, 200),
+        company_name: company_name ? String(company_name).trim().slice(0, 200) : null,
+        proof_description: String(proof_description).trim().slice(0, 2000),
+        proof_urls: sanitizedProofUrls,
+        status: 'pending',
+      })
+      .eq('id', existingClaim.id);
+
+    if (updateError) {
+      return safeError(updateError);
+    }
+
+    // Send notification to the user confirming submission
+    const tNotif = await getTranslations("notifications");
+    await createNotification({
+      admin,
+      user_id: user.id,
+      actor_id: user.id,
+      type: 'copyright_claim_submitted',
+      object_type: 'post',
+      object_id: Number(post_id),
+      content: tNotif("copyrightVerificationFormSent"),
+    });
+
+    const tCopyright = await getTranslations("copyright");
+    return NextResponse.json({ success: true, message: tCopyright("verificationFormSent") });
+  } catch {
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
+}

@@ -1,0 +1,1046 @@
+"use client";
+
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { X, Plus, Upload, Smile, ChevronDown } from "lucide-react";
+import PostMetaFields from "@/components/PostMetaFields";
+import { createClient } from "@/lib/supabase/client";
+import { emitNavigationStart } from "@/lib/navigationProgress";
+import { smartBack } from "@/lib/smartBack";
+import dynamic from "next/dynamic";
+import type { RichTextEditorHandle } from "@/components/RichTextEditor";
+
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 px-3 sm:px-4 pt-4 space-y-2.5">
+      <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
+      <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
+      <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
+    </div>
+  ),
+});
+import { feedimAlert } from "@/components/FeedimAlert";
+import { VALIDATION } from "@/lib/constants";
+import { formatCount } from "@/lib/utils";
+
+import { useTranslations, useLocale } from "next-intl";
+import { useUser } from "@/components/UserContext";
+import AppLayout from "@/components/AppLayout";
+import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
+import GifPickerPanel from "@/components/modals/GifPickerPanel";
+import CropModal from "@/components/modals/CropModal";
+import { openFilePicker } from "@/lib/openFilePicker";
+
+interface Tag {
+  id: number | string;
+  name: string;
+  slug: string;
+  post_count?: number;
+  virtual?: boolean;
+}
+
+export default function WritePage() {
+  return (
+    <Suspense fallback={<AppLayout hideRightSidebar><div className="px-3 sm:px-4 pt-4 space-y-2.5"><div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" /></div></AppLayout>}>
+      <WritePageContent />
+    </Suspense>
+  );
+}
+
+function WritePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+  const { user } = useUser();
+  const t = useTranslations("create");
+  const locale = useLocale();
+  const maxWords = (user?.role === "admin" || user?.premiumPlan === "max" || user?.premiumPlan === "business")
+    ? VALIDATION.postContent.maxWordsMax
+    : VALIDATION.postContent.maxWords;
+  const editorRef = useRef<RichTextEditorHandle>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  // Step: 1=title+content, 2=tags/image/settings
+  const [step, setStep] = useState(1);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(false);
+
+  // Step 1
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+
+  // Step 2
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
+  const [tagHighlight, setTagHighlight] = useState(-1);
+  const [tagCreating, setTagCreating] = useState(false);
+  const [featuredImage, setFeaturedImage] = useState("");
+  const [coverDragging, setCoverDragging] = useState(false);
+  const [visibility, setVisibility] = useState("public");
+  const [allowComments, setAllowComments] = useState(true);
+  const [isForKids, setIsForKids] = useState(false);
+  const [isAiContent, setIsAiContent] = useState(false);
+  const [copyrightProtected, setCopyrightProtected] = useState(false);
+
+  // Auto-disable copyright protection when content drops below 50 words
+  useEffect(() => {
+    const wordCount = content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50 && copyrightProtected) setCopyrightProtected(false);
+  }, [content, copyrightProtected]);
+
+  // SEO meta
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [metaExpanded, setMetaExpanded] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
+
+  // State
+  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropAspect, setCropAspect] = useState(16 / 9);
+  const cropResolveRef = useRef<((url: string) => void) | null>(null);
+
+  // Load edit mode post
+  useEffect(() => {
+    const editSlug = searchParams.get("edit");
+    if (editSlug) {
+      setIsEditMode(true);
+      loadDraft(editSlug);
+    }
+  }, []);
+
+  const loadDraft = async (slug: string) => {
+    setLoadingDraft(true);
+    try {
+      const res = await fetch(`/api/posts/${slug}`);
+      const data = await res.json();
+      if (res.ok && data.post) {
+        setTitle(data.post.title || "");
+        setContent(data.post.content || "");
+        setDraftId(data.post.id);
+        setFeaturedImage(data.post.featured_image || "");
+        setVisibility(data.post.visibility || "public");
+        setAllowComments(data.post.allow_comments !== false);
+        setIsForKids(data.post.is_for_kids === true);
+        setIsAiContent(data.post.is_ai_content === true);
+        setCopyrightProtected(data.post.copyright_protected === true);
+        setIsPublished(data.post.status === 'published');
+        if (data.post.meta_title) setMetaTitle(data.post.meta_title);
+        if (data.post.meta_description) setMetaDescription(data.post.meta_description);
+        if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
+        const postTags = (data.post.post_tags || [])
+          .map((pt: { tags: Tag }) => pt.tags)
+          .filter(Boolean);
+        setTags(postTags);
+      }
+    } catch {
+      feedimAlert("error", t("draftLoadError"));
+    } finally {
+      setLoadingDraft(false);
+    }
+  };
+
+  const searchTags = useCallback(async (q: string) => {
+    if (q.trim().length < 1) {
+      setTagSuggestions([]);
+      setTagHighlight(-1);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setTagSuggestions(
+        (data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
+      );
+      setTagHighlight(-1);
+    } catch {
+      setTagSuggestions([]);
+    }
+  }, [tags]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchTags(tagSearch), 300);
+    return () => clearTimeout(timer);
+  }, [tagSearch, searchTags]);
+
+  const addTag = (tag: Tag) => {
+    if (tags.length >= VALIDATION.postTags.max) return;
+    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
+    setTags([...tags, tag]);
+    setTagSearch("");
+    setTagSuggestions([]);
+    setTagHighlight(-1);
+  };
+
+  const createAndAddTag = async () => {
+    const trimmed = tagSearch.trim().replace(/\s+/g, ' ');
+    if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
+    if (trimmed.length < VALIDATION.tagName.min) {
+      feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
+      return;
+    }
+    if (trimmed.length > VALIDATION.tagName.max) {
+      feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max }));
+      return;
+    }
+    if (!VALIDATION.tagName.pattern.test(trimmed)) {
+      feedimAlert("error", t("tagInvalidChars"));
+      return;
+    }
+    if (/^\d+$/.test(trimmed)) {
+      feedimAlert("error", t("tagOnlyNumbers"));
+      return;
+    }
+    setTagCreating(true);
+    await new Promise(r => setTimeout(r, 1000));
+    try {
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await res.json();
+      if (res.ok && data.tag) {
+        addTag(data.tag);
+      } else {
+        feedimAlert("error", data.error || t("tagCreateFailed"));
+      }
+    } catch {
+      feedimAlert("error", t("tagCreateFailedRetry"));
+    } finally {
+      setTagCreating(false);
+    }
+  };
+
+  const removeTag = (tagId: number | string) => {
+    setTags(tags.filter(t => t.id !== tagId));
+  };
+
+  // Tag keyboard navigation (WordPress birebir)
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (tagSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setTagHighlight(prev => (prev < tagSuggestions.length - 1 ? prev + 1 : 0));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setTagHighlight(prev => (prev > 0 ? prev - 1 : tagSuggestions.length - 1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (tagHighlight >= 0 && tagHighlight < tagSuggestions.length) {
+          addTag(tagSuggestions[tagHighlight]);
+        } else if (tagSearch.trim()) {
+          createAndAddTag();
+        }
+      } else if (e.key === "Escape") {
+        setTagSuggestions([]);
+        setTagHighlight(-1);
+      }
+    } else if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      if (tagSearch.trim()) createAndAddTag();
+    } else if (e.key === "Backspace" && !tagSearch && tags.length > 0) {
+      removeTag(tags[tags.length - 1].id);
+    }
+  };
+
+  const handleImageUpload = async (file: File): Promise<string> => {
+    setImageUploading(true);
+    try {
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
+
+      // Compress before storing (strip metadata, convert to JPEG, max 2MB)
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error(t("fileReadError")));
+        reader.readAsDataURL(compressed);
+      });
+
+      // Dismiss mobile keyboard before opening crop modal
+      (document.activeElement as HTMLElement)?.blur();
+
+      // Open crop modal and wait for result
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = resolve;
+        setCropAspect(16 / 9);
+        setCropSrc(dataUrl);
+      });
+
+      // Crop cancelled
+      if (!croppedUrl) throw new Error("cancelled");
+
+      // Upload cropped image to R2 immediately (data: URLs are stripped by sanitizer)
+      const blob = await fetch(croppedUrl).then(r => r.blob());
+      const uploadFile = new File([blob], `inline-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('fileName', uploadFile.name);
+      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+
+      return uploadData.url;
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleCoverImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
+
+      setImageUploading(true);
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error(t("fileReadError")));
+        reader.readAsDataURL(compressed);
+      });
+
+      // Dismiss keyboard before crop modal
+      (document.activeElement as HTMLElement)?.blur();
+
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = resolve;
+        setCropAspect(16 / 9);
+        setCropSrc(dataUrl);
+      });
+
+      // Crop cancelled
+      if (!croppedUrl) {
+        setImageUploading(false);
+        return;
+      }
+
+      // Upload cropped image to R2
+      const blob = await fetch(croppedUrl).then(r => r.blob());
+      const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('fileName', uploadFile.name);
+      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+
+      setFeaturedImage(uploadData.url);
+      setImageUploading(false);
+    } catch {
+      setImageUploading(false);
+      feedimAlert("error", t("imageUploadFailedRetry"));
+    }
+    e.target.value = "";
+  };
+
+  // Cover image drag & drop
+  const handleCoverDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setCoverDragging(true);
+  };
+  const handleCoverDragLeave = () => setCoverDragging(false);
+  const handleCoverDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setCoverDragging(false);
+    const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("image/"));
+    if (!file) return;
+    try {
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
+
+      setImageUploading(true);
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error(t("fileReadError")));
+        reader.readAsDataURL(compressed);
+      });
+
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = resolve;
+        setCropAspect(16 / 9);
+        setCropSrc(dataUrl);
+      });
+
+      if (!croppedUrl) {
+        setImageUploading(false);
+        return;
+      }
+
+      // Upload cropped image to R2
+      const blob = await fetch(croppedUrl).then(r => r.blob());
+      const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('fileName', uploadFile.name);
+      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+
+      setFeaturedImage(uploadData.url);
+      setImageUploading(false);
+    } catch {
+      setImageUploading(false);
+      feedimAlert("error", t("imageUploadFailedRetry"));
+    }
+  };
+
+  // Title Enter → focus editor
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      editorRef.current?.focus();
+    }
+  };
+
+  const savePost = async (status: "draft" | "published") => {
+    const trimmedTitle = title.trim();
+
+    if (!trimmedTitle) {
+      feedimAlert("error", t("titleRequired"));
+      return;
+    }
+
+    // Title validation (WordPress birebir)
+    if (trimmedTitle.length < 3) {
+      feedimAlert("error", t("titleMinLength"));
+      return;
+    }
+    if (/<[^>]+>/.test(trimmedTitle)) {
+      feedimAlert("error", t("titleNoHtml"));
+      return;
+    }
+    // Domain detection
+    if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedTitle)) {
+      feedimAlert("error", t("titleNoUrl"));
+      return;
+    }
+
+    // Content validation (WordPress birebir) — only for publish
+    if (status === "published") {
+      const cleanedContent = editorRef.current?.cleanContentForSave() || content;
+      const { validatePostContent } = await import("@/components/RichTextEditor");
+      const validation = validatePostContent(cleanedContent, maxWords, {
+        contentRequired: t("contentRequired"),
+        minChars: t("postMinChars"),
+        maxWords: t("postMaxWords", { max: maxWords.toLocaleString(locale) }),
+        maxListItems: t("postMaxListItems"),
+        repetitiveContent: t("repetitiveContent"),
+        onlyNumbers: t("postOnlyNumbers"),
+      });
+      if (!validation.ok) {
+        feedimAlert("error", validation.error!);
+        return;
+      }
+    }
+
+    setSavingAs(status);
+    try {
+      const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
+      const method = draftId ? "PUT" : "POST";
+      let cleanedContent = editorRef.current?.cleanContentForSave() || content;
+
+      // Re-upload external images to CDN on publish
+      if (status === "published") {
+        try {
+          const { reuploadExternalImages } = await import("@/lib/reuploadExternalImages");
+          cleanedContent = await reuploadExternalImages(cleanedContent);
+        } catch {}
+      }
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          content: cleanedContent,
+          status,
+          tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
+          featured_image: featuredImage || null,
+          allow_comments: allowComments,
+          is_for_kids: isForKids,
+          is_ai_content: isAiContent,
+          visibility,
+          copyright_protected: copyrightProtected && cleanedContent.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length >= 50,
+          meta_title: metaTitle.trim() || null,
+          meta_description: metaDescription.trim() || null,
+          meta_keywords: metaKeywords.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        if (status === "published" && data.post?.slug) {
+          emitNavigationStart();
+          router.push(`/${data.post.slug}`);
+        } else {
+          sessionStorage.setItem("fdm-open-create-modal", "1");
+          sessionStorage.setItem("fdm-create-view", "drafts");
+          emitNavigationStart();
+          router.push("/");
+        }
+      } else {
+        feedimAlert("error", data.error || t("genericErrorRetry"));
+      }
+    } catch {
+      feedimAlert("error", t("genericErrorRetry"));
+    } finally {
+      setSavingAs(null);
+    }
+  };
+
+  // Crop inline image in editor — called by editor's crop toolbar button
+  const handleEditorCropImage = async (src: string): Promise<string> => {
+    (document.activeElement as HTMLElement)?.blur();
+    const croppedUrl = await new Promise<string>((resolve) => {
+      cropResolveRef.current = resolve;
+      setCropAspect(16 / 9);
+      setCropSrc(src);
+    });
+    if (!croppedUrl) return "";
+    // Upload cropped image to R2
+    const blob = await fetch(croppedUrl).then(r => r.blob());
+    const uploadFile = new File([blob], `crop-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    formData.append('fileName', uploadFile.name);
+    const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+    const uploadData = await uploadRes.json();
+    if (uploadRes.ok && uploadData.url) return uploadData.url;
+    return "";
+  };
+
+  // Auto-detect featured image from first content image when entering step 2
+  const goToStep2 = async () => {
+    if (!canGoNextRaw) return;
+    // Temizlenmiş içerik kontrolü — boş HTML'leri yakala
+    const cleaned = editorRef.current?.cleanContentForSave() || "";
+    if (!cleaned.trim()) {
+      feedimAlert("error", t("contentRequired"));
+      return;
+    }
+    if (!featuredImage) {
+      const imgRegex = /<img[^>]+src="([^"]+)"/g;
+      let imgMatch;
+      while ((imgMatch = imgRegex.exec(content)) !== null) {
+        const url = imgMatch[1];
+        if (!url.toLowerCase().endsWith('.gif')) {
+          setFeaturedImage(url);
+          break;
+        }
+      }
+    }
+    // Ana konu başlığı: title'dan otomatik doldur (60 karakter)
+    if (!metaTitle.trim()) {
+      const t = title.trim();
+      if (t.length <= 60) {
+        setMetaTitle(t);
+      } else {
+        const cut = t.slice(0, 57);
+        const lastSpace = cut.lastIndexOf(" ");
+        setMetaTitle((lastSpace > 30 ? cut.slice(0, lastSpace) : cut) + "...");
+      }
+    }
+
+    // Extract #hashtags from title and auto-add as tags
+    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
+    const matches = [...title.matchAll(hashtagRegex)];
+    if (matches.length > 0) {
+      const existingNames = new Set(tags.map(t => t.name.toLowerCase()));
+      const newTags: Tag[] = [];
+      for (const match of matches) {
+        const name = match[1];
+        if (existingNames.has(name.toLowerCase()) || newTags.some(t => t.name.toLowerCase() === name.toLowerCase())) continue;
+        if (tags.length + newTags.length >= VALIDATION.postTags.max) break;
+        try {
+          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+          const data = await res.json();
+          if (res.ok && data.tag) newTags.push(data.tag);
+        } catch { /* skip */ }
+      }
+      if (newTags.length > 0) setTags(prev => [...prev, ...newTags]);
+      setTitle(title.replace(hashtagRegex, "").replace(/  +/g, " ").trim());
+    }
+
+    setStep(2);
+  };
+
+  const canGoNextRaw = title.trim().length > 0 && content.trim().length > 0;
+
+  const headerRight = (
+    <div className="flex items-center gap-2">
+      {step === 1 ? (
+        <button
+          onClick={goToStep2}
+          disabled={!canGoNextRaw}
+          className="t-btn accept !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
+        >
+          {t("nextStep")}
+        </button>
+      ) : (
+        <>
+          {!isPublished ? (
+            <button
+              onClick={() => savePost("draft")}
+              disabled={savingAs !== null || !title.trim()}
+              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
+            >
+              {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (!draftId || deleting) return;
+                feedimAlert("question", t("deleteConfirmContent"), {
+                  showYesNo: true,
+                  onYes: async () => {
+                    setDeleting(true);
+                    try {
+                      const res = await fetch(`/api/posts/${draftId}`, { method: "DELETE" });
+                      if (res.ok) {
+                        feedimAlert("success", t("deleted"));
+                        router.push("/dashboard");
+                      } else {
+                        feedimAlert("error", t("deleteFailed"));
+                      }
+                    } catch {
+                      feedimAlert("error", t("deleteFailed"));
+                    } finally {
+                      setDeleting(false);
+                    }
+                  },
+                });
+              }}
+              disabled={deleting || savingAs !== null}
+              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] !text-error disabled:opacity-40"
+            >
+              {deleting ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("deleteBtn")}
+            </button>
+          )}
+          <button
+            onClick={() => savePost("published")}
+            disabled={savingAs !== null || !title.trim() || !content.trim()}
+            className="t-btn accept relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
+            aria-label={isPublished ? t("updateBtn") : t("publishBtn")}
+          >
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : isPublished ? t("updateBtn") : t("publishBtn")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <AppLayout
+      hideMobileNav
+      hideRightSidebar
+      headerRightAction={headerRight}
+      headerTitle={step === 1 ? t("headerPost") : t("headerDetails")}
+      headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
+    >
+      <div className="flex flex-col min-h-[calc(100dvh-53px)]">
+        {/* Step 1: Title + Content */}
+        {step === 1 && loadingDraft && (
+          <div className="flex-1 px-3 sm:px-4 pt-4 space-y-2.5">
+            <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
+            <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
+            <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
+            <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
+          </div>
+        )}
+        {step === 1 && !loadingDraft && (
+          <div className="flex flex-col flex-1">
+            <div className="px-3 sm:px-4 pt-4">
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                onFocus={e => {
+                  const el = e.currentTarget;
+                  requestAnimationFrame(() => {
+                    const len = el.value.length;
+                    el.setSelectionRange(len, len);
+                  });
+                }}
+                maxLength={VALIDATION.postTitle.max}
+                placeholder={t("titlePlaceholder")}
+                className="title-input"
+                autoFocus
+              />
+            </div>
+            <RichTextEditor
+              ref={editorRef}
+              value={content}
+              onChange={setContent}
+              onImageUpload={handleImageUpload}
+              onBackspaceAtStart={() => titleInputRef.current?.focus()}
+              onEmojiClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowEmojiPicker(true); }}
+              onGifClick={() => { (document.activeElement as HTMLElement)?.blur(); setTimeout(() => { (document.activeElement as HTMLElement)?.blur(); }, 50); setShowGifPicker(true); }}
+              onCropImage={handleEditorCropImage}
+              onMentionSearch={async (query) => {
+                try {
+                  const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&mention=1`);
+                  const data = await res.json();
+                  return data.users || [];
+                } catch { return []; }
+              }}
+              onSave={() => savePost("draft")}
+              onPublish={() => savePost("published")}
+              placeholder={t("whatsOnYourMind")}
+            />
+          </div>
+        )}
+
+        {/* Step 2: Tags + Cover Image + Settings */}
+        {step === 2 && (
+          <div className="space-y-6 px-5 sm:px-4 pt-4 pb-20">
+            {/* Tags + Cover Image — side by side on desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
+                {tags.length < VALIDATION.postTags.max && (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={tagSearch}
+                      onChange={e => setTagSearch(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      placeholder={t("tagSearchPlaceholder")}
+                      className="input-modern w-full"
+                    />
+                    {/* Suggestions dropdown */}
+                    {tagSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto">
+                        {tagSuggestions.map((s, i) => (
+                          <button
+                            key={s.id}
+                            onClick={() => addTag(s)}
+                            onMouseEnter={() => setTagHighlight(i)}
+                            className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${
+                              i === tagHighlight ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"
+                            }`}
+                          >
+                            <span className="text-accent-main">#</span><span className="font-semibold truncate">{s.name}</span>
+                            {s.post_count !== undefined && (
+                              <span className="ml-auto text-[0.7rem] text-text-muted font-medium shrink-0 pl-2">{formatCount(s.post_count || 0)} {t("postsCount")}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Create new tag button */}
+                    {tagSearch.trim() && tagSuggestions.length === 0 && (
+                    <button
+                      onClick={createAndAddTag}
+                      disabled={tagCreating}
+                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                    >
+                        {tagCreating ? (
+                          <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
+                        ) : (
+                          <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {tags.map(tag => (
+                      <span key={tag.id} className="flex items-center gap-1.5 bg-accent-main/10 text-accent-main text-sm font-medium px-3 py-1.5 rounded-full">
+                        #{tag.name}
+                        <button onClick={() => removeTag(tag.id)} className="hover:text-error transition">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-text-muted mt-1.5 text-right font-semibold mr-2">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
+
+              </div>
+
+              {/* Cover Image with drag & drop */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">{t("coverImage")}</label>
+                {featuredImage ? (
+                  <div>
+                    <div className="relative rounded-xl overflow-hidden">
+                      <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-cover bg-bg-tertiary" />
+                      {imageUploading && (
+                        <div className="absolute inset-0 bg-bg-secondary/80 animate-pulse" />
+                      )}
+                      <button
+                        onClick={() => setFeaturedImage("")}
+                        className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        onClick={async () => {
+                          // Re-crop existing cover image
+                          (document.activeElement as HTMLElement)?.blur();
+                          setImageUploading(true);
+                          try {
+                            const croppedUrl = await new Promise<string>((resolve) => {
+                              cropResolveRef.current = resolve;
+                              setCropAspect(16 / 9);
+                              setCropSrc(featuredImage);
+                            });
+                            if (!croppedUrl) { setImageUploading(false); return; }
+                            const blob = await fetch(croppedUrl).then(r => r.blob());
+                            const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+                            const formData = new FormData();
+                            formData.append('file', uploadFile);
+                            formData.append('fileName', uploadFile.name);
+                            const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+                            const uploadData = await uploadRes.json();
+                            if (uploadRes.ok && uploadData.url) setFeaturedImage(uploadData.url);
+                          } catch {} finally { setImageUploading(false); }
+                        }}
+                        className="text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
+                      >
+                        {t("editCover")}
+                      </button>
+                      <button
+                        onClick={() => openFilePicker(coverInputRef.current)}
+                        className="text-sm text-text-muted hover:text-text-primary font-medium py-1.5 transition"
+                      >
+                        {t("changeCover")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={handleCoverDragOver}
+                    onDragLeave={handleCoverDragLeave}
+                    onDrop={handleCoverDrop}
+                    onClick={() => { if (!imageUploading) openFilePicker(coverInputRef.current); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        if (!imageUploading) openFilePicker(coverInputRef.current);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-xl cursor-pointer transition ${
+                      coverDragging
+                        ? "border-accent-main bg-accent-main/5"
+                        : "border-border-primary hover:border-accent-main/50"
+                    }`}
+                  >
+                    <div className="text-center text-text-muted text-sm">
+                      {imageUploading ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-bg-tertiary animate-pulse" />
+                          <div className="h-[9px] w-28 bg-bg-tertiary rounded-[5px] animate-pulse" />
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                          <p className="text-xs">{t("coverUploadHint")}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverImage}
+                  className="hidden"
+                />
+              <p className="text-[0.68rem] text-text-muted/70 mt-1.5">{t("coverRecommended")}</p>
+              <p className="text-[0.68rem] text-text-muted/70 mt-0.5 italic">{t("coverCopyrightNote")}</p>
+              </div>
+            </div>
+
+            {/* Visibility */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">{t("visibilityLabel")}</label>
+              <div className="relative">
+                <select
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value)}
+                  disabled={isPublished}
+                  className={`input-modern w-full appearance-none pr-10 ${isPublished ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                >
+                  <option value="public">{t("visibilityPublic")}</option>
+                  <option value="followers">{t("visibilityFollowers")}</option>
+                  <option value="only_me">{t("visibilityOnlyMe")}</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+              </div>
+              {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("visibilityCannotChange")}</p>}
+            </div>
+
+            {/* Settings */}
+            <div>
+              <div className="cursor-pointer select-none" onClick={() => setSettingsExpanded(!settingsExpanded)}>
+                <div className="flex items-center justify-between w-full text-left">
+                  <span className="block text-sm font-semibold">{t("settingsLabel")}</span>
+                  <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${settingsExpanded ? "rotate-180" : ""}`} />
+                </div>
+                {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("publishedFieldLocked")}</p>}
+                <p className="text-[0.7rem] text-text-muted/60 leading-relaxed mt-1.5">{t("settingsDesc")}</p>
+              </div>
+              {settingsExpanded && <div className="space-y-1 mt-3">
+                <button
+                  disabled={isPublished}
+                  onClick={() => setAllowComments(!allowComments)}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("allowComments")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <button
+                  disabled={isPublished}
+                  onClick={() => setIsForKids(!isForKids)}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("forKids")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <div>
+                <button
+                  disabled={isPublished}
+                  onClick={() => setIsAiContent(!isAiContent)}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("aiContent")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <p className="pt-0.5 pb-0 text-[0.7rem] text-text-muted leading-snug">
+                  {t("aiContentWarning")}{" "}
+                  <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
+                </p>
+                </div>
+                <div>
+                <button
+                  disabled={isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected)}
+                  onClick={() => {
+                    if (!user?.copyrightEligible) return;
+                    if (isPublished) return;
+                    if (content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length < 50) return;
+                    setCopyrightProtected(!copyrightProtected);
+                  }}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">{t("copyrightProtection")}</p>
+                      <p className="text-xs text-text-muted mt-0.5">{isPublished && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}</p>
+                    </div>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                {!user?.copyrightEligible && (
+                  <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
+                )}
+                </div>
+              </div>}
+            </div>
+
+            <PostMetaFields
+              metaTitle={metaTitle} setMetaTitle={setMetaTitle}
+              metaDescription={metaDescription} setMetaDescription={setMetaDescription}
+              metaKeywords={metaKeywords} setMetaKeywords={setMetaKeywords}
+              expanded={metaExpanded} setExpanded={setMetaExpanded}
+              contentType="post"
+              readOnly={false}
+            />
+
+          </div>
+        )}
+      </div>
+
+      {/* Emoji Picker */}
+      {showEmojiPicker && (
+        <EmojiPickerPanel
+          onEmojiSelect={(emoji) => {
+            editorRef.current?.insertEmoji(emoji);
+            setShowEmojiPicker(false);
+          }}
+          onClose={() => setShowEmojiPicker(false)}
+        />
+      )}
+
+      {/* GIF Picker */}
+      {showGifPicker && (
+        <GifPickerPanel
+          onGifSelect={(gifUrl, previewUrl) => {
+            editorRef.current?.insertGif(previewUrl || gifUrl);
+            setShowGifPicker(false);
+          }}
+          onClose={() => setShowGifPicker(false)}
+        />
+      )}
+
+      {/* Crop Modal */}
+      <CropModal
+        open={!!cropSrc}
+        onClose={() => {
+          setCropSrc(null);
+          if (cropResolveRef.current) {
+            cropResolveRef.current("");
+          }
+          cropResolveRef.current = null;
+        }}
+        imageSrc={cropSrc || ""}
+        aspectRatio={cropAspect}
+        onCrop={(croppedUrl) => {
+          if (cropResolveRef.current) {
+            cropResolveRef.current(croppedUrl);
+            cropResolveRef.current = null;
+          }
+          setCropSrc(null);
+        }}
+      />
+    </AppLayout>
+  );
+}

@@ -1,0 +1,90 @@
+import NewTabLink from "@/components/NewTabLink";
+
+export default function ContentEn() {
+  return (
+    <>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Earning Money</h1>
+      <div className="space-y-6 text-sm text-text-secondary leading-relaxed">
+        <p>
+          Feedim offers an earning system that allows quality content creators to be rewarded for their work.
+          You earn tokens through content reads and gifts from other users, and you can convert these tokens into real money.
+        </p>
+
+        {/* ── Who Can Earn ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Who Can Earn?</h2>
+        <p>
+          To earn money on Feedim, you need to meet the following conditions:
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Professional account:</strong> Your account must be a professional (creator or business) account type</li>
+          <li><strong>Monetization approval:</strong> You must apply from Settings &gt; Monetization and receive moderator approval</li>
+        </ul>
+        <p>
+          Users who meet these conditions and have their application approved automatically start earning.
+        </p>
+
+        {/* ── Earning Sources ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Earning Sources</h2>
+        <p>
+          There are multiple earning sources on Feedim: <strong>Premium readers</strong> reading your content
+          and receiving gifts from other users.
+          Premium reads made by readers with Premium membership count as token earnings.
+        </p>
+
+        {/* ── Earning Calculation ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Earning Calculation</h2>
+        <p>
+          When Premium readers genuinely read your content, <strong>tokens</strong> are added to your account.
+          You also earn tokens from gifts sent by other users.
+          Tokens are Feedim&apos;s earning unit and can be converted to real money.
+          Earned tokens are instantly reflected in your account and can be tracked from your analytics panel.
+        </p>
+
+        {/* ── Earning Tracking ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Earning Tracking</h2>
+        <p>
+          You can track your earnings in detail from the <strong>Analytics</strong> panel. In the analytics panel,
+          you can access the following data:
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>Total amount of tokens earned</li>
+          <li>Daily, weekly, and monthly earning data</li>
+          <li>How much each piece of content has earned</li>
+          <li>Premium read counts and rates</li>
+        </ul>
+
+        {/* ── Cash Withdrawal ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Cash Withdrawal</h2>
+        <p>
+          You can withdraw your earned tokens as Turkish Lira. For detailed information about withdrawal conditions,
+          IBAN setup, and processing times, see the{" "}
+          <NewTabLink href="/help/coins" className="text-accent-main hover:opacity-80 font-semibold">Token and Balance System</NewTabLink> page.
+        </p>
+
+        {/* ── Tax Information ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Tax Information</h2>
+        <p>
+          Tax obligations related to earnings obtained through Feedim are entirely the responsibility of the user.
+          Users are obligated to declare their income in accordance with the relevant tax legislation.
+          Feedim does not make tax deductions or declarations on behalf of users.
+        </p>
+
+        {/* ── Tips to Increase Earnings ── */}
+        <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Tips to Increase Your Earnings</h2>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Create quality content:</strong> Write in-depth and original content</li>
+          <li><strong>Publish regularly:</strong> Grow your audience with a consistent publishing schedule</li>
+          <li><strong>Engage with your audience:</strong> Reply to comments and stay connected with the community</li>
+          <li><strong>Optimize for SEO:</strong> Optimize your titles, meta descriptions, and tags</li>
+          <li><strong>Try different content types:</strong> Use post, video, and moment formats</li>
+        </ul>
+
+        <p className="text-xs text-text-muted mt-8">
+            For questions about the earning system,{" "}
+            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Contact</NewTabLink> us
+            or reach out at <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>.
+        </p>
+      </div>
+    </>
+  );
+}

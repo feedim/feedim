@@ -1,0 +1,35 @@
+import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import DashboardClient from "@/components/DashboardClient";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("homeTitle"),
+    description: t("homeDescription"),
+  };
+}
+
+export const dynamic = "force-dynamic";
+
+async function getMoments(limit = 4) {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("posts")
+      .select("id, title, slug, video_url, video_thumbnail, featured_image, video_duration, profiles(user_id, username, full_name, name, avatar_url, is_verified, premium_plan, role)")
+      .eq("content_type", "moment")
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function DashboardPage() {
+  const moments = await getMoments(4);
+  return <DashboardClient initialMoments={moments} />;
+}

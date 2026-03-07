@@ -1,0 +1,1205 @@
+"use client";
+
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { smartBack } from "@/lib/smartBack";
+import { X, Plus, Upload, Film, Scissors, ChevronDown, Smile } from "lucide-react";
+import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
+import PostMetaFields from "@/components/PostMetaFields";
+import VideoEditorPreview from "@/components/VideoEditorPreview";
+import VideoTrimModal from "@/components/modals/VideoTrimModal";
+import ThumbnailPickerModal from "@/components/modals/ThumbnailPickerModal";
+import { createClient } from "@/lib/supabase/client";
+import { emitNavigationStart } from "@/lib/navigationProgress";
+import { feedimAlert } from "@/components/FeedimAlert";
+import {
+  VALIDATION,
+  VIDEO_MAX_DURATION,
+  VIDEO_MAX_SIZE_MB,
+  VIDEO_ALLOWED_TYPES,
+} from "@/lib/constants";
+import { formatCount, getPostUrl } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { useUser } from "@/components/UserContext";
+import AppLayout from "@/components/AppLayout";
+import CropModal from "@/components/modals/CropModal";
+import { useMention } from "@/lib/useMention";
+import MentionDropdown from "@/components/MentionDropdown";
+import { openFilePicker } from "@/lib/openFilePicker";
+
+
+interface Tag {
+  id: number | string;
+  name: string;
+  slug: string;
+  post_count?: number;
+  virtual?: boolean;
+}
+
+export default function VideoWritePage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout hideRightSidebar>
+          <div className="px-5 sm:px-4 pt-4">
+            <div className="flex flex-col items-center justify-center min-h-[340px] rounded-2xl bg-bg-secondary animate-pulse" />
+          </div>
+        </AppLayout>
+      }
+    >
+      <VideoWriteContent />
+    </Suspense>
+  );
+}
+
+function VideoWriteContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+  const { user } = useUser();
+  const t = useTranslations("create");
+  const tc = useTranslations("common");
+
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
+
+  const [step, setStep] = useState(1);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(false);
+
+  // Video
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const uploadAbortRef = useRef<AbortController | null>(null);
+
+  // Content (Step 2)
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
+  const [tagHighlight, setTagHighlight] = useState(-1);
+  const [tagCreating, setTagCreating] = useState(false);
+  const [thumbnail, setThumbnail] = useState("");
+  const [visibility, setVisibility] = useState("public");
+  const [allowComments, setAllowComments] = useState(true);
+  const [isForKids, setIsForKids] = useState(false);
+  const [isAiContent, setIsAiContent] = useState(false);
+  const [copyrightProtected, setCopyrightProtected] = useState(false);
+  const [frameHashes, setFrameHashes] = useState<{ frameIndex: number; hash: string }[]>([]);
+  const [audioHashes, setAudioHashes] = useState<{ chunkIndex: number; hash: string }[]>([]);
+  const [nsfwFrameUrls, setNsfwFrameUrls] = useState<string[]>([]);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [showThumbPicker, setShowThumbPicker] = useState(false);
+
+  // Preview controls
+  const [previewPaused, setPreviewPaused] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
+  const [trimModalOpen, setTrimModalOpen] = useState(false);
+
+  // SEO meta
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [metaExpanded, setMetaExpanded] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
+
+  // State
+  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [draftId, setDraftId] = useState<number | null>(null);
+
+  const maxDescLength = 2000;
+
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = descRef.current;
+    if (!textarea) {
+      if ((description + emoji).length <= maxDescLength) setDescription(prev => prev + emoji);
+      setShowEmojiPicker(false);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newValue = description.substring(0, start) + emoji + description.substring(end);
+    if (newValue.length <= maxDescLength) {
+      setDescription(newValue);
+      setTimeout(() => {
+        const pos = start + emoji.length;
+        textarea.selectionStart = pos;
+        textarea.selectionEnd = pos;
+        textarea.focus();
+      }, 0);
+    }
+    setShowEmojiPicker(false);
+  };
+
+  useEffect(() => {
+    if (title.trim() || videoUrl) setHasUnsavedChanges(true);
+  }, [title, description, videoUrl]);
+
+  // Focus description at end when returning to step 2 or after draft loads
+  useEffect(() => {
+    if (step === 2 && descRef.current && description) {
+      const el = descRef.current;
+      requestAnimationFrame(() => { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; });
+    }
+  }, [step, loadingDraft]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && (title.trim() || videoUrl)) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges, title, videoUrl]);
+
+  // Load edit mode
+  useEffect(() => {
+    const editSlug = searchParams.get("edit");
+    if (editSlug) {
+      setIsEditMode(true);
+      setStep(2); // Skip to step 2 since video already uploaded
+      loadDraft(editSlug);
+    }
+  }, []);
+
+  const loadDraft = async (slug: string) => {
+    setLoadingDraft(true);
+    try {
+      const res = await fetch(`/api/posts/${slug}`);
+      const data = await res.json();
+      if (res.ok && data.post) {
+        setTitle(data.post.title || "");
+        setDescription(data.post.content || "");
+        setDraftId(data.post.id);
+        setIsPublished(data.post.status === 'published');
+        setVideoUrl(data.post.video_url || "");
+        setVideoDuration(data.post.video_duration || 0);
+        setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
+        setAllowComments(data.post.allow_comments !== false);
+        setIsForKids(data.post.is_for_kids === true);
+        setIsAiContent(data.post.is_ai_content === true);
+        setVisibility(data.post.visibility || "public");
+        setCopyrightProtected(data.post.copyright_protected === true);
+        if (data.post.meta_title) setMetaTitle(data.post.meta_title);
+        if (data.post.meta_description) setMetaDescription(data.post.meta_description);
+        if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
+        const postTags = (data.post.post_tags || [])
+          .map((pt: { tags: Tag }) => pt.tags)
+          .filter(Boolean);
+        setTags(postTags);
+      }
+    } catch {
+      feedimAlert("error", t("draftLoadError"));
+    } finally {
+      setLoadingDraft(false);
+    }
+  };
+
+  // Validate video duration on client (with iOS/mobile fallbacks)
+  const validateVideo = (file: File): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      video.playsInline = true;
+      const url = URL.createObjectURL(file);
+      let settled = false;
+
+      const finish = (dur: number) => {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        if (dur && isFinite(dur) && dur > VIDEO_MAX_DURATION) {
+          reject(new Error(t("videoMaxDuration", { minutes: Math.floor(VIDEO_MAX_DURATION / 60) })));
+        } else if (dur && isFinite(dur)) {
+          resolve(Math.round(dur));
+        } else {
+          // Duration couldn't be read — allow upload, server can validate
+          resolve(0);
+        }
+      };
+
+      const fail = (msg: string) => {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        reject(new Error(msg));
+      };
+
+      video.onloadedmetadata = () => finish(video.duration);
+      // iOS fallback — loadedmetadata may not fire, try loadeddata / canplay
+      video.onloadeddata = () => { if (!settled) finish(video.duration); };
+      video.oncanplay = () => { if (!settled) finish(video.duration); };
+      video.onerror = () => fail(t("videoFileReadError"));
+
+      // Timeout fallback — if nothing fires within 20s, allow upload (UHD/large files need more time)
+      setTimeout(() => { if (!settled) finish(0); }, 20000);
+
+      video.src = url;
+      // On iOS, load() must be called explicitly
+      video.load();
+    });
+  };
+
+  // Auto-generate thumbnail from first frame (with iOS/mobile fallbacks)
+  const generateThumbnail = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      const url = URL.createObjectURL(file);
+      let settled = false;
+
+      const cleanup = () => { URL.revokeObjectURL(url); };
+
+      const tryCapture = () => {
+        if (settled) return;
+        settled = true;
+        try {
+          const w = video.videoWidth || 640;
+          const h = video.videoHeight || 360;
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { cleanup(); reject(new Error("Canvas failed")); return; }
+          ctx.drawImage(video, 0, 0, w, h);
+          // Check if canvas is not blank (iOS may draw empty)
+          const pixel = ctx.getImageData(0, 0, 1, 1).data;
+          if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0 && pixel[3] === 0) {
+            cleanup(); reject(new Error("Blank frame"));
+            return;
+          }
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          cleanup();
+          resolve(dataUrl);
+        } catch {
+          cleanup();
+          reject(new Error(t("thumbnailCreateFailed")));
+        }
+      };
+
+      const onFrameReady = () => {
+        // Try to seek to 1s for a more meaningful frame
+        if (video.duration > 1 && video.currentTime < 0.5) {
+          video.currentTime = 1;
+        } else {
+          tryCapture();
+        }
+      };
+      video.onloadeddata = onFrameReady;
+      video.oncanplay = () => { if (!settled) onFrameReady(); };
+      video.onseeked = () => tryCapture();
+      video.onerror = () => { if (!settled) { settled = true; cleanup(); reject(new Error(t("videoFileReadError"))); } };
+
+      // Timeout — if nothing fires in 20s, give up silently (UHD/large files need more time)
+      setTimeout(() => { if (!settled) { settled = true; cleanup(); reject(new Error("Timeout")); } }, 20000);
+
+      video.src = url;
+      video.load();
+    });
+  };
+
+  const handleVideoSelect = async (file: File) => {
+    if (!file.type.startsWith("video/")) {
+      feedimAlert("error", t("videoUnsupportedFormat"));
+      return;
+    }
+    if (file.size > VIDEO_MAX_SIZE_MB * 1024 * 1024) {
+      feedimAlert("error", t("videoMaxSize", { size: VIDEO_MAX_SIZE_MB }));
+      return;
+    }
+
+    let dur: number;
+    try {
+      dur = await validateVideo(file);
+    } catch (err) {
+      feedimAlert("error", (err as Error).message);
+      return;
+    }
+
+    setVideoFile(file);
+    setVideoDuration(dur);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+    // Start upload state immediately — overlay shows from the start, video stays muted & disabled
+    setUploading(true);
+    setUploadProgress(0);
+
+    // Generate thumbnail
+    try {
+      const thumb = await generateThumbnail(file);
+      setThumbnail(thumb);
+    } catch { /* user can add manually */ }
+
+    // Extract video frame hashes for copyright check (non-blocking)
+    import("@/lib/videoFrameHash")
+      .then(({ extractVideoFrameHashes }) => extractVideoFrameHashes(file))
+      .then(hashes => setFrameHashes(hashes.map(fh => ({ frameIndex: fh.frameIndex, hash: fh.hash }))))
+      .catch(() => { /* frame hash extraction failed, continue without */ });
+
+    // Extract NSFW frame samples for server-side scanning (non-blocking)
+    import("@/lib/videoFrameHash")
+      .then(({ extractVideoFrameSamples }) => extractVideoFrameSamples(file))
+      .then(async (blobs) => {
+        const urls: string[] = [];
+        for (const blob of blobs) {
+          try {
+            const fd = new FormData();
+            fd.append('file', new File([blob], `nsfw-sample-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+            fd.append('fileName', `nsfw-sample-${Date.now()}.jpg`);
+            const res = await fetch('/api/upload/image', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok && data.url) urls.push(data.url);
+          } catch { /* skip frame */ }
+        }
+        setNsfwFrameUrls(urls);
+      })
+      .catch(() => { /* frame sampling failed, continue without */ });
+
+    // Extract audio fingerprint for copyright check (non-blocking)
+    import("@/lib/audioFingerprint")
+      .then(({ extractAudioFingerprint }) => extractAudioFingerprint(file))
+      .then(hashes => setAudioHashes(hashes.map(ah => ({ chunkIndex: ah.chunkIndex, hash: ah.hash }))))
+      .catch(() => { /* audio fingerprint extraction failed, continue without */ });
+
+    // Optimize MP4 for instant playback (defragment fMP4 or move moov atom)
+    let uploadFile = file;
+    try {
+      const { optimizeVideo } = await import("@/lib/videoOptimize");
+      uploadFile = await optimizeVideo(file);
+    } catch { /* optimization failed, upload original */ }
+
+    uploadVideo(uploadFile);
+  };
+
+  const uploadVideo = async (file: File) => {
+    const abort = new AbortController();
+    uploadAbortRef.current = abort;
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // 1. Get presigned URL from server
+      const initRes = await fetch("/api/upload/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type || "video/mp4",
+          fileSize: file.size,
+        }),
+        signal: abort.signal,
+      });
+      const initData = await initRes.json();
+      if (!initRes.ok) throw new Error(initData.error || t("uploadInitFailed"));
+
+      const { uploadUrl, publicUrl } = initData;
+
+      // 2. Direct PUT to R2 via presigned URL with progress tracking
+      await new Promise<void>((resolve, reject) => {
+        const ct = file.type || "video/mp4";
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", ct);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress(Math.round((e.loaded / e.total) * 95));
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(t("uploadFailed", { status: xhr.status })));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error(t("videoUploadFailed")));
+        xhr.onabort = () => reject(new DOMException(t("uploadCancelled"), "AbortError"));
+
+        abort.signal.addEventListener("abort", () => xhr.abort());
+        xhr.send(file);
+      });
+
+      setVideoUrl(publicUrl);
+      setUploadProgress(100);
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      feedimAlert("error", (err as Error).message || t("videoUploadFailedRetry"));
+      setVideoFile(null);
+      setVideoPreviewUrl("");
+      setVideoDuration(0);
+    } finally {
+      uploadAbortRef.current = null;
+      setUploading(false);
+    }
+  };
+
+  const handleVideoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleVideoSelect(file);
+    e.target.value = "";
+  };
+
+  const handleVideoDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("video/"));
+    if (file) handleVideoSelect(file);
+  };
+
+  const removeVideo = () => {
+    if (uploadAbortRef.current) uploadAbortRef.current.abort();
+    setVideoFile(null);
+    setVideoUrl("");
+    setVideoPreviewUrl("");
+    setVideoDuration(0);
+    setUploadProgress(0);
+    setUploading(false);
+    setThumbnail("");
+  };
+
+  // Trim handler — only updates preview, re-upload happens at step transition
+  const handleTrim = async (trimmedFile: File, newDuration: number) => {
+    setVideoFile(trimmedFile);
+    setVideoDuration(newDuration);
+    const newUrl = URL.createObjectURL(trimmedFile);
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    setVideoPreviewUrl(newUrl);
+    setPreviewPaused(false); // ensure auto-play after trim
+
+    // Regenerate thumbnail from trimmed file
+    try {
+      const thumb = await generateThumbnail(trimmedFile);
+      setThumbnail(thumb);
+    } catch { /* keep existing */ }
+
+    setVideoUrl(""); // re-upload will happen at goToStep2
+  };
+
+  const searchTagsFn = useCallback(async (q: string) => {
+    if (q.trim().length < 1) { setTagSuggestions([]); setTagHighlight(-1); return; }
+    try {
+      const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setTagSuggestions((data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug)));
+      setTagHighlight(-1);
+    } catch { setTagSuggestions([]); }
+  }, [tags]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchTagsFn(tagSearch), 300);
+    return () => clearTimeout(timer);
+  }, [tagSearch, searchTagsFn]);
+
+  const addTag = (tag: Tag) => {
+    if (tags.length >= VALIDATION.postTags.max) return;
+    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
+    setTags([...tags, tag]);
+    setTagSearch("");
+    setTagSuggestions([]);
+    setTagHighlight(-1);
+  };
+
+  const createAndAddTag = async () => {
+    const trimmed = tagSearch.trim().replace(/\s+/g, " ");
+    if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
+    if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min })); return; }
+    if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max })); return; }
+    setTagCreating(true);
+    await new Promise(r => setTimeout(r, 1000));
+    try {
+      const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
+      const data = await res.json();
+      if (res.ok && data.tag) addTag(data.tag);
+      else feedimAlert("error", data.error || t("tagCreateFailed"));
+    } catch { feedimAlert("error", t("tagCreateFailedRetry")); } finally { setTagCreating(false); }
+  };
+
+  const removeTag = (tagId: number | string) => setTags(tags.filter(t => t.id !== tagId));
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (tagSuggestions.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setTagHighlight(prev => prev < tagSuggestions.length - 1 ? prev + 1 : 0); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setTagHighlight(prev => prev > 0 ? prev - 1 : tagSuggestions.length - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); if (tagHighlight >= 0) addTag(tagSuggestions[tagHighlight]); else if (tagSearch.trim()) createAndAddTag(); }
+      else if (e.key === "Escape") { setTagSuggestions([]); setTagHighlight(-1); }
+    } else if (e.key === "Enter" || e.key === ",") { e.preventDefault(); if (tagSearch.trim()) createAndAddTag(); }
+    else if (e.key === "Backspace" && !tagSearch && tags.length > 0) { removeTag(tags[tags.length - 1].id); }
+  };
+
+  // Thumbnail upload
+  const handleThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error(t("fileReadError")));
+        reader.readAsDataURL(compressed);
+      });
+      setCropSrc(dataUrl);
+    } catch { feedimAlert("error", t("imageUploadFailedRetry")); }
+    e.target.value = "";
+  };
+
+  const savePost = async (status: "draft" | "published") => {
+    if (!title.trim()) { feedimAlert("error", t("titleRequired")); return; }
+    if (title.trim().length < 3) { feedimAlert("error", t("titleMinLength")); return; }
+    if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
+    if (status === "published" && uploading) { feedimAlert("error", t("videoStillUploading")); return; }
+
+    setSavingAs(status);
+    try {
+      // Upload thumbnail image if it's a data URL
+      let thumbUrl = thumbnail;
+      let thumbBlurhash: string | null = null;
+      if (thumbnail && thumbnail.startsWith("data:")) {
+        try {
+          const res = await fetch(thumbnail);
+          const blob = await res.blob();
+          const formData = new FormData();
+          const thumbFile = new File([blob], `thumb-${Date.now()}.jpg`, { type: "image/jpeg" });
+          formData.append("file", thumbFile);
+          formData.append("fileName", thumbFile.name);
+          const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
+          const uploadData = await uploadRes.json();
+          if (uploadRes.ok && uploadData.url) {
+            thumbUrl = uploadData.url;
+            thumbBlurhash = uploadData.blurhash || null;
+          }
+        } catch { /* use data url as fallback */ }
+      }
+
+      const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
+      const method = draftId ? "PUT" : "POST";
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          content: description.trim(),
+          content_type: "video",
+          status,
+          tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
+          featured_image: thumbUrl || null,
+          video_url: videoUrl || null,
+          video_duration: videoDuration || null,
+          video_thumbnail: thumbUrl || null,
+          blurhash: thumbBlurhash,
+          allow_comments: allowComments,
+          is_for_kids: isForKids,
+          is_ai_content: isAiContent,
+          visibility,
+          copyright_protected: copyrightProtected,
+          frame_hashes: frameHashes,
+          audio_hashes: audioHashes,
+          nsfw_frame_urls: nsfwFrameUrls,
+          meta_title: metaTitle.trim() || null,
+          meta_description: metaDescription.trim() || null,
+          meta_keywords: metaKeywords.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setHasUnsavedChanges(false);
+        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(getPostUrl(data.post.slug, "video")); }
+        else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/"); }
+      } else {
+        feedimAlert("error", data.error || t("genericErrorRetry"));
+      }
+    } catch { feedimAlert("error", t("genericErrorRetry")); } finally { setSavingAs(null); }
+  };
+
+  const goToStep2 = async () => {
+    if (!videoFile && !videoUrl) { feedimAlert("error", t("videoNotSelected")); return; }
+    // If video was trimmed (videoUrl cleared), re-upload
+    if (videoFile && !videoUrl && !uploading) {
+      (async () => {
+        let f = videoFile;
+        try { f = await (await import("@/lib/videoOptimize")).optimizeVideo(videoFile); } catch {}
+        uploadVideo(f);
+      })();
+    }
+
+    // Extract #hashtags from description and auto-add as tags
+    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
+    const matches = [...description.matchAll(hashtagRegex)];
+    if (matches.length > 0) {
+      const existingNames = new Set(tags.map(t => t.name.toLowerCase()));
+      const newTags: Tag[] = [];
+      for (const match of matches) {
+        const name = match[1];
+        if (existingNames.has(name.toLowerCase()) || newTags.some(t => t.name.toLowerCase() === name.toLowerCase())) continue;
+        if (tags.length + newTags.length >= VALIDATION.postTags.max) break;
+        try {
+          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+          const data = await res.json();
+          if (res.ok && data.tag) newTags.push(data.tag);
+        } catch { /* skip */ }
+      }
+      if (newTags.length > 0) setTags(prev => [...prev, ...newTags]);
+      setDescription(description.replace(hashtagRegex, "").replace(/  +/g, " ").trim());
+    }
+
+    setStep(2);
+  };
+
+  const fmtDuration = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const fmtSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const canGoNext = !!videoFile || !!videoUrl;
+
+  const headerRight = (
+    <div className="flex items-center gap-2">
+      {step === 1 ? (
+        <button
+          onClick={goToStep2}
+          disabled={!canGoNext || uploading}
+          className="t-btn accept !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
+        >
+          {t("nextStep")}
+        </button>
+      ) : (
+        <>
+          {!isPublished ? (
+            <button
+              onClick={() => savePost("draft")}
+              disabled={savingAs !== null || !title.trim()}
+              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
+            >
+              {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (!draftId || deleting) return;
+                feedimAlert("question", t("deleteConfirmContent"), {
+                  showYesNo: true,
+                  onYes: async () => {
+                    setDeleting(true);
+                    try {
+                      const res = await fetch(`/api/posts/${draftId}`, { method: "DELETE" });
+                      if (res.ok) { feedimAlert("success", t("deleted")); router.push("/dashboard"); }
+                      else feedimAlert("error", t("deleteFailed"));
+                    } catch { feedimAlert("error", t("deleteFailed")); }
+                    finally { setDeleting(false); }
+                  },
+                });
+              }}
+              disabled={deleting || savingAs !== null}
+              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] !text-error disabled:opacity-40"
+            >
+              {deleting ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("deleteBtn")}
+            </button>
+          )}
+          <button
+            onClick={() => savePost("published")}
+            disabled={savingAs !== null || !title.trim() || !videoUrl || uploading}
+            className="t-btn accept relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
+            aria-label={isPublished ? t("updateBtn") : t("publishBtn")}
+          >
+            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : isPublished ? t("updateBtn") : t("publishBtn")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <AppLayout
+      hideMobileNav
+      hideRightSidebar
+      headerRightAction={headerRight}
+      headerTitle={step === 1 ? t("headerVideo") : t("headerDetails")}
+      headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
+    >
+      <div className="flex flex-col min-h-[calc(100dvh-53px)]">
+
+        {/* ─── Step 1: Video Upload ─── */}
+        {step === 1 && (
+          <div className="flex flex-col flex-1 px-5 sm:px-4 pt-4 pb-20">
+            {!videoFile && !videoUrl ? (
+              /* Upload area */
+              <>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                  onDrop={handleVideoDrop}
+                  onClick={() => openFilePicker(videoInputRef.current)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openFilePicker(videoInputRef.current);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="flex flex-col items-center justify-center flex-1 min-h-[340px] border-2 border-solid border-border-primary hover:border-accent-main/50 rounded-2xl cursor-pointer transition bg-bg-secondary"
+                >
+                  <div className="w-16 h-16 rounded-full bg-accent-main/10 flex items-center justify-center mb-4">
+                    <Film className="h-8 w-8 text-accent-main" />
+                  </div>
+                  <p className="text-base font-semibold text-text-primary mb-1">
+                    {t("videoUploadClick")}
+                  </p>
+                  <p className="text-sm text-text-muted mb-3 hidden sm:block">
+                    {t("orDragHere")}
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 text-xs text-text-muted/70 mt-2 sm:mt-0">
+                    <span>MP4, WebM, MOV, AVI, MKV...</span>
+                    <span className="hidden sm:inline">&middot;</span>
+                    <span>{t("maxSize", { size: VIDEO_MAX_SIZE_MB })} &middot; {t("maxMinutes", { minutes: Math.floor(VIDEO_MAX_DURATION / 60) })}</span>
+                  </div>
+                </div>
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoInput}
+                  className="hidden"
+                />
+              </>
+            ) : (
+              /* Video preview */
+              <div className="space-y-3">
+                {/* Trim button */}
+                {videoFile && !uploading && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => { setPreviewPaused(true); setTrimModalOpen(true); }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border-primary hover:border-accent-main/50 transition"
+                    >
+                      <Scissors className="h-4 w-4 text-text-muted" />
+                      <span className="text-sm text-text-muted">{t("trimVideo")}</span>
+                    </button>
+                  </div>
+                )}
+
+                <VideoEditorPreview
+                  src={videoPreviewUrl || videoUrl}
+                  poster={thumbnail || undefined}
+                  aspectRatio="16/9"
+                  maxWidth="100%"
+                  uploading={uploading}
+                  uploadProgress={uploadProgress}
+                  onCancelUpload={removeVideo}
+                  paused={previewPaused}
+                  onTogglePause={() => setPreviewPaused(p => !p)}
+                  muted={previewMuted}
+                  onToggleMute={() => setPreviewMuted(m => !m)}
+                  duration={videoDuration}
+                  videoRef={previewVideoRef}
+                  onRemove={removeVideo}
+                  t={t}
+                />
+
+                {/* Video info */}
+                <div className="flex items-center justify-center px-1">
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <Film className="h-3.5 w-3.5" />
+                    <span>{fmtDuration(videoDuration)}</span>
+                    {videoFile && (
+                      <>
+                        <span>{fmtSize(videoFile.size)}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Step 2: Title + Description + Tags + Thumbnail + Settings ─── */}
+        {step === 2 && loadingDraft && (
+          <div className="flex-1 px-5 sm:px-4 pt-4 space-y-2.5">
+            <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
+            <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
+            <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
+            <div className="h-36 w-full rounded-xl bg-bg-secondary animate-pulse" />
+          </div>
+        )}
+        {step === 2 && !loadingDraft && (
+          <div className="flex flex-col flex-1 px-5 sm:px-4 pt-4 pb-20 space-y-5">
+
+            {/* Title */}
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={VALIDATION.postTitle.max}
+              placeholder={t("videoTitlePlaceholder")}
+              className="title-input"
+            />
+
+            {/* Description */}
+            <div style={{ position: "relative" }}>
+              <textarea
+                ref={descRef}
+                value={description}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.length <= maxDescLength) setDescription(v);
+                  mention.handleTextChange(v, descRef.current);
+                }}
+                onKeyDown={(e) => {
+                  if (mention.mentionUsers.length > 0) {
+                    if ((e.key === "Enter" || e.key === "Tab") && mention.mentionUsers[mention.mentionIndex]) {
+                      e.preventDefault();
+                      mention.selectUser(mention.mentionUsers[mention.mentionIndex].username, description, (v, cursorPos) => {
+                        if (v.length <= maxDescLength) setDescription(v);
+                        setTimeout(() => {
+                          if (descRef.current) {
+                            descRef.current.focus();
+                            descRef.current.selectionStart = cursorPos;
+                            descRef.current.selectionEnd = cursorPos;
+                          }
+                        }, 0);
+                      });
+                      return;
+                    }
+                    if (mention.handleKeyDown(e)) return;
+                  }
+                }}
+                maxLength={maxDescLength}
+                placeholder={t("videoDescPlaceholder")}
+                rows={4}
+                className="input-modern w-full resize-none text-[0.95rem] leading-relaxed min-h-[100px] pt-3 placeholder:text-[0.95rem]"
+              />
+              <MentionDropdown
+                users={mention.mentionUsers}
+                activeIndex={mention.mentionIndex}
+                onHover={mention.setMentionIndex}
+                onSelect={(username) => {
+                  mention.selectUser(username, description, (v, cursorPos) => {
+                    if (v.length <= maxDescLength) setDescription(v);
+                    setTimeout(() => {
+                      if (descRef.current) {
+                        descRef.current.focus();
+                        descRef.current.selectionStart = cursorPos;
+                        descRef.current.selectionEnd = cursorPos;
+                      }
+                    }, 0);
+                  });
+                }}
+                style={{ top: "100%", marginTop: 4 }}
+                className="!w-full"
+              />
+              <div className="flex items-center justify-between mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className={`flex items-center justify-center h-7 w-7 rounded-full transition ${showEmojiPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  <Smile className="h-[18px] w-[18px]" />
+                </button>
+                <span className={`text-[0.66rem] tabular-nums ${description.length >= maxDescLength - 50 ? "text-error" : "text-text-muted/60"}`}>
+                  {description.length}/{maxDescLength}
+                </span>
+              </div>
+            </div>
+
+            {showEmojiPicker && (
+              <EmojiPickerPanel
+                onEmojiSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+
+            {/* Tags + Thumbnail — side by side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Thumbnail */}
+            <div className="md:order-2">
+              <label className="block text-sm font-semibold mb-1">{t("thumbnail")}</label>
+              <p className="text-[0.68rem] text-text-muted/70 mb-2">{t("thumbnailRecommended16by9")}</p>
+              {thumbnail ? (
+                <div>
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img src={thumbnail} alt={t("thumbnail")} className="w-full h-48 object-cover bg-bg-tertiary" />
+                    <button onClick={() => setThumbnail("")} className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {(videoFile || videoUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbPicker(true)}
+                      className="mt-2 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
+                    >
+                      {t("editCover")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => openFilePicker(thumbInputRef.current)}
+                    className="flex items-center justify-center gap-1.5 w-full py-1 text-sm text-accent-main hover:text-accent-main/80 font-medium cursor-pointer transition"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {t("thumbnailUpload")}
+                  </button>
+                  <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
+                </div>
+              ) : (
+                <div>
+                  <div
+                    onClick={() => openFilePicker(thumbInputRef.current)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openFilePicker(thumbInputRef.current);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition"
+                  >
+                    <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
+                    <p className="text-sm text-text-muted">{t("thumbnailUpload")}</p>
+                  </div>
+                  <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
+                  {(videoFile || videoUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbPicker(true)}
+                      className="mt-2 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
+                    >
+                      {t("editCover")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Tags */}
+            <div className="md:order-1">
+              <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
+              {tags.length < VALIDATION.postTags.max && (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tagSearch}
+                    onChange={e => setTagSearch(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    placeholder={t("tagSearchPlaceholder")}
+                    className="input-modern w-full"
+                  />
+                  {tagSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto">
+                      {tagSuggestions.map((s, i) => (
+                        <button
+                          key={s.id}
+                          onClick={() => addTag(s)}
+                          onMouseEnter={() => setTagHighlight(i)}
+                          className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${i === tagHighlight ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"}`}
+                        >
+                          <span className="text-accent-main">#</span><span className="font-semibold truncate">{s.name}</span>
+                          {s.post_count !== undefined && <span className="ml-auto text-[0.7rem] text-text-muted font-medium shrink-0 pl-2">{formatCount(s.post_count || 0)} {t("postsCount")}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {tagSearch.trim() && tagSuggestions.length === 0 && (
+                    <button
+                      onClick={createAndAddTag}
+                      disabled={tagCreating}
+                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                    >
+                      {tagCreating ? (
+                        <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
+                      ) : (
+                        <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {tags.map(tag => (
+                    <span key={tag.id} className="flex items-center gap-1.5 bg-accent-main/10 text-accent-main text-sm font-medium px-3 py-1.5 rounded-full">
+                      #{tag.name}
+                      <button onClick={() => removeTag(tag.id)} className="hover:text-error transition"><X className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-text-muted mt-1.5 text-right font-semibold mr-2">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
+            </div>
+            </div>
+
+            {/* Visibility */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">{t("visibilityLabel")}</label>
+              <div className="relative">
+                <select
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value)}
+                  disabled={isPublished}
+                  className={`input-modern w-full appearance-none pr-10 ${isPublished ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                >
+                  <option value="public">{t("visibilityPublic")}</option>
+                  <option value="followers">{t("visibilityFollowers")}</option>
+                  <option value="only_me">{t("visibilityOnlyMe")}</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+              </div>
+              {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("visibilityCannotChange")}</p>}
+            </div>
+
+            {/* Settings */}
+            <div>
+              <div className="cursor-pointer select-none" onClick={() => setSettingsExpanded(!settingsExpanded)}>
+                <div className="flex items-center justify-between w-full text-left">
+                  <span className="block text-sm font-semibold">{t("settingsLabel")}</span>
+                  <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${settingsExpanded ? "rotate-180" : ""}`} />
+                </div>
+                {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("publishedFieldLocked")}</p>}
+                <p className="text-[0.7rem] text-text-muted/60 leading-relaxed mt-1.5">{t("settingsDesc")}</p>
+              </div>
+              {settingsExpanded && <div className="space-y-1 mt-3">
+                <button
+                  disabled={isPublished}
+                  onClick={() => setAllowComments(!allowComments)}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("allowComments")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDescViewers")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <button
+                  disabled={isPublished}
+                  onClick={() => setIsForKids(!isForKids)}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("forKids")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <div>
+                <button
+                  disabled={isPublished}
+                  onClick={() => setIsAiContent(!isAiContent)}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("aiContent")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                <p className="pt-0.5 pb-0 text-[0.7rem] text-text-muted leading-snug">
+                  {t("aiContentWarning")}{" "}
+                  <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
+                </p>
+                </div>
+                <div>
+                <button
+                  disabled={isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected)}
+                  onClick={() => {
+                    if (!user?.copyrightEligible) return;
+                    if (isPublished) return;
+                    setCopyrightProtected(!copyrightProtected);
+                  }}
+                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{t("copyrightProtection")}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{isPublished && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}</p>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
+                  </div>
+                </button>
+                {!user?.copyrightEligible && (
+                  <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
+                )}
+                </div>
+              </div>}
+            </div>
+
+            <PostMetaFields
+              metaTitle={metaTitle} setMetaTitle={setMetaTitle}
+              metaDescription={metaDescription} setMetaDescription={setMetaDescription}
+              metaKeywords={metaKeywords} setMetaKeywords={setMetaKeywords}
+              expanded={metaExpanded} setExpanded={setMetaExpanded}
+              contentType="video"
+              readOnly={false}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Thumb Crop Modal */}
+      <CropModal
+        open={!!cropSrc}
+        onClose={() => setCropSrc(null)}
+        imageSrc={cropSrc || ""}
+        aspectRatio={16 / 9}
+        onCrop={(croppedUrl) => { setThumbnail(croppedUrl); setCropSrc(null); }}
+      />
+
+      {/* Video Trim Modal */}
+      {videoFile && (
+        <VideoTrimModal
+          open={trimModalOpen}
+          onClose={() => { setTrimModalOpen(false); setPreviewPaused(false); }}
+          videoFile={videoFile}
+          duration={videoDuration}
+          onTrim={handleTrim}
+        />
+      )}
+
+      {/* Thumbnail Picker Modal */}
+      {(videoFile || videoUrl) && (
+        <ThumbnailPickerModal
+          open={showThumbPicker}
+          onClose={() => setShowThumbPicker(false)}
+          videoFile={videoFile}
+          videoSrc={!videoFile ? videoUrl : undefined}
+          duration={videoDuration}
+          aspectRatio="16:9"
+          onSelect={(dataUrl) => setThumbnail(dataUrl)}
+        />
+      )}
+    </AppLayout>
+  );
+}
