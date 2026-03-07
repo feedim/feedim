@@ -143,6 +143,22 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
     }
   }, [isActive, hasExternalSound]);
 
+  // Pause/resume audio on tab visibility change
+  useEffect(() => {
+    if (!isActive || !hasExternalSound) return;
+    const onVisChange = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (document.hidden) {
+        audio.pause();
+      } else if (!paused) {
+        audio.play().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVisChange);
+    return () => document.removeEventListener("visibilitychange", onVisChange);
+  }, [isActive, hasExternalSound, paused]);
+
   // Keep UI in sync with actual video state (keyboard/headset/OS controls)
   useEffect(() => {
     const video = videoRef.current;

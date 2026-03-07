@@ -12,7 +12,7 @@ import { useUser } from "@/components/UserContext";
 import { cn, formatCount } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
 import { feedimAlert } from "@/components/FeedimAlert";
-import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
+import { fetchWithCache, withCacheScope, invalidateCache } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
@@ -206,6 +206,8 @@ export default function PostInteractionBar({
   // Refs to track latest state for rapid clicks
   const likedRef = useRef(initialLiked);
   const savedRef = useRef(initialSaved);
+  const likePending = useRef(false);
+  const savePending = useRef(false);
 
   // Sync when batch interaction data arrives (compact/feed mode)
   const interactionSynced = useRef(false);
@@ -226,8 +228,10 @@ export default function PostInteractionBar({
   }, [initialLiked, initialSaved, initialLikeCount, initialSaveCount, compact]);
 
   const handleLike = async () => {
+    if (likePending.current) return;
     if (!currentUser) { const user = await requireAuth(); if (!user) return; }
 
+    likePending.current = true;
     const newLiked = !likedRef.current;
     likedRef.current = newLiked;
     setLiked(newLiked);
@@ -250,12 +254,14 @@ export default function PostInteractionBar({
       likedRef.current = !newLiked;
       setLiked(!newLiked);
       setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
-    });
+    }).finally(() => { likePending.current = false; });
   };
 
   const handleSave = async () => {
+    if (savePending.current) return;
     if (!currentUser) { const user = await requireAuth(); if (!user) return; }
 
+    savePending.current = true;
     const newSaved = !savedRef.current;
     savedRef.current = newSaved;
     setSaved(newSaved);
@@ -269,12 +275,14 @@ export default function PostInteractionBar({
         if (res.status === 429 || res.status === 403) {
           res.json().then(data => feedimAlert("error", data.error || t('errors.saveLimitReached'))).catch(() => {});
         }
+      } else {
+        invalidateCache("/internal/bookmarks");
       }
     }).catch(() => {
       savedRef.current = !newSaved;
       setSaved(!newSaved);
       setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
-    });
+    }).finally(() => { savePending.current = false; });
   };
 
   const openComments = () => {

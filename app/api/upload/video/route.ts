@@ -7,12 +7,20 @@ import { getUserPlan, isAdminPlan } from "@/lib/limits";
 import { nanoid } from "nanoid";
 import { safeError } from "@/lib/apiError";
 import { getTranslations } from "next-intl/server";
+import { getRedis } from "@/lib/redis";
 
 const MAX_FILE_SIZE = VIDEO_MAX_SIZE_MB * 1024 * 1024;
 
-// Rate limiter: 5 requests per 10 minutes
+// Rate limiter: 5 requests per 10 minutes (Redis with in-memory fallback)
 const videoLimitMap = new Map<string, { count: number; resetAt: number }>();
-function checkVideoLimit(userId: string): boolean {
+async function checkVideoLimit(userId: string): Promise<boolean> {
+  const redis = getRedis();
+  if (redis) {
+    const key = `rl:video:${userId}`;
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, 600);
+    return count <= 5;
+  }
   const now = Date.now();
   const entry = videoLimitMap.get(userId);
   if (!entry || now > entry.resetAt) {
@@ -33,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
 
     const plan = await getUserPlan(createAdminClient(), user.id);
-    if (!isAdminPlan(plan) && !checkVideoLimit(user.id)) {
+    if (!isAdminPlan(plan) && !(await checkVideoLimit(user.id))) {
       return NextResponse.json({ error: tErrors("uploadRateLimited") }, { status: 429 });
     }
 

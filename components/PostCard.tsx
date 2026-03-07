@@ -20,7 +20,7 @@ import FeedItemViewTracker from "@/components/FeedItemViewTracker";
 import { feedPreviewStore } from "@/lib/stores/feedPreviewStore";
 import { getFollowStatus, setFollowStatus, deleteFollowStatus, subscribeFollowStore } from "@/lib/stores/followStore";
 import { feedimAlert } from "@/components/FeedimAlert";
-import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
+import { fetchWithCache, withCacheScope, invalidateCache } from "@/lib/fetchWithCache";
 
 const NOTE_TRUNCATE_LENGTH = 280;
 const NOTE_TRUNCATE_LINES = 5;
@@ -155,6 +155,8 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           const data = await res.json().catch(() => ({}));
           feedimAlert("error", data.error || tProfile("followLimitReached"));
         }
+      } else {
+        invalidateCache(`/api/users/${authorUsername}`);
       }
     } catch {
       setFollowStatus(authorUsername, false);

@@ -163,16 +163,20 @@ export function writeCache(url: string, data: unknown, ttlSeconds = 30): void {
 }
 
 export function invalidateCache(prefix: string): void {
+  const fullPrefix = `fwc:${prefix}`;
+  // Clear memory cache
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(fullPrefix)) memoryCache.delete(key);
+  }
+  // Clear storage
   const storage = getStorage();
   if (!storage) return;
-  const fullPrefix = `fwc:${prefix}`;
   const keysToRemove: string[] = [];
   for (let i = 0; i < storage.length; i++) {
     const key = storage.key(i);
     if (key?.startsWith(fullPrefix)) keysToRemove.push(key);
   }
   for (const key of keysToRemove) {
-    memoryCache.delete(key);
     storage.removeItem(key);
   }
 }

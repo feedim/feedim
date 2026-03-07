@@ -12,14 +12,22 @@ import { getTranslations } from 'next-intl/server';
 import sharp from 'sharp';
 import * as jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
+import { getRedis } from '@/lib/redis';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Simple rate limiter — 30/dakika (yapıştırma senaryoları için yeterli)
+// Rate limiter: 30/min (Redis with in-memory fallback)
 const uploadMap = new Map<string, { count: number; resetAt: number }>();
 
-function checkUploadLimit(userId: string): boolean {
+async function checkUploadLimit(userId: string): Promise<boolean> {
+  const redis = getRedis();
+  if (redis) {
+    const key = `rl:img:${userId}`;
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, 60);
+    return count <= 30;
+  }
   const now = Date.now();
   const entry = uploadMap.get(userId);
   if (!entry || now > entry.resetAt) {
@@ -43,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const plan = await getUserPlan(createAdminClient(), user.id);
-    if (!isAdminPlan(plan) && !checkUploadLimit(user.id)) {
+    if (!isAdminPlan(plan) && !(await checkUploadLimit(user.id))) {
       return NextResponse.json({ error: tErrors("uploadRateLimited") }, { status: 429 });
     }
 

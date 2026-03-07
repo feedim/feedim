@@ -8,6 +8,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import { useAuthModal } from "@/components/AuthModal";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { smartBack } from "@/lib/smartBack";
+import { invalidateCache } from "@/lib/fetchWithCache";
 import { useUser } from "@/components/UserContext";
 import { copyTextToClipboard } from "@/lib/copyTextToClipboard";
 import Modal from "./Modal";
@@ -119,6 +120,8 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
             const deleted = JSON.parse(sessionStorage.getItem("fdm-deleted-posts") || "[]");
             if (!deleted.includes(postId)) { deleted.push(postId); sessionStorage.setItem("fdm-deleted-posts", JSON.stringify(deleted)); }
             window.dispatchEvent(new CustomEvent("fdm-post-deleted", { detail: postId }));
+            invalidateCache("/api/posts");
+            invalidateCache("/internal/bookmarks");
           } catch {}
 
           if (onDeleteSuccess) {
