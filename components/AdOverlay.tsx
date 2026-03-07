@@ -187,12 +187,8 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
                 setAdLoaded(true);
                 observerRef.current?.disconnect();
               } else if (status === "unfilled") {
-                // No ad available — auto-skip immediately
+                // No ad available — still show the area, let countdown finish
                 observerRef.current?.disconnect();
-                if (!skipCalledRef.current) {
-                  skipCalledRef.current = true;
-                  onSkip();
-                }
               }
             }
           }
@@ -220,19 +216,16 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
     onSkip();
   }, [onSkip]);
 
-  // Auto-skip if ad fails to load within 5 seconds (fallback for no status)
+  // If ad fails to load within 8 seconds, show area anyway (let user skip via countdown)
   useEffect(() => {
     if (!active || skipAds || adLoaded) return;
 
     const timeout = setTimeout(() => {
-      if (!adLoaded && !skipCalledRef.current) {
-        skipCalledRef.current = true;
-        onSkip();
-      }
-    }, 5000);
+      // Don't auto-skip — just let countdown run and user can skip manually
+    }, 8000);
 
     return () => clearTimeout(timeout);
-  }, [active, adLoaded, skipAds, onSkip]);
+  }, [active, adLoaded, skipAds]);
 
   // Auto-skip after 60 seconds if user doesn't manually skip
   const autoSkipRef = useRef<ReturnType<typeof setTimeout> | null>(null);

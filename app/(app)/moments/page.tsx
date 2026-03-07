@@ -208,7 +208,7 @@ function MomentsContent() {
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 3 === 0) {
+      if ((i + 1) % 7 === 0) {
         items.push({ type: "ad" as const, adKey: i });
       }
     });

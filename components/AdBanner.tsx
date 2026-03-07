@@ -138,9 +138,21 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
     }
   }, [adsEnabled, provider.id, slot]);
 
-  if (!adsEnabled || !provider.enabled) return null;
   if (!user) return null;
   if (user.role === "admin" || (user.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan))) return null;
+
+  // Show placeholder area even when ads are disabled/not loaded
+  if (!adsEnabled || !provider.enabled) {
+    return (
+      <div
+        className={`ad-container overflow-hidden ${className}`}
+        data-ad-slot-name={slot}
+        data-ad-placeholder="true"
+      >
+        <div style={{ minHeight: 50 }} />
+      </div>
+    );
+  }
 
   return (
     <div
