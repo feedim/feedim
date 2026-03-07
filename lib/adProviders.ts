@@ -55,6 +55,23 @@ export const SLOT_PROVIDER: Record<AdSlot, AdProviderType> = {
   moment: "adsense",
 };
 
+// AdSense slot IDs — her ad unit için AdSense panelinden alınan ID
+// Tüm slotlar aynı ID'yi paylaşabilir (tek responsive ad unit) veya ayrı olabilir
+export const ADSENSE_SLOT_IDS: Record<AdSlot, string> = {
+  feed: process.env.NEXT_PUBLIC_ADSENSE_SLOT_FEED || "",
+  "post-top": process.env.NEXT_PUBLIC_ADSENSE_SLOT_POST || "",
+  "post-detail": process.env.NEXT_PUBLIC_ADSENSE_SLOT_POST || "",
+  "post-bottom": process.env.NEXT_PUBLIC_ADSENSE_SLOT_POST || "",
+  explore: process.env.NEXT_PUBLIC_ADSENSE_SLOT_FEED || "",
+  sidebar: process.env.NEXT_PUBLIC_ADSENSE_SLOT_SIDEBAR || "",
+  overlay: process.env.NEXT_PUBLIC_ADSENSE_SLOT_OVERLAY || "",
+  moment: process.env.NEXT_PUBLIC_ADSENSE_SLOT_MOMENT || "",
+};
+
+export function getAdSlotId(slot: AdSlot): string {
+  return ADSENSE_SLOT_IDS[slot] || "";
+}
+
 // Yardımcı fonksiyonlar
 export function getProviderForSlot(slot: AdSlot): AdProviderConfig {
   const providerId = SLOT_PROVIDER[slot];

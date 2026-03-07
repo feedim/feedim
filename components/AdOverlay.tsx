@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import { AD_SKIP_DELAY } from "@/lib/constants";
-import { getProviderForSlot } from "@/lib/adProviders";
+import { getProviderForSlot, getAdSlotId } from "@/lib/adProviders";
 import { useHydrated } from "@/lib/useHydrated";
 
 interface AdOverlayProps {
@@ -26,6 +26,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
   const hydrated = useHydrated();
   const skipAds = user?.role === "admin" || (!!user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan));
   const provider = getProviderForSlot("overlay");
+  const slotId = getAdSlotId("overlay");
   const [countdown, setCountdown] = useState(AD_SKIP_DELAY);
   const [adLoaded, setAdLoaded] = useState(false);
   const insRef = useRef<HTMLModElement>(null);
@@ -291,6 +292,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
               className="adsbygoogle"
               style={{ display: "block", textAlign: "center" }}
               data-ad-client={provider.clientId}
+              {...(slotId ? { "data-ad-slot": slotId } : {})}
               data-ad-format="auto"
               data-full-width-responsive="true"
             />

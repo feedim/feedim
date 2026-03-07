@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useUser } from "@/components/UserContext";
-import { getProviderForSlot, type AdSlot } from "@/lib/adProviders";
+import { getProviderForSlot, getAdSlotId, type AdSlot } from "@/lib/adProviders";
 import { useHydrated } from "@/lib/useHydrated";
 
 interface AdBannerProps {
@@ -42,6 +42,7 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
   const divRef = useRef<HTMLDivElement>(null);
 
   const provider = getProviderForSlot(slot);
+  const slotId = getAdSlotId(slot);
   const adsEnabled = useMemo(() => {
     if (!hydrated) return false;
     const ds = document.documentElement.dataset;
@@ -53,23 +54,55 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
     return true;
   }, [hydrated, slot]);
 
-  // AdSense renderer
+  // AdSense renderer — push ad when element is visible
+  const pushedRef = useRef(false);
+  useEffect(() => {
+    pushedRef.current = false;
+  }, [slot]);
+
   useEffect(() => {
     if (!adsEnabled || provider.id !== "adsense") return;
     const ins = insRef.current;
     if (!ins) return;
     if (ins.getAttribute("data-adsbygoogle-status")) return;
+    if (pushedRef.current) return;
 
     const pushAd = () => {
+      if (pushedRef.current) return;
       try {
         if (!ins.getAttribute("data-adsbygoogle-status")) {
+          pushedRef.current = true;
           (window.adsbygoogle = window.adsbygoogle || []).push({});
         }
       } catch {}
     };
 
-    const hasVideoPlayer = !!document.querySelector("video, .vp-bar, [data-moment-active]");
+    // For moment slots inside snap-scroll containers, use a simpler approach:
+    // observe with the nearest scrollable ancestor as root, or just push after a short delay
+    const isMomentSlot = slot === "moment";
+
+    if (isMomentSlot) {
+      // Moments use snap-scroll — IntersectionObserver with viewport root may miss.
+      // Use a scroll-ancestor-aware observer or push when component mounts (it's only
+      // rendered when the ad slide is within a few slides of the active one).
+      const scrollParent = ins.closest("[class*='snap-y']") as HTMLElement | null;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            observer.disconnect();
+            setTimeout(pushAd, 100);
+          }
+        },
+        { root: scrollParent, rootMargin: "100%", threshold: 0.01 }
+      );
+      observer.observe(ins);
+      // Fallback: push after 3s even if observer didn't fire
+      const fallback = setTimeout(pushAd, 3000);
+      return () => { observer.disconnect(); clearTimeout(fallback); };
+    }
+
     const idleWindow = window as IdleWindow;
+    const hasVideoPlayer = !!document.querySelector("video, .vp-bar");
 
     if (hasVideoPlayer) {
       const observer = new IntersectionObserver(
@@ -96,7 +129,7 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
       const timer = setTimeout(pushAd, 200);
       return () => clearTimeout(timer);
     }
-  }, [adsEnabled, provider.id]);
+  }, [adsEnabled, provider.id, slot]);
 
   // Google Ad Manager (GPT) renderer
   useEffect(() => {
@@ -166,6 +199,7 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
           className="adsbygoogle"
           style={{ display: "block", textAlign: "center" }}
           data-ad-client={provider.clientId}
+          {...(slotId ? { "data-ad-slot": slotId } : {})}
           data-ad-format="auto"
           data-full-width-responsive="true"
         />
