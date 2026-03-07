@@ -225,11 +225,16 @@ function MomentsContent() {
   useEffect(() => {
     setMobileNavVisible(false);
     const main = document.querySelector("main");
+    const wrapper = main?.firstElementChild as HTMLElement | null;
     if (main) {
       main.style.paddingBottom = "0";
       main.style.overflow = "hidden";
       main.style.height = "100dvh";
       main.style.minHeight = "100svh";
+    }
+    if (wrapper) {
+      wrapper.style.height = "100%";
+      wrapper.style.overflow = "hidden";
     }
     return () => {
       setMobileNavVisible(true);
@@ -238,6 +243,10 @@ function MomentsContent() {
         main.style.overflow = "";
         main.style.height = "";
         main.style.minHeight = "";
+      }
+      if (wrapper) {
+        wrapper.style.height = "";
+        wrapper.style.overflow = "";
       }
     };
   }, [setMobileNavVisible]);
