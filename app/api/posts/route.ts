@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Copyright check (only for published posts — fast, runs before AI moderation)
+    // Copyright check (only for published posts, excludes moments & notes — fast, runs before AI moderation)
     let copyrightFlagged = false;
     let copyrightMatchId: number | null = null;
     let copyrightSimilarity: number | null = null;
@@ -216,7 +216,8 @@ export async function POST(request: NextRequest) {
     let modCategory: string | null = null;
     if (status === 'published' && !isAdmin) {
       // Unified copyright check with content-type routing (admin bypass)
-      try {
+      // Skip copyright/duplicate checks for moments and notes
+      if (!isMoment && !isNote) try {
         const { wordCount: wc } = calculateReadingTime(sanitizedContent);
         const contentTypeVal = isMoment ? 'moment' : isVideo ? 'video' : isNote ? 'note' : 'post';
         const imgUrl = featured_image || (isVideo ? video_thumbnail : null);

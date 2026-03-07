@@ -26,7 +26,7 @@ interface Tag {
 
 export default function NoteWritePage() {
   return (
-    <Suspense fallback={<AppLayout hideRightSidebar><div className="px-3 sm:px-4 pt-4"><div className="flex gap-3"><div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 animate-pulse" /><div className="flex-1 space-y-3 pt-1"><div className="h-[11px] w-[80%] bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[11px] w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" /></div></div></div></AppLayout>}>
+    <Suspense fallback={<AppLayout hideRightSidebar><div className="px-1.5 sm:px-4 pt-4"><div className="flex gap-3"><div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 animate-pulse" /><div className="flex-1 space-y-3 pt-1"><div className="h-[11px] w-[80%] bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[11px] w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" /></div></div></div></AppLayout>}>
       <NoteWriteContent />
     </Suspense>
   );
@@ -478,7 +478,7 @@ function NoteWriteContent() {
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
         {/* Step 1: Note content */}
         {step === 1 && loadingDraft && (
-          <div className="px-3 sm:px-4 pt-4">
+          <div className="px-1.5 sm:px-4 pt-4">
             <div className="flex gap-3">
               <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 animate-pulse" />
               <div className="flex-1 space-y-2 pt-1.5">
@@ -491,7 +491,7 @@ function NoteWriteContent() {
         )}
         {step === 1 && !loadingDraft && (
           <div className="flex flex-col flex-1">
-            <div className="px-3 sm:px-4 pt-4 flex-1">
+            <div className="px-1.5 sm:px-4 pt-4 flex-1">
               <div className="flex gap-3">
                 {/* Avatar */}
                 <div className="shrink-0">
@@ -558,7 +558,7 @@ function NoteWriteContent() {
 
         {/* Step 2: Tags + Settings */}
         {step === 2 && (
-          <div className="space-y-6 px-3 sm:px-4 pt-4 pb-8">
+          <div className="space-y-6 px-1.5 sm:px-4 pt-4 pb-8">
             {/* Tags */}
             <div>
               <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>

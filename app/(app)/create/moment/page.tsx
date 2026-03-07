@@ -40,7 +40,7 @@ export default function MomentWritePage() {
     <Suspense
       fallback={
         <AppLayout hideRightSidebar>
-          <div className="px-5 sm:px-4 pt-4">
+          <div className="px-2 sm:px-4 pt-4">
             <div className="flex flex-col items-center justify-center min-h-[340px] rounded-2xl bg-bg-secondary animate-pulse" />
           </div>
         </AppLayout>
@@ -106,7 +106,7 @@ function MomentWriteContent() {
 
   // Preview controls
   const [previewPaused, setPreviewPaused] = useState(false);
-  const [previewMuted, setPreviewMuted] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(true);
   const [trimModalOpen, setTrimModalOpen] = useState(false);
 
   // SEO meta
@@ -232,7 +232,7 @@ function MomentWriteContent() {
         previewAudioRef.current.src = "";
         previewAudioRef.current = null;
       }
-      video.muted = false;
+      video.muted = previewMutedRef.current;
       video.volume = 1;
       return;
     }
@@ -840,7 +840,7 @@ function MomentWriteContent() {
 
         {/* Step 1: Video Upload */}
         {step === 1 && (
-          <div className="flex flex-col flex-1 px-5 sm:px-4 pt-4 pb-20">
+          <div className="flex flex-col flex-1 px-2 sm:px-4 pt-4 pb-20">
             {!videoFile && !videoUrl ? (
               <>
                 <div
@@ -934,7 +934,7 @@ function MomentWriteContent() {
                               previewAudioRef.current = null;
                             }
                             if (previewVideoRef.current) {
-                              previewVideoRef.current.muted = false;
+                              previewVideoRef.current.muted = previewMuted;
                               previewVideoRef.current.volume = 1;
                             }
                             setSelectedSound(null);
@@ -987,14 +987,14 @@ function MomentWriteContent() {
 
         {/* Step 2: Details */}
         {step === 2 && loadingDraft && (
-          <div className="flex-1 px-5 sm:px-4 pt-4 space-y-2.5">
+          <div className="flex-1 px-2 sm:px-4 pt-4 space-y-2.5">
             <div className="mx-auto w-40 aspect-[9/16] rounded-xl bg-bg-secondary animate-pulse" />
             <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
           </div>
         )}
         {step === 2 && !loadingDraft && (
-          <div className="flex flex-col flex-1 px-5 sm:px-4 pt-4 pb-20 space-y-5">
+          <div className="flex flex-col flex-1 px-2 sm:px-4 pt-4 pb-20 space-y-5">
 
             {/* Thumbnail — top center */}
             <div className="flex flex-col items-center">

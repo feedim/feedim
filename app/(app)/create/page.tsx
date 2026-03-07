@@ -13,7 +13,7 @@ import type { RichTextEditorHandle } from "@/components/RichTextEditor";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
   ssr: false,
   loading: () => (
-    <div className="flex-1 px-3 sm:px-4 pt-4 space-y-2.5">
+    <div className="flex-1 px-1.5 sm:px-4 pt-4 space-y-2.5">
       <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
       <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
       <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
@@ -42,7 +42,7 @@ interface Tag {
 
 export default function WritePage() {
   return (
-    <Suspense fallback={<AppLayout hideRightSidebar><div className="px-3 sm:px-4 pt-4 space-y-2.5"><div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" /></div></AppLayout>}>
+    <Suspense fallback={<AppLayout hideRightSidebar><div className="px-1.5 sm:px-4 pt-4 space-y-2.5"><div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" /><div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" /></div></AppLayout>}>
       <WritePageContent />
     </Suspense>
   );
@@ -662,7 +662,7 @@ function WritePageContent() {
       <div className="flex flex-col min-h-[calc(100dvh-53px)]">
         {/* Step 1: Title + Content */}
         {step === 1 && loadingDraft && (
-          <div className="flex-1 px-3 sm:px-4 pt-4 space-y-2.5">
+          <div className="flex-1 px-1.5 sm:px-4 pt-4 space-y-2.5">
             <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
@@ -671,7 +671,7 @@ function WritePageContent() {
         )}
         {step === 1 && !loadingDraft && (
           <div className="flex flex-col flex-1">
-            <div className="px-3 sm:px-4 pt-4">
+            <div className="px-1.5 sm:px-4 pt-4">
               <input
                 ref={titleInputRef}
                 type="text"
@@ -716,7 +716,7 @@ function WritePageContent() {
 
         {/* Step 2: Tags + Cover Image + Settings */}
         {step === 2 && (
-          <div className="space-y-6 px-5 sm:px-4 pt-4 pb-20">
+          <div className="space-y-6 px-2 sm:px-4 pt-4 pb-20">
             {/* Tags + Cover Image — side by side on desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tags */}

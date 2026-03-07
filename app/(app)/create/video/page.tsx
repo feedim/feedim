@@ -41,7 +41,7 @@ export default function VideoWritePage() {
     <Suspense
       fallback={
         <AppLayout hideRightSidebar>
-          <div className="px-5 sm:px-4 pt-4">
+          <div className="px-2 sm:px-4 pt-4">
             <div className="flex flex-col items-center justify-center min-h-[340px] rounded-2xl bg-bg-secondary animate-pulse" />
           </div>
         </AppLayout>
@@ -103,7 +103,7 @@ function VideoWriteContent() {
 
   // Preview controls
   const [previewPaused, setPreviewPaused] = useState(false);
-  const [previewMuted, setPreviewMuted] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(true);
   const [trimModalOpen, setTrimModalOpen] = useState(false);
 
   // SEO meta
@@ -747,7 +747,7 @@ function VideoWriteContent() {
 
         {/* ─── Step 1: Video Upload ─── */}
         {step === 1 && (
-          <div className="flex flex-col flex-1 px-5 sm:px-4 pt-4 pb-20">
+          <div className="flex flex-col flex-1 px-2 sm:px-4 pt-4 pb-20">
             {!videoFile && !videoUrl ? (
               /* Upload area */
               <>
@@ -841,7 +841,7 @@ function VideoWriteContent() {
 
         {/* ─── Step 2: Title + Description + Tags + Thumbnail + Settings ─── */}
         {step === 2 && loadingDraft && (
-          <div className="flex-1 px-5 sm:px-4 pt-4 space-y-2.5">
+          <div className="flex-1 px-2 sm:px-4 pt-4 space-y-2.5">
             <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
@@ -849,7 +849,7 @@ function VideoWriteContent() {
           </div>
         )}
         {step === 2 && !loadingDraft && (
-          <div className="flex flex-col flex-1 px-5 sm:px-4 pt-4 pb-20 space-y-5">
+          <div className="flex flex-col flex-1 px-2 sm:px-4 pt-4 pb-20 space-y-5">
 
             {/* Title */}
             <input
