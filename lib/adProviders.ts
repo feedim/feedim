@@ -55,17 +55,18 @@ export const SLOT_PROVIDER: Record<AdSlot, AdProviderType> = {
   moment: "adsense",
 };
 
-// AdSense slot IDs — her ad unit için AdSense panelinden alınan ID
-// Tüm slotlar aynı ID'yi paylaşabilir (tek responsive ad unit) veya ayrı olabilir
+// AdSense slot IDs — Feedim MAX responsive ad unit
+const DEFAULT_SLOT = "9437924473";
+
 export const ADSENSE_SLOT_IDS: Record<AdSlot, string> = {
-  feed: process.env.NEXT_PUBLIC_ADSENSE_SLOT_FEED || "",
-  "post-top": process.env.NEXT_PUBLIC_ADSENSE_SLOT_POST || "",
-  "post-detail": process.env.NEXT_PUBLIC_ADSENSE_SLOT_POST || "",
-  "post-bottom": process.env.NEXT_PUBLIC_ADSENSE_SLOT_POST || "",
-  explore: process.env.NEXT_PUBLIC_ADSENSE_SLOT_FEED || "",
-  sidebar: process.env.NEXT_PUBLIC_ADSENSE_SLOT_SIDEBAR || "",
-  overlay: process.env.NEXT_PUBLIC_ADSENSE_SLOT_OVERLAY || "",
-  moment: process.env.NEXT_PUBLIC_ADSENSE_SLOT_MOMENT || "",
+  feed: DEFAULT_SLOT,
+  "post-top": DEFAULT_SLOT,
+  "post-detail": DEFAULT_SLOT,
+  "post-bottom": DEFAULT_SLOT,
+  explore: DEFAULT_SLOT,
+  sidebar: DEFAULT_SLOT,
+  overlay: DEFAULT_SLOT,
+  moment: DEFAULT_SLOT,
 };
 
 export function getAdSlotId(slot: AdSlot): string {

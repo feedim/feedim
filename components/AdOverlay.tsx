@@ -292,7 +292,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
               className="adsbygoogle"
               style={{ display: "block", textAlign: "center" }}
               data-ad-client={provider.clientId}
-              {...(slotId ? { "data-ad-slot": slotId } : {})}
+              data-ad-slot={slotId}
               data-ad-format="auto"
               data-full-width-responsive="true"
             />
