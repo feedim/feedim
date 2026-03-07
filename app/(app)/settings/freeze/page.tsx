@@ -57,7 +57,7 @@ export default function FreezeAccountPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ reason, captchaToken }),
             }),
-            minDelay(2000),
+            minDelay(100),
           ]);
 
           if (res.ok) {

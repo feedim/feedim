@@ -25,7 +25,7 @@ async function serverSendOtp(captchaToken: string) {
   return res.ok;
 }
 
-const UI_MIN_DELAY_MS = 450;
+const UI_MIN_DELAY_MS = 100;
 const minDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
 type CaptchaFlow = "email_send" | "email_resend" | "mfa_enable_send" | "mfa_disable_send" | "mfa_resend";
 

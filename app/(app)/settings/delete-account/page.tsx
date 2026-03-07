@@ -86,7 +86,7 @@ export default function DeleteAccountPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reason, captchaToken, password }),
         }),
-        minDelay(2000),
+        minDelay(100),
       ]);
 
       if (!res.ok) {

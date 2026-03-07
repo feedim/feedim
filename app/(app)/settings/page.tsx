@@ -234,7 +234,7 @@ export default function SettingsPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ account_private: newValue }),
             }),
-            minDelay(2000),
+            minDelay(100),
           ]);
           if (!res.ok) {
             setIsPrivate(!newValue);
@@ -258,7 +258,7 @@ export default function SettingsPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           }),
-          minDelay(2000),
+          minDelay(100),
         ]);
         if (res.ok) {
           setAccountType("personal");
