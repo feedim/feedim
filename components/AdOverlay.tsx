@@ -247,7 +247,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
     };
   }, [active, countdown <= 0, skipAds, onSkip]);
 
-  if (!active || !user || skipAds || !areaEnabled) return null;
+  if (!active || skipAds || !areaEnabled) return null;
 
   const canSkip = countdown <= 0;
 
