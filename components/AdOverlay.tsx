@@ -24,7 +24,8 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
   const t = useTranslations("ad");
   const { user } = useUser();
   const hydrated = useHydrated();
-  const skipAds = user?.role === "admin" || (!!user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan));
+  const debugAds = hydrated && (() => { try { return localStorage.getItem("feedim-debug-ads") === "1"; } catch { return false; } })();
+  const skipAds = !debugAds && (user?.role === "admin" || (!!user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan)));
   const provider = getProviderForSlot("overlay");
   const slotId = getAdSlotId("overlay");
   const [countdown, setCountdown] = useState(AD_SKIP_DELAY);

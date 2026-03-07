@@ -213,7 +213,7 @@ export default function VideoPlayerClient({
     if (countdown === null) return;
     if (countdown <= 0) {
       emitNavigationStart();
-      router.push(`/${nextVideoSlug}?autoplay=1`);
+      router.push(`/video/${nextVideoSlug}?autoplay=1`);
       return;
     }
     timerRef.current = setInterval(() => {
@@ -229,7 +229,7 @@ export default function VideoPlayerClient({
 
   const playNow = () => {
     emitNavigationStart();
-    router.push(`/${nextVideoSlug}?autoplay=1`);
+    router.push(`/video/${nextVideoSlug}?autoplay=1`);
   };
 
   const replay = () => {

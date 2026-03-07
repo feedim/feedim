@@ -172,7 +172,8 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
   }, [adsEnabled, provider.id, slot]);
 
   if (!user) return null;
-  if (user.role === "admin" || (user.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan))) return null;
+  const debugAds = hydrated && (() => { try { return localStorage.getItem("feedim-debug-ads") === "1"; } catch { return false; } })();
+  if (!debugAds && (user.role === "admin" || (user.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan)))) return null;
 
   // Show placeholder area even when ads are disabled/not loaded
   if (!adsEnabled || !provider.enabled) {
@@ -220,9 +221,10 @@ interface FeedAdProps {
 
 export function FeedAdSlot({ index }: FeedAdProps) {
   const { user, isLoggedIn } = useUser();
+  const feedDebug = (() => { try { return localStorage.getItem("feedim-debug-ads") === "1"; } catch { return false; } })();
 
   if (!isLoggedIn) return null;
-  if (user?.role === "admin" || (user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan))) return null;
+  if (!feedDebug && (user?.role === "admin" || (user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan)))) return null;
 
   const interval = 10;
   if ((index + 1) % interval !== 0) return null;
