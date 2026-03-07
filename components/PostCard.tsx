@@ -243,7 +243,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   if (isDeleted) return null;
 
   return (
-    <div className="border-b border-border-primary/60 mx-1.5 sm:mx-3">
+    <div className="border-b border-border-primary/60 mx-2 sm:mx-3">
     {trackFeedView && (
       <FeedItemViewTracker
         postId={post.id}
@@ -251,7 +251,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
         containerRef={cardRef}
       />
     )}
-    <article ref={cardRef} className="pt-[4px] pb-[9px] px-1 sm:px-2 rounded-[24px] overflow-hidden">
+    <article ref={cardRef} className="pt-[4px] pb-[9px] px-[3px] sm:px-2 rounded-[24px] overflow-hidden">
       <div className="flex gap-2 items-stretch">
         {/* Avatar — fixed left column with timeline line */}
           <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
