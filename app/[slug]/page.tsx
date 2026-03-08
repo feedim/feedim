@@ -366,7 +366,7 @@ export default async function PostPage({ params }: PageProps) {
           </div>
         )}
 
-        <article className="px-4 sm:px-5 py-3 md:py-5">
+        <article className="px-4 sm:px-4 py-3 md:py-5">
           <PostHeaderActions
             postId={post.id}
             postUrl={`/${post.slug}`}
@@ -489,7 +489,7 @@ export default async function PostPage({ params }: PageProps) {
         )}
 
         {/* Main content */}
-        <article className="px-4 sm:px-5 py-3 md:py-5">
+        <article className="px-4 sm:px-4 py-3 md:py-5">
           {/* PostHeaderActions — portals to header */}
           <PostHeaderActions
             postId={post.id}

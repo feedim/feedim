@@ -714,7 +714,7 @@ function WritePageContent() {
 
         {/* Step 2: Tags + Cover Image + Settings */}
         {step === 2 && (
-          <div className="space-y-6 px-2 sm:px-4 pt-4 pb-20">
+          <div className="space-y-6 px-2 sm:px-3 pt-4 pb-20">
             {/* Tags + Cover Image — side by side on desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tags */}

@@ -158,7 +158,7 @@ export default function BookmarksPage() {
 
   return (
     <AppLayout headerTitle={t("bookmarks.title")} hideRightSidebar headerRightAction={filterButton}>
-      <div className="px-2.5 sm:px-3">
+      <div className="sm:px-3">
         {loading && posts.length === 0 ? (
           <PostCardSkeleton count={5} />
         ) : posts.length > 0 ? (
