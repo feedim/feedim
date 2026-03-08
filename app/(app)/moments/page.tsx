@@ -206,7 +206,6 @@ function MomentsContent() {
 
   // Build display list — inject ad item every 7 moments
   const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
-  const activeAdKeysRef = useRef<Set<number>>(new Set());
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
@@ -454,20 +453,21 @@ function MomentsContent() {
     }
   }, [activeDisplayIndex, displayItems]);
 
-  // Track active ad — dismiss (remove from DOM) when user scrolls away
+  // Dismiss ads the user has scrolled past (position-based — works even with fast scrolling)
   useEffect(() => {
     const item = displayItems[activeDisplayIndex];
-    if (item?.type === "ad") {
-      activeAdKeysRef.current.add(item.adKey);
-    } else if (activeAdKeysRef.current.size > 0) {
-      const toDismiss = new Set(activeAdKeysRef.current);
-      activeAdKeysRef.current = new Set();
-      setDismissedAdKeys(prev => {
-        const next = new Set(prev);
-        toDismiss.forEach(k => next.add(k));
-        return next;
-      });
-    }
+    if (!item || item.type === "ad") return;
+    const currentRealIndex = item.realIndex;
+    setDismissedAdKeys(prev => {
+      let next: Set<number> | null = null;
+      for (const di of displayItems) {
+        if (di.type === "ad" && di.adKey < currentRealIndex && !prev.has(di.adKey)) {
+          if (!next) next = new Set(prev);
+          next.add(di.adKey);
+        }
+      }
+      return next || prev;
+    });
   }, [activeDisplayIndex, displayItems]);
 
   // Infinite loading — guests redirected to login on loadMore
