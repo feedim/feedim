@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
-import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
 import BlurImage from "@/components/BlurImage";
 
 interface MomentItem {
@@ -40,27 +39,19 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
   const hasInitialMoments = seededMoments.length > 0;
   const [moments, setMoments] = useState<MomentItem[]>(seededMoments);
   const [loaded, setLoaded] = useState(hasInitialMoments);
-  const requestUrl = withCacheScope(`/api/posts/moments?limit=${maxItems}&locale=${locale}`, `locale:${locale}`);
-
-  useLayoutEffect(() => {
-    if (hasInitialMoments) return;
-    const cached = readCache(requestUrl) as { moments?: MomentItem[] } | null;
-    if (cached?.moments?.length) {
-      setMoments(cached.moments.slice(0, maxItems));
-      setLoaded(true);
-    }
-  }, [hasInitialMoments, maxItems, requestUrl]);
+  const mountTs = useRef(Date.now());
 
   const loadMoments = useCallback(async () => {
     try {
-      const data = await fetchWithCache(requestUrl, { ttlSeconds: 30 }) as { moments?: MomentItem[] };
+      const res = await fetch(`/api/posts/moments?limit=${maxItems}&locale=${locale}&_t=${mountTs.current}`);
+      const data = await res.json() as { moments?: MomentItem[] };
       setMoments((data.moments || []).slice(0, maxItems));
     } catch {
       // Silent
     } finally {
       setLoaded(true);
     }
-  }, [maxItems, requestUrl]);
+  }, [maxItems, locale]);
 
   useEffect(() => {
     if (!loaded) void loadMoments();

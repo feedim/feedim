@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, Bookmark, Volume2, VolumeX, MoreHorizontal, Music, Clock } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreHorizontal, Music, Clock } from "lucide-react";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -264,11 +264,6 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
     return () => window.removeEventListener("keydown", handler, { capture: true } as EventListenerOptions);
   }, [isActive, onToggleMute, togglePlayPause]);
 
-  const toggleMute = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleMute?.();
-  }, [onToggleMute]);
-
   // Lightweight render for far-off cards to reduce scroll jank (Android)
   if (!loadVideo && !isActive) {
     return (
@@ -332,17 +327,6 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
         <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
       </div>
-
-      {/* Mute button — top right */}
-      <button
-        onClick={toggleMute}
-        aria-label={muted ? t("unmute") : t("mute")}
-        data-tooltip={muted ? t("unmute") : t("mute")}
-        data-tooltip-pos="bottom"
-        className="absolute top-3 right-3 z-30 w-11 h-11 md:w-10 md:h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center touch-manipulation active:scale-90 transition-transform"
-      >
-        {muted ? <VolumeX className="h-5 w-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]" /> : <Volume2 className="h-5 w-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]" />}
-      </button>
 
       {/* Right side action buttons — TikTok/Reels style */}
       <div className="absolute right-1 bottom-4 z-20 flex flex-col items-center gap-4 touch-manipulation select-none">

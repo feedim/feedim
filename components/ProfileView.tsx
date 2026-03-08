@@ -473,7 +473,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         </nav>
       </header>
 
-      <main className="px-4 py-6">
+      <main className="px-3.5 py-6">
         {(isAdminOrMod || profile.is_own) && profile.status && profile.status !== "active" && (
           <div className={`mb-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold w-fit ${
             profile.status === "moderation" ? "bg-[var(--accent-color)]/10 text-[var(--accent-color)]" :

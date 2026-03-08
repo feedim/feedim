@@ -12,6 +12,7 @@ import { isBlockedContent } from "@/lib/blockedWords";
 import { redirectToLogin } from "@/lib/loginNext";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { smartBack } from "@/lib/smartBack";
+import { Volume2, VolumeX } from "lucide-react";
 import MomentAdCard from "@/components/MomentAdCard";
 import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
 
@@ -138,6 +139,7 @@ function MomentsContent() {
   const locale = useLocale();
   const t = useTranslations("moments");
   const tErrors = useTranslations("errors");
+  const tTooltip = useTranslations("tooltip");
   const momentsCacheScope = `${locale}:${ctxUser?.id || "guest"}`;
   const [moments, setMoments] = useState<Moment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,19 +205,19 @@ function MomentsContent() {
   const [startSlug] = useState<string | null>(() => searchParams.get("s"));
 
   // Build display list — inject ad item every 7 moments
-  const [seenAdKeys, setSeenAdKeys] = useState<Set<number>>(new Set());
-  const seenAdKeysRef = useRef<Set<number>>(new Set());
+  const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
+  const activeAdKeysRef = useRef<Set<number>>(new Set());
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 7 === 0) {
+      if ((i + 1) % 7 === 0 && !dismissedAdKeys.has(i)) {
         items.push({ type: "ad" as const, adKey: i });
       }
     });
     return items;
-  }, [moments, ctxUser?.id]);
+  }, [moments, ctxUser?.id, dismissedAdKeys]);
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
@@ -223,9 +225,8 @@ function MomentsContent() {
     return false;
   }, [isLoggedIn]);
 
-  // Hide mobile bottom nav + remove parent padding + prevent main scroll
-  useEffect(() => {
-    setMobileNavVisible(false);
+  // Re-assert moments layout (guards against modal scroll lock resetting styles)
+  const reassertLayout = useCallback(() => {
     const main = document.querySelector("main");
     const wrapper = main?.firstElementChild as HTMLElement | null;
     if (main) {
@@ -238,8 +239,18 @@ function MomentsContent() {
       wrapper.style.height = "100%";
       wrapper.style.overflow = "hidden";
     }
+  }, []);
+
+  // Hide mobile bottom nav + remove parent padding + prevent main scroll
+  useEffect(() => {
+    setMobileNavVisible(false);
+    document.body.style.overflow = "hidden";
+    reassertLayout();
     return () => {
       setMobileNavVisible(true);
+      document.body.style.overflow = "";
+      const main = document.querySelector("main");
+      const wrapper = main?.firstElementChild as HTMLElement | null;
       if (main) {
         main.style.paddingBottom = "";
         main.style.overflow = "";
@@ -251,7 +262,14 @@ function MomentsContent() {
         wrapper.style.overflow = "";
       }
     };
-  }, [setMobileNavVisible]);
+  }, [setMobileNavVisible, reassertLayout]);
+
+  // Re-assert layout after any modal closes (prevents 100px gap from scroll lock cycle)
+  useEffect(() => {
+    if (!commentModal && !shareModal && !optionsModal && !likesModalPostId) {
+      reassertLayout();
+    }
+  }, [commentModal, shareModal, optionsModal, likesModalPostId, reassertLayout]);
 
   // Preload modals early to avoid first-open lag
   useEffect(() => {
@@ -436,22 +454,20 @@ function MomentsContent() {
     }
   }, [activeDisplayIndex, displayItems]);
 
-  // Track seen ad cards — prevents AdSense re-push on scroll back
+  // Track active ad cards — dismiss (remove snap) when scrolled away
   useEffect(() => {
     const item = displayItems[activeDisplayIndex];
     if (item?.type === "ad") {
-      seenAdKeysRef.current.add(item.adKey);
-    } else {
-      // Scrolled away from ad — mark as permanently seen
-      if (seenAdKeysRef.current.size > 0) {
-        const seen = seenAdKeysRef.current;
-        seenAdKeysRef.current = new Set();
-        setSeenAdKeys(prev => {
-          const next = new Set(prev);
-          seen.forEach(k => next.add(k));
-          return next;
-        });
-      }
+      activeAdKeysRef.current.add(item.adKey);
+    } else if (activeAdKeysRef.current.size > 0) {
+      // Scrolled away from ad — remove the snap entirely
+      const toRemove = new Set(activeAdKeysRef.current);
+      activeAdKeysRef.current = new Set();
+      setDismissedAdKeys(prev => {
+        const next = new Set(prev);
+        toRemove.forEach(k => next.add(k));
+        return next;
+      });
     }
   }, [activeDisplayIndex, displayItems]);
 
@@ -598,15 +614,25 @@ function MomentsContent() {
         className="relative w-full h-full"
         style={{ maxWidth: "min(62vh, 480px)" }}
       >
-        {/* Top bar — back button + Moments title */}
+        {/* Top bar — back button + Moments title + mute toggle */}
         <div className="absolute top-0 left-0 right-0 z-[60] flex items-center px-4 pt-4 pb-2 pointer-events-none">
           <BackButton variant="overlay" />
           <h1
-            className="flex-1 text-center text-white text-[1.1rem] font-bold pr-10"
+            className="flex-1 text-center text-white text-[1.1rem] font-bold"
             style={{ textShadow: "0 1px 6px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.2)" }}
           >
             {t("title")}
           </h1>
+          <button
+            onClick={handleToggleMute}
+            className="w-10 h-10 rounded-full flex items-center justify-center pointer-events-auto active:scale-90 transition-transform"
+            aria-label={globalMuted ? tTooltip("unmute") : tTooltip("mute")}
+          >
+            {globalMuted
+              ? <VolumeX className="h-5 w-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]" />
+              : <Volume2 className="h-5 w-5 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]" />
+            }
+          </button>
         </div>
 
         {/* Scroll container */}
@@ -620,13 +646,19 @@ function MomentsContent() {
           return (
             <div key={`ad-${item.adKey}`} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
               <MomentAdCard
-                isActive={displayIndex === activeDisplayIndex && !seenAdKeys.has(item.adKey)}
+                isActive={displayIndex === activeDisplayIndex}
                 onSkip={() => {
-                  // Scroll to next item instead of removing the ad card
                   const nextEl = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
-                  if (nextEl) {
-                    nextEl.scrollIntoView({ behavior: "smooth" });
-                  }
+                  if (nextEl) nextEl.scrollIntoView({ behavior: "smooth" });
+                  // Remove the ad snap after scroll starts
+                  setTimeout(() => {
+                    activeAdKeysRef.current.delete(item.adKey);
+                    setDismissedAdKeys(prev => {
+                      const next = new Set(prev);
+                      next.add(item.adKey);
+                      return next;
+                    });
+                  }, 350);
                 }}
               />
             </div>

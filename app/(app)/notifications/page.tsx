@@ -592,7 +592,7 @@ export default function NotificationsPage() {
                       <div
                         key={n.id}
                         className={cn(
-                          "group relative flex items-center gap-3 py-3 px-3 my-[2px] rounded-[15px] transition",
+                          "group relative flex items-center gap-3 py-3 px-2.5 my-[2px] rounded-[15px] transition",
                           !n.is_read ? "bg-accent-main/5" : "hover:bg-bg-secondary"
                         )}
                       >

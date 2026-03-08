@@ -274,7 +274,7 @@ export default function SuggestionsPage() {
 
   return (
     <AppLayout hideRightSidebar headerTitle={t("findPeople")} headerRightAction={refreshButton}>
-      <div className="px-2 py-4">
+      <div className="px-1.5 py-4">
         {loading ? (
           <div className="space-y-0 px-2">
             {[1, 2, 3, 4, 5].map(i => (

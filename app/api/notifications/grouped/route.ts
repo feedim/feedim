@@ -174,9 +174,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Collect post IDs for thumbnails (like groups + post-related singles)
+    const POST_OBJECT_TYPES = ["first_post", "comeback_post"];
     const postIds = new Set<number>();
     for (const item of pageItems) {
-      if (item.object_type === "post" && item.object_id) {
+      if (item.object_id && (item.object_type === "post" || POST_OBJECT_TYPES.includes(item.type))) {
         postIds.add(item.object_id);
       }
     }
@@ -227,7 +228,7 @@ export async function GET(req: NextRequest) {
     // Build response
     const notifications = pageItems.map(item => {
       const actors = item.actor_ids.slice(0, 3).map(aid => actorMap.get(aid)).filter(Boolean);
-      const postData = item.object_type === "post" && item.object_id ? postMap.get(item.object_id) : null;
+      const postData = item.object_id && (item.object_type === "post" || POST_OBJECT_TYPES.includes(item.type)) ? postMap.get(item.object_id) : null;
 
       return {
         id: item.key,

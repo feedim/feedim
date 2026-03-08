@@ -436,6 +436,11 @@ export default function Modal({
 
   const handleTouchEnd = useCallback(() => { endDrag(); }, [endDrag]);
 
+  // Content area touch — uses force=false so interactive elements are excluded
+  const handleContentTouchStart = useCallback((e: React.TouchEvent) => {
+    startDrag(e.touches[0].clientY, e.touches[0].clientX, e.target, false);
+  }, [startDrag]);
+
   // --- Mouse handlers ---
   const mouseMoveCb = useRef<((e: MouseEvent) => void) | null>(null);
   const mouseUpCb = useRef<((e: MouseEvent) => void) | null>(null);
@@ -496,6 +501,12 @@ export default function Modal({
     onTouchMove: handleTouchMove,
     onTouchEnd: handleTouchEnd,
     onMouseDown: handleMouseDown,
+  } : {};
+
+  const contentDragProps = isBottomSheet ? {
+    onTouchStart: handleContentTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
   } : {};
 
   const animClass =
@@ -563,8 +574,8 @@ export default function Modal({
 
         <div
           ref={contentRef}
-          data-modal-no-drag
           className="overflow-y-auto overflow-x-hidden overscroll-contain modal-scroll-content flex-1"
+          {...contentDragProps}
         >
           {children}
         </div>
