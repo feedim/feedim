@@ -243,7 +243,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   if (isDeleted) return null;
 
   return (
-    <div className="border-b border-border-primary/60 mx-[7px] sm:mx-3">
+    <div className="border-b border-border-primary/60">
     {trackFeedView && (
       <FeedItemViewTracker
         postId={post.id}

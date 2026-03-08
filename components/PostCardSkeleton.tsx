@@ -1,6 +1,6 @@
 const pulse = "animate-pulse";
 const bone = `h-[11px] bg-bg-secondary rounded-[5px] ${pulse}`;
-const article = "pt-[4px] pb-[5px] px-[3px] sm:px-2 mx-[7px] sm:mx-3 rounded-[24px] overflow-hidden";
+const article = "pt-[4px] pb-[5px] px-[3px] sm:px-2 rounded-[24px] overflow-hidden";
 
 function PostSkeleton() {
   return (
