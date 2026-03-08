@@ -173,7 +173,7 @@ export default function PostMoreModal({ open, onClose, postId, postUrl, authorUs
   return (
     <>
       <Modal open={open} onClose={onClose} size="sm" title={t("postMore")} infoText={t("postMoreInfoText")}>
-        <div className="py-2 px-2.5 space-y-[3px]">
+        <div className="py-2 px-2 space-y-[3px]">
           <button onClick={handleCopyUrl} className={btnClass}>
             <span className={labelClass}>{copied ? t("copied") : t("copyLink")}</span>
             {copied ? (

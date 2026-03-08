@@ -139,7 +139,7 @@ export default function ProfileMoreModal({
   return (
     <>
       <Modal open={open} onClose={onClose} size="sm" title={t("profileMoreTitle")} infoText={t("profileMoreInfoText")}>
-        <div className="py-2 px-2.5 space-y-[3px]">
+        <div className="py-2 px-2 space-y-[3px]">
           <button onClick={handleCopyUrl} className={btnClass}>
             {copied ? <Check className={`${iconClass} text-text-primary`} /> : <LinkIcon className={`${iconClass} text-text-muted`} />}
             <span className={labelClass}>{copied ? t("copied") : t("copyProfileUrl")}</span>
