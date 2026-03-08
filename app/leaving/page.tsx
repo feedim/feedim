@@ -27,12 +27,12 @@ function LeavingContent() {
     <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6 text-center">
       <FeedimIcon className="h-16 w-16 opacity-80 mb-6" />
       <h1 className="text-xl font-bold mb-2">{t("title")}</h1>
-      <p className="text-sm text-text-muted mb-6 max-w-sm">
+      <p className="text-[0.78rem] text-text-muted mb-6 max-w-sm">
         {t("description")}
       </p>
 
       {url && isSafeUrl && (
-        <div className="w-full max-w-sm bg-bg-secondary rounded-[15px] px-4 py-3 mb-6 break-all text-sm text-text-muted text-left">
+        <div className="w-full max-w-sm bg-bg-secondary rounded-[9px] px-4 py-3 mb-6 break-all text-sm text-text-muted text-left">
           {url}
         </div>
       )}
