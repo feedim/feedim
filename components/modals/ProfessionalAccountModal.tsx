@@ -39,6 +39,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [stepping, setStepping] = useState<string | null>(null);
 
   const totalSteps = 4;
 
@@ -46,6 +47,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
   useEffect(() => {
     if (open) {
       setStep(initialStep ?? (isPrivate ? 0 : 1));
+      setStepping(null);
     }
   }, [open, initialStep, isPrivate]);
 
@@ -55,7 +57,16 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
     setCategory("");
     setContactEmail("");
     setContactPhone("");
+    setStepping(null);
     onClose();
+  };
+
+  const goToStep = (nextStep: number, key: string) => {
+    setStepping(key);
+    setTimeout(() => {
+      setStep(nextStep);
+      setStepping(null);
+    }, 500);
   };
 
   const [makingPublic, setMakingPublic] = useState(false);
@@ -157,13 +168,14 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       case 1:
         return (
           <div className="px-4 py-6 space-y-4">
-            <div className="text-center mb-2">
+            <div className="mb-2">
               <h3 className="text-lg font-bold">{t("accountType")}</h3>
               <p className="text-sm text-text-muted mt-1">{t("accountTypeDesc")}</p>
             </div>
             <button
-              onClick={() => { setAccountType("creator"); setCategory(""); setStep(2); }}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border-primary hover:border-text-muted transition"
+              onClick={() => { setAccountType("creator"); setCategory(""); goToStep(2, "creator"); }}
+              disabled={!!stepping}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border-primary hover:border-text-muted transition disabled:opacity-60"
             >
               <div className="w-12 h-12 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
                 <svg className="h-6 w-6 text-accent-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -172,7 +184,11 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 <p className="font-semibold">{t("creatorLabel")}</p>
                 <p className="text-xs text-text-muted mt-0.5">{t("creatorDesc")}</p>
               </div>
-              <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
+              {stepping === "creator" ? (
+                <span className="loader shrink-0" style={{ width: 16, height: 16 }} />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
+              )}
             </button>
             <button
               onClick={() => {
@@ -180,9 +196,10 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                   feedimAlert("error", t("businessOnlyError"));
                   return;
                 }
-                setAccountType("business"); setCategory(""); setStep(2);
+                setAccountType("business"); setCategory(""); goToStep(2, "business");
               }}
-              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border-primary transition ${canUseBusiness ? "hover:border-text-muted" : "opacity-60 hover:opacity-80"}`}
+              disabled={!!stepping}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border-primary transition disabled:opacity-60 ${canUseBusiness ? "hover:border-text-muted" : "opacity-60 hover:opacity-80"}`}
             >
               <div className="w-12 h-12 rounded-full bg-accent-main/10 flex items-center justify-center shrink-0">
                 <Briefcase className="h-6 w-6 text-accent-main" />
@@ -193,7 +210,9 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                   {canUseBusiness ? t("businessDesc") : t("businessOnlyDesc")}
                 </p>
               </div>
-              {canUseBusiness ? (
+              {stepping === "business" ? (
+                <span className="loader shrink-0" style={{ width: 16, height: 16 }} />
+              ) : canUseBusiness ? (
                 <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
               ) : (
                 <Lock className="h-4 w-4 text-text-muted shrink-0" />
@@ -205,7 +224,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       case 2:
         return (
           <div className="px-4 py-6 space-y-4">
-            <div className="text-center mb-2">
+            <div className="mb-2">
               <h3 className="text-lg font-bold">{t("selectCategoryTitle")}</h3>
               <p className="text-sm text-text-muted mt-1">{t("selectCategoryDesc")}</p>
             </div>
@@ -230,14 +249,14 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                   if (accountType === "creator") {
                     handleComplete();
                   } else {
-                    setStep(3);
+                    goToStep(3, "continue");
                   }
                 }}
-                disabled={!category || saving}
+                disabled={!category || saving || !!stepping}
                 className="w-full t-btn accept disabled:opacity-40"
                 aria-label={accountType === "creator" ? t("complete") : t("continue")}
               >
-                {saving ? <span className="loader" style={{ width: 16, height: 16 }} /> : accountType === "creator" ? t("complete") : t("continue")}
+                {(saving || stepping === "continue") ? <span className="loader" style={{ width: 16, height: 16 }} /> : accountType === "creator" ? t("complete") : t("continue")}
               </button>
             </div>
           </div>
@@ -246,7 +265,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       case 3:
         return (
           <div className="px-4 py-6 space-y-4">
-            <div className="text-center mb-2">
+            <div className="mb-2">
               <h3 className="text-lg font-bold">{t("contactInfo")}</h3>
               <p className="text-sm text-text-muted mt-1">{t("contactInfoDesc")}</p>
             </div>
@@ -310,7 +329,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       zIndex="z-[10001]"
       infoText={t("proAccountInfoText")}
       leftAction={
-        step > 1 && step < 4 ? (
+        step > 1 && step < 4 && !stepping ? (
           <button onClick={() => setStep(step - 1)} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={tc("back")}>
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>

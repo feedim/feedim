@@ -558,7 +558,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 let displayUrl = firstUrl;
                 try {
                   const u = new URL(firstUrl.startsWith("http") ? firstUrl : `https://${firstUrl}`);
-                  const host = u.hostname.replace(/^www\./, "");
+                  const host = u.hostname;
                   const path = u.pathname === "/" ? "" : u.pathname;
                   const short = host + path;
                   displayUrl = short.length > 30 ? short.slice(0, 28) + "…" : short;

@@ -69,10 +69,15 @@ export default function LinksModal({ open, onClose, onBack, links, onSave, premi
   const handleSave = async () => {
     const filtered = slots.filter(s => s.url.trim());
 
-    // Validate each link
+    // Normalize URLs: auto-add https://, convert http:// → https://
     for (const link of filtered) {
-      const url = link.url.trim();
-      if (!/^https?:\/\//i.test(url)) {
+      let url = link.url.trim();
+      if (url && !/^https?:\/\//i.test(url)) {
+        url = "https://" + url;
+      }
+      url = url.replace(/^http:\/\//i, "https://");
+      link.url = url;
+      if (!/^https:\/\//i.test(url)) {
         feedimAlert("error", t("linkUrlInvalid"));
         return;
       }
