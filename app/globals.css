@@ -1512,9 +1512,8 @@ img, svg {
   content: url("/imgs/default-avatar.jpg");
 }
 
-/* All circular avatar images get a subtle border */
+/* All circular avatar images — GPU compositing + no extra effects */
 img.rounded-full.object-cover {
-  border: 1px solid var(--border-primary);
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
   filter: none !important;
@@ -1583,6 +1582,13 @@ img.rounded-full.object-cover.lazyloaded {
 img.lazyload:not([src]),
 img.lazyload[src=""] {
   visibility: hidden;
+}
+
+/* Avatar images: show shimmer background during loading instead of hiding */
+img.rounded-full.lazyload:not([src]),
+img.rounded-full.lazyload[src=""] {
+  visibility: visible !important;
+  color: transparent;
 }
 
 /* Hide alt text / broken image icon globally for images with data-src (not yet loaded) */

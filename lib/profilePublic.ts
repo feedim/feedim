@@ -19,6 +19,8 @@ export interface PublicProfileRow {
   account_private?: boolean | null;
   account_type?: string | null;
   professional_category?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   status?: string | null;
 }
 
@@ -45,6 +47,8 @@ export const PUBLIC_PROFILE_FIELDS = [
   "account_private",
   "account_type",
   "professional_category",
+  "contact_email",
+  "contact_phone",
   "status",
 ] as const;
 
