@@ -124,7 +124,9 @@ export default function SimilarAccountsCarousel({ userId, username, onClose, vis
       <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px] select-none">
         <div className="flex items-center justify-between px-4 mb-3">
           <span className="text-[0.88rem] font-bold">{t("similarAccounts")}</span>
-          <div className="w-7 h-7 rounded-full bg-bg-tertiary animate-pulse" />
+          <button onClick={onClose} className="i-btn !w-7 !h-7 text-text-muted hover:text-text-primary">
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10 }}>
           {[1, 2, 3].map(i => (
