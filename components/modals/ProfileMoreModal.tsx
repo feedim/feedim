@@ -132,7 +132,7 @@ export default function ProfileMoreModal({
   const showUnmoderate = s === "moderation";
   const showDelete = s !== "deleted";
 
-  const btnClass = "flex items-center gap-3 w-full px-3 py-3.5 hover:bg-bg-tertiary transition text-left rounded-[14px]";
+  const btnClass = "flex items-center gap-3 w-full px-2 py-3.5 hover:bg-bg-tertiary transition text-left rounded-[14px]";
   const labelClass = "text-[0.93rem] font-medium";
   const iconClass = "h-5 w-5 shrink-0";
 
