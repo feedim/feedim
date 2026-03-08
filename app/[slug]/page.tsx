@@ -384,7 +384,7 @@ export default async function PostPage({ params }: PageProps) {
           />
 
           {/* Author */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-1">
             <Link href={`/u/${author?.username}`} className="shrink-0">
               {author?.avatar_url ? (
                 <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
@@ -409,13 +409,13 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Note content — large font, plain text */}
           <p
-            className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3"
+            className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line"
             dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
           />
 
           {/* View count — below content */}
           {(post.view_count || 0) > 0 && (
-            <p className="text-[0.75rem] text-text-muted mb-2">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
+            <p className="text-[0.75rem] text-text-muted">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}
 
           {/* Tags */}

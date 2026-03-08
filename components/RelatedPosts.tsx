@@ -120,7 +120,7 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
 
   return (
     <section className="mt-6 pt-6 max-w-[565px] mx-auto -mx-3.5 sm:mx-auto">
-      <h3 className="text-lg font-bold mb-6 px-3.5 sm:px-0">{title}</h3>
+      <h3 className="text-lg font-bold mb-2 px-3.5 sm:px-0">{title}</h3>
       <div className="flex flex-col gap-[16px] mt-[10px]">
         {renderableItems.map(post => (
           <PostCard key={post.id} post={post} />

@@ -16,6 +16,7 @@ interface PostFollowButtonProps {
   initialRequested?: boolean;
   initialFollowsMe?: boolean;
   followStateResolved?: boolean;
+  compact?: boolean;
 }
 
 export default function PostFollowButton({
@@ -25,6 +26,7 @@ export default function PostFollowButton({
   initialRequested = false,
   initialFollowsMe = false,
   followStateResolved = false,
+  compact = false,
 }: PostFollowButtonProps) {
   const t = useTranslations("follow");
   const { user: ctxUser, isLoggedIn } = useUser();
@@ -137,5 +139,5 @@ export default function PostFollowButton({
   if (isOwn) return null;
   if (!statusResolved) return null;
 
-  return <FollowButton following={following || requested} isPrivate={requested} followsMe={followsMe && !following} onClick={handleFollow} disabled={pending} />;
+  return <FollowButton following={following || requested} isPrivate={requested} followsMe={followsMe && !following} onClick={handleFollow} disabled={pending} className={compact ? "!h-[30px] !text-[0.75rem] !px-3" : ""} />;
 }

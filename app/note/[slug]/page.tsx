@@ -173,7 +173,7 @@ export default async function NotePage({ params }: PageProps) {
           isBoosted={boostInfo.isBoosted}
         />
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-1">
           {author?.avatar_url ? (
             <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
           ) : (
@@ -191,27 +191,16 @@ export default async function NotePage({ params }: PageProps) {
               )}
             </div>
           </div>
-          <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
+          <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved compact />
         </div>
 
         <p
-          className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line mb-3"
+          className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line"
           dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
         />
 
         {(post.view_count || 0) > 0 && (
-          <p className="text-[0.75rem] text-text-muted mb-2">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
-        )}
-
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2 mb-2">
-            {tags.map((tag: { id: number; name: string; slug: string }) => (
-              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                #{tag.name}
-              </Link>
-            ))}
-          </div>
+          <p className="text-[0.75rem] text-text-muted">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
         )}
 
         <PostInteractionBar
@@ -238,6 +227,17 @@ export default async function NotePage({ params }: PageProps) {
           isModeration={!!post.is_nsfw || post.status === 'moderation'}
           allowComments={post.allow_comments !== false}
         />
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2 mb-2">
+            {tags.map((tag: { id: number; name: string; slug: string }) => (
+              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <RelatedPosts
           posts={authorContent}
