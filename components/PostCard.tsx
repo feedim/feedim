@@ -16,6 +16,7 @@ import { useUser } from "@/components/UserContext";
 import { useAuthModal } from "@/components/AuthModal";
 import { useTranslations, useLocale } from "next-intl";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
+import LazyAvatar from "@/components/LazyAvatar";
 import FeedItemViewTracker from "@/components/FeedItemViewTracker";
 import { feedPreviewStore } from "@/lib/stores/feedPreviewStore";
 import { getFollowStatus, setFollowStatus, deleteFollowStatus, subscribeFollowStore } from "@/lib/stores/followStore";
@@ -258,13 +259,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
         {/* Avatar — fixed left column with timeline line */}
           <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
             <Link href={`/u/${author?.username}`} className="relative z-[2]">
-              {author?.avatar_url ? (
-                <img suppressHydrationWarning data-src={author.avatar_url} alt={author?.username || ""} decoding="async" className="lazyload h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full object-cover relative z-[1] bg-bg-tertiary border border-border-primary" />
-              ) : (
-                <div className="h-[42px] w-[42px] min-w-[42px] max-w-[42px] rounded-full overflow-hidden relative z-[1]">
-                  <img className="default-avatar-auto bg-bg-tertiary h-full w-full rounded-full object-cover border border-border-primary" alt="" />
-                </div>
-              )}
+              <LazyAvatar src={author?.avatar_url} alt={author?.username || ""} sizeClass="h-[42px] w-[42px]" />
             </Link>
           </div>
 

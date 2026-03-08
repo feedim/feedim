@@ -7,6 +7,7 @@ import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 import BlurImage from "@/components/BlurImage";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface MomentItem {
   id: number;
@@ -71,7 +72,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
       </div>
       <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10, paddingRight: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className={cn("shrink-0 w-[130px] h-[230px] rounded-[14px] animate-pulse", noBg ? "bg-bg-secondary" : "bg-bg-tertiary")} />
+          <div key={i} className={cn("shrink-0 w-[130px] h-[230px] rounded-[14px]", noBg ? "bg-bg-secondary" : "bg-bg-tertiary")} />
         ))}
       </div>
     </div>
@@ -121,11 +122,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
               {/* Author info — bottom */}
               <div className="absolute bottom-2 left-2 right-2 z-10">
                 <div className="flex items-center gap-1.5 mb-1">
-                  {author?.avatar_url ? (
-                    <img suppressHydrationWarning data-src={author.avatar_url} alt="" decoding="async" className="lazyload w-5 h-5 rounded-full object-cover border border-white/10 bg-bg-tertiary" />
-                  ) : (
-                    <img className="default-avatar-auto bg-bg-tertiary w-5 h-5 rounded-full object-cover border border-white/10" alt="" loading="lazy" />
-                  )}
+                  <LazyAvatar src={m.profiles?.avatar_url} alt={m.profiles?.username || ""} sizeClass="w-5 h-5" borderClass="" />
                   <span className="text-[0.65rem] text-white font-medium truncate flex items-center gap-0.5">
                     @{author?.username}
                     {(author?.is_verified || author?.role === "admin") && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}

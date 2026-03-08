@@ -7,6 +7,7 @@ import Modal from "./Modal";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useAuthModal } from "@/components/AuthModal";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
+import LazyAvatar from "@/components/LazyAvatar";
 import { useUser } from "@/components/UserContext";
 import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
@@ -94,7 +95,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
           <div className="space-y-0">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="flex items-center gap-3 px-2 py-2.5">
-                <div className="h-[40px] w-[40px] rounded-full bg-bg-tertiary shrink-0 animate-pulse" />
+                <div className="h-[40px] w-[40px] rounded-full bg-bg-tertiary shrink-0" />
                 <div className="flex-1 min-w-0 space-y-[6px]">
                   <div className="h-[9px] w-24 bg-bg-tertiary rounded-[5px] animate-pulse" />
                   <div className="h-[9px] w-16 bg-bg-tertiary rounded-[5px] animate-pulse" />
@@ -115,11 +116,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
                   onClick={onClose}
                   className="group flex items-center gap-3 py-2 hover:bg-bg-tertiary rounded-lg px-2 -mx-2 transition"
                 >
-                  {v.avatar_url ? (
-                    <img suppressHydrationWarning data-src={v.avatar_url} alt="" className="lazyload h-10 w-10 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" />
-                  ) : (
-                    <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-                  )}
+                  <LazyAvatar src={v.avatar_url} alt="" sizeClass="h-10 w-10" className="shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                       <p className="text-sm font-semibold truncate group-hover:underline">{displayName}</p>

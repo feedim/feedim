@@ -18,6 +18,7 @@ import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCount } from "@/lib/utils";
 import { useHydrated } from "@/lib/useHydrated";
+import LazyAvatar from "@/components/LazyAvatar";
 
 export default memo(function Sidebar() {
   const pathname = usePathname();
@@ -229,11 +230,7 @@ export default memo(function Sidebar() {
 
             {/* User info */}
             <Link href="/profile" className="flex items-center gap-[7px] py-2 px-2 rounded-[10px] hover:bg-bg-tertiary transition">
-              {user?.avatarUrl ? (
-                <img suppressHydrationWarning data-src={user.avatarUrl} alt="" className="lazyload w-9 h-9 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" />
-              ) : (
-                <img className="default-avatar-auto bg-bg-tertiary w-9 h-9 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-              )}
+              <LazyAvatar src={user?.avatarUrl} alt="" sizeClass="w-9 h-9" className="shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <p className="text-[0.87rem] font-semibold truncate">{user?.fullName || t("common.user")}</p>

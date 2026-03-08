@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import Modal from "./Modal";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface SettingsModalProps {
   open: boolean;
@@ -128,11 +129,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           <>
             {/* Profile Header */}
             <Link href="/profile" onClick={onClose} className="flex items-center gap-3 pb-4 hover:opacity-80 transition">
-              {profile?.avatar_url ? (
-                <img suppressHydrationWarning data-src={profile.avatar_url} alt="" className="lazyload w-14 h-14 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-              ) : (
-                <img className="default-avatar-auto w-14 h-14 rounded-full object-cover bg-bg-tertiary border border-border-primary" alt="" />
-              )}
+              <LazyAvatar src={profile?.avatar_url} alt="" sizeClass="w-14 h-14" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[1.05rem] truncate">{displayName}</p>
                 <p className="text-xs text-text-muted truncate">{user?.email}</p>

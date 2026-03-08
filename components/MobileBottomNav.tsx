@@ -10,6 +10,7 @@ import Modal from "@/components/modals/Modal";
 import { useLocale, useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { formatCount } from "@/lib/utils";
+import LazyAvatar from "@/components/LazyAvatar";
 
 export default memo(function MobileBottomNav() {
   const pathname = usePathname();
@@ -91,14 +92,8 @@ export default memo(function MobileBottomNav() {
               aria-label={item.label}
             >
               <div className="relative">
-                {item.icon === User && isLoggedIn && user?.avatarUrl ? (
-                  <img
-                    data-src={user.avatarUrl}
-                    alt=""
-                    className={`lazyload h-8 w-8 rounded-full object-cover bg-bg-tertiary border border-border-primary ${item.active ? "ring-2 ring-accent-main" : ""}`}
-                  />
-                ) : item.icon === User && isLoggedIn && !user?.avatarUrl ? (
-                  <img className={`default-avatar-auto bg-bg-tertiary h-8 w-8 rounded-full object-cover border border-border-primary ${item.active ? "ring-2 ring-accent-main" : ""}`} alt="" />
+                {item.icon === User && isLoggedIn ? (
+                  <LazyAvatar src={user?.avatarUrl} alt="" sizeClass="h-8 w-8" borderClass="" className={item.active ? "ring-2 ring-accent-main" : ""} />
                 ) : (
                   <Icon className="h-[26px] w-[26px]" strokeWidth={item.active ? 2.3 : 2} aria-hidden="true" />
                 )}

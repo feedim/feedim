@@ -15,6 +15,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
+import LazyAvatar from "@/components/LazyAvatar";
 import ShareIcon from "@/components/ShareIcon";
 import ProfessionalAccountModal from "@/components/modals/ProfessionalAccountModal";
 import DarkModeModal from "@/components/modals/DarkModeModal";
@@ -331,17 +332,7 @@ export default function SettingsPage() {
           <>
             {/* Profile Header */}
             <div className="flex items-center gap-3 px-4 py-4">
-              {profile?.avatar_url ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img suppressHydrationWarning data-src={profile.avatar_url} alt="" className="lazyload w-14 h-14 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                </>
-              ) : (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className="default-avatar-auto bg-bg-tertiary w-14 h-14 rounded-full object-cover border border-border-primary" alt="" />
-                </>
-              )}
+              <LazyAvatar src={profile?.avatar_url} alt="" sizeClass="w-14 h-14" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[1.05rem] truncate">{displayName}</p>
                 <p className="text-[0.78rem] text-text-muted truncate">{user?.email}</p>

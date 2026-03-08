@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import BlurImage from "@/components/BlurImage";
+import LazyAvatar from "@/components/LazyAvatar";
 import NoImage from "@/components/NoImage";
 import { useTranslations, useLocale } from "next-intl";
 import { formatCount, formatRelativeDate, getPostUrl } from "@/lib/utils";
@@ -354,12 +356,12 @@ export default function SuggestionWidget() {
         <div className="space-y-0">
           {[1, 2, 3].map(i => (
             <div key={i} className="flex items-center gap-3 px-2 py-2.5">
-              <div className="h-[40px] w-[40px] rounded-full bg-bg-secondary shrink-0 animate-pulse" />
+              <div className="h-[40px] w-[40px] rounded-full bg-bg-secondary shrink-0" />
               <div className="flex-1 min-w-0 space-y-[6px]">
                 <div className={`${bone} w-24`} />
                 <div className={`${bone} w-16`} />
               </div>
-              <div className="h-[30px] w-[72px] bg-bg-secondary rounded-lg shrink-0 animate-pulse" />
+              <div className="h-[30px] w-[72px] bg-bg-secondary rounded-lg shrink-0" />
             </div>
           ))}
         </div>
@@ -376,7 +378,7 @@ export default function SuggestionWidget() {
             <div key={i} className="px-3 py-3">
               {i > 1 && <div className="mx-2 h-px bg-border-primary/40 mb-3" />}
               <div className="flex items-center gap-[6px] mb-2">
-                <div className="h-[26px] w-[26px] rounded-full bg-bg-secondary shrink-0 animate-pulse" />
+                <div className="h-[26px] w-[26px] rounded-full bg-bg-secondary shrink-0" />
                 <div className={`${bone} w-20`} />
               </div>
               <div className="flex justify-between items-start gap-3">
@@ -385,7 +387,7 @@ export default function SuggestionWidget() {
                   <div className={`${bone} w-3/4`} />
                   <div className={`${bone} w-14 mt-1`} />
                 </div>
-                <div className="w-[88px] h-[48px] rounded-md bg-bg-secondary shrink-0 animate-pulse" />
+                <div className="w-[88px] h-[48px] rounded-md bg-bg-secondary shrink-0" />
               </div>
             </div>
           ))}
@@ -451,11 +453,7 @@ export default function SuggestionWidget() {
                 <div className="flex flex-col gap-2 px-3 py-3 my-[3px] rounded-lg hover:bg-bg-secondary transition">
                   <div className="flex items-center gap-[2px]" style={{ columnGap: "2px" }}>
                     <Link href={`/u/${post.author.username}`}>
-                      {post.author.avatar_url ? (
-                        <img suppressHydrationWarning data-src={post.author.avatar_url} alt="" decoding="async" className="lazyload h-[26px] w-[26px] rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                      ) : (
-                        <img className="default-avatar-auto bg-bg-tertiary h-[26px] w-[26px] rounded-full object-cover border border-border-primary" alt="" loading="lazy" />
-                      )}
+                      <LazyAvatar src={post.author.avatar_url} alt={post.author.username} sizeClass="h-[26px] w-[26px]" />
                     </Link>
                     <div className="min-w-0 leading-none ml-[4px]">
                       <div className="flex items-center gap-1 leading-none">
@@ -484,11 +482,10 @@ export default function SuggestionWidget() {
                       </div>
                     </div>
                     {post.featured_image ? (
-                      <img
-                        data-src={post.featured_image}
+                      <BlurImage
+                        src={post.featured_image}
                         alt=""
-                        className="lazyload w-[88px] h-[48px] rounded-md object-cover shrink-0 bg-bg-tertiary border border-border-primary"
-                        decoding="async"
+                        className="w-[88px] h-[48px] rounded-md shrink-0"
                       />
                     ) : (
                       <NoImage className="w-[88px] h-[48px] rounded-md shrink-0" />

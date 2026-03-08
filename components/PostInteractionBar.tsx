@@ -11,6 +11,7 @@ import { useAuthModal } from "@/components/AuthModal";
 import { useUser } from "@/components/UserContext";
 import { cn, formatCount } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
+import LazyAvatar from "@/components/LazyAvatar";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { fetchWithCache, withCacheScope, invalidateCache } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
@@ -325,11 +326,7 @@ export default function PostInteractionBar({
           >
             <div className="flex -space-x-2 shrink-0">
               {likedByUsers.map((u) => (
-                u.avatar_url ? (
-                  <img suppressHydrationWarning key={u.username} data-src={u.avatar_url} alt="" className="lazyload h-6 w-6 rounded-full object-cover bg-bg-tertiary border-2 border-bg-primary" />
-                ) : (
-                  <img key={u.username} className="default-avatar-auto h-6 w-6 rounded-full object-cover bg-bg-tertiary border-2 border-bg-primary" alt="" />
-                )
+                <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border-2 border-bg-primary" />
               ))}
             </div>
             <span>
@@ -400,11 +397,7 @@ export default function PostInteractionBar({
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
-              u.avatar_url ? (
-                <img suppressHydrationWarning key={u.username} data-src={u.avatar_url} alt="" className="lazyload h-7 w-7 rounded-full object-cover bg-bg-tertiary border-2 border-bg-primary" />
-              ) : (
-                <img key={u.username} className="default-avatar-auto h-7 w-7 rounded-full object-cover bg-bg-tertiary border-2 border-bg-primary" alt="" />
-              )
+              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-2 border-bg-primary" />
             ))}
           </div>
           <span>
@@ -571,11 +564,7 @@ export default function PostInteractionBar({
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
-              u.avatar_url ? (
-                <img suppressHydrationWarning key={u.username} data-src={u.avatar_url} alt="" className="lazyload h-7 w-7 rounded-full object-cover bg-bg-tertiary border-2 border-bg-primary" />
-              ) : (
-                <img key={u.username} className="default-avatar-auto h-7 w-7 rounded-full object-cover bg-bg-tertiary border-2 border-bg-primary" alt="" />
-              )
+              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-2 border-bg-primary" />
             ))}
           </div>
           <span>

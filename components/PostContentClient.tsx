@@ -28,6 +28,37 @@ export default function PostContentClient({ html, className, featuredImage }: Po
     imgs.forEach(img => {
       img.loading = 'lazy';
       img.decoding = 'async';
+
+      // Skeleton → blur → clear for content images
+      const wrapper = img.closest('.image-wrapper') || img.parentElement;
+      if (!wrapper || (wrapper as HTMLElement).dataset.skeletonReady) return;
+      (wrapper as HTMLElement).dataset.skeletonReady = '1';
+      const wrapperEl = wrapper as HTMLElement;
+      wrapperEl.style.position = 'relative';
+
+      // Skeleton overlay
+      const skeleton = document.createElement('div');
+      skeleton.style.cssText = 'position:absolute;inset:0;background:var(--bg-secondary);border-radius:12px;transition:opacity 250ms ease;z-index:1';
+      skeleton.className = 'animate-pulse';
+      wrapperEl.insertBefore(skeleton, wrapperEl.firstChild);
+
+      // Image starts blurred
+      img.style.filter = 'blur(3px)';
+      img.style.transition = 'none';
+
+      const reveal = () => {
+        skeleton.style.opacity = '0';
+        skeleton.style.pointerEvents = 'none';
+        img.style.transition = 'filter 200ms ease 80ms';
+        img.style.filter = 'blur(0px)';
+        setTimeout(() => skeleton.remove(), 300);
+      };
+
+      if (img.complete && img.naturalWidth > 0) {
+        reveal();
+      } else {
+        img.addEventListener('load', reveal, { once: true });
+      }
     });
     // Add nofollow to all external links
     contentRef.current.querySelectorAll('a[href]').forEach(link => {

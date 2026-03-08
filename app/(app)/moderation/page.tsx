@@ -12,6 +12,7 @@ import { formatRelativeDate } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { COUNTRIES } from "@/lib/countries";
 import { useUser } from "@/components/UserContext";
+import LazyAvatar from "@/components/LazyAvatar";
 import { redirectToLogin } from "@/lib/loginNext";
 import { logClientError } from "@/lib/runtimeLogger";
 
@@ -744,11 +745,7 @@ export default function AdminPage() {
                   {moderators.map((m: any) => (
                     <div key={m.user_id} className="flex flex-col gap-2.5 px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {m.avatar_url ? (
-                          <img suppressHydrationWarning data-src={m.avatar_url} alt="" className="lazyload w-9 h-9 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                        ) : (
-                          <img className="default-avatar-auto w-9 h-9 rounded-full object-cover bg-bg-tertiary border border-border-primary" alt="" loading="lazy" />
-                        )}
+                        <LazyAvatar src={m.avatar_url} alt="" sizeClass="w-9 h-9" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[0.82rem] font-semibold truncate">{m.full_name || m.username}</span>
@@ -860,11 +857,7 @@ export default function AdminPage() {
                   {panelUsers.map((u: any) => (
                     <div key={u.user_id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition">
                       <Link href={`/u/${u.username}`} className="flex items-center gap-3 flex-1 min-w-0">
-                        {u.avatar_url ? (
-                          <img suppressHydrationWarning data-src={u.avatar_url} alt="" className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                        ) : (
-                          <img className="default-avatar-auto w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" alt="" loading="lazy" />
-                        )}
+                        <LazyAvatar src={u.avatar_url} alt="" sizeClass="w-8 h-8" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1">
                             <span className="text-[0.82rem] font-semibold truncate">{u.full_name || u.username}</span>
@@ -1075,7 +1068,7 @@ export default function AdminPage() {
                                   <div key={boost.id} className="bg-bg-secondary rounded-[15px] p-4">
                                     <div className="flex items-start justify-between mb-2">
                                       <div className="flex items-center gap-2">
-                                        <img suppressHydrationWarning data-src={boost.author?.avatar_url || "/imgs/default-avatar.jpg"} alt="" className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+                                        <LazyAvatar src={boost.author?.avatar_url} alt="" sizeClass="w-8 h-8" />
                                         <div>
                                           <p className="text-[0.82rem] font-medium">{boost.author?.full_name || boost.author?.username}</p>
                                           <p className="text-[0.68rem] text-text-muted">@{boost.author?.username}</p>
@@ -1114,11 +1107,7 @@ export default function AdminPage() {
                         href={c.post_slug ? `/${c.post_slug}` : "#"}
                         className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition"
                       >
-                        {author?.avatar_url ? (
-                          <img suppressHydrationWarning data-src={author.avatar_url} alt="" className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                        ) : (
-                          <img className="default-avatar-auto w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" alt="" loading="lazy" />
-                        )}
+                        <LazyAvatar src={author?.avatar_url} alt="" sizeClass="w-8 h-8" />
                         <div className="flex-1 min-w-0">
                           <p className="text-[0.82rem] line-clamp-1">{c.content || (c.gif_url ? "GIF" : "–")}</p>
                           <div className="flex items-center gap-2 text-[0.68rem] text-text-muted">
@@ -1189,7 +1178,7 @@ export default function AdminPage() {
                     <p className="text-[0.82rem] font-medium line-clamp-2">{p.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       {p.author?.avatar_url && (
-                        <img suppressHydrationWarning data-src={p.author.avatar_url} alt="" className="lazyload w-4 h-4 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+                        <LazyAvatar src={p.author.avatar_url} alt="" sizeClass="w-4 h-4" />
                       )}
                       <p className="text-[0.72rem] text-text-muted">
                         @{p.author?.username || "—"}
@@ -1344,7 +1333,7 @@ export default function AdminPage() {
                       <span className="text-[0.65rem] text-text-muted">{formatRelativeDate(u.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                      <img suppressHydrationWarning data-src={u.avatar_url || "/imgs/default-avatar.jpg"} alt="" className="lazyload w-10 h-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+                      <LazyAvatar src={u.avatar_url} alt="" sizeClass="w-10 h-10" />
                       <div>
                         <p className="text-[0.82rem] font-medium">{u.full_name || u.username}</p>
                         <p className="text-[0.72rem] text-text-muted">@{u.username}</p>
@@ -1534,11 +1523,11 @@ export default function AdminPage() {
                           )}
                           <div className="flex items-center gap-3 mt-1 text-[0.68rem] text-text-muted">
                             <div className="flex items-center gap-1.5">
-                              {reporter?.avatar_url && <img suppressHydrationWarning data-src={reporter.avatar_url} alt="" className="lazyload w-4 h-4 rounded-full object-cover bg-bg-tertiary border border-border-primary" />}
+                              {reporter?.avatar_url && <LazyAvatar src={reporter.avatar_url} alt="" sizeClass="w-4 h-4" />}
                               <span>{t("reporter")}: @{reporter?.username || "?"}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              {contentAuthor?.avatar_url && <img suppressHydrationWarning data-src={contentAuthor.avatar_url} alt="" className="lazyload w-4 h-4 rounded-full object-cover bg-bg-tertiary border border-border-primary" />}
+                              {contentAuthor?.avatar_url && <LazyAvatar src={contentAuthor.avatar_url} alt="" sizeClass="w-4 h-4" />}
                               <span>{t("target")}: @{contentAuthor?.username || "?"}</span>
                             </div>
                           </div>
@@ -1626,7 +1615,7 @@ export default function AdminPage() {
                       <span className="text-[0.65rem] text-text-muted">{formatRelativeDate(boost.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-2 mt-1">
-                      <img suppressHydrationWarning data-src={boost.author?.avatar_url || "/imgs/default-avatar.jpg"} alt="" className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+                      <LazyAvatar src={boost.author?.avatar_url} alt="" sizeClass="w-8 h-8" />
                       <div>
                         <p className="text-[0.82rem] font-medium">{boost.author?.full_name || boost.author?.username}</p>
                         <p className="text-[0.68rem] text-text-muted">@{boost.author?.username}</p>
@@ -1791,7 +1780,7 @@ export default function AdminPage() {
                           <p className="text-[0.82rem] font-medium line-clamp-2">{post?.title || t("contentNotFound")}</p>
                           <div className="flex items-center gap-2 mt-1">
                             {claimant?.avatar_url && (
-                              <img suppressHydrationWarning data-src={claimant.avatar_url} alt="" className="lazyload w-4 h-4 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+                              <LazyAvatar src={claimant.avatar_url} alt="" sizeClass="w-4 h-4" />
                             )}
                             <p className="text-[0.72rem] text-text-muted">
                               {t("claimantLabel")}: @{claimant?.username || "—"} ({claim.owner_name || "—"})
@@ -1943,11 +1932,7 @@ export default function AdminPage() {
                       <span className="text-[0.65rem] text-text-muted">{formatRelativeDate(c.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-1.5">
-                      {c.author?.avatar_url ? (
-                        <img suppressHydrationWarning data-src={c.author.avatar_url} alt="" className="lazyload w-5 h-5 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                      ) : (
-                        <img className="default-avatar-auto w-5 h-5 rounded-full object-cover bg-bg-tertiary border border-border-primary" alt="" />
-                      )}
+                      <LazyAvatar src={c.author?.avatar_url} alt="" sizeClass="w-5 h-5" />
                       <span className="text-[0.72rem] text-text-muted truncate max-w-[60%]">@{c.author?.username || '—'}</span>
                     </div>
                     <p className="text-[0.78rem] text-text-primary whitespace-pre-wrap break-words line-clamp-3">{c.content || c.gif_url || ''}</p>
@@ -2070,11 +2055,7 @@ export default function AdminPage() {
                   return (
                     <div key={app.id} className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
                       <div className="flex items-center gap-3">
-                        {profile?.avatar_url ? (
-                          <img suppressHydrationWarning data-src={profile.avatar_url} alt="" className="lazyload w-10 h-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                        ) : (
-                          <img className="default-avatar-auto w-10 h-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" alt="" />
-                        )}
+                        <LazyAvatar src={profile?.avatar_url} alt="" sizeClass="w-10 h-10" />
                         <div className="flex-1 min-w-0">
                           <p className="text-[0.84rem] font-semibold truncate">{profile?.full_name || profile?.username || "?"}</p>
                           <div className="flex items-center gap-2 text-[0.7rem] text-text-muted">
@@ -2181,11 +2162,7 @@ export default function AdminPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <img
-                            data-src={app.avatar_url || "/imgs/default-avatar.jpg"}
-                            alt=""
-                            className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary"
-                          />
+                          <LazyAvatar src={app.avatar_url} alt="" sizeClass="w-8 h-8" />
                           <div>
                             <p className="text-[0.82rem] font-medium">{app.full_name || app.username}</p>
                             <p className="text-[0.68rem] text-text-muted">@{app.username}</p>
@@ -2236,11 +2213,7 @@ export default function AdminPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <img
-                            data-src={w.user?.avatar_url || "/imgs/default-avatar.jpg"}
-                            alt=""
-                            className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary"
-                          />
+                          <LazyAvatar src={w.user?.avatar_url} alt="" sizeClass="w-8 h-8" />
                           <div>
                             <p className="text-[0.82rem] font-medium">{w.user?.full_name || w.user?.username}</p>
                             <p className="text-[0.68rem] text-text-muted">@{w.user?.username}</p>
@@ -2286,7 +2259,7 @@ export default function AdminPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <img suppressHydrationWarning data-src={boost.author?.avatar_url || "/imgs/default-avatar.jpg"} alt="" className="lazyload w-8 h-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+                          <LazyAvatar src={boost.author?.avatar_url} alt="" sizeClass="w-8 h-8" />
                           <div>
                             <p className="text-[0.82rem] font-medium">{boost.author?.full_name || boost.author?.username}</p>
                             <p className="text-[0.68rem] text-text-muted">@{boost.author?.username}</p>

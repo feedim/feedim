@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { decode } from "blurhash";
 
 interface BlurImageProps {
@@ -14,9 +14,9 @@ interface BlurImageProps {
 }
 
 /**
- * Progressive image component with CSS shimmer + optional blurhash canvas.
+ * Progressive image component: skeleton → blur → clear.
  * - If blurhash is available, renders a small canvas as placeholder.
- * - Otherwise, shows a subtle shimmer animation.
+ * - Otherwise, shows a skeleton pulse placeholder.
  * - Uses lazysizes for lazy loading with blur-up transition.
  */
 export default function BlurImage({
@@ -32,6 +32,8 @@ export default function BlurImage({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  useEffect(() => { setLoaded(false); }, [src]);
+
   useEffect(() => {
     if (!blurhash || !canvasRef.current) return;
     try {
@@ -44,9 +46,15 @@ export default function BlurImage({
       imageData.data.set(pixels);
       ctx.putImageData(imageData, 0, 0);
     } catch {
-      // Invalid blurhash — silently fall back to shimmer
+      // Invalid blurhash — silently fall back to skeleton
     }
   }, [blurhash, width, height]);
+
+  // Before paint — skip skeleton for cached images
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (img?.classList.contains("lazyloaded")) setLoaded(true);
+  }, [src]);
 
   // Listen for lazysizes lazyloaded event
   useEffect(() => {
@@ -54,22 +62,15 @@ export default function BlurImage({
     if (!img) return;
     const onLoaded = () => setLoaded(true);
     img.addEventListener("lazyloaded", onLoaded);
-    // If already loaded (e.g. cached), mark as loaded
-    let frame = 0;
-    if (img.classList.contains("lazyloaded")) {
-      frame = requestAnimationFrame(onLoaded);
-    }
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      img.removeEventListener("lazyloaded", onLoaded);
-    };
+    if (img.classList.contains("lazyloaded")) onLoaded();
+    return () => img.removeEventListener("lazyloaded", onLoaded);
   }, []);
 
   const isEager = loading === "eager";
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      {/* Blurhash canvas or shimmer placeholder */}
+      {/* Blurhash canvas or skeleton placeholder */}
       {blurhash ? (
         <canvas
           ref={canvasRef}
@@ -77,12 +78,8 @@ export default function BlurImage({
         />
       ) : (
         <div
-          className={`absolute inset-0 bg-bg-secondary transition-opacity duration-300 ${loaded ? "opacity-0" : "opacity-100"}`}
-          style={{
-            backgroundImage: "linear-gradient(90deg, transparent 0%, var(--bg-tertiary) 50%, transparent 100%)",
-            backgroundSize: "200% 100%",
-            animation: loaded ? "none" : "shimmer 1.5s ease-in-out infinite",
-          }}
+          className={`absolute inset-0 bg-bg-secondary ${loaded ? "opacity-0" : "opacity-100 animate-pulse"}`}
+          style={{ transition: "opacity 250ms ease" }}
         />
       )}
 
@@ -100,6 +97,7 @@ export default function BlurImage({
       ) : (
         <img
           ref={imgRef}
+          suppressHydrationWarning
           data-src={src}
           alt={alt}
           decoding="async"

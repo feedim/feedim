@@ -558,10 +558,6 @@ input[type="radio"]:active {
 }
 
 /* ── Feedim Loader (WordPress birebir) ── */
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
 
 @keyframes loaderSpin {
   0% { transform: rotate(0deg); }
@@ -1554,30 +1550,12 @@ img.rounded-full.object-cover {
   filter: blur(0);
 }
 
-/* Pulse shimmer for all lazy images while loading */
-img.lazyload,
-img.lazyloading {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-img.lazyloaded {
-  animation: none;
-}
-
+/* Avatars: too small for blur — skeleton overlay handles their loading state */
 img.rounded-full.object-cover.lazyload,
 img.rounded-full.object-cover.lazyloading,
 img.rounded-full.object-cover.lazyloaded {
   filter: none !important;
   -webkit-filter: none !important;
-}
-
-img.rounded-full.object-cover.lazyload,
-img.rounded-full.object-cover.lazyloading {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-img.rounded-full.object-cover.lazyloaded {
-  animation: none;
 }
 
 /* Hide broken image icon for lazysizes images before src is set */

@@ -10,6 +10,8 @@ import ShareIcon from "@/components/ShareIcon";
 import VideoPlayer from "@/components/VideoPlayer";
 import { useTranslations } from "next-intl";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
+import LazyAvatar from "@/components/LazyAvatar";
+import BlurImage from "@/components/BlurImage";
 
 interface MomentCardProps {
   moment: {
@@ -289,10 +291,10 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: "100vh 100vw" }}
       >
         {(moment.video_thumbnail || moment.featured_image) && (
-          <img
-            data-src={moment.video_thumbnail || moment.featured_image}
-            alt=""
-            className="lazyload absolute inset-0 w-full h-full object-cover bg-bg-tertiary"
+          <BlurImage
+            src={moment.video_thumbnail || moment.featured_image || ""}
+            alt={moment.title}
+            className="absolute inset-0 w-full h-full"
           />
         )}
       </div>
@@ -411,11 +413,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         )}
         <div className="flex items-center gap-2 mb-1.5">
           <Link href={`/u/${author?.username}`} className="flex items-center gap-2 min-w-0">
-            {author?.avatar_url ? (
-              <img suppressHydrationWarning data-src={author.avatar_url} alt="" decoding="async" className="lazyload rounded-full object-cover border border-white/10 bg-bg-tertiary" style={{ width: 30, height: 30 }} />
-            ) : (
-              <img className="default-avatar-auto bg-bg-tertiary rounded-full object-cover border border-white/10" style={{ width: 30, height: 30 }} alt="" loading="lazy" />
-            )}
+            <LazyAvatar src={moment.profiles?.avatar_url} alt={moment.profiles?.username || ""} sizeClass="h-10 w-10" borderClass="border border-white/10" />
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-white font-medium truncate" style={{ fontSize: "0.84rem", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
                 @{author?.username}

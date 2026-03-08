@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
+import LazyAvatar from "@/components/LazyAvatar";
 import { feedimAlert } from "@/components/FeedimAlert";
 import AppLayout from "@/components/AppLayout";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
@@ -127,11 +128,7 @@ export default function BlockedUsersPage() {
               {blockedUsers.map(b => (
                 <div key={b.id} className="flex items-center gap-3 py-3">
                   <Link href={`/u/${b.profile?.username}`}>
-                    {b.profile?.avatar_url ? (
-                      <img suppressHydrationWarning data-src={b.profile.avatar_url} alt="" className="lazyload w-10 h-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                    ) : (
-                      <img className="default-avatar-auto bg-bg-tertiary w-10 h-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-                    )}
+                    <LazyAvatar src={b.profile?.avatar_url} alt="" sizeClass="w-10 h-10" />
                   </Link>
                   <div className="flex-1 min-w-0">
                     <Link href={`/u/${b.profile?.username}`} className="text-sm font-semibold truncate block hover:underline">

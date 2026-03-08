@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { INTEREST_CATEGORIES, INTEREST_MIN_SELECT, INTEREST_MAX_SELECT } from "@/lib/constants";
 import FollowButton from "@/components/FollowButton";
+import LazyAvatar from "@/components/LazyAvatar";
 import { Spinner } from "@/components/FeedimLoader";
 import { useTranslations } from "next-intl";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
@@ -868,11 +869,7 @@ function StepSuggestions({ suggestions, followedIds, pendingFollowIds, onToggle,
             const isPending = pendingFollowIds.has(user.user_id);
             return (
               <div key={user.user_id} className="flex items-center gap-3 py-2.5 px-1">
-                {user.avatar_url ? (
-                  <img suppressHydrationWarning data-src={user.avatar_url} alt="" className="lazyload w-11 h-11 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" />
-                ) : (
-                  <img className="default-avatar-auto bg-bg-tertiary w-11 h-11 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-                )}
+                <LazyAvatar src={user.avatar_url} alt="" sizeClass="w-11 h-11" className="shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-0.5">
                     <span className="text-sm font-semibold truncate">@{user.username}</span>
@@ -898,11 +895,7 @@ function StepWelcome({ profile, avatarPreview }: { profile: Profile; avatarPrevi
   return (
     <div className="text-center py-6">
       <div className="flex justify-center mb-5">
-        {avatarPreview ? (
-          <img suppressHydrationWarning data-src={avatarPreview} alt="" className="lazyload w-[120px] h-[120px] rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-        ) : (
-          <img className="default-avatar-auto bg-bg-tertiary w-[120px] h-[120px] rounded-full object-cover border border-border-primary" alt="" />
-        )}
+        <LazyAvatar src={avatarPreview} alt="" sizeClass="w-[120px] h-[120px]" />
       </div>
       <h2 className="text-xl font-bold mb-2">{t("welcome", { name })}</h2>
       <p className="text-xs text-text-muted">{t("welcomeDesc")}</p>

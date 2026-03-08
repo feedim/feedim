@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCount } from "@/lib/utils";
+import LazyAvatar from "@/components/LazyAvatar";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 export interface UserListItemUser {
@@ -69,19 +70,7 @@ export default function UserListItem({
   return (
     <div className="flex items-center gap-2 py-2 px-2 rounded-[14px] hover:bg-bg-secondary transition">
       <Link href={`/u/${user.username}`} onClick={onNavigate} className="shrink-0">
-        {user.avatar_url ? (
-          <img
-            data-src={user.avatar_url}
-            alt=""
-            className={`lazyload ${avatarSize} rounded-full object-cover bg-bg-tertiary border border-border-primary`}
-          />
-        ) : (
-          <img
-            className={`default-avatar-auto bg-bg-tertiary ${avatarSize} rounded-full object-cover border border-border-primary`}
-            alt=""
-            loading="lazy"
-          />
-        )}
+        <LazyAvatar src={user.avatar_url} alt={user.username} sizeClass={avatarSize} />
       </Link>
       <Link href={`/u/${user.username}`} onClick={onNavigate} className="flex-1 min-w-0">
         <div className="flex items-center gap-1">

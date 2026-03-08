@@ -11,6 +11,7 @@ import { encodeId } from "@/lib/hashId";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import SoundPreviewButton from "@/components/SoundPreviewButton";
+import BlurImage from "@/components/BlurImage";
 import { cn } from "@/lib/utils";
 import { useAuthModal } from "@/components/AuthModal";
 import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
@@ -151,7 +152,7 @@ export default function SoundsPage() {
                   className="flex items-center gap-3 py-3 hover:bg-bg-secondary -mx-3 px-3 rounded-[10px] transition"
                 >
                   {sound.cover_image_url ? (
-                    <img suppressHydrationWarning data-src={sound.cover_image_url} alt="" className="lazyload h-12 w-12 rounded-lg object-cover bg-bg-tertiary shrink-0" />
+                    <BlurImage src={sound.cover_image_url} alt={sound.title || ""} className="h-12 w-12 rounded-lg shrink-0" />
                   ) : (
                     <div className="h-12 w-12 rounded-lg bg-bg-tertiary flex items-center justify-center shrink-0">
                       <Music className="h-5 w-5 text-text-muted" />

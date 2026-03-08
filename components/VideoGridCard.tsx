@@ -8,6 +8,7 @@ import WatchProgressBar from "@/components/WatchProgressBar";
 import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useTranslations } from "next-intl";
+import LazyAvatar from "@/components/LazyAvatar";
 
 export interface VideoGridItem {
   id: number;
@@ -75,11 +76,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
       </Link>
       <div className="flex gap-3 px-0.5">
         <Link href={`/u/${author?.username}`} className="shrink-0 pt-0.5">
-          {author?.avatar_url ? (
-            <img suppressHydrationWarning data-src={author.avatar_url} alt="" decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-          ) : (
-            <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover border border-border-primary" alt="" loading="lazy" />
-          )}
+          <LazyAvatar src={author?.avatar_url} alt={video.profiles?.username || ""} sizeClass="h-10 w-10" />
         </Link>
         <div className="flex-1 min-w-0">
           <Link href={videoUrl}>

@@ -24,6 +24,7 @@ import HeaderTitle from "@/components/HeaderTitle";
 import { getTranslations, getLocale } from "next-intl/server";
 import { getAlternateLanguages } from "@/lib/seo";
 import { getCachedPost } from "@/lib/postQueries";
+import LazyAvatar from "@/components/LazyAvatar";
 import { stripHtmlToText } from "@/lib/htmlToText";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPageRecommendations";
@@ -177,11 +178,7 @@ export default async function NotePage({ params }: PageProps) {
 
           <div className="flex items-center gap-3 mb-3">
             <Link href={`/u/${author?.username}`} className="shrink-0">
-              {author?.avatar_url ? (
-                <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-              ) : (
-                <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" loading="lazy" />
-              )}
+              <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">

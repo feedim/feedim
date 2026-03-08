@@ -10,6 +10,7 @@ import MomentGridCard from "@/components/MomentGridCard";
 import { formatCount } from "@/lib/utils";
 import { decodeId } from "@/lib/hashId";
 import { useAuthModal } from "@/components/AuthModal";
+import BlurImage from "@/components/BlurImage";
 
 interface Sound {
   id: number;
@@ -129,20 +130,20 @@ export default function SoundDetailPage() {
   // Build a thumbnail: cover image, or a 2x2 grid of moment thumbnails, or icon
   const renderCover = () => {
     if (sound?.cover_image_url) {
-      return <img suppressHydrationWarning data-src={sound.cover_image_url} alt="" className="lazyload w-full h-full object-cover bg-bg-tertiary" />;
+      return <BlurImage src={sound.cover_image_url} alt={sound.title || ""} className="w-full h-full" />;
     }
     const thumbs = moments.slice(0, 4).map(m => m.video_thumbnail || m.featured_image).filter(Boolean);
     if (thumbs.length >= 4) {
       return (
         <div className="grid grid-cols-2 w-full h-full">
           {thumbs.slice(0, 4).map((src) => (
-            <img suppressHydrationWarning key={src} data-src={src!} alt="" className="lazyload w-full h-full object-cover bg-bg-tertiary" />
+            <BlurImage key={src} src={src!} alt="" className="w-full h-full" />
           ))}
         </div>
       );
     }
     if (thumbs.length > 0) {
-      return <img suppressHydrationWarning data-src={thumbs[0]!} alt="" className="lazyload w-full h-full object-cover bg-bg-tertiary" />;
+      return <BlurImage src={thumbs[0]!} alt="" className="w-full h-full" />;
     }
     return <Music className="h-8 w-8 text-text-muted" />;
   };

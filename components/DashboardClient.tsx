@@ -15,6 +15,7 @@ import MomentsCarousel from "@/components/MomentsCarousel";
 import { isBlockedContent } from "@/lib/blockedWords";
 import { FEED_MAX_SEEN_IDS } from "@/lib/constants";
 import { redirectToLogin } from "@/lib/loginNext";
+import LazyAvatar from "@/components/LazyAvatar";
 
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
@@ -283,7 +284,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
           className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary rounded-[18px]"
         >
           {ctxUser?.avatarUrl ? (
-            <img suppressHydrationWarning data-src={ctxUser.avatarUrl} alt="" className="lazyload h-9 w-9 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" decoding="async" />
+            <LazyAvatar src={ctxUser.avatarUrl} alt="" sizeClass="h-9 w-9" className="shrink-0" />
           ) : (
             <div className="h-9 w-9 rounded-full bg-accent-main/10 text-accent-main flex items-center justify-center shrink-0">
               <PenLine className="h-4 w-4" />

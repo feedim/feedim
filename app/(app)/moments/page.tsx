@@ -122,8 +122,8 @@ function getMomentsPerfHints(): MomentsPerfHints {
 export default function MomentsPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: "#000" }}>
-        <span className="loader" style={{ width: 32, height: 32, borderTopColor: "white" }} />
+      <div className="flex items-center justify-center h-screen bg-bg-primary">
+        <span className="loader" style={{ width: 32, height: 32 }} />
       </div>
     }>
       <MomentsContent />
@@ -644,8 +644,8 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="flex justify-center md:h-screen" style={{ height: "100vh", minHeight: "100vh", backgroundColor: "#000" }}>
-        <div className="w-full h-full bg-white/5 animate-pulse" style={{ maxWidth: "min(62vh, 480px)" }} />
+      <div className="flex justify-center md:h-screen bg-bg-primary" style={{ height: "100vh", minHeight: "100vh" }}>
+        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62vh, 480px)" }} />
       </div>
     );
   }

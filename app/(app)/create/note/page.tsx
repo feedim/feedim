@@ -15,6 +15,7 @@ import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
 import { useMention } from "@/lib/useMention";
 import MentionDropdown from "@/components/MentionDropdown";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface Tag {
   id: number | string;
@@ -493,13 +494,7 @@ function NoteWriteContent() {
               <div className="flex gap-3">
                 {/* Avatar */}
                 <div className="shrink-0">
-                  {user?.avatarUrl ? (
-                    <img suppressHydrationWarning data-src={user.avatarUrl} alt="" className="lazyload w-10 h-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" decoding="async" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full overflow-hidden">
-                      <img className="default-avatar-auto bg-bg-tertiary w-full h-full rounded-full object-cover border border-border-primary" alt="" loading="lazy" />
-                    </div>
-                  )}
+                  <LazyAvatar src={user?.avatarUrl} sizeClass="w-10 h-10" />
                 </div>
 
                 {/* Textarea */}

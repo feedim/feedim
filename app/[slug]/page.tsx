@@ -39,6 +39,7 @@ const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_A
 import { renderMentionsAsHTML, renderMentionsInHTML } from "@/lib/mentionRenderer";
 import { headers } from "next/headers";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -250,11 +251,7 @@ export default async function PostPage({ params }: PageProps) {
           {/* Channel row — YouTube style */}
           <div className="flex items-center gap-3">
             <Link href={`/u/${author?.username}`} className="shrink-0">
-              {author?.avatar_url ? (
-                <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-              ) : (
-                <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover border border-border-primary" alt="" />
-              )}
+              <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
@@ -388,11 +385,7 @@ export default async function PostPage({ params }: PageProps) {
             {/* Author */}
             <div className="flex items-center gap-2 mb-1">
               <Link href={`/u/${author?.username}`} className="shrink-0">
-                {author?.avatar_url ? (
-                  <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                ) : (
-                  <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-                )}
+                <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
               </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -522,16 +515,7 @@ export default async function PostPage({ params }: PageProps) {
           {/* Author — PostHead */}
           <div className="flex items-center gap-2 mb-3">
             <Link href={`/u/${author?.username}`} className="shrink-0">
-              {author?.avatar_url ? (
-                <img
-                  data-src={author.avatar_url}
-                  alt={authorName}
-                  className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary"
-                  suppressHydrationWarning
-                />
-              ) : (
-                <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" loading="lazy" />
-              )}
+              <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">

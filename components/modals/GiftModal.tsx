@@ -9,6 +9,7 @@ import { GIFT_TYPES } from "@/lib/constants";
 import { formatCount } from "@/lib/utils";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useAuthModal } from "@/components/AuthModal";
+import LazyAvatar from "@/components/LazyAvatar";
 
 type GiftKey = keyof typeof GIFT_TYPES;
 
@@ -407,11 +408,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
               <div className="flex flex-wrap gap-1.5">
                 {recentGifts.slice(0, 8).map((g, i) => (
                   <div key={`${g.gift_type}-${g.sender?.username}-${i}`} className="flex items-center gap-1 bg-bg-tertiary rounded-full pl-0.5 pr-2 py-0.5">
-                    {g.sender?.avatar_url ? (
-                      <img suppressHydrationWarning data-src={g.sender.avatar_url} alt="" className="lazyload w-4 h-4 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full bg-bg-tertiary" />
-                    )}
+                    <LazyAvatar src={g.sender?.avatar_url} alt="" sizeClass="w-4 h-4" />
                     <span className="flex shrink-0">{GIFT_ICONS[g.gift_type]?.(14)}</span>
                   </div>
                 ))}

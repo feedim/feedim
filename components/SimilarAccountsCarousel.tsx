@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import FollowButton from "@/components/FollowButton";
+import LazyAvatar from "@/components/LazyAvatar";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { useAuthModal } from "@/components/AuthModal";
 import { useUser } from "@/components/UserContext";
@@ -131,10 +132,10 @@ export default function SimilarAccountsCarousel({ userId, username, onClose, vis
         <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10 }}>
           {[1, 2, 3].map(i => (
             <div key={i} className="flex flex-col items-center shrink-0 w-[130px] py-3 px-1.5 bg-bg-secondary rounded-[14px] border border-border-primary">
-              <div className="w-[72px] h-[72px] rounded-full bg-bg-tertiary animate-pulse mb-2" />
+              <div className="w-[72px] h-[72px] rounded-full bg-bg-tertiary mb-2" />
               <div className="h-[11px] w-16 bg-bg-tertiary rounded-[5px] animate-pulse mb-1" />
               <div className="h-[9px] w-12 bg-bg-tertiary rounded-[5px] animate-pulse" />
-              <div className="mt-2 w-full h-[31px] bg-bg-tertiary rounded-lg animate-pulse" />
+              <div className="mt-2 w-full h-[31px] bg-bg-tertiary rounded-lg" />
             </div>
           ))}
         </div>
@@ -175,19 +176,7 @@ export default function SimilarAccountsCarousel({ userId, username, onClose, vis
               style={{ scrollSnapAlign: "start" }}
             >
               <Link href={`/u/${u.username}`}>
-                {u.avatar_url ? (
-                  <img
-                    data-src={u.avatar_url}
-                    alt=""
-                    decoding="async"
-                    className="lazyload w-[72px] h-[72px] rounded-full object-cover mb-2 bg-bg-tertiary border border-border-primary"
-                  />
-                ) : (
-                  <img
-                    className="default-avatar-auto bg-bg-tertiary w-[72px] h-[72px] rounded-full object-cover mb-2 border border-border-primary"
-                    alt=""
-                  />
-                )}
+                <LazyAvatar src={u.avatar_url} alt={u.username} sizeClass="w-[72px] h-[72px]" className="mb-2" />
               </Link>
               <Link href={`/u/${u.username}`} className="text-center w-full my-[2px]">
                 <div className="space-y-0.5">

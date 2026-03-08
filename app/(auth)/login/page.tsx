@@ -12,6 +12,7 @@ import { ArrowLeft, X } from "lucide-react";
 import { VALIDATION } from "@/lib/constants";
 import { isSafeRedirectUrl } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import LazyAvatar from "@/components/LazyAvatar";
 import PuzzleCaptcha from "@/components/PuzzleCaptcha";
 
 interface SavedAccount {
@@ -646,11 +647,7 @@ function LoginPageContent() {
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectAccount(account); }}
             >
-              {account.avatar_url ? (
-                <img suppressHydrationWarning data-src={account.avatar_url} alt={account.username} className="lazyload w-10 h-10 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" />
-              ) : (
-                <img className="default-avatar-auto bg-bg-tertiary w-10 h-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-              )}
+              <LazyAvatar src={account.avatar_url} alt={account.username} sizeClass="w-10 h-10" className="shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-text-primary truncate">@{account.username}</p>
                 <p className="text-xs text-text-muted truncate">{account.full_name}</p>
@@ -716,11 +713,7 @@ function LoginPageContent() {
         subtitle={t('enterPassword')}
       >
         <div className="flex flex-col items-center gap-2 mb-6">
-          {selectedAccount.avatar_url ? (
-            <img suppressHydrationWarning data-src={selectedAccount.avatar_url} alt={selectedAccount.username} className="lazyload w-16 h-16 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-          ) : (
-            <img className="default-avatar-auto bg-bg-tertiary w-16 h-16 rounded-full object-cover border border-border-primary" alt="" />
-          )}
+          <LazyAvatar src={selectedAccount.avatar_url} alt={selectedAccount.username} sizeClass="w-16 h-16" />
           <p className="text-sm font-semibold text-text-primary">@{selectedAccount.username}</p>
         </div>
 

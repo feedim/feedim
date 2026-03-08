@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useState, useCallback, useRef } from "react
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
-import { PenLine } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import PostCardSkeleton from "@/components/PostCardSkeleton";
@@ -14,6 +13,7 @@ import { useUser } from "@/components/UserContext";
 import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
 import { useAuthModal } from "@/components/AuthModal";
 import { isBlockedContent } from "@/lib/blockedWords";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface NotePost {
   id: number;
@@ -135,13 +135,7 @@ export default function CommunityNotesPage() {
           onClick={() => { emitNavigationStart(); router.push(isLoggedIn ? "/create/note" : "/login"); }}
           className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary rounded-[18px]"
         >
-          {ctxUser?.avatarUrl ? (
-            <img suppressHydrationWarning data-src={ctxUser.avatarUrl} alt="" className="lazyload h-9 w-9 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" decoding="async" />
-          ) : (
-            <div className="h-9 w-9 rounded-full bg-accent-main/10 text-accent-main flex items-center justify-center shrink-0">
-              <PenLine className="h-4 w-4" />
-            </div>
-          )}
+          <LazyAvatar src={ctxUser?.avatarUrl} sizeClass="h-9 w-9" className="shrink-0" />
           <span className="flex-1 text-left text-[0.95rem] text-text-muted">{t("createPlaceholder")}</span>
         </button>
       </div>

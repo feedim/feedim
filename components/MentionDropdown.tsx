@@ -1,5 +1,6 @@
 "use client";
 
+import LazyAvatar from "@/components/LazyAvatar";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 
 export interface MentionUser {
@@ -40,11 +41,7 @@ export default function MentionDropdown({ users, activeIndex, onSelect, onHover,
             i === activeIndex ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"
           }`}
         >
-          {u.avatar_url ? (
-            <img suppressHydrationWarning data-src={u.avatar_url} alt="" className="lazyload h-7 w-7 rounded-full object-cover shrink-0 mr-2.5 bg-bg-tertiary border border-border-primary" />
-          ) : (
-            <img className="default-avatar-auto bg-bg-tertiary h-7 w-7 rounded-full object-cover shrink-0 mr-2.5 border border-border-primary" alt="" />
-          )}
+          <LazyAvatar src={u.avatar_url} alt={u.username} sizeClass="h-7 w-7" borderClass="" className="shrink-0 mr-2.5" />
           <span className="font-medium truncate">@{u.username}</span>
           {u.is_verified && <span className="ml-1 shrink-0"><VerifiedBadge variant={getBadgeVariant(u.premium_plan)} role={u.role} /></span>}
         </button>

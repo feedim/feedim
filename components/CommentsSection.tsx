@@ -16,6 +16,7 @@ import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import { useMention } from "@/lib/useMention";
 import MentionDropdown from "@/components/MentionDropdown";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
+import LazyAvatar from "@/components/LazyAvatar";
 
 
 interface Comment {
@@ -474,11 +475,7 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
   return (
     <div className={cn("flex gap-3", isReply && "ml-10 mt-3")}>
       <Link href={`/u/${comment.profiles?.username || ''}`} className="shrink-0 mt-0.5">
-        {comment.profiles?.avatar_url ? (
-          <img suppressHydrationWarning data-src={comment.profiles.avatar_url} alt="" className="lazyload h-8 w-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-        ) : (
-          <img className="default-avatar-auto bg-bg-tertiary h-8 w-8 rounded-full object-cover border border-border-primary" alt="" />
-        )}
+        <LazyAvatar src={comment.profiles?.avatar_url} sizeClass="h-8 w-8" />
       </Link>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">

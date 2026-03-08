@@ -18,6 +18,7 @@ import {
 import { formatCount, getPostUrl } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
+import BlurImage from "@/components/BlurImage";
 import AppLayout from "@/components/AppLayout";
 import CropModal from "@/components/modals/CropModal";
 import SoundPickerModal, { type SoundItem } from "@/components/modals/SoundPickerModal";
@@ -908,7 +909,7 @@ function MomentWriteContent() {
                       <div className="flex items-center gap-2.5 p-2.5 bg-bg-tertiary rounded-lg max-w-[300px] mx-auto">
                         <div className="w-9 h-9 rounded-md bg-accent-main/10 flex items-center justify-center shrink-0 overflow-hidden">
                           {selectedSound.cover_image_url ? (
-                            <img suppressHydrationWarning data-src={selectedSound.cover_image_url} alt="" className="lazyload w-full h-full object-cover bg-bg-tertiary" decoding="async" />
+                            <BlurImage src={selectedSound.cover_image_url} alt={selectedSound.title || ""} className="w-full h-full" />
                           ) : (
                             <Music className="h-4 w-4 text-accent-main" />
                           )}

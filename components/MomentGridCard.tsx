@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Clock } from "lucide-react";
 import { formatCount } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import BlurImage from "@/components/BlurImage";
 
 interface MomentGridCardProps {
   moment: {
@@ -30,8 +31,7 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
       className="relative block aspect-[9/16] bg-black overflow-hidden group"
     >
       {thumb ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img suppressHydrationWarning data-src={thumb} alt={moment.title || ""} className="lazyload w-full h-full object-cover bg-bg-tertiary border border-border-primary" />
+        <BlurImage src={thumb} alt={moment.title || ""} className="w-full h-full" />
       ) : (
         <div className="w-full h-full bg-bg-tertiary flex items-center justify-center">
           <svg className="h-8 w-8 text-text-muted" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>

@@ -10,6 +10,7 @@ import UserListItem from "@/components/UserListItem";
 import FollowButton from "@/components/FollowButton";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface PremiumWelcomeModalProps {
   open: boolean;
@@ -215,11 +216,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
       <div className="px-6 pt-8 pb-5 text-center">
         {/* Avatar + Badge */}
         <div className="relative inline-block mb-5">
-          {avatarUrl ? (
-            <img suppressHydrationWarning data-src={avatarUrl} alt="" className="lazyload w-[82px] h-[82px] rounded-full object-cover bg-bg-tertiary ring-4 ring-bg-secondary" />
-          ) : (
-            <img className="default-avatar-auto w-[82px] h-[82px] rounded-full object-cover bg-bg-tertiary ring-4 ring-bg-secondary" alt="" />
-          )}
+          <LazyAvatar src={avatarUrl} alt="" sizeClass="w-[82px] h-[82px]" borderClass="ring-4 ring-bg-secondary" />
           <div className="absolute -bottom-1 -right-1">
             <VerifiedBadge size="lg" variant={badgeVariant} className="!h-[28px] !w-[28px] !min-w-[28px] drop-shadow-md" />
           </div>

@@ -16,10 +16,12 @@ import UserListModal from "@/components/modals/UserListModal";
 import LikesModal from "@/components/modals/LikesModal";
 import UserListItem from "@/components/UserListItem";
 import FollowButton from "@/components/FollowButton";
+import BlurImage from "@/components/BlurImage";
 import { useUser } from "@/components/UserContext";
 import { useAuthModal } from "@/components/AuthModal";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { lazy, Suspense } from "react";
+import LazyAvatar from "@/components/LazyAvatar";
 import { fetchWithCache, withCacheScope, writeCache } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
 const BoostDetailsModal = lazy(() => import("@/components/modals/BoostDetailsModal"));
@@ -460,14 +462,9 @@ export default function NotificationsPage() {
               <div className="relative shrink-0" style={{ width: followRequestAvatars.length > 1 ? 40 + (followRequestAvatars.length - 1) * 16 : 40, height: 40 }}>
 	                {followRequestAvatars.length > 0 ? (
 	                  followRequestAvatars.map((url, i) => (
-	                    // eslint-disable-next-line @next/next/no-img-element
-	                    <img
-	                      key={url}
-	                      data-src={url}
-                      alt=""
-                      className="lazyload absolute top-0 h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-bg-primary"
-                      style={{ left: i * 16, zIndex: 3 - i }}
-                    />
+	                    <div key={url} className="absolute top-0" style={{ left: i * 16, zIndex: 3 - i }}>
+	                      <LazyAvatar src={url} alt="" sizeClass="h-10 w-10" borderClass="border border-bg-primary" />
+	                    </div>
                   ))
                 ) : (
                   <div className="h-10 w-10 rounded-full bg-accent-main/10 flex items-center justify-center">
@@ -615,19 +612,12 @@ export default function NotificationsPage() {
                             <div className="relative" style={{ width: Math.min(n.actors.length, 3) > 1 ? 40 + (Math.min(n.actors.length, 3) - 1) * 16 : 40, height: 40 }}>
 	                              {n.actors.slice(0, 3).map((actor, i) => (
 	                                <div key={actor.username || i} className="absolute top-0" style={{ left: i * 16, zIndex: 3 - i }}>
-	                                  {actor.avatar_url ? (
-	                                    // eslint-disable-next-line @next/next/no-img-element
-	                                    <img suppressHydrationWarning data-src={actor.avatar_url} alt="" decoding="async" className="lazyload h-10 w-10 rounded-full object-cover border border-bg-primary bg-bg-tertiary" />
-	                                  ) : (
-	                                    // eslint-disable-next-line @next/next/no-img-element
-	                                    <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover border border-bg-primary" alt="" />
-	                                  )}
+	                                  <LazyAvatar src={actor.avatar_url} alt="" sizeClass="h-10 w-10" borderClass="border border-bg-primary" />
 	                                </div>
 	                              ))}
 	                            </div>
 	                          ) : n.actor?.avatar_url ? (
-	                            // eslint-disable-next-line @next/next/no-img-element
-	                            <img suppressHydrationWarning data-src={n.actor.avatar_url} alt="" decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+	                            <LazyAvatar src={n.actor.avatar_url} alt="" sizeClass="h-10 w-10" />
 	                          ) : (
                             <div className="h-10 w-10 rounded-full bg-bg-secondary flex items-center justify-center">
                               {iconMap[n.type] || <Bell className="h-4 w-4 text-text-muted" />}
@@ -646,12 +636,11 @@ export default function NotificationsPage() {
                         {/* Right: Post thumbnail, unread dot, delete button */}
 	                        <div className="shrink-0 z-[1] flex items-center gap-2">
 	                          {n.post_thumbnail && (
-	                            // eslint-disable-next-line @next/next/no-img-element
-	                            <img
-	                              data-src={n.post_thumbnail}
-	                              alt=""
-                              className="lazyload h-10 w-10 rounded-[9px] object-cover bg-bg-tertiary pointer-events-none"
-                            />
+                              <BlurImage
+                                src={n.post_thumbnail}
+                                alt=""
+                                className="h-10 w-10 rounded-[9px] object-cover bg-bg-tertiary pointer-events-none overflow-hidden"
+                              />
                           )}
                           {!n.is_read && (
                             <div className="w-2 h-2 rounded-full bg-accent-main shrink-0 pointer-events-none" />

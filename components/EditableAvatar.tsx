@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef, useEffect } from "react";
+import { memo, useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 
 interface EditableAvatarProps {
@@ -30,15 +30,28 @@ export default memo(function EditableAvatar({
 }: EditableAvatarProps) {
   const t = useTranslations("profile");
   const imgRef = useRef<HTMLImageElement>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  useEffect(() => { setImgLoaded(false); }, [src]);
+
+  // Before paint — if cached, skip skeleton entirely
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (img?.classList.contains("lazyloaded")) setImgLoaded(true);
+  }, [src]);
+
+  const markLoaded = useCallback(() => {
+    setImgLoaded(true);
+    onLoad?.();
+  }, [onLoad]);
 
   useEffect(() => {
     const img = imgRef.current;
-    if (!img || !onLoad) return;
-    const handler = () => onLoad();
-    img.addEventListener("lazyloaded", handler);
-    if (img.classList.contains("lazyloaded")) onLoad();
-    return () => img.removeEventListener("lazyloaded", handler);
-  }, [onLoad]);
+    if (!img) return;
+    img.addEventListener("lazyloaded", markLoaded);
+    if (img.classList.contains("lazyloaded")) markLoaded();
+    return () => img.removeEventListener("lazyloaded", markLoaded);
+  }, [markLoaded]);
 
   useEffect(() => {
     const img = imgRef.current;
@@ -55,12 +68,31 @@ export default memo(function EditableAvatar({
       aria-label={t("viewAvatar")}
     >
       {src ? (
-        <img
-          ref={imgRef}
-          data-src={src}
-          alt={alt}
-          className={`lazyload ${sizeClass} rounded-full object-cover bg-bg-tertiary border border-border-primary ${imgClassName || ""}`}
-        />
+        <>
+          {/* Image wrapper — blur controlled here, not on img (avoids CSS conflicts) */}
+          <div
+            className={`${sizeClass} rounded-full overflow-hidden border border-border-primary`}
+            style={{
+              filter: imgLoaded ? "blur(0px)" : "blur(3px)",
+              transition: imgLoaded ? "filter 200ms ease 80ms" : "none",
+              transform: "translateZ(0)",
+            }}
+          >
+            <img
+              ref={imgRef}
+              data-src={src}
+              alt={alt}
+              className={`lazyload w-full h-full object-cover bg-bg-tertiary ${imgClassName || ""}`}
+            />
+          </div>
+          {/* Skeleton pulse — fully opaque until image ready, then fades out */}
+          <div
+            className={`absolute inset-0 rounded-full bg-bg-tertiary border border-border-primary ${
+              imgLoaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
+            }`}
+            style={{ transition: "opacity 250ms ease" }}
+          />
+        </>
       ) : (
         <img
           className={`default-avatar-auto bg-bg-tertiary ${sizeClass} rounded-full object-cover border border-border-primary ${imgClassName || ""}`}

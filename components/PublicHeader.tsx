@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { getAuthUserId } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import PublicBackButton from "@/components/PublicBackButton";
+import LazyAvatar from "@/components/LazyAvatar";
 
 interface PublicHeaderProps {
   variant?: "home" | "back";
@@ -60,13 +61,7 @@ export default async function PublicHeader({ variant = "back", backLabel }: Publ
           )}
           {userInfo && (
             <Link href={`/u/${userInfo.username}`} className="shrink-0">
-              {userInfo.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img suppressHydrationWarning data-src={userInfo.avatarUrl} alt="" className="lazyload h-8 w-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="default-avatar-auto bg-bg-tertiary h-8 w-8 rounded-full object-cover border border-border-primary" alt="" />
-              )}
+              <LazyAvatar src={userInfo.avatarUrl} alt="" sizeClass="h-8 w-8" />
             </Link>
           )}
         </div>

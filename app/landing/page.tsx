@@ -9,6 +9,7 @@ import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
+import LazyAvatar from "@/components/LazyAvatar";
 
 function LandingGoogleButton({
   label,
@@ -173,18 +174,7 @@ export default function LandingPage() {
                       }}
                       className="w-full flex items-center gap-3 p-2.5 rounded-[13.5px] border border-border-primary hover:bg-bg-tertiary transition cursor-pointer text-left group"
                     >
-                      {account.avatar_url ? (
-                        <img
-                          data-src={account.avatar_url}
-                          alt={account.username}
-                          className="lazyload w-10 h-10 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary"
-                        />
-                      ) : (
-                        <img
-                          className="default-avatar-auto bg-bg-tertiary w-10 h-10 rounded-full object-cover shrink-0 border border-border-primary"
-                          alt=""
-                        />
-                      )}
+                      <LazyAvatar src={account.avatar_url} alt={account.username} sizeClass="w-10 h-10" className="shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-text-primary truncate">
                           @{account.username}

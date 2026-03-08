@@ -1176,7 +1176,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     if (!file.type.startsWith("image/")) return;
     // Insert skeleton placeholder at cursor position
     const placeholderId = `img-placeholder-${Date.now()}`;
-    const skeletonHtml = `<div id="${placeholderId}" class="image-wrapper" contenteditable="false" style="pointer-events:none"><div style="width:100%;aspect-ratio:16/9;border-radius:12px;background:var(--bg-secondary);animation:pulse 2s cubic-bezier(0.4,0,0.6,1) infinite"></div></div><p><br></p>`;
+    const skeletonHtml = `<div id="${placeholderId}" class="image-wrapper" contenteditable="false" style="pointer-events:none"><div style="width:100%;aspect-ratio:16/9;border-radius:12px;background:var(--bg-secondary)"></div></div><p><br></p>`;
     insertBlockAtCursor(skeletonHtml);
     try {
       // Compress image before upload (strip metadata, convert to JPEG, max 2MB)
@@ -1186,7 +1186,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       // Replace skeleton with actual image — keep skeleton visible until image loads
       const placeholder = editorRef.current?.querySelector(`#${placeholderId}`);
       if (placeholder) {
-        const imageHtml = `<div class="image-wrapper" contenteditable="false"><img src="${escapeAttr(url)}" alt="" style="opacity:0;position:absolute" /><div style="width:100%;aspect-ratio:16/9;border-radius:12px;background:var(--bg-secondary);animation:pulse 2s cubic-bezier(0.4,0,0.6,1) infinite"></div><div class="image-caption" contenteditable="true" data-placeholder="${t("captionPlaceholder")}"></div></div>`;
+        const imageHtml = `<div class="image-wrapper" contenteditable="false"><img src="${escapeAttr(url)}" alt="" style="opacity:0;position:absolute" /><div style="width:100%;aspect-ratio:16/9;border-radius:12px;background:var(--bg-secondary)"></div><div class="image-caption" contenteditable="true" data-placeholder="${t("captionPlaceholder")}"></div></div>`;
         const temp = document.createElement("div");
         temp.innerHTML = imageHtml;
         const wrapper = temp.firstElementChild!;

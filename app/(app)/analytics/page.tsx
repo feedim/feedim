@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import AppLayout from "@/components/AppLayout";
+import BlurImage from "@/components/BlurImage";
 import NoImage from "@/components/NoImage";
 import ShareIcon from "@/components/ShareIcon";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
@@ -780,7 +781,7 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
                   >
                     <span className="text-[0.72rem] font-bold text-text-muted w-4 text-center shrink-0">{i + 1}</span>
                     {video.featured_image ? (
-                      <img suppressHydrationWarning data-src={video.featured_image} alt="" className="lazyload w-14 h-8 rounded-md object-cover bg-bg-tertiary shrink-0" />
+                      <BlurImage src={video.featured_image} alt={video.title} className="w-14 h-8 rounded-md shrink-0" />
                     ) : (
                       <NoImage className="w-14 h-8 rounded-md shrink-0" iconSize={14} />
                     )}

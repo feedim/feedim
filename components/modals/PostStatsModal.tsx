@@ -11,6 +11,7 @@ import Modal from "./Modal";
 import { formatCount, formatRelativeDate } from "@/lib/utils";
 import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
+import LazyAvatar from "@/components/LazyAvatar";
 import type { ComponentType } from "react";
 
 
@@ -187,13 +188,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
                 <div className="space-y-2.5">
                   {recentComments.map(c => (
                     <div key={c.id} className="flex items-start gap-2.5">
-                      {c.author?.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img suppressHydrationWarning data-src={c.author.avatar_url} alt="" className="lazyload w-6 h-6 rounded-full object-cover shrink-0 bg-bg-tertiary border border-border-primary" />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img className="default-avatar-auto bg-bg-tertiary w-6 h-6 rounded-full object-cover shrink-0 border border-border-primary" alt="" />
-                      )}
+                      <LazyAvatar src={c.author?.avatar_url} alt="" sizeClass="w-6 h-6" className="shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-[0.72rem] font-semibold">{c.author?.full_name || `@${c.author?.username}`}</span>

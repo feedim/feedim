@@ -22,6 +22,8 @@ import MentionDropdown from "@/components/MentionDropdown";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import { copyTextToClipboard } from "@/lib/copyTextToClipboard";
 import { emitMutation } from "@/lib/mutationEvents";
+import LazyAvatar from "@/components/LazyAvatar";
+import BlurImage from "@/components/BlurImage";
 
 
 interface Comment {
@@ -656,8 +658,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       {pendingGif && !newComment.trim() && (
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img suppressHydrationWarning data-src={pendingGif.preview} width={60} height={60} alt="GIF" className="lazyload h-[60px] rounded-md bg-bg-tertiary border border-border-primary" />
+            <BlurImage src={pendingGif.preview} alt="GIF" className="h-[60px] w-[60px] rounded-md overflow-hidden" />
             <button
               type="button"
               onClick={() => setPendingGif(null)}
@@ -674,17 +675,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       <form onSubmit={handleSubmit} className="flex items-end gap-2 my-[10px] w-full">
         {/* Avatar */}
         <div className="shrink-0 mb-[7px]">
-          {ctxUser?.avatarUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img suppressHydrationWarning data-src={ctxUser.avatarUrl} alt="" className="lazyload h-9 w-9 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-            </>
-          ) : (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="default-avatar-auto bg-bg-tertiary h-9 w-9 rounded-full object-cover border border-border-primary" alt="" />
-            </>
-          )}
+          <LazyAvatar src={ctxUser?.avatarUrl} alt="" sizeClass="h-9 w-9" />
         </div>
         <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary" style={{ position: "relative" }}>
           {/* Mention dropdown — positioned above textarea */}
@@ -795,7 +786,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             <div className="space-y-0 px-3">
               {[1,2,3,4,5].map(i => (
                 <div key={i} className="flex gap-2.5 py-3">
-                  <div className="h-8 w-8 rounded-full bg-bg-tertiary shrink-0 animate-pulse" />
+                  <div className="h-8 w-8 rounded-full bg-bg-tertiary shrink-0" />
                   <div className="flex-1 space-y-[6px] pt-1">
                     <div className="h-[9px] w-20 bg-bg-tertiary rounded-[5px] animate-pulse" />
                     <div className="h-[9px] w-[80%] bg-bg-tertiary rounded-[5px] animate-pulse" />
@@ -1087,17 +1078,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
       {/* Avatar */}
       <div className="shrink-0 mt-[9px]">
         <a href={`/u/${profileUsername}`}>
-          {comment.profiles?.avatar_url ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img suppressHydrationWarning data-src={comment.profiles.avatar_url} alt="" decoding="async" className="lazyload h-8 w-8 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-            </>
-          ) : (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="default-avatar-auto bg-bg-tertiary h-8 w-8 rounded-full object-cover border border-border-primary" alt="" />
-            </>
-          )}
+          <LazyAvatar src={comment.profiles?.avatar_url} alt="" sizeClass="h-8 w-8" />
         </a>
       </div>
 
@@ -1138,8 +1119,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
         )}
         {comment.content_type === "gif" && comment.gif_url ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img suppressHydrationWarning data-src={comment.gif_url} width={200} height={200} className="lazyload mt-0.5 max-w-[200px] max-h-[200px] object-contain rounded-[10px] cursor-pointer bg-bg-tertiary border border-border-primary" loading="lazy" alt="GIF" />
+            <BlurImage src={comment.gif_url} alt="GIF" className="mt-0.5 max-w-[200px] max-h-[200px] rounded-[10px] overflow-hidden" />
           </>
         ) : (
           <>

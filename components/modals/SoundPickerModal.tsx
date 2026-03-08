@@ -6,6 +6,7 @@ import { Search, TrendingUp, Music } from "lucide-react";
 import Modal from "./Modal";
 import SoundPreviewButton from "@/components/SoundPreviewButton";
 import { formatCount } from "@/lib/utils";
+import BlurImage from "@/components/BlurImage";
 import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
 
 
@@ -176,12 +177,12 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
             <div className="space-y-[2px]">
               {[1,2,3,4,5,6,7,8].map(i => (
                 <div key={i} className="flex items-center gap-2.5 px-3.5 py-2.5">
-                  <div className="w-9 h-9 rounded-md bg-bg-tertiary shrink-0 animate-pulse" />
+                  <div className="w-9 h-9 rounded-md bg-bg-tertiary shrink-0" />
                   <div className="flex-1 min-w-0 space-y-[6px]">
                     <div className="h-[9px] w-[60%] bg-bg-tertiary rounded-[5px] animate-pulse" />
                     <div className="h-[7px] w-[40%] bg-bg-tertiary rounded-[5px] animate-pulse" />
                   </div>
-                  <div className="w-7 h-7 rounded-full bg-bg-tertiary shrink-0 animate-pulse" />
+                  <div className="w-7 h-7 rounded-full bg-bg-tertiary shrink-0" />
                 </div>
               ))}
             </div>
@@ -202,7 +203,7 @@ export default function SoundPickerModal({ open, onClose, onSelect }: SoundPicke
                   {/* Cover / icon */}
                   <div className="w-9 h-9 rounded-md bg-bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
                     {sound.cover_image_url ? (
-                      <img suppressHydrationWarning data-src={sound.cover_image_url} alt="" className="lazyload w-full h-full object-cover bg-bg-tertiary" />
+                      <BlurImage src={sound.cover_image_url} alt={sound.title} className="w-full h-full" />
                     ) : (
                       <Music className="h-4 w-4 text-text-muted" />
                     )}

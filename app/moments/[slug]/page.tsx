@@ -28,6 +28,7 @@ import { stripHtmlToText } from "@/lib/htmlToText";
 const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import { headers } from "next/headers";
+import LazyAvatar from "@/components/LazyAvatar";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import { getCachedNextVideos } from "@/lib/postPageRecommendations";
 
@@ -211,11 +212,7 @@ export default async function MomentPage({ params }: PageProps) {
 
         <div className="flex items-center gap-3">
           <Link href={`/u/${author?.username}`} className="shrink-0">
-            {author?.avatar_url ? (
-              <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-            ) : (
-              <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover border border-border-primary" alt="" loading="lazy" />
-            )}
+            <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
           </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
