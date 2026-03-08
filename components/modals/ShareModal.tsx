@@ -147,7 +147,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
               key={p.id}
               onClick={() => handleShare(p.id)}
               aria-label={p.id === "native" ? t("other") : p.name}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left"
+              className="flex items-center gap-3 w-full px-2 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left"
             >
               <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center text-text-primary shrink-0">
                 <PlatformIcon id={p.icon} />
@@ -163,7 +163,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
           {postSlug && (
             <button
               onClick={() => setShowEmbed(true)}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2"
+              className="flex items-center gap-3 w-full px-2 py-3 rounded-[14px] hover:bg-bg-tertiary transition text-left mt-2"
             >
               <div className="w-9 h-9 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0">
                 <Code2 className="h-4 w-4 text-text-muted" />
