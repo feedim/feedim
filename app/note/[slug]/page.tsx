@@ -173,7 +173,7 @@ export default async function NotePage({ params }: PageProps) {
           isBoosted={boostInfo.isBoosted}
         />
 
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-3 mb-3">
           {author?.avatar_url ? (
             <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
           ) : (

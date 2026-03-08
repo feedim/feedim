@@ -130,7 +130,30 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
     sessionStorage.setItem(DISMISS_KEY, "1");
   }, []);
 
-  if (dismissed || !loaded || users.length === 0) return null;
+  if (dismissed) return null;
+
+  if (!loaded) {
+    return (
+      <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px] select-none">
+        <div className="flex items-center justify-between px-4 mb-3">
+          <div className="h-[14px] w-32 bg-bg-tertiary rounded-[5px] animate-pulse" />
+          <div className="w-7 h-7 rounded-full bg-bg-tertiary animate-pulse" />
+        </div>
+        <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex flex-col items-center shrink-0 w-[130px] py-3 px-1.5 bg-bg-secondary rounded-[14px] border border-border-primary">
+              <div className="w-[72px] h-[72px] rounded-full bg-bg-tertiary animate-pulse mb-2" />
+              <div className="h-[11px] w-16 bg-bg-tertiary rounded-[5px] animate-pulse mb-1" />
+              <div className="h-[9px] w-12 bg-bg-tertiary rounded-[5px] animate-pulse" />
+              <div className="mt-2 w-full h-[31px] bg-bg-tertiary rounded-lg animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (users.length === 0) return null;
 
   return (
     <div
