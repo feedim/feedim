@@ -80,8 +80,6 @@ export async function GET(request: NextRequest) {
       const nameParts = fullName.split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
-      const avatarUrl = meta.avatar_url || meta.picture || "";
-
       // Generate unique username from email prefix
       const emailPrefix = email.split("@")[0].replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 16);
       const baseUsername = emailPrefix || "user";
@@ -110,33 +108,28 @@ export async function GET(request: NextRequest) {
         name: firstName,
         surname: lastName,
         full_name: fullName,
-        avatar_url: avatarUrl,
         onboarding_completed: false,
         onboarding_step: 1,
         status: "active",
-        email_verified: false,
+        email_verified: true,
       });
 
       needsOnboarding = true;
     } else {
       needsOnboarding = !profile.onboarding_completed;
 
-      // Sync Google profile data on re-login (name/avatar may have changed)
+      // Sync Google profile name on re-login (name may have changed)
       const meta = data.user.user_metadata || {};
-      const providerAvatar = meta.avatar_url || meta.picture || "";
       const providerName = meta.full_name || meta.name || "";
-      if (providerName || providerAvatar) {
-        const syncUpdates: Record<string, string> = {};
-        if (providerName) {
-          const parts = providerName.split(" ");
-          syncUpdates.full_name = providerName;
-          syncUpdates.name = parts[0] || "";
-          syncUpdates.surname = parts.slice(1).join(" ") || "";
-        }
-        if (providerAvatar) syncUpdates.avatar_url = providerAvatar;
+      if (providerName) {
+        const parts = providerName.split(" ");
         await supabase
           .from("profiles")
-          .update(syncUpdates)
+          .update({
+            full_name: providerName,
+            name: parts[0] || "",
+            surname: parts.slice(1).join(" ") || "",
+          })
           .eq("user_id", data.user.id);
       }
 

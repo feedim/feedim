@@ -176,11 +176,13 @@ export default async function NotePage({ params }: PageProps) {
           />
 
           <div className="flex items-center gap-3 mb-3">
-            {author?.avatar_url ? (
-              <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-            ) : (
-              <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" loading="lazy" />
-            )}
+            <Link href={`/u/${author?.username}`} className="shrink-0">
+              {author?.avatar_url ? (
+                <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+              ) : (
+                <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" loading="lazy" />
+              )}
+            </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <Link href={`/u/${author?.username}`} className="font-semibold text-[0.92rem] hover:underline truncate">@{author?.username}</Link>
@@ -229,7 +231,7 @@ export default async function NotePage({ params }: PageProps) {
             allowComments={post.allow_comments !== false}
           >
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              <div className="flex flex-wrap gap-2">
                 {tags.map((tag: { id: number; name: string; slug: string }) => (
                   <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                     className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">

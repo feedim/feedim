@@ -367,7 +367,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
 
         {/* Gift grid */}
         <div className="px-5 pb-4">
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             {giftKeys.map(key => {
               const gift = GIFT_TYPES[key];
               const isSelected = selected === key;
@@ -377,7 +377,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   key={key}
                   onClick={() => { setSelected(key); setCount(1); }}
                   disabled={!canAfford}
-                  className={`relative flex flex-col items-center gap-1 px-1 py-2 rounded-lg transition-all duration-200 ${
+                  className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                     isSelected
                       ? "bg-accent-main/10 ring-2 ring-accent-main"
                       : canAfford
@@ -388,10 +388,10 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   <div className={`shrink-0 w-9 h-9 flex items-center justify-center transition-transform duration-200 ${isSelected ? "scale-110" : ""}`}>
                     {GIFT_ICONS[key](36)}
                   </div>
-                  <div className="flex flex-col items-center min-w-0 w-full">
-                    <span className="text-[0.62rem] font-semibold leading-tight truncate max-w-full">{tg(gift.labelKey.replace("gifts.", ""))}</span>
-                    <span className="text-[0.58rem] text-text-muted flex items-center gap-0.5 mt-0.5">
-                      <Coins className="h-2 w-2 text-accent-main" />
+                  <div className="flex flex-col items-start min-w-0">
+                    <span className="text-[0.72rem] font-semibold leading-tight truncate max-w-full">{tg(gift.labelKey.replace("gifts.", ""))}</span>
+                    <span className="text-[0.62rem] text-text-muted flex items-center gap-0.5 mt-0.5">
+                      <Coins className="h-2.5 w-2.5 text-accent-main" />
                       {gift.coins}
                     </span>
                   </div>

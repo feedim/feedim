@@ -64,7 +64,7 @@ function getPostUrl(post?: BoostItem["post"]): string | null {
   switch (post.content_type) {
     case "note": return `/note/${post.slug}`;
     case "video": return `/video/${post.slug}`;
-    case "moment": return `/moments/${post.slug}`;
+    case "moment": return `/moments?s=${post.slug}`;
     default: return `/${post.slug}`;
   }
 }

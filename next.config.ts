@@ -35,8 +35,8 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', '@emoji-mart/react', 'emoji-mart'],
     staleTimes: {
-      dynamic: 120,
-      static: 300,
+      dynamic: 30,
+      static: 60,
     },
   },
   // 301 Redirects for old URL structure

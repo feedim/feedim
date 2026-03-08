@@ -141,6 +141,7 @@ export default function BookmarksPage() {
     setPosts([]);
     setPage(1);
     setHasMore(false);
+    setLoading(true);
     loadBookmarks(1, f);
   };
 

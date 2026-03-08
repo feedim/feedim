@@ -119,7 +119,7 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
         : t("featured");
 
   return (
-    <section className="mt-6 pt-6 max-w-[565px] mx-auto">
+    <section className="mt-3 pt-3 max-w-[565px] mx-auto">
       <h3 className="text-lg font-bold mb-2">{title}</h3>
       <div className="flex flex-col gap-[16px] mt-[10px]">
         {renderableItems.map(post => (

@@ -122,8 +122,8 @@ function getMomentsPerfHints(): MomentsPerfHints {
 export default function MomentsPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen">
-        <span className="loader" style={{ width: 32, height: 32 }} />
+      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: "#000" }}>
+        <span className="loader" style={{ width: 32, height: 32, borderTopColor: "white" }} />
       </div>
     }>
       <MomentsContent />

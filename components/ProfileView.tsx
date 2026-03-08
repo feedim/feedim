@@ -18,7 +18,8 @@ import SuggestionCarousel from "@/components/SuggestionCarousel";
 import SimilarAccountsCarousel from "@/components/SimilarAccountsCarousel";
 import ShareIcon from "@/components/ShareIcon";
 import MomentGridCard from "@/components/MomentGridCard";
-import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
+import { fetchWithCache, readCache, withCacheScope, invalidateCache } from "@/lib/fetchWithCache";
+import { emitMutation } from "@/lib/mutationEvents";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
 import type { Profile, ProfileInteractions, ProfilePostItem, ProfileTabId } from "@/components/profile/types";
 import { usePaginatedProfileFeed } from "@/components/profile/usePaginatedProfileFeed";
@@ -350,6 +351,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       const res = await fetch(`/api/users/${profile.username}/follow`, { method: "POST", keepalive: true });
       if (res.ok) {
         const data = await res.json();
+        invalidateCache(`/api/users/${profile.username}`);
+        emitMutation({ type: "follow-changed", username: profile.username });
         if (data.requested && !profile.account_private) {
           setFollowing(false);
           setFollowerCount(c => Math.max(0, c - 1));

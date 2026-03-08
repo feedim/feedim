@@ -21,6 +21,7 @@ import { useMention } from "@/lib/useMention";
 import MentionDropdown from "@/components/MentionDropdown";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import { copyTextToClipboard } from "@/lib/copyTextToClipboard";
+import { emitMutation } from "@/lib/mutationEvents";
 
 
 interface Comment {
@@ -375,7 +376,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         });
         setTotalCount(c => { prevCount = c; return Math.max(0, c - 1); });
         fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE", keepalive: true })
-          .then(res => { if (!res.ok) throw res; })
+          .then(res => { if (!res.ok) throw res; emitMutation({ type: "comment-deleted", postId, delta: -1 }); })
           .catch(() => { setComments(prevComments); setTotalCount(prevCount); });
       },
     });
@@ -495,6 +496,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       } else {
         setComments(prev => prev.map(c => c.id === tempId ? mergeComment(c) : c));
       }
+      emitMutation({ type: "comment-added", postId, delta: 1 });
     } catch {
       if (parentId) {
         setComments(prev => prev.map(c => {

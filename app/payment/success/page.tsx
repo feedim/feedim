@@ -7,6 +7,7 @@ import { CheckCircle, Coins, AlertCircle, Loader2, Sparkles } from "lucide-react
 import { createClient } from "@/lib/supabase/client";
 import { useTranslations, useLocale } from "next-intl";
 import { useHydrated } from "@/lib/useHydrated";
+import { emitMutation } from "@/lib/mutationEvents";
 
 export default function PaymentSuccessPage() {
   const t = useTranslations("payment");
@@ -60,6 +61,7 @@ export default function PaymentSuccessPage() {
           if (body?.status === "completed") {
             setVerified(true);
             setPaymentType(body.type || "coin");
+            emitMutation({ type: body.type === "premium" ? "premium-changed" : "profile-updated" });
 
             if (body.type === "premium") {
               setPlanName(body.plan_name);

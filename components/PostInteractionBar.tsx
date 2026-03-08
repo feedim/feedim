@@ -14,6 +14,7 @@ import PostStats from "@/components/PostStats";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { fetchWithCache, withCacheScope, invalidateCache } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
+import { onMutation } from "@/lib/mutationEvents";
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
 const LikesModal = lazy(() => import("@/components/modals/LikesModal"));
@@ -103,6 +104,7 @@ export default function PostInteractionBar({
   const [likeCount, setLikeCount] = useState(() => Math.max(normalizeCount(initialLikeCount), initialLiked ? 1 : 0));
   const [saveCount, setSaveCount] = useState(() => Math.max(normalizeCount(initialSaveCount), initialSaved ? 1 : 0));
   const [shareCount, setShareCount] = useState(() => normalizeCount(initialShareCount));
+  const [liveCommentCount, setLiveCommentCount] = useState(() => normalizeCount(commentCount));
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentsMounted, setCommentsMounted] = useState(false);
@@ -129,6 +131,15 @@ export default function PostInteractionBar({
   const locale = useLocale();
   const displayLikeCount = liked ? Math.max(likeCount, 1) : likeCount;
   const displaySaveCount = saved ? Math.max(saveCount, 1) : saveCount;
+
+  // Listen for comment mutations to sync count in real-time
+  useEffect(() => {
+    return onMutation((detail) => {
+      if (detail.postId === postId && (detail.type === "comment-added" || detail.type === "comment-deleted")) {
+        setLiveCommentCount(c => Math.max(0, c + (detail.delta || 0)));
+      }
+    });
+  }, [postId]);
 
   // Preload most common modals after idle — eliminates first-open delay
   useEffect(() => {
@@ -247,6 +258,8 @@ export default function PostInteractionBar({
         if (res.status === 429 || res.status === 403) {
           res.json().then(data => feedimAlert("error", data.error || t('errors.likeLimitReached'))).catch(() => {});
         }
+      } else {
+        invalidateCache(`/api/posts/${postId}/stats`);
       }
     }).catch(() => {
       likedRef.current = !newLiked;
@@ -275,6 +288,7 @@ export default function PostInteractionBar({
         }
       } else {
         invalidateCache("/internal/bookmarks");
+        invalidateCache(`/api/posts/${postId}/stats`);
       }
     }).catch(() => {
       savedRef.current = !newSaved;
@@ -342,7 +356,7 @@ export default function PostInteractionBar({
           )}
           <button onClick={openComments} aria-label={t('tooltip.comment')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
             <MessageCircle className="h-5 w-5" />
-            <span>{formatCount(commentCount, locale)}</span>
+            <span>{formatCount(liveCommentCount, locale)}</span>
           </button>
           <button onClick={openShare} aria-label={t('tooltip.share')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
             <ShareIcon className="h-5 w-5" />
@@ -355,7 +369,7 @@ export default function PostInteractionBar({
         </div>
         {commentsMounted && (
           <Suspense fallback={null}>
-            <CommentsModal open={commentsOpen} onClose={() => setCommentsOpen(false)} postId={postId} commentCount={commentCount} postSlug={postSlug} allowComments={allowComments} />
+            <CommentsModal open={commentsOpen} onClose={() => setCommentsOpen(false)} postId={postId} commentCount={liveCommentCount} postSlug={postSlug} allowComments={allowComments} />
           </Suspense>
         )}
         {shareMounted && (
@@ -421,7 +435,7 @@ export default function PostInteractionBar({
               ? `${t('interaction.avgDuration')} ${avgDuration > 60 ? `${Math.round(avgDuration / 60)}${t('interaction.min')}` : `${avgDuration}${t('interaction.sec')}`}`
               : `${t('interaction.avgDuration')} —`
             }
-            {` ${formatCount(commentCount, locale)} ${t('interaction.comment')}`}
+            {` ${formatCount(liveCommentCount, locale)} ${t('interaction.comment')}`}
           </span>
         </button>
         {/* Boost section */}
@@ -513,7 +527,7 @@ export default function PostInteractionBar({
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
           <MessageCircle className="h-4 w-4" />
-          <span>{formatCount(commentCount, locale)}</span>
+          <span>{formatCount(liveCommentCount, locale)}</span>
         </button>
 
         {/* Save */}
@@ -581,7 +595,7 @@ export default function PostInteractionBar({
             open={commentsOpen}
             onClose={() => { setCommentsOpen(false); setTargetCommentId(null); }}
             postId={postId}
-            commentCount={commentCount}
+            commentCount={liveCommentCount}
             postSlug={postSlug}
             targetCommentId={targetCommentId}
             allowComments={allowComments}

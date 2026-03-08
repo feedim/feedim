@@ -1,12 +1,12 @@
 export const FRESHNESS_WINDOWS = {
-  analyticsOverview: 300,
-  settingsDerivedPanel: 300,
-  profileSummaryAnalytics: 180,
-  postStats: 120,
-  boostInventory: 60,
-  notificationSuggestions: 300,
-  profileVisitors: 30,
-  notificationCount: 15,
+  analyticsOverview: 120,
+  settingsDerivedPanel: 120,
+  profileSummaryAnalytics: 60,
+  postStats: 30,
+  boostInventory: 30,
+  notificationSuggestions: 120,
+  profileVisitors: 15,
+  notificationCount: 10,
 } as const;
 
 export function buildPrivateCacheControl(seconds: number): string {
