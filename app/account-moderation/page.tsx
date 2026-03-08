@@ -78,7 +78,7 @@ export default async function AccountModerationPage() {
 
   if (isActive) {
     return (
-      <div className="h-dvh flex flex-col">
+      <div className="h-screen flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
           <div className="max-w-lg w-full space-y-6">
             <div className="flex justify-center">
@@ -128,7 +128,7 @@ export default async function AccountModerationPage() {
   const iconColor = (isDeleted || isBlocked) ? "text-error" : "text-[var(--accent-color)]";
 
   return (
-    <div className="h-dvh flex flex-col">
+    <div className="h-screen flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
         <div className="max-w-lg w-full space-y-6">
           <div className="flex justify-center">

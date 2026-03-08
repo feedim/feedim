@@ -744,7 +744,7 @@ function VideoWriteContent() {
       headerTitle={step === 1 ? t("headerVideo") : t("headerDetails")}
       headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
     >
-      <div className="flex flex-col min-h-[calc(100dvh-53px)]">
+      <div className="flex flex-col min-h-[calc(100vh-53px)]">
 
         {/* ─── Step 1: Video Upload ─── */}
         {step === 1 && (

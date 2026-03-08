@@ -141,7 +141,7 @@ export default async function NotePage({ params }: PageProps) {
   };
 
   return (
-    <div suppressHydrationWarning style={{ overflowX: "clip" }}>
+    <div suppressHydrationWarning style={{ overflowX: "hidden" }}>
       <script
         type="application/ld+json"
         suppressHydrationWarning

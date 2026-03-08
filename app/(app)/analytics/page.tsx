@@ -573,7 +573,7 @@ function PeakHoursCard({ peakHours }: { peakHours: HourData[] }) {
                   style={{
                     backgroundColor: intensity === 0
                       ? "var(--bg-tertiary)"
-                      : `color-mix(in srgb, var(--accent-main) ${Math.round(intensity * 100)}%, var(--bg-tertiary))`,
+                      : `rgba(255, 62, 0, ${(intensity * 0.8 + 0.2).toFixed(2)})`,
                   }}
                 />
                 {h.hour % 3 === 0 && (

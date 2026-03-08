@@ -180,7 +180,7 @@ export default async function MomentPage({ params }: PageProps) {
 
       <VideoSidebarPortal videos={nextVideos} />
 
-      <article className="px-3 sm:px-4" style={{ overflowX: "clip" }}>
+      <article className="px-3 sm:px-4" style={{ overflowX: "hidden" }}>
         {post.video_url && (
           <div className="mb-3 -mx-3 sm:-mx-4 sm:mx-0">
             <VideoPlayerClient

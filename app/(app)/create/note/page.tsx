@@ -473,7 +473,7 @@ function NoteWriteContent() {
       headerTitle={step === 1 ? t("headerNote") : t("headerDetails")}
       headerOnBack={() => { if (step === 2) setStep(1); else smartBack(router); }}
     >
-      <div className="flex flex-col min-h-[calc(100dvh-53px)]">
+      <div className="flex flex-col min-h-[calc(100vh-53px)]">
         {/* Step 1: Note content */}
         {step === 1 && loadingDraft && (
           <div className="px-1.5 sm:px-4 pt-4">

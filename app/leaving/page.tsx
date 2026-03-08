@@ -24,7 +24,7 @@ function LeavingContent() {
   const handleBack = () => smartBackRaw("/");
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
       <FeedimIcon className="h-16 w-16 opacity-80 mb-6" />
       <h1 className="text-xl font-bold mb-2">{t("title")}</h1>
       <p className="text-[0.78rem] text-text-muted mb-6 max-w-sm">
@@ -53,7 +53,7 @@ function LeavingContent() {
 
 export default function LeavingPage() {
   return (
-    <Suspense fallback={<div className="min-h-[100dvh] flex items-center justify-center"><span className="loader" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="loader" /></div>}>
       <LeavingContent />
     </Suspense>
   );

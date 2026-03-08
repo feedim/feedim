@@ -118,7 +118,7 @@ export default function LandingPage() {
   const hasSavedAccounts = savedAccounts.length > 0;
 
   return (
-    <div className="min-h-[100dvh] text-text-primary flex flex-col">
+    <div className="min-h-screen text-text-primary flex flex-col">
       <div className="flex-1 lg:min-h-0 flex flex-col lg:flex-row">
         {/* Left — Logo */}
         <div className="hidden lg:flex flex-1 items-center justify-center p-16">

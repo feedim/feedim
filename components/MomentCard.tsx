@@ -97,7 +97,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   const [isClamped, setIsClamped] = useState(false);
   const displayLikeCount = Math.max(moment.like_count || 0, liked ? 1 : 0);
   const displaySaveCount = Math.max(moment.save_count || 0, saved ? 1 : 0);
-  const viewportHeightStyle = { height: "100dvh", minHeight: "100svh" } as const;
+  const viewportHeightStyle = { height: "100vh", minHeight: "100vh" } as const;
 
   // Sound state — external if sound exists, is active, and audio differs from video
   const hasExternalSound = !!moment.sounds && moment.sounds.status === "active" && moment.sounds.audio_url !== moment.video_url;
@@ -285,8 +285,8 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
     return (
       <div
         ref={cardRef}
-        className="relative w-full bg-black snap-start snap-always md:h-[100dvh]"
-        style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: "100dvh 100vw" }}
+        className="relative w-full bg-black snap-start snap-always md:h-screen"
+        style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: "100vh 100vw" }}
       >
         {(moment.video_thumbnail || moment.featured_image) && (
           <img
@@ -302,9 +302,9 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   return (
     <div
       ref={cardRef}
-      className="relative w-full bg-black snap-start snap-always md:h-[100dvh]"
+      className="relative w-full bg-black snap-start snap-always md:h-screen"
       data-moment-active={isActive ? "true" : undefined}
-      style={{ ...viewportHeightStyle, contentVisibility: isActive ? "visible" : "auto", containIntrinsicSize: "100dvh 100vw" }}
+      style={{ ...viewportHeightStyle, contentVisibility: isActive ? "visible" : "auto", containIntrinsicSize: "100vh 100vw" }}
     >
       {/* Full-screen video */}
       <div className="absolute inset-0" onClick={togglePlayPause}>

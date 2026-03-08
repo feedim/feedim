@@ -109,7 +109,7 @@ export default async function EmbedPage({ params }: PageProps) {
     return (
       <div className="w-full h-full bg-black flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0 flex items-center">
-          <div className="w-full max-h-full [&_video]:!max-h-[calc(100dvh-36px)]">
+          <div className="w-full max-h-full [&_video]:!max-h-[calc(100vh-36px)]">
             <EmbedVideoPlayer
               src={post.video_url}
               poster={post.video_thumbnail || post.featured_image || undefined}

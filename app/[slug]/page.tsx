@@ -216,7 +216,7 @@ export default async function PostPage({ params }: PageProps) {
         {/* Portal: inject VideoSidebar into the existing right sidebar */}
         <VideoSidebarPortal videos={nextVideos} />
 
-        <article className="px-3 sm:px-4" style={{ overflowX: "clip" }}>
+        <article className="px-3 sm:px-4" style={{ overflowX: "hidden" }}>
           {/* Video Player — edge-to-edge */}
           {post.video_url && (
             <div className="mb-3 -mx-3 sm:-mx-4 sm:mx-0">
@@ -350,7 +350,7 @@ export default async function PostPage({ params }: PageProps) {
   if (isNote) {
     const noteText = sanitizedContent.replace(/<[^>]+>/g, '').trim();
     return (
-      <div suppressHydrationWarning style={{ overflowX: "clip" }}>
+      <div suppressHydrationWarning style={{ overflowX: "hidden" }}>
         <script
           type="application/ld+json"
           suppressHydrationWarning
@@ -474,7 +474,7 @@ export default async function PostPage({ params }: PageProps) {
 
   // ─── Regular post layout (unchanged) ───
   return (
-    <div suppressHydrationWarning style={{ overflowX: "clip" }}>
+    <div suppressHydrationWarning style={{ overflowX: "hidden" }}>
       <script
         type="application/ld+json"
         suppressHydrationWarning

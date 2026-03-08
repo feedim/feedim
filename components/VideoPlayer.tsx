@@ -913,8 +913,8 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     <div ref={wrapperRef} className="relative overflow-visible">
       <div
         ref={containerRef}
-        className={`relative overflow-visible select-none group/vp sm:rounded-lg z-10 ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-[100dvh] !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
-        style={!fakeFullscreen ? cinemaStyle : { paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" }}
+        className={`relative overflow-visible select-none group/vp sm:rounded-lg z-10 ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-screen !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
+        style={!fakeFullscreen ? cinemaStyle : { paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)", paddingLeft: "env(safe-area-inset-left, 0px)", paddingRight: "env(safe-area-inset-right, 0px)" }}
         tabIndex={0}
         onMouseMove={disabled || pipActive ? undefined : handleMouseMove}
         onMouseLeave={disabled || pipActive ? undefined : () => { if (playingRef.current && !settingsOpenRef.current) { controlsVisibleRef.current = false; setControls(false); } }}

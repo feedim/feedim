@@ -200,7 +200,7 @@ function MomentsContent() {
   const [likesModalPostId, setLikesModalPostId] = useState<number | null>(null);
 
   const viewportHeightStyle = useMemo(
-    () => ({ height: "100dvh", minHeight: "100svh" }),
+    () => ({ height: "100vh", minHeight: "100vh" }),
     []
   );
 
@@ -240,8 +240,8 @@ function MomentsContent() {
     if (main) {
       main.style.paddingBottom = "0";
       main.style.overflow = "hidden";
-      main.style.height = "100dvh";
-      main.style.minHeight = "100svh";
+      main.style.height = "100vh";
+      main.style.minHeight = "100vh";
     }
     if (wrapper) {
       wrapper.style.height = "100%";
@@ -644,7 +644,7 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="flex justify-center md:h-screen" style={{ height: "100dvh", minHeight: "100svh", backgroundColor: "#000" }}>
+      <div className="flex justify-center md:h-screen" style={{ height: "100vh", minHeight: "100vh", backgroundColor: "#000" }}>
         <div className="w-full h-full bg-white/5 animate-pulse" style={{ maxWidth: "min(62vh, 480px)" }} />
       </div>
     );
