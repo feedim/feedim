@@ -48,6 +48,7 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
   const trackRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const expireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const maxSlide = renderedWidth - HANDLE_SIZE - TRACK_PAD * 2;
@@ -108,6 +109,9 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
   }, []);
 
   const loadChallenge = useCallback(async () => {
+    // Don't reload during active interaction
+    if (isDraggingRef.current) return;
+
     setStatus("loading");
     setSliderX(0);
     setAccuracy(null);
@@ -116,6 +120,10 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
     if (expireTimerRef.current) {
       clearTimeout(expireTimerRef.current);
       expireTimerRef.current = null;
+    }
+    if (reloadTimerRef.current) {
+      clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = null;
     }
 
     try {
@@ -155,17 +163,29 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
         clearTimeout(expireTimerRef.current);
         expireTimerRef.current = null;
       }
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
     }
     return () => {
       if (expireTimerRef.current) clearTimeout(expireTimerRef.current);
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
     };
   }, [open, loadChallenge]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (status !== "ready" && status !== "fail") return;
+      if (status !== "ready") return;
       e.preventDefault();
       e.stopPropagation();
+
+      // Cancel any pending reload so the challenge stays stable during drag
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
+
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       isDraggingRef.current = true;
       startTimeRef.current = Date.now();
@@ -228,11 +248,11 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
         }, 1200);
       } else {
         setStatus("fail");
-        setTimeout(() => { loadChallenge(); }, 800);
+        reloadTimerRef.current = setTimeout(() => { loadChallenge(); }, 800);
       }
     } catch {
       setStatus("fail");
-      setTimeout(() => { loadChallenge(); }, 800);
+      reloadTimerRef.current = setTimeout(() => { loadChallenge(); }, 800);
     }
   }, [challenge, sliderX, maxSlide, onVerify, onClose, loadChallenge, startLockout]);
 
