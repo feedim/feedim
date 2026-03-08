@@ -248,7 +248,7 @@ export default function VideoPlayerClient({
   const countdownMax = 10;
 
   return (
-    <div className="relative sm:rounded-lg sm:overflow-hidden">
+    <div className="relative overflow-hidden sm:rounded-lg">
       <div className={postRollActive ? "pointer-events-none" : ""}>
         <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
       </div>
