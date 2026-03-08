@@ -7,9 +7,10 @@ interface FollowersModalProps {
   open: boolean;
   onClose: () => void;
   username: string;
+  onTotalCount?: (count: number) => void;
 }
 
-export default function FollowersModal({ open, onClose, username }: FollowersModalProps) {
+export default function FollowersModal({ open, onClose, username, onTotalCount }: FollowersModalProps) {
   const t = useTranslations("modals");
   return (
     <UserListModal
@@ -23,6 +24,7 @@ export default function FollowersModal({ open, onClose, username }: FollowersMod
         { key: "verified", label: t("filterVerified") },
         { key: "all", label: t("filterAll") },
       ]}
+      onTotalCount={onTotalCount}
     />
   );
 }

@@ -9,6 +9,7 @@ import { extractR2KeysFromContent } from '@/lib/postCleanup';
 import { getTranslations } from 'next-intl/server';
 import { syncTagCountsForStatusChange } from '@/lib/tagCounts';
 import { logServerError } from '@/lib/runtimeLogger';
+import { syncFollowCounts } from '@/lib/followCounts';
 
 async function getRecipientLocale(userId: string): Promise<string> {
   const admin = createAdminClient();
@@ -1209,6 +1210,20 @@ export async function POST(request: NextRequest) {
             await createNotification({ admin, user_id: target_id, actor_id: target_id, type: 'account_moderation', content: tBanTargetNotif("accountDeletionQueueDecision", { code: deleteCode }) });
           }
         } catch {}
+
+        // Recalculate follow counts for users affected by this ban
+        try {
+          const [{ data: followingRows }, { data: followerRows }] = await Promise.all([
+            admin.from('follows').select('following_id').eq('follower_id', target_id),
+            admin.from('follows').select('follower_id').eq('following_id', target_id),
+          ]);
+          const affectedIds = new Set<string>();
+          for (const r of followingRows || []) affectedIds.add(r.following_id);
+          for (const r of followerRows || []) affectedIds.add(r.follower_id);
+          for (const uid of affectedIds) {
+            void syncFollowCounts(admin, uid);
+          }
+        } catch {}
         break;
       }
 
@@ -1231,6 +1246,22 @@ export async function POST(request: NextRequest) {
             .eq('target_id', String(target_id))
             .eq('decision', 'blocked')
             .gte('created_at', thirtyDaysAgo);
+        } catch {}
+
+        // Recalculate follow counts for users affected by this unban
+        try {
+          const [{ data: followingRows }, { data: followerRows }] = await Promise.all([
+            admin.from('follows').select('following_id').eq('follower_id', target_id),
+            admin.from('follows').select('follower_id').eq('following_id', target_id),
+          ]);
+          const affectedIds = new Set<string>();
+          for (const r of followingRows || []) affectedIds.add(r.following_id);
+          for (const r of followerRows || []) affectedIds.add(r.follower_id);
+          // Also sync the unbanned user's own counts
+          affectedIds.add(target_id);
+          for (const uid of affectedIds) {
+            void syncFollowCounts(admin, uid);
+          }
         } catch {}
         break;
       }
@@ -1531,6 +1562,17 @@ export async function POST(request: NextRequest) {
           });
           await createNotification({ admin, user_id: target_id, actor_id: target_id, type: 'account_moderation', content: tFreezeTargetNotif("accountFrozenDecision", { code: freezeCode }) });
         } catch {}
+        // Recalculate affected users' follow counts
+        try {
+          const [{ data: fg }, { data: fr }] = await Promise.all([
+            admin.from('follows').select('following_id').eq('follower_id', target_id),
+            admin.from('follows').select('follower_id').eq('following_id', target_id),
+          ]);
+          const ids = new Set<string>();
+          for (const r of fg || []) ids.add(r.following_id);
+          for (const r of fr || []) ids.add(r.follower_id);
+          for (const uid of ids) void syncFollowCounts(admin, uid);
+        } catch {}
         break;
       }
 
@@ -1545,6 +1587,18 @@ export async function POST(request: NextRequest) {
             target_type: 'user', target_id: String(target_id), decision: 'approved', reason: reason || tNotif("accountUnfrozenReactivated"), moderator_id: user.id, decision_code: unfreezeCode,
           });
           await createNotification({ admin, user_id: target_id, actor_id: target_id, type: 'account_moderation', content: tUnfreezeTargetNotif("accountActivatedDecision", { code: unfreezeCode }) });
+        } catch {}
+        // Recalculate affected users' follow counts
+        try {
+          const [{ data: fg }, { data: fr }] = await Promise.all([
+            admin.from('follows').select('following_id').eq('follower_id', target_id),
+            admin.from('follows').select('follower_id').eq('following_id', target_id),
+          ]);
+          const ids = new Set<string>();
+          for (const r of fg || []) ids.add(r.following_id);
+          for (const r of fr || []) ids.add(r.follower_id);
+          ids.add(target_id);
+          for (const uid of ids) void syncFollowCounts(admin, uid);
         } catch {}
         break;
       }
@@ -1570,6 +1624,18 @@ export async function POST(request: NextRequest) {
             .eq('decision', 'blocked')
             .gte('created_at', thirtyDaysAgo);
         } catch {}
+        // Recalculate affected users' follow counts
+        try {
+          const [{ data: fg }, { data: fr }] = await Promise.all([
+            admin.from('follows').select('following_id').eq('follower_id', target_id),
+            admin.from('follows').select('follower_id').eq('following_id', target_id),
+          ]);
+          const ids = new Set<string>();
+          for (const r of fg || []) ids.add(r.following_id);
+          for (const r of fr || []) ids.add(r.follower_id);
+          ids.add(target_id);
+          for (const uid of ids) void syncFollowCounts(admin, uid);
+        } catch {}
         break;
       }
 
@@ -1594,6 +1660,17 @@ export async function POST(request: NextRequest) {
             type: 'account_moderation',
             content: tDeleteTargetNotif("accountDeletionQueueDecision", { code: deleteDecisionCode }),
           });
+        } catch {}
+        // Recalculate affected users' follow counts
+        try {
+          const [{ data: fg }, { data: fr }] = await Promise.all([
+            admin.from('follows').select('following_id').eq('follower_id', target_id),
+            admin.from('follows').select('follower_id').eq('following_id', target_id),
+          ]);
+          const ids = new Set<string>();
+          for (const r of fg || []) ids.add(r.following_id);
+          for (const r of fr || []) ids.add(r.follower_id);
+          for (const uid of ids) void syncFollowCounts(admin, uid);
         } catch {}
         break;
       }

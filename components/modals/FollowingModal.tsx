@@ -7,9 +7,10 @@ interface FollowingModalProps {
   open: boolean;
   onClose: () => void;
   username: string;
+  onTotalCount?: (count: number) => void;
 }
 
-export default function FollowingModal({ open, onClose, username }: FollowingModalProps) {
+export default function FollowingModal({ open, onClose, username, onTotalCount }: FollowingModalProps) {
   const t = useTranslations("modals");
   return (
     <UserListModal
@@ -23,6 +24,7 @@ export default function FollowingModal({ open, onClose, username }: FollowingMod
         { key: "verified", label: t("filterVerified") },
         { key: "all", label: t("filterAll") },
       ]}
+      onTotalCount={onTotalCount}
     />
   );
 }

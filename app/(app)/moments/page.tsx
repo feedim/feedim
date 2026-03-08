@@ -200,7 +200,7 @@ function MomentsContent() {
   const [likesModalPostId, setLikesModalPostId] = useState<number | null>(null);
 
   const viewportHeightStyle = useMemo(
-    () => ({ height: "100vh", minHeight: "100vh" }),
+    () => ({ height: "100dvh", minHeight: "100dvh" }),
     []
   );
 
@@ -240,8 +240,8 @@ function MomentsContent() {
     if (main) {
       main.style.paddingBottom = "0";
       main.style.overflow = "hidden";
-      main.style.height = "100vh";
-      main.style.minHeight = "100vh";
+      main.style.height = "100dvh";
+      main.style.minHeight = "100dvh";
     }
     if (wrapper) {
       wrapper.style.height = "100%";
@@ -644,8 +644,8 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="flex justify-center md:h-screen bg-bg-primary" style={{ height: "100vh", minHeight: "100vh" }}>
-        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62vh, 480px)" }} />
+      <div className="flex justify-center md:h-screen bg-bg-primary" style={{ height: "100dvh", minHeight: "100dvh" }}>
+        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     );
   }
@@ -664,7 +664,7 @@ function MomentsContent() {
       {/* Centered Reels column */}
       <div
         className="relative w-full h-full"
-        style={{ maxWidth: "min(62vh, 480px)" }}
+        style={{ maxWidth: "min(62dvh, 480px)" }}
       >
         {/* Top bar — back button + Moments title + mute toggle */}
         <div className="absolute top-0 left-0 right-0 z-[60] flex items-center px-4 pt-4 pb-2 pointer-events-none">

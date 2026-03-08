@@ -42,6 +42,7 @@ export interface UserListModalProps {
   fetchUrl: string;
   emptyText: string;
   filterTabs?: FilterTab[];
+  onTotalCount?: (count: number) => void;
 }
 
 export default function UserListModal({
@@ -52,6 +53,7 @@ export default function UserListModal({
   fetchUrl,
   emptyText,
   filterTabs: filterTabsProp,
+  onTotalCount,
 }: UserListModalProps) {
   const t = useTranslations("userList");
   const defaultFilterTabs: FilterTab[] = useMemo(() => [
@@ -95,9 +97,12 @@ export default function UserListModal({
       setLoading(true);
     }
     try {
-      const data = await fetchWithCache(url, { ttlSeconds: 30, forceRefresh: pageNum > 1 }) as { users?: User[]; hasMore?: boolean };
+      const data = await fetchWithCache(url, { ttlSeconds: 30, forceRefresh: pageNum > 1 }) as { users?: User[]; hasMore?: boolean; totalCount?: number };
       if (pageNum === 1) {
         setUsers(data.users || []);
+        if (data.totalCount !== undefined && onTotalCount) {
+          onTotalCount(data.totalCount);
+        }
       } else {
         setUsers(prev => {
           const existingIds = new Set(prev.map(u => u.user_id));

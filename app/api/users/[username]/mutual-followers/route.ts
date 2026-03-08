@@ -39,7 +39,7 @@ export async function GET(
   }
 
   // Get people the current user follows
-  const { data: myFollowing } = await supabase
+  const { data: myFollowing } = await admin
     .from("follows")
     .select("following_id")
     .eq("follower_id", user.id);
@@ -48,7 +48,7 @@ export async function GET(
   const myFollowingIds = myFollowing.map(f => f.following_id);
 
   // Find who among my following also follows the target
-  const { data: mutuals } = await supabase
+  const { data: mutuals } = await admin
     .from("follows")
     .select("follower_id")
     .eq("following_id", target.user_id)

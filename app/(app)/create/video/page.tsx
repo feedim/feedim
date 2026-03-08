@@ -570,6 +570,30 @@ function VideoWriteContent() {
     if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
     if (status === "published" && uploading) { feedimAlert("error", t("videoStillUploading")); return; }
 
+    // Extract #hashtags from description before saving
+    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
+    let finalDescription = description;
+    let finalTags = [...tags];
+    const htMatches = [...description.matchAll(hashtagRegex)];
+    if (htMatches.length > 0) {
+      const existingNames = new Set(finalTags.map(tg => tg.name.toLowerCase()));
+      for (const match of htMatches) {
+        const name = match[1];
+        if (name.length < VALIDATION.tagName.min) continue;
+        if (/^\d+$/.test(name)) continue;
+        if (existingNames.has(name.toLowerCase()) || finalTags.some(tg => tg.name.toLowerCase() === name.toLowerCase())) continue;
+        if (finalTags.length >= VALIDATION.postTags.max) break;
+        try {
+          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+          const data = await res.json();
+          if (res.ok && data.tag) { finalTags.push(data.tag); existingNames.add(name.toLowerCase()); }
+        } catch { /* skip */ }
+      }
+      finalDescription = description.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
+      setDescription(finalDescription);
+      setTags(finalTags);
+    }
+
     setSavingAs(status);
     try {
       // Upload thumbnail image if it's a data URL
@@ -599,10 +623,10 @@ function VideoWriteContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          content: description.trim(),
+          content: finalDescription.trim(),
           content_type: "video",
           status,
-          tags: tags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
+          tags: finalTags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           featured_image: thumbUrl || null,
           video_url: videoUrl || null,
           video_duration: videoDuration || null,

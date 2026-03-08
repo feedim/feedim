@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { safeError } from "@/lib/apiError";
 import { getTranslations } from "next-intl/server";
 import { safePage } from "@/lib/utils";
+import { countActiveFollowing } from "@/lib/followCounts";
 
 export async function GET(
   req: NextRequest,
@@ -26,7 +27,7 @@ export async function GET(
 
     const { data: profile } = await admin
       .from("profiles")
-      .select("user_id, account_private")
+      .select("user_id, account_private, following_count")
       .eq("username", username)
       .eq("status", "active")
       .single();
@@ -53,7 +54,7 @@ export async function GET(
     const from = (page - 1) * limit;
     const to = from + limit; // fetch 1 extra for hasMore detection
 
-    const { data: follows, error } = await supabase
+    const { data: follows, error } = await admin
       .from("follows")
       .select("following_id")
       .eq("follower_id", profile.user_id)
@@ -63,7 +64,10 @@ export async function GET(
     if (error) return safeError(error);
 
     if (!follows || follows.length === 0) {
-      return NextResponse.json({ users: [], hasMore: false });
+      if (page === 1 && profile.following_count > 0) {
+        void admin.from("profiles").update({ following_count: 0 }).eq("user_id", profile.user_id);
+      }
+      return NextResponse.json({ users: [], hasMore: false, totalCount: 0 });
     }
 
     const rawHasMore = follows.length > limit;
@@ -74,7 +78,7 @@ export async function GET(
 
     // Filter out blocked users
     if (currentUser) {
-      const { data: blocks } = await supabase
+      const { data: blocks } = await admin
         .from("blocks")
         .select("blocker_id, blocked_id")
         .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
@@ -88,7 +92,7 @@ export async function GET(
       }
     }
 
-    const { data: users } = await supabase
+    const { data: users } = await admin
       .from("profiles")
       .select("user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, bio, account_private")
       .in("user_id", ids)
@@ -98,9 +102,9 @@ export async function GET(
     let followsMeSet = new Set<string>();
     if (currentUser) {
       const [myFollowsRes, myRequestsRes, followsMeRes] = await Promise.all([
-        supabase.from("follows").select("following_id").eq("follower_id", currentUser.id).in("following_id", ids),
-        supabase.from("follow_requests").select("target_id").eq("requester_id", currentUser.id).eq("status", "pending").in("target_id", ids),
-        supabase.from("follows").select("follower_id").eq("following_id", currentUser.id).in("follower_id", ids),
+        admin.from("follows").select("following_id").eq("follower_id", currentUser.id).in("following_id", ids),
+        admin.from("follow_requests").select("target_id").eq("requester_id", currentUser.id).eq("status", "pending").in("target_id", ids),
+        admin.from("follows").select("follower_id").eq("following_id", currentUser.id).in("follower_id", ids),
       ]);
       followingSet = new Set((myFollowsRes.data || []).map(f => f.following_id));
       requestedSet = new Set((myRequestsRes.data || []).map(f => f.target_id));
@@ -123,9 +127,20 @@ export async function GET(
       }))
       .sort((a, b) => (b.role === 'admin' ? 1 : 0) - (a.role === 'admin' ? 1 : 0));
 
+    // On page 1, calculate accurate totalCount and auto-heal stored count
+    let totalCount: number | undefined;
+    if (page === 1) {
+      const activeCount = await countActiveFollowing(admin, profile.user_id);
+      totalCount = activeCount;
+      if (activeCount !== profile.following_count) {
+        void admin.from("profiles").update({ following_count: activeCount }).eq("user_id", profile.user_id);
+      }
+    }
+
     return NextResponse.json({
       users: enrichedUsers,
       hasMore: rawHasMore,
+      ...(totalCount !== undefined && { totalCount }),
     });
   } catch (err) {
     return safeError(err);

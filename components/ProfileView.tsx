@@ -72,6 +72,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
   const [following, setFollowing] = useState(initialProfile.is_following || false);
   const [requested, setRequested] = useState(initialProfile.has_follow_request || false);
   const [followerCount, setFollowerCount] = useState(initialProfile.follower_count || 0);
+  const [followingCount, setFollowingCount] = useState(initialProfile.following_count || 0);
   const [followPending, setFollowPending] = useState(false);
   const [isBlocked, setIsBlocked] = useState(initialProfile.is_blocked || false);
   const [isBlockedBy] = useState(initialProfile.is_blocked_by || false);
@@ -518,7 +519,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               <p className="text-[0.78rem] text-text-muted">{t("followers")}</p>
             </button>
             <button onClick={statsDisabled ? undefined : () => setFollowingOpen(true)} aria-label={t("following")} className={`text-center ${statsDisabled ? "cursor-default" : ""}`}>
-              <p className="text-[1.1rem] font-bold">{isAnyBlocked ? "0" : formatCount(profile.following_count || 0)}</p>
+              <p className="text-[1.1rem] font-bold">{isAnyBlocked ? "0" : formatCount(followingCount)}</p>
               <p className="text-[0.78rem] text-text-muted">{t("following")}</p>
             </button>
           </div>
@@ -943,8 +944,8 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         openAvatarPicker={editAvatarOnOpen}
         onSave={(updated) => { setProfile({ ...profile, ...updated }); setEditOpen(false); }}
       />
-      <FollowersModal open={followersOpen} onClose={() => setFollowersOpen(false)} username={profile.username} />
-      <FollowingModal open={followingOpen} onClose={() => setFollowingOpen(false)} username={profile.username} />
+      <FollowersModal open={followersOpen} onClose={() => setFollowersOpen(false)} username={profile.username} onTotalCount={setFollowerCount} />
+      <FollowingModal open={followingOpen} onClose={() => setFollowingOpen(false)} username={profile.username} onTotalCount={setFollowingCount} />
 
       <AvatarViewModal
         open={avatarViewOpen}

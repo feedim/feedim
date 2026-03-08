@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cache } from "@/lib/cache";
 import { safeError } from "@/lib/apiError";
 import { getTranslations } from "next-intl/server";
+import { syncFollowCounts } from "@/lib/followCounts";
 
 export async function POST(
   req: NextRequest,
@@ -46,13 +47,11 @@ export async function POST(
     await admin.from("blocks").insert({ blocker_id: user.id, blocked_id: target.user_id });
     await admin.from("follows").delete().eq("follower_id", user.id).eq("following_id", target.user_id);
     await admin.from("follows").delete().eq("follower_id", target.user_id).eq("following_id", user.id);
-    // Update follow counts
-    const { count: targetFollowers } = await admin.from("follows").select("id", { count: "exact", head: true }).eq("following_id", target.user_id);
-    const { count: targetFollowing } = await admin.from("follows").select("id", { count: "exact", head: true }).eq("follower_id", target.user_id);
-    const { count: myFollowers } = await admin.from("follows").select("id", { count: "exact", head: true }).eq("following_id", user.id);
-    const { count: myFollowing } = await admin.from("follows").select("id", { count: "exact", head: true }).eq("follower_id", user.id);
-    await admin.from("profiles").update({ follower_count: targetFollowers || 0, following_count: targetFollowing || 0 }).eq("user_id", target.user_id);
-    await admin.from("profiles").update({ follower_count: myFollowers || 0, following_count: myFollowing || 0 }).eq("user_id", user.id);
+    // Update follow counts (only count active profiles)
+    await Promise.all([
+      syncFollowCounts(admin, target.user_id),
+      syncFollowCounts(admin, user.id),
+    ]);
     cache.delete(`user:${user.id}:blocks`);
     cache.delete(`user:${user.id}:follows`);
     return NextResponse.json({ blocked: true });
