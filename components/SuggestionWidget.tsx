@@ -112,7 +112,7 @@ export default function SuggestionWidget() {
 
   const loadSuggestions = useCallback(async () => {
     try {
-      const data = await fetchWithCache(suggestionsUrl, { ttlSeconds: 3600 }) as { users?: SuggestedUser[] };
+      const data = await fetchWithCache(suggestionsUrl, { ttlSeconds: 300 }) as { users?: SuggestedUser[] };
       setUsers(data.users || []);
     } catch {
       // Silent

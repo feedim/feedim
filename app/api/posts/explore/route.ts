@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     let followedIdSet = new Set<string>();
     if (user) {
       [blockedIds, followedIdSet] = await Promise.all([
-        cached(`user:${user.id}:blocks`, 120, async () => {
+        cached(`user:${user.id}:blocks`, 30, async () => {
           const { data: blocks } = await admin
             .from('blocks')
             .select('blocked_id, blocker_id')
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
             (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
           );
         }),
-        cached(`user:${user.id}:follows`, 120, async () => {
+        cached(`user:${user.id}:follows`, 30, async () => {
           const { data: followedUsers } = await admin
             .from('follows')
             .select('following_id')
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
     if (pagePosts.length > 0) {
       // Cached user signals (parallel) — works for both logged-in and anonymous
       const [followedTagIds, likedAuthorIds, likedTagIds, trendingTagIdSet, userInterestIds, userLangCountry] = await Promise.all([
-        user ? cached(`user:${user.id}:tag-follows`, 120, async () => {
+        user ? cached(`user:${user.id}:tag-follows`, 30, async () => {
           const { data: followedTags } = await admin
             .from('tag_follows')
             .select('tag_id')

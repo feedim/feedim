@@ -178,14 +178,14 @@ export async function GET(req: NextRequest) {
 
   if (user) {
     [blockedIds, followingIds] = await Promise.all([
-      cached(`user:${user.id}:blocks`, 120, async () => {
+      cached(`user:${user.id}:blocks`, 30, async () => {
         const { data: blocks } = await admin
           .from("blocks")
           .select("blocked_id, blocker_id")
           .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
         return new Set((blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id));
       }),
-      cached(`user:${user.id}:follows`, 120, async () => {
+      cached(`user:${user.id}:follows`, 30, async () => {
         const { data: follows } = await admin
           .from("follows")
           .select("following_id")
@@ -550,7 +550,7 @@ export async function GET(req: NextRequest) {
   // Search tags with scoring algorithm
   if (searchType === "all" || searchType === "tags") {
     // Fetch user's followed tags for affinity
-    const userFollowedTagIds = user ? await cached(`user:${user.id}:tag-follows`, 120, async () => {
+    const userFollowedTagIds = user ? await cached(`user:${user.id}:tag-follows`, 30, async () => {
       const { data: followedTags } = await admin
         .from("tag_follows")
         .select("tag_id")

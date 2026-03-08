@@ -4,7 +4,7 @@ export const FRESHNESS_WINDOWS = {
   profileSummaryAnalytics: 180,
   postStats: 120,
   boostInventory: 60,
-  notificationSuggestions: 3600,
+  notificationSuggestions: 300,
   profileVisitors: 30,
   notificationCount: 15,
 } as const;

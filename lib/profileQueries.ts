@@ -22,7 +22,7 @@ export async function getPublicProfileByUsername(username: string): Promise<Publ
 export const getCachedPublicProfileByUsername = unstable_cache(
   getPublicProfileByUsername,
   ["public-profile-by-username"],
-  { revalidate: 120, tags: ["profiles"] },
+  { revalidate: 30, tags: ["profiles"] },
 );
 
 export async function getAnyProfileByUsername(username: string): Promise<PublicProfileRow | null> {

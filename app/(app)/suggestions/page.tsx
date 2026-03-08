@@ -100,7 +100,7 @@ export default function SuggestionsPage() {
     if (pageNum === 1) {
     }
     try {
-      const data = await fetchWithCache(url, { ttlSeconds: 3600, forceRefresh: forceRefresh || pageNum > 1 }) as {
+      const data = await fetchWithCache(url, { ttlSeconds: 300, forceRefresh: forceRefresh || pageNum > 1 }) as {
         users?: SuggestedUser[];
         hasMore?: boolean;
       };

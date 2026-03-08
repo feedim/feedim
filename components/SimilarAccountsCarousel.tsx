@@ -58,7 +58,7 @@ export default function SimilarAccountsCarousel({ userId, username, onClose, vis
     }
     if (!visible || fetchedRef.current) return;
     fetchedRef.current = true;
-    fetchWithCache(requestUrl, { ttlSeconds: 3600 })
+    fetchWithCache(requestUrl, { ttlSeconds: 300 })
       .then((data) => {
         const payload = data as { users?: SuggestedUser[] };
         setUsers((payload.users || []).filter((u: SuggestedUser) => u.user_id !== userId));

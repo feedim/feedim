@@ -210,11 +210,11 @@ export async function GET(request: NextRequest) {
 
     // ─── Cached user data (parallel) ────────────────────────────
     const [userRole, blockedIds, followedUserIds, followedTagIds, likedAuthorIds, userLangCountry, likedTagIds, trendingTagIds] = await Promise.all([
-      cached(`user:${user.id}:role`, 120, async () => {
+      cached(`user:${user.id}:role`, 30, async () => {
         const { data: profile } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
         return profile?.role || 'user';
       }),
-      cached(`user:${user.id}:blocks`, 120, async () => {
+      cached(`user:${user.id}:blocks`, 30, async () => {
         const { data: blocks } = await admin
           .from('blocks')
           .select('blocked_id, blocker_id')
@@ -223,21 +223,21 @@ export async function GET(request: NextRequest) {
           (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
         );
       }),
-      cached(`user:${user.id}:follows`, 120, async () => {
+      cached(`user:${user.id}:follows`, 30, async () => {
         const { data: followedUsers } = await admin
           .from('follows')
           .select('following_id')
           .eq('follower_id', user.id);
         return (followedUsers || []).map(f => f.following_id);
       }),
-      cached(`user:${user.id}:tag-follows`, 120, async () => {
+      cached(`user:${user.id}:tag-follows`, 30, async () => {
         const { data: followedTags } = await admin
           .from('tag_follows')
           .select('tag_id')
           .eq('user_id', user.id);
         return (followedTags || []).map((f: { tag_id: number }) => f.tag_id);
       }),
-      cached(`user:${user.id}:liked-authors`, 600, async () => {
+      cached(`user:${user.id}:liked-authors`, 120, async () => {
         const { data: recentLikes } = await admin
           .from('likes')
           .select('post_id')
@@ -259,7 +259,7 @@ export async function GET(request: NextRequest) {
           .single();
         return { language: profile?.language || '', country: profile?.country || '' };
       }),
-      cached(`user:${user.id}:liked-tags`, 600, async () => {
+      cached(`user:${user.id}:liked-tags`, 120, async () => {
         const { data: recentLikes } = await admin
           .from('likes')
           .select('post_id')
@@ -1144,7 +1144,7 @@ async function handleFollowingDiscovery(
       return new Set((interests || []).map((i: { interest_id: number }) => i.interest_id));
     }),
     // Users who liked the same posts as this user (shared taste)
-    cached(`user:${user.id}:liked-post-likers`, 600, async () => {
+    cached(`user:${user.id}:liked-post-likers`, 120, async () => {
       const { data: myLikes } = await admin
         .from('likes')
         .select('post_id')

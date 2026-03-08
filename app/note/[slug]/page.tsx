@@ -156,7 +156,7 @@ export default async function NotePage({ params }: PageProps) {
         </div>
       )}
 
-      <article className="px-4 sm:px-4 py-3 md:py-5">
+      <article className="px-3 sm:px-3 py-3 md:py-5">
         <PostHeaderActions
           postId={post.id}
           postUrl={`/note/${post.slug}`}

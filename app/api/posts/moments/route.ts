@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
     // Cached user data (parallel)
     const [blockedIds, followedUserIds, likedAuthorIds, viewerAffinity, likedTagIds, trendingTagIds, userInterestIds] = await Promise.all([
-      user ? cached(`user:${user.id}:blocks`, 120, async () => {
+      user ? cached(`user:${user.id}:blocks`, 30, async () => {
         const { data: blocks } = await admin
           .from("blocks")
           .select("blocked_id, blocker_id")
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         return new Set((blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id));
       }) : Promise.resolve(new Set<string>()),
 
-      user ? cached(`user:${user.id}:follows`, 120, async () => {
+      user ? cached(`user:${user.id}:follows`, 30, async () => {
         const { data: follows } = await admin
           .from("follows")
           .select("following_id")

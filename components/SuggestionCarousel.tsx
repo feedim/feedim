@@ -55,7 +55,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
 
   const loadUsers = useCallback(async () => {
     try {
-      const data = await fetchWithCache(requestUrl, { ttlSeconds: 3600 }) as { users?: SuggestedUser[] };
+      const data = await fetchWithCache(requestUrl, { ttlSeconds: 300 }) as { users?: SuggestedUser[] };
       const filtered = (data.users || []).filter((u: SuggestedUser) => u.user_id !== excludeUserId);
       setUsers(filtered);
     } catch {
