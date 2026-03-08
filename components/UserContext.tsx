@@ -16,6 +16,7 @@ export interface InitialUser {
   copyrightEligible?: boolean;
   accountPrivate?: boolean;
   locale?: string;
+  emailVerified?: boolean;
 }
 
 interface UserContextValue {

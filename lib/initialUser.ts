@@ -18,6 +18,7 @@ const INITIAL_USER_SELECT = [
   "language",
   "account_private",
   "onboarding_completed",
+  "email_verified",
 ].join(", ");
 
 interface InitialUserProfileRow {
@@ -36,6 +37,7 @@ interface InitialUserProfileRow {
   language?: string | null;
   account_private?: boolean | null;
   onboarding_completed?: boolean | null;
+  email_verified?: boolean | null;
 }
 
 function mapInitialUser(userId: string, profile: InitialUserProfileRow): InitialUser {
@@ -53,6 +55,7 @@ function mapInitialUser(userId: string, profile: InitialUserProfileRow): Initial
     copyrightEligible: profile.copyright_eligible === true,
     accountPrivate: profile.account_private === true,
     locale: profile.language || "tr",
+    emailVerified: profile.email_verified === true,
   };
 }
 

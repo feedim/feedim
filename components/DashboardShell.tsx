@@ -7,6 +7,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import AmbientLight from "@/components/AmbientLight";
 import { UserProvider, type InitialUser } from "@/components/UserContext";
 import LocationPrompt from "@/components/LocationPrompt";
+import HeaderAlertBar from "@/components/HeaderAlertBar";
 
 interface DashboardShellContextValue {
   setMobileNavVisible: (visible: boolean) => void;
@@ -114,6 +115,7 @@ export default function DashboardShell({
           <AmbientLight />
           <Sidebar />
           <main className="md:ml-[240px] min-h-screen md:h-screen md:overflow-y-auto pb-20 md:pb-0">
+            <HeaderAlertBar />
             <div className="max-w-[1400px] mx-auto w-full">
               {children}
             </div>
