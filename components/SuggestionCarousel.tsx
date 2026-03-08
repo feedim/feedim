@@ -136,7 +136,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
     return (
       <div className="mx-1 sm:mx-3 my-3 py-3 bg-bg-secondary rounded-[16px] select-none">
         <div className="flex items-center justify-between px-4 mb-3">
-          <div className="h-[14px] w-32 bg-bg-tertiary rounded-[5px] animate-pulse" />
+          <span className="text-[0.88rem] font-bold">{t("peopleYouMayKnow")}</span>
           <div className="w-7 h-7 rounded-full bg-bg-tertiary animate-pulse" />
         </div>
         <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10 }}>
