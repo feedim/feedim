@@ -219,7 +219,6 @@ export default async function NotePage({ params }: PageProps) {
           postTitle={post.title}
           postSlug={post.slug}
           authorUsername={author?.username}
-          likedByBottom
           contentType={post.content_type}
           isBoosted={boostInfo.isBoosted}
           boostStats={boostInfo.boostStats}
@@ -227,18 +226,18 @@ export default async function NotePage({ params }: PageProps) {
           visibility={post.visibility || "public"}
           isModeration={!!post.is_nsfw || post.status === 'moderation'}
           allowComments={post.allow_comments !== false}
-        />
-
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2 mb-2">
-            {tags.map((tag: { id: number; name: string; slug: string }) => (
-              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                #{tag.name}
-              </Link>
-            ))}
-          </div>
-        )}
+        >
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              {tags.map((tag: { id: number; name: string; slug: string }) => (
+                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </PostInteractionBar>
 
         <RelatedPosts
           posts={authorContent}
