@@ -636,7 +636,6 @@ function MomentWriteContent() {
       else if (e.key === "Enter") { e.preventDefault(); if (tagHighlight >= 0) addTag(tagSuggestions[tagHighlight]); else if (tagSearch.trim()) createAndAddTag(); }
       else if (e.key === "Escape") { setTagSuggestions([]); setTagHighlight(-1); }
     } else if (e.key === "Enter" || e.key === ",") { e.preventDefault(); if (tagSearch.trim()) createAndAddTag(); }
-    else if (e.key === "Backspace" && !tagSearch && tags.length > 0) { removeTag(tags[tags.length - 1].id); }
   };
 
   // Thumbnail upload

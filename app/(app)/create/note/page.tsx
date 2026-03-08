@@ -294,8 +294,6 @@ function NoteWriteContent() {
     } else if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       if (tagSearch.trim()) createAndAddTag();
-    } else if (e.key === "Backspace" && !tagSearch && tags.length > 0) {
-      removeTag(tags[tags.length - 1].id);
     }
   };
 
