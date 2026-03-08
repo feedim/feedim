@@ -37,11 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_credentials" }, { status: 404 });
   }
 
-  // Mask email: show first 2 chars + domain hint (a**@g****.com)
-  const email = data.email;
-  const [local, domain] = email.split("@");
-  const maskedLocal = local.slice(0, 2) + "***";
-  const domainParts = domain.split(".");
-  const maskedDomain = domainParts[0].slice(0, 1) + "****." + domainParts.slice(1).join(".");
-  return NextResponse.json({ email: `${maskedLocal}@${maskedDomain}` });
+  // Return real email so signInWithPassword works.
+  // Enumeration protection: rate limiter + CAPTCHA pre-check on the client.
+  return NextResponse.json({ email: data.email });
 }

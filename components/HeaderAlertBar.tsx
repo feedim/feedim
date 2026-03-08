@@ -65,7 +65,7 @@ export default function HeaderAlertBar() {
     <style dangerouslySetInnerHTML={{ __html: `:root { --alert-bar-h: 28px; } #dashboard-shell main { padding-top: var(--alert-bar-h); }` }} />
     <div
       ref={barRef}
-      className="bg-accent-main text-white text-[0.72rem] font-medium fixed top-0 left-0 right-0 z-[60]"
+      className="bg-accent-main text-white text-[0.68rem] font-medium fixed top-0 left-0 right-0 z-[60]"
     >
       <div className="flex items-center justify-between px-3 py-1.5">
         <p className="flex-1 truncate">
