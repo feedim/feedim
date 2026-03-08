@@ -784,10 +784,10 @@ function ExploreContent() {
 
       if (activeTab === "for_you") {
         return (
-          <div className="space-y-6 mt-4 px-3 sm:px-4">
+          <div className="space-y-6 mt-4">
             {searchResults.users.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("users")}</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2 px-3 sm:px-4">{t("users")}</h3>
                 <div className="space-y-0.5">
                   {searchResults.users.slice(0, 3).map(u => <UserListItem key={u.user_id} user={u} autoSubtitle />)}
                 </div>
@@ -795,7 +795,7 @@ function ExploreContent() {
             )}
             {searchResults.tags.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("tags")}</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2 px-3 sm:px-4">{t("tags")}</h3>
                 <div className="space-y-0.5">
                   {searchResults.tags.slice(0, 3).map(tag => <TagRow key={tag.id} tag={tag} />)}
                 </div>
@@ -803,7 +803,7 @@ function ExploreContent() {
             )}
             {searchResults.sounds.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("sounds")}</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2 px-3 sm:px-4">{t("sounds")}</h3>
                 <div className="space-y-0.5">
                   {searchResults.sounds.slice(0, 3).map(s => <SoundRow key={s.id} sound={s} />)}
                 </div>
@@ -811,7 +811,7 @@ function ExploreContent() {
             )}
             {searchResults.posts.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-text-muted mb-2">{t("contents")}</h3>
+                <h3 className="text-sm font-semibold text-text-muted mb-2 px-3 sm:px-4">{t("contents")}</h3>
                 <div className="flex flex-col gap-[16px] mt-[10px]">
                 {searchResults.posts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map(post => <PostCard key={post.id} post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />)}
                 </div>
