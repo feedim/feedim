@@ -17,7 +17,10 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get("limit") || String(MOMENT_PAGE_SIZE)), 20);
-    const cursor = searchParams.get("cursor"); // last moment id for pagination
+    const excludeParam = searchParams.get("exclude");
+    const excludeIds = excludeParam
+      ? new Set(excludeParam.split(",").map(Number).filter(n => !isNaN(n)).slice(0, 200))
+      : new Set<number>();
 
     const admin = createAdminClient();
 
@@ -155,7 +158,7 @@ export async function GET(req: NextRequest) {
               .in("author_id", countryAuthorIds)
               .eq("content_type", "moment")
               .eq("status", "published")
-              .eq("is_nsfw", false)
+              .or("is_nsfw.eq.false,is_nsfw.is.null")
               .gte("published_at", cutoff30d)
               .order("trending_score", { ascending: false })
               .limit(countryDiscoveryLimit);
@@ -171,7 +174,7 @@ export async function GET(req: NextRequest) {
           .select(candidateFields)
           .eq("content_type", "moment")
           .eq("status", "published")
-          .eq("is_nsfw", false)
+          .or("is_nsfw.eq.false,is_nsfw.is.null")
           .gte("published_at", cutoff30d)
           .order("trending_score", { ascending: false })
           .limit(discoveryLimit);
@@ -282,16 +285,10 @@ export async function GET(req: NextRequest) {
     // Diversity enforcement (relaxed — moments are short-form, less strict)
     const diversified = enforceDiversity(scored, poolSize, false);
 
-    // Cursor-based pagination: find offset after cursor
-    let startIdx = 0;
-    if (cursor) {
-      const cursorId = parseInt(cursor, 10);
-      const cursorIdx = diversified.findIndex(c => c.id === cursorId);
-      if (cursorIdx >= 0) startIdx = cursorIdx + 1;
-    }
-
-    const pageCandidates = diversified.slice(startIdx, startIdx + limit);
-    const hasMore = diversified.length > startIdx + limit;
+    // Exclude already-loaded moments and paginate
+    const available = diversified.filter(c => !excludeIds.has(c.id));
+    const pageCandidates = available.slice(0, limit);
+    const hasMore = available.length > limit;
 
     if (pageCandidates.length === 0) {
       return NextResponse.json({ moments: [], hasMore: false });

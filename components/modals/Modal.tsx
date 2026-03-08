@@ -517,6 +517,7 @@ export default function Modal({
     >
       <div
         ref={backdropRef}
+        data-scroll-lock-allow
         className={`absolute inset-0 bg-black/60 transition-opacity ${closing ? "duration-200 opacity-0" : "duration-200 opacity-100"}`}
         onClick={handleClose}
       />

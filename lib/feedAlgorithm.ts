@@ -169,8 +169,8 @@ export function computeFeedScore(
   const typeMultiplier = CONTENT_TYPE_MULTIPLIERS[candidate.content_type] ?? 1;
   score *= typeMultiplier;
 
-  // 10. Jitter for varied ordering
-  score += Math.random() * 30;
+  // 10. Jitter for varied ordering (high jitter ensures diverse feeds)
+  score += Math.random() * 120;
 
   // 11. Gradual reach — new discovery posts start at 20% visibility,
   //     escalate based on engagement rate and time (Instagram-like seed audience)

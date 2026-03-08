@@ -150,8 +150,8 @@ function MomentsContent() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const perfHintsRef = useRef<MomentsPerfHints>(getMomentsPerfHints());
 
-  const getMomentsUrl = useCallback((cursor?: string) => (
-    withCacheScope(`/api/posts/moments?limit=10${cursor ? `&cursor=${cursor}` : ""}&locale=${locale}`, momentsCacheScope)
+  const getMomentsUrl = useCallback((excludeIds?: number[]) => (
+    withCacheScope(`/api/posts/moments?limit=10${excludeIds?.length ? `&exclude=${excludeIds.join(",")}` : ""}&locale=${locale}`, momentsCacheScope)
   ), [locale, momentsCacheScope]);
 
   // Idle detection — "Are you still watching?" after 15 min of no interaction
@@ -277,10 +277,10 @@ function MomentsContent() {
     return () => document.documentElement.removeAttribute("data-moments-active");
   }, []);
 
-  const loadMoments = useCallback(async (cursor?: string) => {
+  const loadMoments = useCallback(async (excludeIds?: number[]) => {
     try {
-      const url = getMomentsUrl(cursor);
-      const data = await fetchWithCache(url, { ttlSeconds: 30, forceRefresh: !!cursor }) as {
+      const url = getMomentsUrl(excludeIds);
+      const data = await fetchWithCache(url, { ttlSeconds: 30, forceRefresh: (excludeIds?.length ?? 0) > 0 }) as {
         moments?: Moment[];
         hasMore?: boolean;
       };
@@ -449,8 +449,7 @@ function MomentsContent() {
           return;
         }
         setLoadingMore(true);
-        const lastMoment = moments[moments.length - 1];
-        const data = await loadMoments(String(lastMoment.id));
+        const data = await loadMoments(moments.map(m => m.id));
         const newMoments = data.moments as Moment[];
         setMoments(prev => {
           const existingIds = new Set(prev.map(m => m.id));
