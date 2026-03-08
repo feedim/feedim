@@ -80,6 +80,7 @@ export default async function RootLayout({
       data-ads-feed={adsSettings.feed ? "1" : "0"}
       data-ads-moments={adsSettings.moments ? "1" : "0"}
       data-ads-video={adsSettings.videoPostroll ? "1" : "0"}
+      data-ads-post-detail={adsSettings.postDetail ? "1" : "0"}
     >
       <head>
         <meta charSet="utf-8" />

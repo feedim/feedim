@@ -453,7 +453,7 @@ function MomentsContent() {
     }
   }, [activeDisplayIndex, displayItems]);
 
-  // Dismiss ads the user has scrolled past (position-based — works even with fast scrolling)
+  // Dismiss ads once the user has fully scrolled past them
   useEffect(() => {
     const item = displayItems[activeDisplayIndex];
     if (!item || item.type === "ad") return;
@@ -461,7 +461,9 @@ function MomentsContent() {
     setDismissedAdKeys(prev => {
       let next: Set<number> | null = null;
       for (const di of displayItems) {
-        if (di.type === "ad" && di.adKey < currentRealIndex && !prev.has(di.adKey)) {
+        // Ad at position adKey sits after moment[adKey]. Dismiss once user
+        // is on moment[adKey+1] or beyond — meaning they fully passed the ad.
+        if (di.type === "ad" && currentRealIndex > di.adKey + 1 && !prev.has(di.adKey)) {
           if (!next) next = new Set(prev);
           next.add(di.adKey);
         }
@@ -649,13 +651,7 @@ function MomentsContent() {
                 onSkip={() => {
                   const nextEl = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
                   if (nextEl) nextEl.scrollIntoView({ behavior: "smooth" });
-                  setTimeout(() => {
-                    setDismissedAdKeys(prev => {
-                      const next = new Set(prev);
-                      next.add(item.adKey);
-                      return next;
-                    });
-                  }, 400);
+                  // Position-based effect will dismiss once user lands on next moment
                 }}
               />
             </div>

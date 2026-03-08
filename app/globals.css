@@ -603,6 +603,12 @@ a .loader {
   border-top-color: #fff;
 }
 
+/* ── Header Alert Bar offset ── */
+:root { --alert-bar-h: 0px; }
+.has-alert-bar aside.fixed { top: var(--alert-bar-h); height: calc(100% - var(--alert-bar-h)); }
+.has-alert-bar .right-sidebar-inner { top: var(--alert-bar-h) !important; height: calc(100vh - var(--alert-bar-h)) !important; }
+.has-alert-bar #dashboard-shell main { padding-top: var(--alert-bar-h); }
+
 /* ── Modal scaleOut ── */
 @keyframes scaleOut {
   from { transform: scale(1); opacity: 1; }

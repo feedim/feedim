@@ -36,6 +36,7 @@ export async function PUT(request: NextRequest) {
   if (typeof body.feed === "boolean") partial.feed = body.feed;
   if (typeof body.moments === "boolean") partial.moments = body.moments;
   if (typeof body.videoPostroll === "boolean") partial.videoPostroll = body.videoPostroll;
+  if (typeof body.postDetail === "boolean") partial.postDetail = body.postDetail;
   const settings = await setAdsSettings(partial);
   return NextResponse.json(settings);
 }

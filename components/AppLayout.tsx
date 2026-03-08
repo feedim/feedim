@@ -53,7 +53,7 @@ export default function AppLayout({
       </div>
       {!hideRightSidebar && (
         <aside className="hidden xl:block w-[350px] shrink-0">
-          <div className="fixed top-0 w-[350px] h-screen p-4 pt-6 space-y-3 overflow-y-auto overscroll-contain scrollbar-hide z-10">
+          <div className="right-sidebar-inner fixed top-0 w-[350px] h-screen p-4 pt-6 space-y-3 overflow-y-auto overscroll-contain scrollbar-hide z-10">
             {rightSidebar || <SuggestionWidget />}
           </div>
         </aside>

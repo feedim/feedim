@@ -7,6 +7,7 @@ import { getAuthUserId } from "@/lib/auth";
 import PostInteractionBar from "@/components/PostInteractionBar";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import RelatedPosts from "@/components/RelatedPosts";
+import AdBanner from "@/components/AdBanner";
 import Link from "next/link";
 
 import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
@@ -456,6 +457,8 @@ export default async function PostPage({ params }: PageProps) {
             allowComments={post.allow_comments !== false}
           />
 
+          <AdBanner slot="post-bottom" className="mt-4 mb-2" />
+
           {/* Related content — same as post page */}
           <RelatedPosts
             posts={authorContent}
@@ -641,6 +644,8 @@ export default async function PostPage({ params }: PageProps) {
           />
 
         </article>
+
+        <AdBanner slot="post-bottom" className="mt-4 mb-2 px-4" />
 
         {/* Related content — outside article to avoid double padding */}
         <RelatedPosts

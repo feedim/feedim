@@ -74,6 +74,7 @@ export default function AdminPage() {
   const [adsFeed, setAdsFeed] = useState(false);
   const [adsMoments, setAdsMoments] = useState(false);
   const [adsVideo, setAdsVideo] = useState(false);
+  const [adsPostDetail, setAdsPostDetail] = useState(false);
   const [adsLoading, setAdsLoading] = useState(false);
 
   // Copyright scan tool
@@ -272,6 +273,7 @@ export default function AdminPage() {
         setAdsFeed(!!data.feed);
         setAdsMoments(!!data.moments);
         setAdsVideo(!!data.videoPostroll);
+        setAdsPostDetail(!!data.postDetail);
       })
       .catch(() => {});
   }, [tab]);
@@ -604,14 +606,15 @@ export default function AdminPage() {
                         await fetch("/api/admin/site-settings/ads", {
                           method: "PUT",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ enabled: next, feed: next ? adsFeed : false, moments: next ? adsMoments : false, videoPostroll: next ? adsVideo : false }),
+                          body: JSON.stringify({ enabled: next, feed: next ? adsFeed : false, moments: next ? adsMoments : false, videoPostroll: next ? adsVideo : false, postDetail: next ? adsPostDetail : false }),
                         });
                         document.documentElement.dataset.adsEnabled = next ? "1" : "0";
                         if (!next) {
-                          setAdsFeed(false); setAdsMoments(false); setAdsVideo(false);
+                          setAdsFeed(false); setAdsMoments(false); setAdsVideo(false); setAdsPostDetail(false);
                           document.documentElement.dataset.adsFeed = "0";
                           document.documentElement.dataset.adsMoments = "0";
                           document.documentElement.dataset.adsVideo = "0";
+                          document.documentElement.dataset.adsPostDetail = "0";
                         }
                       } catch {
                         setAdsEnabled(!next);
@@ -635,6 +638,7 @@ export default function AdminPage() {
                       { key: "feed" as const, label: t("adsFeed"), desc: t("adsFeedDesc"), value: adsFeed, setter: setAdsFeed, attr: "adsFeed" },
                       { key: "moments" as const, label: t("adsMoments"), desc: t("adsMomentsDesc"), value: adsMoments, setter: setAdsMoments, attr: "adsMoments" },
                       { key: "videoPostroll" as const, label: t("adsVideoPostroll"), desc: t("adsVideoPostrollDesc"), value: adsVideo, setter: setAdsVideo, attr: "adsVideo" },
+                      { key: "postDetail" as const, label: t("adsPostDetail"), desc: t("adsPostDetailDesc"), value: adsPostDetail, setter: setAdsPostDetail, attr: "adsPostDetail" },
                     ] as const).map(row => (
                       <div key={row.key} className="flex items-center justify-between">
                         <div>

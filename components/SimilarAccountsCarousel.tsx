@@ -198,7 +198,7 @@ export default function SimilarAccountsCarousel({ userId, username, onClose, vis
                 followsMe={u.follows_me && !isFollowing}
                 onClick={() => { void handleFollow(u.username, u.user_id); }}
                 disabled={pending.has(u.user_id)}
-                className="mt-2 w-full !h-[31px] !text-[0.73rem] !rounded-lg"
+                className="mt-2 w-full !h-[28px] !text-[0.7rem] !rounded-lg"
               />
             </div>
           );

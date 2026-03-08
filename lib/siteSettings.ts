@@ -8,6 +8,7 @@ export interface AdsSettings {
   feed: boolean;
   moments: boolean;
   videoPostroll: boolean;
+  postDetail: boolean;
 }
 
 const DEFAULT_ADS_SETTINGS: AdsSettings = {
@@ -15,6 +16,7 @@ const DEFAULT_ADS_SETTINGS: AdsSettings = {
   feed: false,
   moments: false,
   videoPostroll: false,
+  postDetail: false,
 };
 
 export async function getAdsSettings(): Promise<AdsSettings> {
@@ -30,13 +32,14 @@ export async function getAdsSettings(): Promise<AdsSettings> {
     // Backwards-compat: old format was { enabled: boolean }
     if (typeof v.feed === "undefined") {
       const enabled = !!v.enabled;
-      return { enabled, feed: enabled, moments: enabled, videoPostroll: enabled };
+      return { enabled, feed: enabled, moments: enabled, videoPostroll: enabled, postDetail: enabled };
     }
     return {
       enabled: !!v.enabled,
       feed: !!v.feed,
       moments: !!v.moments,
       videoPostroll: !!v.videoPostroll,
+      postDetail: !!v.postDetail,
     };
   });
 }

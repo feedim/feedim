@@ -51,6 +51,7 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
     if (slot === "feed" && ds.adsFeed !== "1") return false;
     if (slot === "moment" && ds.adsMoments !== "1") return false;
     if (slot === "overlay" && ds.adsVideo !== "1") return false;
+    if ((slot === "post-bottom" || slot === "post-detail" || slot === "post-top") && ds.adsPostDetail !== "1") return false;
     return true;
   }, [hydrated, slot]);
 

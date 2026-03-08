@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
 import PostInteractionBar from "@/components/PostInteractionBar";
 import PostHeaderActions from "@/components/PostHeaderActions";
+import AdBanner from "@/components/AdBanner";
 import Link from "next/link";
 
 import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
@@ -284,6 +285,8 @@ export default async function VideoPage({ params }: PageProps) {
           isModeration={!!post.is_nsfw || post.status === 'moderation'}
           allowComments={post.allow_comments !== false}
         />
+
+        <AdBanner slot="post-bottom" className="mt-4 mb-2" />
 
         {nextVideos.length > 0 && (
           <div className="xl:hidden mb-6 pt-3.5">

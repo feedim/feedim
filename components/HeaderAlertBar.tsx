@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { useUser } from "@/components/UserContext";
 import { useTranslations } from "next-intl";
@@ -11,6 +11,7 @@ type AlertType = "email_not_verified";
 interface Alert {
   type: AlertType;
   message: string;
+  cta: string;
   href: string;
 }
 
@@ -18,34 +19,60 @@ export default function HeaderAlertBar() {
   const { user } = useUser();
   const t = useTranslations("auth");
   const router = useRouter();
+  const pathname = usePathname();
   const [dismissed, setDismissed] = useState<Set<AlertType>>(new Set());
+  const barRef = useRef<HTMLDivElement>(null);
 
-  if (!user) return null;
+  const isHomePage = pathname === "/" || pathname === "/dashboard";
 
   const alerts: Alert[] = [];
 
-  if (!user.emailVerified) {
+  if (user && !user.emailVerified) {
     alerts.push({
       type: "email_not_verified",
       message: t("emailNotVerified"),
+      cta: t("clickHere"),
       href: "/security",
     });
   }
 
   const active = alerts.filter((a) => !dismissed.has(a.type));
-  if (active.length === 0) return null;
+  const visible = isHomePage && active.length > 0;
+
+  useEffect(() => {
+    if (visible && barRef.current) {
+      const h = barRef.current.offsetHeight;
+      document.documentElement.style.setProperty("--alert-bar-h", `${h}px`);
+      document.documentElement.classList.add("has-alert-bar");
+    } else {
+      document.documentElement.style.setProperty("--alert-bar-h", "0px");
+      document.documentElement.classList.remove("has-alert-bar");
+    }
+    return () => {
+      document.documentElement.style.setProperty("--alert-bar-h", "0px");
+      document.documentElement.classList.remove("has-alert-bar");
+    };
+  }, [visible]);
+
+  if (!visible) return null;
 
   const alert = active[0];
 
   return (
-    <div className="bg-accent-main text-white text-[0.78rem] font-medium sticky top-0 z-50">
+    <div
+      ref={barRef}
+      className="bg-accent-main text-white text-[0.72rem] font-medium fixed top-0 left-0 right-0 z-[60]"
+    >
       <div className="flex items-center justify-between px-3 py-1.5">
-        <button
-          onClick={() => router.push(alert.href)}
-          className="flex-1 text-left truncate hover:underline cursor-pointer"
-        >
-          {alert.message}
-        </button>
+        <p className="flex-1 truncate">
+          {alert.message}{" "}
+          <button
+            onClick={() => router.push(alert.href)}
+            className="underline font-bold cursor-pointer"
+          >
+            {alert.cta}
+          </button>
+        </p>
         <button
           onClick={() => setDismissed((prev) => new Set(prev).add(alert.type))}
           className="shrink-0 ml-2 p-0.5 rounded hover:bg-white/20 transition"

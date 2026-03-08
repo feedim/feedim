@@ -30,6 +30,7 @@ import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPage
 
 const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
+import AdBanner from "@/components/AdBanner";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -238,6 +239,8 @@ export default async function NotePage({ params }: PageProps) {
             ))}
           </div>
         )}
+
+        <AdBanner slot="post-bottom" className="mt-4 mb-2" />
 
         <RelatedPosts
           posts={authorContent}
