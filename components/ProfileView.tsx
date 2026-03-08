@@ -540,10 +540,28 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             ) : null}
           </div>
           {!isAnyBlocked && isProfessional(profile.account_type || undefined) && profile.professional_category && (
-            <span className="inline-flex items-center gap-1 text-[0.75rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full w-fit mt-0.5">
-              <Briefcase className="h-3 w-3" />
-              {tProf(getCategoryLabelKey(profile.account_type || "business", profile.professional_category))}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span className="inline-flex items-center gap-1 text-[0.75rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full">
+                <Briefcase className="h-3 w-3" />
+                {tProf(getCategoryLabelKey(profile.account_type || "business", profile.professional_category))}
+              </span>
+              {profile.contact_email && (
+                <a
+                  href={`mailto:${profile.contact_email}`}
+                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent-main bg-accent-main/10 px-2 py-0.5 rounded-full hover:bg-accent-main/20 transition"
+                >
+                  {t("email")}
+                </a>
+              )}
+              {profile.contact_phone && (
+                <a
+                  href={`tel:${profile.contact_phone}`}
+                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent-main bg-accent-main/10 px-2 py-0.5 rounded-full hover:bg-accent-main/20 transition"
+                >
+                  <Phone className="h-3 w-3" /> {t("call")}
+                </a>
+              )}
+            </div>
           )}
           {!isAnyBlocked && (
             <div className="mt-1 space-y-1">
@@ -578,26 +596,6 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 <span className="flex items-center gap-1 text-[0.78rem] text-text-muted">
                   <Calendar className="h-3 w-3" /> {t("joinedAt", { date: new Date(profile.created_at).toLocaleDateString(locale, { month: "long", year: "numeric" }) })}
                 </span>
-              )}
-              {profile.account_type === "business" && (profile.contact_email || profile.contact_phone) && (
-                <div className="flex items-center gap-2 mt-1">
-                  {profile.contact_email && (
-                  <a
-                    href={`mailto:${profile.contact_email}`}
-                    className="inline-flex text-[0.78rem] font-medium text-accent-main bg-accent-main/10 px-3 py-1.5 rounded-full hover:bg-accent-main/20 transition"
-                  >
-                    {t("email")}
-                  </a>
-                  )}
-                  {profile.contact_phone && (
-                    <a
-                      href={`tel:${profile.contact_phone}`}
-                      className="inline-flex items-center gap-1.5 text-[0.78rem] font-medium text-accent-main bg-accent-main/10 px-3 py-1.5 rounded-full hover:bg-accent-main/20 transition"
-                    >
-                      <Phone className="h-3.5 w-3.5" /> {t("call")}
-                    </a>
-                  )}
-                </div>
               )}
             </div>
           )}
