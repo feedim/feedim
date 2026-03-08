@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, Suspense, lazy, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense, lazy, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import MomentCard from "@/components/MomentCard";
 import BackButton from "@/components/BackButton";
@@ -18,7 +18,7 @@ import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
 
 type DisplayItem =
   | { type: "moment"; moment: Moment; realIndex: number }
-  | { type: "ad"; adKey: number };
+  | { type: "ad"; adKey: number; dismissed?: boolean };
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
 const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
@@ -205,18 +205,23 @@ function MomentsContent() {
   const [startSlug] = useState<string | null>(() => searchParams.get("s"));
 
   // Build display list — inject ad item every 7 moments
+  // Ads marked as dismissed keep their slot (stable indices) but render as collapsed divs
   const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 7 === 0 && !dismissedAdKeys.has(i)) {
-        items.push({ type: "ad" as const, adKey: i });
+      if ((i + 1) % 7 === 0) {
+        items.push({ type: "ad" as const, adKey: i, dismissed: dismissedAdKeys.has(i) });
       }
     });
     return items;
   }, [moments, ctxUser?.id, dismissedAdKeys]);
+
+  // DOM virtualization — only render full content for items near active index
+  const BUFFER_BEHIND = 2;
+  const BUFFER_AHEAD = 3;
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
@@ -421,10 +426,8 @@ function MomentsContent() {
     return () => { links.forEach(l => { try { document.head.removeChild(l); } catch {} }); };
   }, [activeDisplayIndex, displayItems]);
 
-  // IntersectionObserver
+  // Stable IntersectionObserver — created once, elements observe/unobserve via callback refs
   useEffect(() => {
-    if (displayItems.length === 0) return;
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -438,12 +441,30 @@ function MomentsContent() {
       },
       { threshold: 0.6 }
     );
-
-    const cards = containerRef.current?.querySelectorAll("[data-index]");
-    cards?.forEach((card) => observerRef.current?.observe(card));
-
     return () => observerRef.current?.disconnect();
-  }, [displayItems]);
+  }, []);
+
+  // Callback ref for each slot — observe on mount, unobserve on unmount
+  const slotRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const slotRefCallbacks = useRef<Map<number, (el: HTMLDivElement | null) => void>>(new Map());
+  const makeSlotRef = useCallback((index: number) => {
+    let cb = slotRefCallbacks.current.get(index);
+    if (!cb) {
+      cb = (el: HTMLDivElement | null) => {
+        const prev = slotRefs.current.get(index);
+        if (prev && prev !== el) {
+          observerRef.current?.unobserve(prev);
+          slotRefs.current.delete(index);
+        }
+        if (el) {
+          slotRefs.current.set(index, el);
+          observerRef.current?.observe(el);
+        }
+      };
+      slotRefCallbacks.current.set(index, cb);
+    }
+    return cb;
+  }, []);
 
   // Update browser URL as user scrolls through moments (skip ad items)
   useEffect(() => {
@@ -454,22 +475,32 @@ function MomentsContent() {
   }, [activeDisplayIndex, displayItems]);
 
   // Dismiss ads once the user has fully scrolled past them
+  // Dismissed ads collapse to 0 height — compensate scroll position
+  const pendingDismissRef = useRef(0);
   useEffect(() => {
     const item = displayItems[activeDisplayIndex];
     if (!item || item.type === "ad") return;
     const currentRealIndex = item.realIndex;
+    pendingDismissRef.current = 0;
     setDismissedAdKeys(prev => {
       let next: Set<number> | null = null;
       for (const di of displayItems) {
-        // Ad at position adKey sits after moment[adKey]. Dismiss once user
-        // is on moment[adKey+1] or beyond — meaning they fully passed the ad.
-        if (di.type === "ad" && currentRealIndex > di.adKey + 1 && !prev.has(di.adKey)) {
+        if (di.type === "ad" && !di.dismissed && currentRealIndex > di.adKey + 1 && !prev.has(di.adKey)) {
           if (!next) next = new Set(prev);
           next.add(di.adKey);
+          pendingDismissRef.current++;
         }
       }
       return next || prev;
     });
+    // Compensate scroll for collapsed ads above viewport
+    if (pendingDismissRef.current > 0 && containerRef.current) {
+      const vh = window.innerHeight;
+      const count = pendingDismissRef.current;
+      requestAnimationFrame(() => {
+        containerRef.current?.scrollBy(0, -vh * count);
+      });
+    }
   }, [activeDisplayIndex, displayItems]);
 
   // Infinite loading — guests redirected to login on loadMore
@@ -643,45 +674,75 @@ function MomentsContent() {
           style={{ backgroundColor: "#000" }}
         >
       {displayItems.map((item, displayIndex) => {
+        // Dismissed ads — fully collapsed, removed from flow
+        if (item.type === "ad" && item.dismissed) {
+          return null;
+        }
+
+        const inWindow = displayIndex >= activeDisplayIndex - BUFFER_BEHIND && displayIndex <= activeDisplayIndex + BUFFER_AHEAD;
+
         if (item.type === "ad") {
+          // Ad outside window — lightweight spacer
+          if (!inWindow) {
+            return (
+              <div key={`ad-${item.adKey}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start snap-always" style={{ ...viewportHeightStyle, backgroundColor: "#000" }} />
+            );
+          }
           return (
-            <div key={`ad-${item.adKey}`} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
+            <div key={`ad-${item.adKey}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
               <MomentAdCard
                 isActive={displayIndex === activeDisplayIndex}
                 onSkip={() => {
                   const nextEl = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
                   if (nextEl) nextEl.scrollIntoView({ behavior: "smooth" });
-                  // Position-based effect will dismiss once user lands on next moment
                 }}
               />
             </div>
           );
         }
+
+        // Moment outside window — lightweight spacer with thumbnail bg
+        if (!inWindow) {
+          return (
+            <div
+              key={`m-${item.moment.id}`}
+              ref={makeSlotRef(displayIndex)}
+              data-index={displayIndex}
+              className="snap-start"
+              style={{
+                ...viewportHeightStyle,
+                backgroundColor: "#000",
+                backgroundImage: item.moment.video_thumbnail ? `url(${item.moment.video_thumbnail})` : undefined,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          );
+        }
+
         const distance = Math.abs(displayIndex - activeDisplayIndex);
         const preloadHint: "auto" | "metadata" = distance <= 2 ? "auto" : "metadata";
         return (
-        <React.Fragment key={`m-${item.moment.id}`}>
-          <div data-index={displayIndex} className="snap-start" style={viewportHeightStyle}>
-                <MomentCard
-                  moment={item.moment}
-                  isActive={displayIndex === activeDisplayIndex && !idlePaused}
-                  loadVideo={distance <= 5}
-                  liked={likedSet.has(item.moment.id)}
-                  saved={savedSet.has(item.moment.id)}
-                  muted={globalMuted}
-                  onToggleMute={handleToggleMute}
-                  onLike={() => handleLike(item.moment.id)}
-                  onLikesClick={() => handleLikesOpen(item.moment.id)}
-                  onComment={() => handleComment(item.moment)}
-                  onShare={() => handleShare(item.moment)}
-                  onSave={() => handleSave(item.moment.id)}
-                  onOptions={() => handleOptions(item.moment)}
-                  preloadHint={preloadHint}
-                />
-              </div>
-            </React.Fragment>
-          );
-          })}
+          <div key={`m-${item.moment.id}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start" style={viewportHeightStyle}>
+            <MomentCard
+              moment={item.moment}
+              isActive={displayIndex === activeDisplayIndex && !idlePaused}
+              loadVideo={distance <= 5}
+              liked={likedSet.has(item.moment.id)}
+              saved={savedSet.has(item.moment.id)}
+              muted={globalMuted}
+              onToggleMute={handleToggleMute}
+              onLike={() => handleLike(item.moment.id)}
+              onLikesClick={() => handleLikesOpen(item.moment.id)}
+              onComment={() => handleComment(item.moment)}
+              onShare={() => handleShare(item.moment)}
+              onSave={() => handleSave(item.moment.id)}
+              onOptions={() => handleOptions(item.moment)}
+              preloadHint={preloadHint}
+            />
+          </div>
+        );
+      })}
 
           {loadingMore && (
             <div className="snap-start flex items-center justify-center bg-black" style={viewportHeightStyle}>
