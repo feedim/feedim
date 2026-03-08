@@ -210,7 +210,7 @@ export default function VideoEditorPreview({
       {uploading && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
           <span className="loader mb-3" style={{ width: 28, height: 28, borderTopColor: "var(--accent-color)" }} />
-          <p className="text-white/80 text-[0.82rem] font-semibold">{uploadProgress > 0 ? `%${uploadProgress}` : t("processing")}</p>
+          <p className="text-white/80 text-[0.82rem] font-semibold">{uploadProgress > 0 ? `%${uploadProgress}` : t("preparing")}</p>
           <div className="w-48 h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
             <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, backgroundColor: "var(--accent-color)" }} />
           </div>

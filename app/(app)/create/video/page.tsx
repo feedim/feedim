@@ -394,6 +394,7 @@ function VideoWriteContent() {
 
     try {
       // 1. Get presigned URL from server
+      setUploadProgress(1);
       const initRes = await fetch("/api/upload/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -408,6 +409,7 @@ function VideoWriteContent() {
       if (!initRes.ok) throw new Error(initData.error || t("uploadInitFailed"));
 
       const { uploadUrl, publicUrl } = initData;
+      setUploadProgress(2);
 
       // 2. Direct PUT to R2 via presigned URL with progress tracking
       await new Promise<void>((resolve, reject) => {
@@ -418,7 +420,7 @@ function VideoWriteContent() {
 
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            setUploadProgress(Math.round((e.loaded / e.total) * 95));
+            setUploadProgress(Math.round(2 + (e.loaded / e.total) * 93));
           }
         };
 

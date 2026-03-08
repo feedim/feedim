@@ -240,13 +240,13 @@ export default async function NotePage({ params }: PageProps) {
           </div>
         )}
 
-        <AdBanner slot="post-bottom" className="mt-4 mb-2" />
-
         <RelatedPosts
           posts={authorContent}
           featuredPosts={featuredContent}
           authorUsername={author?.username}
         />
+
+        <AdBanner slot="post-bottom" className="mt-4 mb-2" />
 
       </article>
     </div>

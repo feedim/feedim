@@ -1113,6 +1113,7 @@
     "maxMinutes": "Max {minutes} minutes",
     "maxSeconds": "Max {seconds} seconds",
     "processing": "Processing...",
+    "preparing": "Preparing...",
     "cancelUpload": "Cancel",
     "play": "Play",
     "pause": "Pause",

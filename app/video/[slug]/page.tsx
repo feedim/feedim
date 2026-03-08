@@ -286,8 +286,6 @@ export default async function VideoPage({ params }: PageProps) {
           allowComments={post.allow_comments !== false}
         />
 
-        <AdBanner slot="post-bottom" className="mt-4 mb-2" />
-
         {nextVideos.length > 0 && (
           <div className="xl:hidden mb-6 pt-3.5">
             <h3 className="text-[1.1rem] font-bold mb-4">{t("nextVideos")}</h3>
@@ -298,6 +296,8 @@ export default async function VideoPage({ params }: PageProps) {
             </div>
           </div>
         )}
+
+        <AdBanner slot="post-bottom" className="mt-4 mb-2" />
 
         <div className="h-8 md:h-0" />
       </article>

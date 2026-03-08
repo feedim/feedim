@@ -1113,6 +1113,7 @@
     "maxMinutes": "Maks {minutes} dəqiqə",
     "maxSeconds": "Maks {seconds} saniyə",
     "processing": "İşlənir...",
+    "preparing": "Hazırlanır...",
     "cancelUpload": "Ləğv et",
     "play": "Oynat",
     "pause": "Dayandır",

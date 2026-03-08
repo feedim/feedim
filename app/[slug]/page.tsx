@@ -457,14 +457,14 @@ export default async function PostPage({ params }: PageProps) {
             allowComments={post.allow_comments !== false}
           />
 
-          <AdBanner slot="post-bottom" className="mt-4 mb-2" />
-
           {/* Related content — same as post page */}
           <RelatedPosts
             posts={authorContent}
             featuredPosts={featuredContent}
             authorUsername={author?.username}
           />
+
+          <AdBanner slot="post-bottom" className="mt-4 mb-2" />
 
         </article>
       </div>
@@ -645,14 +645,14 @@ export default async function PostPage({ params }: PageProps) {
 
         </article>
 
-        <AdBanner slot="post-bottom" className="mt-4 mb-2 px-4" />
-
         {/* Related content — outside article to avoid double padding */}
         <RelatedPosts
           posts={authorContent}
           featuredPosts={featuredContent}
           authorUsername={author?.username}
         />
+
+        <AdBanner slot="post-bottom" className="mt-4 mb-2 px-4" />
 
     </div>
   );
