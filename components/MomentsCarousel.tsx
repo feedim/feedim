@@ -69,7 +69,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">{t("title")}</span>
       </div>
-      <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10 }}>
+      <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10, paddingRight: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className={cn("shrink-0 w-[130px] h-[230px] rounded-[14px] animate-pulse", noBg ? "bg-bg-secondary" : "bg-bg-tertiary")} />
         ))}
@@ -89,7 +89,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
       {/* Horizontal scroll */}
       <div
         className="flex justify-center gap-2.5 overflow-x-auto scrollbar-hide"
-        style={{ scrollSnapType: "x mandatory", marginLeft: 10 }}
+        style={{ scrollSnapType: "x mandatory", marginLeft: 10, paddingRight: 10 }}
       >
         {moments.map((m) => {
           const author = m.profiles;

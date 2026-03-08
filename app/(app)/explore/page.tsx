@@ -96,7 +96,7 @@ function SearchPrompt() {
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<AppLayout hideRightSidebar><div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} /></div></AppLayout>}>
+    <Suspense fallback={<AppLayout hideRightSidebar><PostCardSkeleton count={5} /></AppLayout>}>
       <ExploreContent />
     </Suspense>
   );
@@ -763,7 +763,7 @@ function ExploreContent() {
           </div>
         );
       }
-      return <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} /></div>;
+      return <PostCardSkeleton count={5} />;
     }
 
     // Search mode — show results
@@ -890,7 +890,7 @@ function ExploreContent() {
 
     // Default explore content per tab
     if (loading) {
-      return <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} /></div>;
+      return <PostCardSkeleton count={5} />;
     }
 
     // Tag filter mode
@@ -927,7 +927,7 @@ function ExploreContent() {
         <div className="mt-1">
           <MomentsCarousel />
           {loading && trendingPosts.length === 0 ? (
-            <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} /></div>
+            <PostCardSkeleton count={5} />
           ) : trendingPosts.length > 0 ? (
             <>
               <div className="flex flex-col gap-[16px] mt-[10px]">
@@ -950,7 +950,7 @@ function ExploreContent() {
       return (
         <div className="mt-1">
           {latestLoading && latestPosts.length === 0 ? (
-            <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} /></div>
+            <PostCardSkeleton count={5} />
           ) : latestPosts.length > 0 ? (
             <>
               <div className="flex flex-col gap-[16px] mt-[10px]">
@@ -1011,7 +1011,7 @@ function ExploreContent() {
       return (
         <div className="mt-1">
           {videoLoading && videoPosts.length === 0 ? (
-            <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} variant="video" /></div>
+            <PostCardSkeleton count={5} variant="video" />
           ) : videoPosts.length > 0 ? (
             <>
               <div className="flex flex-col gap-[16px] mt-[10px]">
@@ -1034,7 +1034,7 @@ function ExploreContent() {
       return (
         <div className="mt-1">
           {noteLoading && notePosts.length === 0 ? (
-            <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} variant="note" /></div>
+            <PostCardSkeleton count={5} variant="note" />
           ) : notePosts.length > 0 ? (
             <>
               <div className="flex flex-col gap-[16px] mt-[10px]">
