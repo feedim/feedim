@@ -225,9 +225,9 @@ export default function UserListModal({
             ))}
           </div>
         ) : users.length === 0 ? (
-          <p className="text-center text-text-muted text-[0.8rem] py-8">{emptyText}</p>
+          <p className="text-center text-text-muted text-[0.86rem] py-8">{emptyText}</p>
         ) : filteredUsers.length === 0 ? (
-          <p className="text-center text-text-muted text-[0.8rem] py-8">
+          <p className="text-center text-text-muted text-[0.86rem] py-8">
             {filterEmptyText()}
           </p>
         ) : (

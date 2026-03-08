@@ -102,7 +102,7 @@ export default function FollowRequestsModal({ open, onClose, username: usernameP
             ))}
           </div>
         ) : requests.length === 0 ? (
-          <p className="text-center text-text-muted text-[0.8rem] py-8">{t("noFollowRequestsPending")}</p>
+          <p className="text-center text-text-muted text-[0.86rem] py-8">{t("noFollowRequestsPending")}</p>
         ) : (
           <div className="space-y-1">
             {requests.map(r => {

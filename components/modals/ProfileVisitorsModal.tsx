@@ -103,7 +103,7 @@ export default function ProfileVisitorsModal({ open, onClose, username }: Profil
             ))}
           </div>
         ) : visitors.length === 0 ? (
-          <p className="text-center text-text-muted text-[0.8rem] py-8">{t("noVisitors")}</p>
+          <p className="text-center text-text-muted text-[0.86rem] py-8">{t("noVisitors")}</p>
         ) : (
           <div className="space-y-3">
             {visitors.map(v => {
