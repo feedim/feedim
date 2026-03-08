@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { useUser } from "@/components/UserContext";
@@ -39,7 +39,8 @@ export default function HeaderAlertBar() {
   const active = alerts.filter((a) => !dismissed.has(a.type));
   const visible = isHomePage && active.length > 0;
 
-  useEffect(() => {
+  // useLayoutEffect runs before paint — prevents content flash under the bar
+  useLayoutEffect(() => {
     if (visible && barRef.current) {
       const h = barRef.current.offsetHeight;
       document.documentElement.style.setProperty("--alert-bar-h", `${h}px`);
@@ -59,6 +60,9 @@ export default function HeaderAlertBar() {
   const alert = active[0];
 
   return (
+    <>
+    {/* Inline style prevents layout flash before useLayoutEffect runs */}
+    <style dangerouslySetInnerHTML={{ __html: `:root { --alert-bar-h: 28px; } #dashboard-shell main { padding-top: var(--alert-bar-h); }` }} />
     <div
       ref={barRef}
       className="bg-accent-main text-white text-[0.72rem] font-medium fixed top-0 left-0 right-0 z-[60]"
@@ -82,5 +86,6 @@ export default function HeaderAlertBar() {
         </button>
       </div>
     </div>
+    </>
   );
 }
