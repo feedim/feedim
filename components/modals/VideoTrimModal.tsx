@@ -8,6 +8,9 @@ import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { logClientError } from "@/lib/runtimeLogger";
 
+const loadFFmpeg = () => import("@ffmpeg/ffmpeg").then(m => m.FFmpeg);
+const loadFFmpegUtil = () => import("@ffmpeg/util").then(m => ({ toBlobURL: m.toBlobURL, fetchFile: m.fetchFile }));
+
 interface VideoTrimModalProps {
   open: boolean;
   onClose: () => void;
@@ -323,8 +326,8 @@ export default function VideoTrimModal({
 
     setTrimming(true);
     try {
-      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-      const { toBlobURL, fetchFile } = await import("@ffmpeg/util");
+      const FFmpeg = await loadFFmpeg();
+      const { toBlobURL, fetchFile } = await loadFFmpegUtil();
 
       const ffmpeg = new FFmpeg();
 

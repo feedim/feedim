@@ -1015,36 +1015,20 @@ function MomentWriteContent() {
                       {t("editCover")}
                     </button>
                   )}
-                  <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
                 </div>
               ) : (
                 <div className="max-w-[160px] w-full">
-                  <div
-                    onClick={() => openFilePicker(thumbInputRef.current)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openFilePicker(thumbInputRef.current);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    className="flex flex-col items-center justify-center aspect-[9/16] border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition"
-                  >
-                    <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
-                    <p className="text-xs text-text-muted text-center">{t("thumbnailUpload")}</p>
-                  </div>
-                  <input ref={thumbInputRef} type="file" accept="image/*" onChange={handleThumbUpload} className="hidden" />
-                  <p className="text-[0.68rem] text-text-muted/70 mt-2 text-center">{t("thumbnailRecommended9by16")}</p>
                   {(videoFile || videoUrl) && (
                     <button
                       type="button"
                       onClick={() => setShowThumbPicker(true)}
-                      className="mt-1 w-full text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition text-center"
+                      className="flex flex-col items-center justify-center aspect-[9/16] border-2 border-dashed border-border-primary hover:border-accent-main/50 rounded-xl cursor-pointer transition w-full"
                     >
-                      {t("editCover")}
+                      <Upload className="h-6 w-6 mx-auto mb-2 opacity-50 text-text-muted" />
+                      <p className="text-xs text-text-muted text-center">{t("editCover")}</p>
                     </button>
                   )}
+                  <p className="text-[0.68rem] text-text-muted/70 mt-2 text-center">{t("thumbnailRecommended9by16")}</p>
                 </div>
               )}
             </div>
