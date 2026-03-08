@@ -22,7 +22,7 @@ export function renderMentionsAsHTML(text: string, max = 3): string {
     const lower = safe.toLowerCase();
     if (!seen.has(lower) && seen.size < max) {
       seen.add(lower);
-      return `<a href="/u/${safe}" class="text-accent-main hover:underline" onclick="event.stopPropagation()">@${safe}</a>`;
+      return `<a href="/u/${safe}" class="text-accent-main hover:underline" data-mention-link>@${safe}</a>`;
     }
     if (!seen.has(lower)) seen.add(lower);
     return `@${safe}`;
@@ -52,7 +52,7 @@ export function renderMentionsInHTML(html: string, max = 3): string {
       const lower = safe.toLowerCase();
       if (!seen.has(lower) && seen.size < max) {
         seen.add(lower);
-        return `<a href="/u/${safe}" class="text-accent-main hover:underline" onclick="event.stopPropagation()">@${safe}</a>`;
+        return `<a href="/u/${safe}" class="text-accent-main hover:underline" data-mention-link>@${safe}</a>`;
       }
       if (!seen.has(lower)) seen.add(lower);
       return `@${safe}`;

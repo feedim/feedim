@@ -100,11 +100,19 @@ export default function DashboardShell({
       return res;
     };
 
+    // Delegated click handler for [data-mention-link] — replaces inline onclick
+    const mentionHandler = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest("[data-mention-link]");
+      if (target) e.stopPropagation();
+    };
+    document.addEventListener("click", mentionHandler, true);
+
     return () => {
       bc?.close();
       if (statusInterval) clearInterval(statusInterval);
       if (visibilityHandler) document.removeEventListener("visibilitychange", visibilityHandler);
       window.fetch = originalFetch;
+      document.removeEventListener("click", mentionHandler, true);
     };
   }, [initialUser]);
 

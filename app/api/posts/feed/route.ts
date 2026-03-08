@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEED_PAGE_SIZE, FEED_CANDIDATE_POOL, FEED_DISCOVERY_QUALITY_GATE, FEED_MIN_CANDIDATES, FEED_SEEN_PENALTY, FEED_MAX_SEEN_IDS } from '@/lib/constants';
 import { cached } from '@/lib/cache';
-import { safePage } from '@/lib/utils';
+import { safePage, safeNotInFilter } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
 import {
   computeFeedScore,
@@ -397,7 +397,7 @@ export async function GET(request: NextRequest) {
             .select(candidateFields)
             .eq('status', 'published')
             .eq('is_nsfw', false)
-            .not('author_id', 'in', `(${excludeAuthors.join(',')})`);
+            .not('author_id', 'in', safeNotInFilter(excludeAuthors));
           if (discoveryCutoff) q = q.gte('published_at', discoveryCutoff);
           if (tier.qualityGate > 0) q = q.gte('quality_score', tier.qualityGate);
           return q
@@ -832,7 +832,7 @@ async function handleContentTab(
         .eq('content_type', contentTypeFilter)
         .eq('status', 'published')
         .eq('is_nsfw', false)
-        .not('author_id', 'in', `(${excludeAuthors.join(',')})`)
+        .not('author_id', 'in', safeNotInFilter(excludeAuthors))
         .gte('published_at', cutoff30d)
         .order('trending_score', { ascending: false })
         .limit(discoveryLimit)

@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
 import { getUserPlan, checkDailyLimit, isAdminPlan, logRateLimitHit, COMMENT_CHAR_LIMITS } from '@/lib/limits';
 import { checkTextContent } from '@/lib/moderation';
-import { safePage } from '@/lib/utils';
+import { safePage, safeNotInFilter } from '@/lib/utils';
 import { safeError } from '@/lib/apiError';
 import { checkEmailVerified } from '@/lib/emailGate';
 import { getTranslations } from 'next-intl/server';
@@ -271,7 +271,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .range(replyOffset, replyOffset + replyLimit);
 
       if (blockedIds.length > 0) {
-        replyQuery = replyQuery.not('author_id', 'in', `(${blockedIds.join(',')})`);
+        replyQuery = replyQuery.not('author_id', 'in', safeNotInFilter(blockedIds));
       }
 
       const { data: rawReplies, error: replyError } = await replyQuery;
@@ -305,7 +305,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Filter out blocked users
     if (blockedIds.length > 0) {
-      query = query.not('author_id', 'in', `(${blockedIds.join(',')})`);
+      query = query.not('author_id', 'in', safeNotInFilter(blockedIds));
     }
 
     if (sort === 'popular') {
@@ -401,7 +401,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .order('created_at', { ascending: true });
 
       if (blockedIds.length > 0) {
-        replyQuery = replyQuery.not('author_id', 'in', `(${blockedIds.join(',')})`);
+        replyQuery = replyQuery.not('author_id', 'in', safeNotInFilter(blockedIds));
       }
 
       const { data: rawAllReplies } = await replyQuery;

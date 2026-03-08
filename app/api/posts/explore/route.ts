@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEED_PAGE_SIZE } from '@/lib/constants';
 import { cached } from '@/lib/cache';
-import { safePage } from '@/lib/utils';
+import { safePage, safeNotInFilter } from '@/lib/utils';
 import { safeError } from '@/lib/apiError';
 import { getTranslations } from 'next-intl/server';
 import {
@@ -129,13 +129,13 @@ export async function GET(request: NextRequest) {
 
     // Filter out blocked users
     if (blockedIds.size > 0) {
-      query = query.not('author_id', 'in', `(${[...blockedIds].join(',')})`);
+      query = query.not('author_id', 'in', safeNotInFilter([...blockedIds]));
     }
 
     // Explore = discovery-focused: exclude self + followed users' posts (unless tag filter)
     if (user && !tagSlug) {
       const excludeIds = [user.id, ...followedIdSet];
-      query = query.not('author_id', 'in', `(${excludeIds.join(',')})`);
+      query = query.not('author_id', 'in', safeNotInFilter(excludeIds));
     }
 
     // NSFW + moderation filter: author and staff see flagged/moderation posts, others see none

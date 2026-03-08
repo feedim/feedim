@@ -85,6 +85,15 @@ export function generateRandomSlug(): string {
   return slug;
 }
 
+/**
+ * Safely build a PostgREST NOT-IN tuple from an array of IDs.
+ * Strips anything that isn't a hex char or hyphen to prevent injection.
+ */
+export function safeNotInFilter(ids: string[]): string {
+  const safe = ids.filter(id => /^[0-9a-f-]+$/i.test(id));
+  return `(${safe.join(",")})`;
+}
+
 export function calculateReadingTime(html: string): { wordCount: number; readingTime: number } {
   const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const wordCount = text ? text.split(' ').length : 0;
