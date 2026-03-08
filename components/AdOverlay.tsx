@@ -271,8 +271,8 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
       style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
       data-ad-protected=""
     >
-      {/* Top-left: "Feedim Ads" label */}
-      <span className="absolute top-3 left-3 text-white/60 text-xs font-medium pointer-events-none tracking-wide">
+      {/* "Feedim Ads" label — top in overlay mode, bottom in fullscreen (moments) */}
+      <span className={`absolute ${mode === "fullscreen" ? "bottom-4 left-4" : "top-3 left-3"} text-white/60 text-xs font-medium pointer-events-none tracking-wide`}>
         Feedim Ads
       </span>
 
