@@ -199,28 +199,36 @@ function MomentsContent() {
   const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string; authorName?: string; authorRole?: string; visibility?: string } | null>(null);
   const [likesModalPostId, setLikesModalPostId] = useState<number | null>(null);
 
+  const [vpHeight, setVpHeight] = useState("100dvh");
+  useEffect(() => {
+    const update = () => setVpHeight(`${window.innerHeight}px`);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   const viewportHeightStyle = useMemo(
-    () => ({ height: "100dvh", minHeight: "100dvh" }),
-    []
+    () => ({ height: vpHeight, minHeight: vpHeight, maxHeight: vpHeight }),
+    [vpHeight]
   );
 
   // Capture initial slug only on mount — ignore subsequent URL changes
   const [startSlug] = useState<string | null>(() => searchParams.get("s"));
 
-  // Build display list — inject ad item every 7 moments
+  // Build display list — inject ad item every 7 moments (skip for premium/admin users)
   // Ads marked as dismissed keep their slot (stable indices) but render as collapsed divs
   const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
+  const skipAds = ctxUser?.role === "admin" || (!!ctxUser?.premiumPlan && ["pro", "max", "business"].includes(ctxUser.premiumPlan));
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 7 === 0) {
+      if (!skipAds && (i + 1) % 7 === 0) {
         items.push({ type: "ad" as const, adKey: i, dismissed: dismissedAdKeys.has(i) });
       }
     });
     return items;
-  }, [moments, ctxUser?.id, dismissedAdKeys]);
+  }, [moments, ctxUser?.id, dismissedAdKeys, skipAds]);
 
   // DOM virtualization — only render full content for items near active index
   const BUFFER_BEHIND = 2;
@@ -237,14 +245,18 @@ function MomentsContent() {
   const reassertLayout = useCallback(() => {
     const main = document.querySelector("main");
     const wrapper = main?.firstElementChild as HTMLElement | null;
+    const h = `${window.innerHeight}px`;
     if (main) {
       main.style.paddingBottom = "0";
+      main.style.paddingTop = "0";
       main.style.overflow = "hidden";
-      main.style.height = "100dvh";
-      main.style.minHeight = "100dvh";
+      main.style.height = h;
+      main.style.minHeight = "0";
+      main.style.maxHeight = h;
     }
     if (wrapper) {
       wrapper.style.height = "100%";
+      wrapper.style.maxHeight = "100%";
       wrapper.style.overflow = "hidden";
     }
   }, []);
@@ -261,12 +273,15 @@ function MomentsContent() {
       const wrapper = main?.firstElementChild as HTMLElement | null;
       if (main) {
         main.style.paddingBottom = "";
+        main.style.paddingTop = "";
         main.style.overflow = "";
         main.style.height = "";
         main.style.minHeight = "";
+        main.style.maxHeight = "";
       }
       if (wrapper) {
         wrapper.style.height = "";
+        wrapper.style.maxHeight = "";
         wrapper.style.overflow = "";
       }
     };
@@ -644,8 +659,8 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="flex justify-center md:h-screen bg-bg-primary" style={{ height: "100dvh", minHeight: "100dvh" }}>
-        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
+      <div className="flex justify-center md:h-screen bg-bg-primary" style={viewportHeightStyle}>
+        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: 480 }} />
       </div>
     );
   }
@@ -775,6 +790,7 @@ function MomentsContent() {
               onSave={() => handleSave(item.moment.id)}
               onOptions={() => handleOptions(item.moment)}
               preloadHint={preloadHint}
+              viewportHeight={vpHeight}
             />
           </div>
         );

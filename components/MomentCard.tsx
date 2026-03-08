@@ -67,9 +67,10 @@ interface MomentCardProps {
   muted?: boolean;
   onToggleMute?: () => void;
   preloadHint?: "auto" | "metadata";
+  viewportHeight?: string;
 }
 
-export default memo(function MomentCard({ moment, isActive = false, loadVideo = false, onLike, onComment, onShare, onSave, onOptions, onLikesClick, liked = false, saved = false, muted = true, onToggleMute, preloadHint }: MomentCardProps) {
+export default memo(function MomentCard({ moment, isActive = false, loadVideo = false, onLike, onComment, onShare, onSave, onOptions, onLikesClick, liked = false, saved = false, muted = true, onToggleMute, preloadHint, viewportHeight }: MomentCardProps) {
   const t = useTranslations("tooltip");
   const tPost = useTranslations("post");
   const tc = useTranslations("common");
@@ -99,7 +100,8 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   const [isClamped, setIsClamped] = useState(false);
   const displayLikeCount = Math.max(moment.like_count || 0, liked ? 1 : 0);
   const displaySaveCount = Math.max(moment.save_count || 0, saved ? 1 : 0);
-  const viewportHeightStyle = { height: "100dvh", minHeight: "100dvh" } as const;
+  const h = viewportHeight || "100dvh";
+  const viewportHeightStyle = { height: h, minHeight: h, maxHeight: h } as const;
 
   // Sound state — external if sound exists, is active, and audio differs from video
   const hasExternalSound = !!moment.sounds && moment.sounds.status === "active" && moment.sounds.audio_url !== moment.video_url;
@@ -288,7 +290,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
       <div
         ref={cardRef}
         className="relative w-full bg-black snap-start snap-always md:h-screen"
-        style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: "100dvh 100vw" }}
+        style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: `${h} 100vw` }}
       >
         {(moment.video_thumbnail || moment.featured_image) && (
           <BlurImage
@@ -306,7 +308,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
       ref={cardRef}
       className="relative w-full bg-black snap-start snap-always md:h-screen"
       data-moment-active={isActive ? "true" : undefined}
-      style={{ ...viewportHeightStyle, contentVisibility: isActive ? "visible" : "auto", containIntrinsicSize: "100dvh 100vw" }}
+      style={{ ...viewportHeightStyle, contentVisibility: isActive ? "visible" : "auto", containIntrinsicSize: `${h} 100vw` }}
     >
       {/* Full-screen video */}
       <div className="absolute inset-0" onClick={togglePlayPause}>
