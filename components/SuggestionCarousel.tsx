@@ -142,14 +142,9 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10 }}>
+        <div className="flex gap-2.5 overflow-hidden px-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="flex flex-col items-center shrink-0 w-[130px] py-3 px-1.5 bg-bg-secondary rounded-[14px] border border-border-primary">
-              <div className="w-[72px] h-[72px] rounded-full bg-bg-tertiary mb-2" />
-              <div className="h-[11px] w-16 bg-bg-tertiary rounded-[5px] animate-pulse mb-1" />
-              <div className="h-[9px] w-12 bg-bg-tertiary rounded-[5px] animate-pulse" />
-              <div className="mt-2 w-full h-[31px] bg-bg-tertiary rounded-lg" />
-            </div>
+            <div key={i} className="flex-1 h-[180px] rounded-[14px] bg-bg-tertiary" />
           ))}
         </div>
       </div>
