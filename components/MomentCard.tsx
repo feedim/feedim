@@ -74,6 +74,19 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Cleanup audio on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+      }
+    };
+  }, []);
+
   const [paused, setPaused] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -135,7 +148,10 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         audio.play().catch(() => {});
       }
       const frame = requestAnimationFrame(() => setPaused(false));
-      return () => cancelAnimationFrame(frame);
+      return () => {
+        cancelAnimationFrame(frame);
+        audioRef.current?.pause();
+      };
     } else {
       audio?.pause();
       const frame = requestAnimationFrame(() => setExpanded(false));

@@ -146,6 +146,9 @@ function MomentsContent() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeDisplayIndex, setActiveDisplayIndex] = useState(0);
+  const [settledIndex, setSettledIndex] = useState(0);
+  const pendingActiveRef = useRef<number | null>(null);
+  const scrollSettledRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [likedSet, setLikedSet] = useState<Set<number>>(new Set());
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [globalMuted, setGlobalMuted] = useState(true);
@@ -222,6 +225,7 @@ function MomentsContent() {
   // DOM virtualization — only render full content for items near active index
   const BUFFER_BEHIND = 2;
   const BUFFER_AHEAD = 3;
+  const THUMBNAIL_ZONE = 10;
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
@@ -413,7 +417,7 @@ function MomentsContent() {
     if (!perfHintsRef.current.allowVideoPrefetch) return;
     const links: HTMLLinkElement[] = [];
     for (let offset = 1; offset <= 2; offset++) {
-      const idx = activeDisplayIndex + offset;
+      const idx = settledIndex + offset;
       const item = displayItems[idx];
       if (item?.type !== "moment" || !item.moment.video_url) continue;
       const link = document.createElement("link");
@@ -424,7 +428,7 @@ function MomentsContent() {
       links.push(link);
     }
     return () => { links.forEach(l => { try { document.head.removeChild(l); } catch {} }); };
-  }, [activeDisplayIndex, displayItems]);
+  }, [settledIndex, displayItems]);
 
   // Stable IntersectionObserver — created once, elements observe/unobserve via callback refs
   useEffect(() => {
@@ -435,13 +439,24 @@ function MomentsContent() {
             const idx = Number(entry.target.getAttribute("data-index"));
             if (!isNaN(idx)) {
               setActiveDisplayIndex((prev) => (prev === idx ? prev : idx));
+              pendingActiveRef.current = idx;
+              clearTimeout(scrollSettledRef.current);
+              scrollSettledRef.current = setTimeout(() => {
+                if (pendingActiveRef.current !== null) {
+                  setSettledIndex(pendingActiveRef.current);
+                  pendingActiveRef.current = null;
+                }
+              }, 150);
             }
           }
         });
       },
       { threshold: 0.6 }
     );
-    return () => observerRef.current?.disconnect();
+    return () => {
+      observerRef.current?.disconnect();
+      clearTimeout(scrollSettledRef.current);
+    };
   }, []);
 
   // Callback ref for each slot — observe on mount, unobserve on unmount
@@ -468,49 +483,54 @@ function MomentsContent() {
 
   // Update browser URL as user scrolls through moments (skip ad items)
   useEffect(() => {
-    const item = displayItems[activeDisplayIndex];
+    const item = displayItems[settledIndex];
     if (item?.type === "moment") {
       window.history.replaceState(null, "", `/moments?s=${item.moment.slug}`);
     }
-  }, [activeDisplayIndex, displayItems]);
+  }, [settledIndex, displayItems]);
 
   // Dismiss ads once the user has fully scrolled past them
   // Dismissed ads collapse to 0 height — compensate scroll position
-  const pendingDismissRef = useRef(0);
   useEffect(() => {
-    const item = displayItems[activeDisplayIndex];
+    const item = displayItems[settledIndex];
     if (!item || item.type === "ad") return;
-    const currentRealIndex = item.realIndex;
-    pendingDismissRef.current = 0;
-    setDismissedAdKeys(prev => {
-      let next: Set<number> | null = null;
-      for (const di of displayItems) {
-        if (di.type === "ad" && !di.dismissed && currentRealIndex > di.adKey + 1 && !prev.has(di.adKey)) {
-          if (!next) next = new Set(prev);
-          next.add(di.adKey);
-          pendingDismissRef.current++;
-        }
+
+    let dismissCount = 0;
+    const toAdd: number[] = [];
+
+    for (let i = 0; i < settledIndex; i++) {
+      const di = displayItems[i];
+      if (di.type === "ad" && !di.dismissed && !dismissedAdKeys.has(di.adKey)) {
+        toAdd.push(di.adKey);
+        dismissCount++;
       }
-      return next || prev;
+    }
+    if (toAdd.length === 0) return;
+
+    setDismissedAdKeys(prev => {
+      const next = new Set(prev);
+      toAdd.forEach(k => next.add(k));
+      return next;
     });
-    // Compensate scroll for collapsed ads above viewport
-    if (pendingDismissRef.current > 0 && containerRef.current) {
+
+    if (dismissCount > 0 && containerRef.current) {
       const vh = window.innerHeight;
-      const count = pendingDismissRef.current;
       requestAnimationFrame(() => {
-        containerRef.current?.scrollBy(0, -vh * count);
+        requestAnimationFrame(() => {
+          containerRef.current?.scrollBy(0, -vh * dismissCount);
+        });
       });
     }
-  }, [activeDisplayIndex, displayItems]);
+  }, [settledIndex, displayItems, dismissedAdKeys]);
 
   // Infinite loading — guests redirected to login on loadMore
   useEffect(() => {
     if (!hasMore || loadingMore) return;
     // Check proximity to end using the active item's real index
-    const activeItem = displayItems[activeDisplayIndex];
+    const activeItem = displayItems[settledIndex];
     const realIdx = activeItem?.type === "moment" ? activeItem.realIndex :
       // For ad items, find the nearest preceding moment's realIndex
-      (() => { for (let i = activeDisplayIndex - 1; i >= 0; i--) { const d = displayItems[i]; if (d?.type === "moment") return d.realIndex; } return moments.length - 1; })();
+      (() => { for (let i = settledIndex - 1; i >= 0; i--) { const d = displayItems[i]; if (d?.type === "moment") return d.realIndex; } return moments.length - 1; })();
     if (realIdx >= moments.length - 2) {
       const run = async () => {
         if (!isLoggedIn) {
@@ -530,7 +550,7 @@ function MomentsContent() {
       };
       void run();
     }
-  }, [activeDisplayIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments]);
+  }, [settledIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments]);
 
   const handleLike = useCallback((momentId: number) => {
     if (!requireAuth()) return;
@@ -679,6 +699,7 @@ function MomentsContent() {
           return null;
         }
 
+        const distance = Math.abs(displayIndex - activeDisplayIndex);
         const inWindow = displayIndex >= activeDisplayIndex - BUFFER_BEHIND && displayIndex <= activeDisplayIndex + BUFFER_AHEAD;
 
         if (item.type === "ad") {
@@ -701,11 +722,25 @@ function MomentsContent() {
           );
         }
 
-        // Moment outside window — lightweight spacer with thumbnail bg
+        // Tier 3 (Collapsed): far from viewport — minimal black div
+        if (!inWindow && distance > THUMBNAIL_ZONE) {
+          return (
+            <div
+              key={`m-${item.moment.slug}`}
+              ref={makeSlotRef(displayIndex)}
+              data-index={displayIndex}
+              data-slug={item.moment.slug}
+              className="snap-start"
+              style={{ ...viewportHeightStyle, backgroundColor: "#000" }}
+            />
+          );
+        }
+
+        // Tier 2 (Thumbnail): nearby but outside buffer — spacer with thumbnail bg
         if (!inWindow) {
           return (
             <div
-              key={`m-${item.moment.id}`}
+              key={`m-${item.moment.slug}`}
               ref={makeSlotRef(displayIndex)}
               data-index={displayIndex}
               className="snap-start"
@@ -720,14 +755,15 @@ function MomentsContent() {
           );
         }
 
-        const distance = Math.abs(displayIndex - activeDisplayIndex);
-        const preloadHint: "auto" | "metadata" = distance <= 2 ? "auto" : "metadata";
+        // Tier 1 (Full): within buffer — full MomentCard
+        const settledDistance = Math.abs(displayIndex - settledIndex);
+        const preloadHint: "auto" | "metadata" = settledDistance <= 1 ? "auto" : "metadata";
         return (
-          <div key={`m-${item.moment.id}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start" style={viewportHeightStyle}>
+          <div key={`m-${item.moment.slug}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start" style={viewportHeightStyle}>
             <MomentCard
               moment={item.moment}
               isActive={displayIndex === activeDisplayIndex && !idlePaused}
-              loadVideo={distance <= 5}
+              loadVideo={settledDistance <= 2}
               liked={likedSet.has(item.moment.id)}
               saved={savedSet.has(item.moment.id)}
               muted={globalMuted}
