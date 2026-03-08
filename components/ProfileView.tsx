@@ -548,7 +548,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               {profile.contact_email && (
                 <a
                   href={`mailto:${profile.contact_email}`}
-                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent-main bg-accent-main/10 px-2 py-0.5 rounded-full hover:bg-accent-main/20 transition"
+                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent-main bg-accent-main/10 px-3 py-0.5 rounded-full hover:bg-accent-main/20 transition"
                 >
                   {t("email")}
                 </a>
@@ -556,7 +556,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               {profile.contact_phone && (
                 <a
                   href={`tel:${profile.contact_phone}`}
-                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent-main bg-accent-main/10 px-2 py-0.5 rounded-full hover:bg-accent-main/20 transition"
+                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent-main bg-accent-main/10 px-3 py-0.5 rounded-full hover:bg-accent-main/20 transition"
                 >
                   <Phone className="h-3 w-3" /> {t("call")}
                 </a>
