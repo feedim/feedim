@@ -203,19 +203,19 @@ function MomentsContent() {
   const [startSlug] = useState<string | null>(() => searchParams.get("s"));
 
   // Build display list — inject ad item every 7 moments
-  const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
+  const [seenAdKeys, setSeenAdKeys] = useState<Set<number>>(new Set());
   const seenAdKeysRef = useRef<Set<number>>(new Set());
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 7 === 0 && !dismissedAdKeys.has(i)) {
+      if ((i + 1) % 7 === 0) {
         items.push({ type: "ad" as const, adKey: i });
       }
     });
     return items;
-  }, [moments, ctxUser?.id, dismissedAdKeys]);
+  }, [moments, ctxUser?.id]);
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
@@ -436,17 +436,17 @@ function MomentsContent() {
     }
   }, [activeDisplayIndex, displayItems]);
 
-  // Auto-dismiss ad cards after viewed — prevents AdSense re-push on scroll back
+  // Track seen ad cards — prevents AdSense re-push on scroll back
   useEffect(() => {
     const item = displayItems[activeDisplayIndex];
     if (item?.type === "ad") {
       seenAdKeysRef.current.add(item.adKey);
     } else {
-      // Scrolled away from ad — dismiss any previously seen ads
+      // Scrolled away from ad — mark as permanently seen
       if (seenAdKeysRef.current.size > 0) {
         const seen = seenAdKeysRef.current;
         seenAdKeysRef.current = new Set();
-        setDismissedAdKeys(prev => {
+        setSeenAdKeys(prev => {
           const next = new Set(prev);
           seen.forEach(k => next.add(k));
           return next;
@@ -620,8 +620,14 @@ function MomentsContent() {
           return (
             <div key={`ad-${item.adKey}`} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
               <MomentAdCard
-                isActive={displayIndex === activeDisplayIndex}
-                onSkip={() => setDismissedAdKeys(prev => new Set(prev).add(item.adKey))}
+                isActive={displayIndex === activeDisplayIndex && !seenAdKeys.has(item.adKey)}
+                onSkip={() => {
+                  // Scroll to next item instead of removing the ad card
+                  const nextEl = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
+                  if (nextEl) {
+                    nextEl.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
               />
             </div>
           );
