@@ -205,19 +205,19 @@ function MomentsContent() {
   const [startSlug] = useState<string | null>(() => searchParams.get("s"));
 
   // Build display list — inject ad item every 7 moments
-  const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
-  const activeAdKeysRef = useRef<Set<number>>(new Set());
+  const [seenAdKeys, setSeenAdKeys] = useState<Set<number>>(new Set());
+  const seenAdKeysRef = useRef<Set<number>>(new Set());
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 7 === 0 && !dismissedAdKeys.has(i)) {
+      if ((i + 1) % 7 === 0) {
         items.push({ type: "ad" as const, adKey: i });
       }
     });
     return items;
-  }, [moments, ctxUser?.id, dismissedAdKeys]);
+  }, [moments, ctxUser?.id]);
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
@@ -454,18 +454,17 @@ function MomentsContent() {
     }
   }, [activeDisplayIndex, displayItems]);
 
-  // Track active ad cards — dismiss (remove snap) when scrolled away
+  // Track seen ad cards — prevents AdSense re-push on scroll back
   useEffect(() => {
     const item = displayItems[activeDisplayIndex];
     if (item?.type === "ad") {
-      activeAdKeysRef.current.add(item.adKey);
-    } else if (activeAdKeysRef.current.size > 0) {
-      // Scrolled away from ad — remove the snap entirely
-      const toRemove = new Set(activeAdKeysRef.current);
-      activeAdKeysRef.current = new Set();
-      setDismissedAdKeys(prev => {
+      seenAdKeysRef.current.add(item.adKey);
+    } else if (seenAdKeysRef.current.size > 0) {
+      const seen = new Set(seenAdKeysRef.current);
+      seenAdKeysRef.current = new Set();
+      setSeenAdKeys(prev => {
         const next = new Set(prev);
-        toRemove.forEach(k => next.add(k));
+        seen.forEach(k => next.add(k));
         return next;
       });
     }
@@ -646,19 +645,10 @@ function MomentsContent() {
           return (
             <div key={`ad-${item.adKey}`} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
               <MomentAdCard
-                isActive={displayIndex === activeDisplayIndex}
+                isActive={displayIndex === activeDisplayIndex && !seenAdKeys.has(item.adKey)}
                 onSkip={() => {
                   const nextEl = containerRef.current?.querySelector(`[data-index="${displayIndex + 1}"]`);
                   if (nextEl) nextEl.scrollIntoView({ behavior: "smooth" });
-                  // Remove the ad snap after scroll starts
-                  setTimeout(() => {
-                    activeAdKeysRef.current.delete(item.adKey);
-                    setDismissedAdKeys(prev => {
-                      const next = new Set(prev);
-                      next.add(item.adKey);
-                      return next;
-                    });
-                  }, 350);
                 }}
               />
             </div>

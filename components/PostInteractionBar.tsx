@@ -489,7 +489,7 @@ export default function PostInteractionBar({
       ) : null}
 
       {/* Interaction bar */}
-      <div className={`bottom-0 bg-bg-primary ${likedByBottom ? "" : "mb-4"}`}>
+      <div className={`bottom-0 ${likedByBottom ? "" : "mb-4"}`}>
         <div className="flex items-center gap-2 py-3 select-none">
         {/* Like */}
         <button
