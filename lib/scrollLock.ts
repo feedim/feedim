@@ -71,18 +71,6 @@ function findModalScrollContainer(target: EventTarget | null): HTMLElement | nul
   return null;
 }
 
-/** Check if target is anywhere inside a [data-modal] element (including non-scrollable areas like footer) */
-function isInsideModal(target: EventTarget | null): boolean {
-  let current = target instanceof Node ? (target instanceof HTMLElement ? target : getComposedParent(target)) : null;
-
-  while (current && current !== document.body) {
-    if (current.hasAttribute("data-modal")) return true;
-    current = getComposedParent(current);
-  }
-
-  return false;
-}
-
 function preventScroll(e: Event) {
   if (hasPassThroughScroll(e.target)) {
     return;
@@ -121,13 +109,8 @@ function preventScroll(e: Event) {
     return;
   }
 
-  // Allow touch/wheel events anywhere inside a modal (footer, header, buttons, etc.)
-  // even when the target is not inside a scrollable sub-container
-  if (isInsideModal(e.target)) {
-    return;
-  }
-
-  // Modal content dışında: her türlü scroll engelle
+  // Modal içinde ama scrollable container dışında: scroll engelle
+  // (header, footer, butonlar vs. — bunlarda scroll olmamalı)
   e.preventDefault();
 }
 

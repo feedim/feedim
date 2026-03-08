@@ -552,9 +552,9 @@ export default function NotificationsPage() {
         )}
 
         {loading && notifications.length === 0 ? (
-          <div className="space-y-0 px-1.5">
+          <div className="space-y-0">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="flex items-center gap-3 py-3 px-3">
+              <div key={i} className="flex items-center gap-3 py-3 px-2.5 my-[2px]">
                 <div className="h-10 w-10 rounded-full bg-bg-secondary shrink-0 animate-pulse" />
                 <div className="flex-1 min-w-0 space-y-[6px]">
                   <div className="h-[9px] w-36 bg-bg-secondary rounded-[5px] animate-pulse" />

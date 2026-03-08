@@ -184,24 +184,22 @@ export default function PostInteractionBar({
 
   const isNote = contentType === "note";
   useEffect(() => {
-    if (initialLikeCount > 0) {
-      fetchWithCache(
-        withCacheScope(`/api/posts/${postId}/likes?page=1`, currentUser?.id ? `viewer:${currentUser.id}` : "guest"),
-        { ttlSeconds: 30 }
-      )
-        .then((data) => data as {
-          users?: LikedByUser[];
-        })
-        .then(data => {
-          const all = data.users || [];
-          // Kendimi çıkar, takip ettiklerimi öne al
-          const filtered = all.filter((u) => !u.is_own);
-          filtered.sort((a, b) => (b.is_following ? 1 : 0) - (a.is_following ? 1 : 0));
-          setLikedByUsers(filtered.slice(0, 3));
-        })
-        .catch(() => {});
-    }
-  }, [postId, initialLikeCount, currentUser?.id]);
+    if (compact || initialLikeCount <= 0) return;
+    fetchWithCache(
+      withCacheScope(`/api/posts/${postId}/likes?page=1`, currentUser?.id ? `viewer:${currentUser.id}` : "guest"),
+      { ttlSeconds: 30 }
+    )
+      .then((data) => data as {
+        users?: LikedByUser[];
+      })
+      .then(data => {
+        const all = data.users || [];
+        const filtered = all.filter((u) => !u.is_own);
+        filtered.sort((a, b) => (b.is_following ? 1 : 0) - (a.is_following ? 1 : 0));
+        setLikedByUsers(filtered.slice(0, 3));
+      })
+      .catch(() => {});
+  }, [postId, initialLikeCount, currentUser?.id, compact]);
 
   // Refs to track latest state for rapid clicks
   const likedRef = useRef(initialLiked);
