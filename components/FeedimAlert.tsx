@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { useHydrated } from "@/lib/useHydrated";
+import { lockScroll, unlockScroll } from "@/lib/scrollLock";
 
 export type AlertType = "error" | "warning" | "info" | "success" | "question";
 
@@ -106,20 +107,8 @@ export default function FeedimAlertProvider() {
   const hasAlerts = currentAlerts.length > 0;
   useEffect(() => {
     if (!hasAlerts) return;
-    const scrollY = window.scrollY;
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    return () => {
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
-      window.scrollTo(0, scrollY);
-    };
+    lockScroll();
+    return () => { unlockScroll(); };
   }, [hasAlerts]);
 
   const closeWithAnimation = useCallback((a: AlertState) => {

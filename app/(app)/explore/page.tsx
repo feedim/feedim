@@ -926,7 +926,9 @@ function ExploreContent() {
       return (
         <div className="mt-1">
           <MomentsCarousel />
-          {trendingPosts.length > 0 ? (
+          {loading && trendingPosts.length === 0 ? (
+            <div className="px-2.5 sm:px-3"><PostCardSkeleton count={5} /></div>
+          ) : trendingPosts.length > 0 ? (
             <>
               <div className="flex flex-col gap-[16px] mt-[10px]">
               {trendingPosts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post, index) => (

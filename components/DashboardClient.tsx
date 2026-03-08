@@ -277,7 +277,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
 
       {/* Create Post Box — only on "for you" tab */}
       {activeTab === "for-you" && (
-        <div className="px-2.5 sm:px-3 mt-4 mb-3">
+        <div className="px-[9px] sm:px-3 mt-4 mb-3">
         <button
           onClick={() => { emitNavigationStart(); router.push(isLoggedIn ? "/create/note" : "/login"); }}
           className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition hover:opacity-80 bg-bg-secondary rounded-[18px]"

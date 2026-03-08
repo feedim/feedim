@@ -155,6 +155,9 @@ export function lockScroll() {
   lockCount++;
   if (lockCount === 1) {
     document.body.style.overflow = "hidden";
+    // Also lock <main> which has its own overflow-y:auto on desktop
+    const main = document.querySelector("main");
+    if (main) (main as HTMLElement).style.overflow = "hidden";
     document.body.classList.add("modal-open");
     document.addEventListener("wheel", preventScroll, { passive: false });
     document.addEventListener("touchmove", preventScroll, { passive: false });
@@ -197,6 +200,9 @@ function forceUnlock() {
   document.body.style.top = "";
   document.body.style.left = "";
   document.body.style.right = "";
+  // Restore <main> scroll
+  const main = document.querySelector("main");
+  if (main) (main as HTMLElement).style.overflow = "";
   document.body.classList.remove("modal-open");
   document.removeEventListener("wheel", preventScroll);
   document.removeEventListener("touchmove", preventScroll);
