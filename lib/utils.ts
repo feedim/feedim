@@ -75,6 +75,16 @@ export function generateSlugHash(): string {
   return hash;
 }
 
+/** Instagram/TikTok-style random slug (base62, 11 chars) */
+export function generateRandomSlug(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let slug = '';
+  for (let i = 0; i < 11; i++) {
+    slug += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return slug;
+}
+
 export function calculateReadingTime(html: string): { wordCount: number; readingTime: number } {
   const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const wordCount = text ? text.split(' ').length : 0;

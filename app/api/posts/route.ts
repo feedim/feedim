@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotification } from '@/lib/notifications';
-import { slugify, generateSlugHash, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
+import { slugify, generateSlugHash, generateRandomSlug, calculateReadingTime, generateExcerpt, formatTagName } from '@/lib/utils';
 import { getProfileSignals } from '@/lib/modSignals';
 import { generateMetaTitle, generateMetaDescription, generateMetaKeywords, generateSeoFieldsAI } from '@/lib/seo';
 import { VALIDATION, MOMENT_MAX_DURATION, CONTENT_TYPES, MAX_DRAFTS } from '@/lib/constants';
@@ -119,10 +119,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: tErrors('momentMaxDuration', { max: MOMENT_MAX_DURATION }) }, { status: 400 });
     }
 
-    // Generate slug
+    // Generate slug — moments & notes get random-only slugs (Instagram/TikTok style)
     const slugBase = slugify(trimmedTitle);
-    const slugHash = generateSlugHash();
-    const slug = `${slugBase}-${slugHash}`;
+    const slug = (isMoment || isNote)
+      ? generateRandomSlug()
+      : `${slugBase}-${generateSlugHash()}`;
 
     // Sanitize content — no iframe support
     let sanitizedContent = isNote
