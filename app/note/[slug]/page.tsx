@@ -157,87 +157,89 @@ export default async function NotePage({ params }: PageProps) {
         </div>
       )}
 
-      <article className="px-3 sm:px-3 py-3 md:py-5">
-        <PostHeaderActions
-          postId={post.id}
-          postUrl={`/note/${post.slug}`}
-          postTitle={post.title}
-          authorUsername={author?.username}
-          authorUserId={author?.user_id}
-          authorName={authorName}
-          authorRole={author?.role}
-          isOwnPost={isOwnPost}
-          postSlug={post.slug}
-          portalToHeader
-          contentType={post.content_type}
-          visibility={post.visibility || "public"}
-          isBoosted={boostInfo.isBoosted}
-        />
+      <article>
+        <div className="px-3 sm:px-3 py-3 md:py-5">
+          <PostHeaderActions
+            postId={post.id}
+            postUrl={`/note/${post.slug}`}
+            postTitle={post.title}
+            authorUsername={author?.username}
+            authorUserId={author?.user_id}
+            authorName={authorName}
+            authorRole={author?.role}
+            isOwnPost={isOwnPost}
+            postSlug={post.slug}
+            portalToHeader
+            contentType={post.content_type}
+            visibility={post.visibility || "public"}
+            isBoosted={boostInfo.isBoosted}
+          />
 
-        <div className="flex items-center gap-3 mb-3">
-          {author?.avatar_url ? (
-            <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
-          ) : (
-            <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" loading="lazy" />
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Link href={`/u/${author?.username}`} className="font-semibold text-[0.92rem] hover:underline truncate">@{author?.username}</Link>
-              {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
+          <div className="flex items-center gap-3 mb-3">
+            {author?.avatar_url ? (
+              <img suppressHydrationWarning data-src={author.avatar_url} alt={authorName} decoding="async" className="lazyload h-10 w-10 rounded-full object-cover bg-bg-tertiary border border-border-primary" />
+            ) : (
+              <img className="default-avatar-auto bg-bg-tertiary h-10 w-10 rounded-full object-cover shrink-0 border border-border-primary" alt="" loading="lazy" />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.92rem] hover:underline truncate">@{author?.username}</Link>
+                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
+              </div>
+              <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
+                {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
+                {post.visibility && (
+                  <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
-              {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
-              {post.visibility && (
-                <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
-              )}
-            </div>
+            <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved compact />
           </div>
-          <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved compact />
-        </div>
 
-        <p
-          className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line"
-          dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
-        />
+          <p
+            className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line"
+            dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
+          />
 
-        {(post.view_count || 0) > 0 && (
-          <p className="text-[0.75rem] text-text-muted">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
-        )}
-
-        <PostInteractionBar
-          postId={post.id}
-          initialLiked={interactions.liked}
-          initialSaved={interactions.saved}
-          likeCount={post.like_count || 0}
-          commentCount={post.comment_count || 0}
-          saveCount={post.save_count || 0}
-          shareCount={post.share_count || 0}
-          viewCount={post.view_count || 0}
-          hideStats
-          isOwnPost={isOwnPost}
-          postUrl={`/note/${post.slug}`}
-          postTitle={post.title}
-          postSlug={post.slug}
-          authorUsername={author?.username}
-          contentType={post.content_type}
-          isBoosted={boostInfo.isBoosted}
-          boostStats={boostInfo.boostStats}
-          boostStatus={boostInfo.boostStatus}
-          visibility={post.visibility || "public"}
-          isModeration={!!post.is_nsfw || post.status === 'moderation'}
-          allowComments={post.allow_comments !== false}
-        >
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 mb-2">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                  #{tag.name}
-                </Link>
-              ))}
-            </div>
+          {(post.view_count || 0) > 0 && (
+            <p className="text-[0.75rem] text-text-muted">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}
-        </PostInteractionBar>
+
+          <PostInteractionBar
+            postId={post.id}
+            initialLiked={interactions.liked}
+            initialSaved={interactions.saved}
+            likeCount={post.like_count || 0}
+            commentCount={post.comment_count || 0}
+            saveCount={post.save_count || 0}
+            shareCount={post.share_count || 0}
+            viewCount={post.view_count || 0}
+            hideStats
+            isOwnPost={isOwnPost}
+            postUrl={`/note/${post.slug}`}
+            postTitle={post.title}
+            postSlug={post.slug}
+            authorUsername={author?.username}
+            contentType={post.content_type}
+            isBoosted={boostInfo.isBoosted}
+            boostStats={boostInfo.boostStats}
+            boostStatus={boostInfo.boostStatus}
+            visibility={post.visibility || "public"}
+            isModeration={!!post.is_nsfw || post.status === 'moderation'}
+            allowComments={post.allow_comments !== false}
+          >
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                {tags.map((tag: { id: number; name: string; slug: string }) => (
+                  <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                    className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
+                    #{tag.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </PostInteractionBar>
+        </div>
 
         <RelatedPosts
           posts={authorContent}
