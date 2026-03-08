@@ -108,15 +108,15 @@ export async function GET(req: NextRequest) {
     const cutoff30d = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
     const candidateFields = "id, author_id, content_type, published_at, trending_score, quality_score, spam_score, like_count, comment_count, save_count, share_count, view_count, is_nsfw, status";
 
-    // 10% followed, 90% discovery
-    const poolSize = 100;
+    // 10% followed, 90% discovery — large pool for variety
+    const poolSize = 300;
     const followedLimit = Math.round(poolSize * 0.10);
     const discoveryLimit = poolSize - followedLimit;
 
     // Fetch candidates (parallel)
     const excludeAuthors = user ? [user.id, ...followedUserIds] : [];
     const countryDiscoveryLimit = viewerAffinity.country
-      ? Math.min(Math.ceil(discoveryLimit * 0.45), 40)
+      ? Math.min(Math.ceil(discoveryLimit * 0.45), 120)
       : 0;
 
     const [followedMoments, countryDiscoveryMoments, discoveryMoments] = await Promise.all([
@@ -285,6 +285,15 @@ export async function GET(req: NextRequest) {
     // Diversity enforcement (relaxed — moments are short-form, less strict)
     const diversified = enforceDiversity(scored, poolSize, false);
 
+    // Weighted shuffle — high scores more likely to be early, but not deterministic
+    // This ensures each request returns a different order (TikTok/Reels-like)
+    for (let i = diversified.length - 1; i > 0; i--) {
+      // Bias toward keeping high-scored items early: swap within a window
+      const window = Math.min(i, Math.max(3, Math.floor(i * 0.4)));
+      const j = i - Math.floor(Math.random() * window);
+      [diversified[i], diversified[j]] = [diversified[j], diversified[i]];
+    }
+
     // Exclude already-loaded moments and paginate
     const available = diversified.filter(c => !excludeIds.has(c.id));
     const pageCandidates = available.slice(0, limit);
@@ -299,7 +308,7 @@ export async function GET(req: NextRequest) {
     const { data: fullMoments, error } = await admin
       .from("posts")
       .select(`
-        id, title, slug, excerpt, featured_image, video_url, video_duration, video_thumbnail, blurhash, visibility, is_nsfw, moderation_category,
+        id, title, slug, excerpt, featured_image, video_url, hls_url, video_duration, video_thumbnail, blurhash, visibility, is_nsfw, moderation_category,
         like_count, comment_count, view_count, save_count, share_count, published_at, author_id,
         profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private),
         post_tags(tag_id, tags(id, name, slug)),

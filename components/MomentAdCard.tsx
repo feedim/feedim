@@ -10,8 +10,8 @@ interface MomentAdCardProps {
 export default function MomentAdCard({ isActive, onSkip }: MomentAdCardProps) {
   return (
     <div
-      className="snap-start snap-always relative md:h-screen"
-      style={{ backgroundColor: "#000", height: "100dvh", minHeight: "100svh" }}
+      className="relative w-full h-full"
+      style={{ backgroundColor: "#000" }}
     >
       <AdOverlay
         active={isActive}

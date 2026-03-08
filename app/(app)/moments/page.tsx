@@ -12,7 +12,7 @@ import { isBlockedContent } from "@/lib/blockedWords";
 import { redirectToLogin } from "@/lib/loginNext";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { smartBack } from "@/lib/smartBack";
-import AdBanner from "@/components/AdBanner";
+import MomentAdCard from "@/components/MomentAdCard";
 import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
 
 type DisplayItem =
@@ -35,6 +35,7 @@ interface Moment {
   slug: string;
   excerpt?: string;
   video_url?: string;
+  hls_url?: string;
   video_thumbnail?: string;
   featured_image?: string;
   video_duration?: number;
@@ -151,7 +152,7 @@ function MomentsContent() {
   const perfHintsRef = useRef<MomentsPerfHints>(getMomentsPerfHints());
 
   const getMomentsUrl = useCallback((excludeIds?: number[]) => (
-    withCacheScope(`/api/posts/moments?limit=10${excludeIds?.length ? `&exclude=${excludeIds.join(",")}` : ""}&locale=${locale}`, momentsCacheScope)
+    withCacheScope(`/api/posts/moments?limit=10${excludeIds?.length ? `&exclude=${excludeIds.join(",")}` : ""}&locale=${locale}&_t=${Date.now()}`, momentsCacheScope)
   ), [locale, momentsCacheScope]);
 
   // Idle detection — "Are you still watching?" after 15 min of no interaction
@@ -201,19 +202,19 @@ function MomentsContent() {
   // Capture initial slug only on mount — ignore subsequent URL changes
   const [startSlug] = useState<string | null>(() => searchParams.get("s"));
 
-  // Build display list — inject ad item every 9 moments
+  // Build display list — inject ad item every 7 moments
   const [dismissedAdKeys, setDismissedAdKeys] = useState<Set<number>>(new Set());
   const displayItems = useMemo(() => {
     const filtered = moments.filter(m => !isBlockedContent(`${m.title || ""} ${m.excerpt || ""}`, m.profiles?.user_id, ctxUser?.id));
     const items: DisplayItem[] = [];
     filtered.forEach((m, i) => {
       items.push({ type: "moment" as const, moment: m, realIndex: i });
-      if ((i + 1) % 7 === 0) {
+      if ((i + 1) % 7 === 0 && !dismissedAdKeys.has(i)) {
         items.push({ type: "ad" as const, adKey: i });
       }
     });
     return items;
-  }, [moments, ctxUser?.id]);
+  }, [moments, ctxUser?.id, dismissedAdKeys]);
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn) return true;
@@ -280,7 +281,7 @@ function MomentsContent() {
   const loadMoments = useCallback(async (excludeIds?: number[]) => {
     try {
       const url = getMomentsUrl(excludeIds);
-      const data = await fetchWithCache(url, { ttlSeconds: 30, forceRefresh: (excludeIds?.length ?? 0) > 0 }) as {
+      const data = await fetchWithCache(url, { ttlSeconds: 0, forceRefresh: true }) as {
         moments?: Moment[];
         hasMore?: boolean;
       };
@@ -596,10 +597,12 @@ function MomentsContent() {
         >
       {displayItems.map((item, displayIndex) => {
         if (item.type === "ad") {
-          if (dismissedAdKeys.has(item.adKey)) return null;
           return (
-            <div key={`ad-${item.adKey}`} data-index={displayIndex} className="snap-start flex items-center justify-center bg-black" style={viewportHeightStyle}>
-              <MomentAdSlot adKey={item.adKey} onDismiss={() => setDismissedAdKeys(prev => new Set(prev).add(item.adKey))} />
+            <div key={`ad-${item.adKey}`} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
+              <MomentAdCard
+                isActive={displayIndex === activeDisplayIndex}
+                onSkip={() => setDismissedAdKeys(prev => new Set(prev).add(item.adKey))}
+              />
             </div>
           );
         }
@@ -723,43 +726,3 @@ function MomentsContent() {
   );
 }
 
-function MomentAdSlot({ onDismiss }: { adKey: number; onDismiss: () => void }) {
-  const t = useTranslations("ad");
-  const ref = useRef<HTMLDivElement>(null);
-  const onDismissRef = useRef(onDismiss);
-  const wasVisibleRef = useRef(false);
-
-  useEffect(() => {
-    onDismissRef.current = onDismiss;
-  }, [onDismiss]);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const el = ref.current;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        wasVisibleRef.current = true;
-      } else if (wasVisibleRef.current) {
-        // Only dismiss after the ad was seen and scrolled away from
-        onDismissRef.current();
-      }
-    }, { threshold: 0.1 });
-    const t = setTimeout(() => { if (el) obs.observe(el); }, 500);
-    return () => { clearTimeout(t); obs.disconnect(); };
-  }, []);
-
-  return (
-    <div ref={ref} className="w-full h-full flex items-center justify-center relative">
-      <AdBanner slot="moment" className="w-full max-w-[400px]" />
-      <button
-        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        className="absolute bottom-6 right-4 z-10 flex items-center gap-1.5 bg-black/60 hover:bg-black/70 active:bg-black/80 text-white rounded-full pl-4 pr-3 py-2.5 text-[0.82rem] font-semibold backdrop-blur-sm transition cursor-pointer border border-white/10"
-      >
-        {t("skipAd")}
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-        </svg>
-      </button>
-    </div>
-  );
-}
