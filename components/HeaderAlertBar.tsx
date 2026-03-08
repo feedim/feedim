@@ -16,7 +16,7 @@ interface Alert {
 
 export default function HeaderAlertBar() {
   const { user } = useUser();
-  const t = useTranslations("settings");
+  const t = useTranslations("auth");
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<AlertType>>(new Set());
 
@@ -38,8 +38,8 @@ export default function HeaderAlertBar() {
   const alert = active[0];
 
   return (
-    <div className="bg-[#e67e22] text-white text-[0.78rem] font-medium sticky top-0 z-50">
-      <div className="flex items-center justify-between px-3 py-1.5 max-w-[1400px] mx-auto">
+    <div className="bg-accent-main text-white text-[0.78rem] font-medium sticky top-0 z-50">
+      <div className="flex items-center justify-between px-3 py-1.5">
         <button
           onClick={() => router.push(alert.href)}
           className="flex-1 text-left truncate hover:underline cursor-pointer"

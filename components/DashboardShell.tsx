@@ -114,8 +114,10 @@ export default function DashboardShell({
         <div id="dashboard-shell" className="min-h-screen text-text-primary">
           <AmbientLight />
           <Sidebar />
-          <main className="md:ml-[240px] min-h-screen md:h-screen md:overflow-y-auto pb-20 md:pb-0">
+          <div className="md:ml-[240px]">
             <HeaderAlertBar />
+          </div>
+          <main className="md:ml-[240px] min-h-screen md:h-screen md:overflow-y-auto pb-20 md:pb-0">
             <div className="max-w-[1400px] mx-auto w-full">
               {children}
             </div>
