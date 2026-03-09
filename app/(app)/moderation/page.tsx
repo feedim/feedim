@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, ShieldOff, UserPlus, UserMinus, Bug } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
@@ -15,6 +15,7 @@ import { useUser } from "@/components/UserContext";
 import LazyAvatar from "@/components/LazyAvatar";
 import { redirectToLogin } from "@/lib/loginNext";
 import { logClientError } from "@/lib/runtimeLogger";
+import PuzzleCaptcha from "@/components/PuzzleCaptcha";
 
 const COUNTRY_NAME = Object.fromEntries(
   COUNTRIES.map(c => [c.code, { tr: c.name_tr, en: c.name_en, az: c.name_az }])
@@ -77,6 +78,19 @@ export default function AdminPage() {
   const [adsVideo, setAdsVideo] = useState(false);
   const [adsPostDetail, setAdsPostDetail] = useState(false);
   const [adsLoading, setAdsLoading] = useState(false);
+
+  // Captcha gate: every moderation action requires puzzle verification
+  const [captchaOpen, setCaptchaOpen] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+  const requireCaptcha = useCallback((action: () => void) => {
+    pendingActionRef.current = action;
+    setCaptchaOpen(true);
+  }, []);
+  const handleCaptchaVerify = useCallback(() => {
+    setCaptchaOpen(false);
+    pendingActionRef.current?.();
+    pendingActionRef.current = null;
+  }, []);
 
   // Copyright scan tool
   const [scanSlug, setScanSlug] = useState("");
@@ -1259,7 +1273,10 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       const reasons = (postReasons[p.id] || []).filter(r => (POST_APPROVE_KEYS as readonly string[]).includes(r)).map(k => t(k as any));
-                      takeAction("approve_content", "post", p.id, reasons.join(', ') || undefined);
+                      const custom = (customReasons[String(p.id)] || '').trim();
+                      const fullReason = [...reasons, ...(custom ? [custom] : [])].join(', ');
+                      if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
+                      requireCaptcha(() => takeAction("approve_content", "post", p.id, fullReason));
                     }}
                     disabled={actionLoading === String(p.id)}
                     className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -1270,7 +1287,7 @@ export default function AdminPage() {
                       const custom = (customReasons[String(p.id)] || '').trim();
                       const fullReason = [...presetReasons, ...(custom ? [custom] : [])].join(', ');
                       if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
-                      takeAction("reject_content", "post", p.id, fullReason);
+                      requireCaptcha(() => takeAction("reject_content", "post", p.id, fullReason));
                     }}
                     disabled={actionLoading === String(p.id)}
                     className="px-3 py-1.5 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -1351,7 +1368,7 @@ export default function AdminPage() {
                 {(isBlocked || isDeleted) ? (
                   <div className="flex justify-end mt-3">
                     <button
-                      onClick={() => takeAction("activate_user", "user", u.user_id, t("accountReactivated"))}
+                      onClick={() => requireCaptcha(() => takeAction("activate_user", "user", u.user_id, t("accountReactivated")))}
                       disabled={actionLoading === u.user_id}
                       className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
                     >{t("activateAccount")}</button>
@@ -1381,7 +1398,10 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       const reasons = (userReasons[u.user_id] || []).filter(r => (PROFILE_APPROVE_KEYS as readonly string[]).includes(r)).map(k => t(k as any));
-                      takeAction("activate_user", "user", u.user_id, reasons.join(', ') || undefined);
+                      const custom = (customReasons[u.user_id] || '').trim();
+                      const fullReason = [...reasons, ...(custom ? [custom] : [])].join(', ');
+                      if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
+                      requireCaptcha(() => takeAction("activate_user", "user", u.user_id, fullReason));
                     }}
                     disabled={actionLoading === u.user_id}
                     className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -1426,7 +1446,7 @@ export default function AdminPage() {
                       if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
                       feedimAlert("question", t("confirmCloseAccount", { username: u.username }), {
                         showYesNo: true,
-                        onYes: () => takeAction("ban_user", "user", u.user_id, fullReason),
+                        onYes: () => requireCaptcha(() => takeAction("ban_user", "user", u.user_id, fullReason)),
                       });
                     }}
                     disabled={actionLoading === u.user_id}
@@ -1440,7 +1460,7 @@ export default function AdminPage() {
                       if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
                       feedimAlert("question", t("confirmDeleteAccount", { username: u.username }), {
                         showYesNo: true,
-                        onYes: () => takeAction("delete_user", "user", u.user_id, fullReason),
+                        onYes: () => requireCaptcha(() => takeAction("delete_user", "user", u.user_id, fullReason)),
                       });
                     }}
                     disabled={actionLoading === u.user_id}
@@ -1559,7 +1579,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={async () => {
+                          onClick={() => requireCaptcha(async () => {
                             const snapshot = panelReports;
                             setPanelReports(prev => prev.filter(x => !(x.content_type === r.content_type && (r.content_type === 'user' ? x.content_author_id === r.content_author_id : x.content_id === r.content_id))));
                             try {
@@ -1570,11 +1590,11 @@ export default function AdminPage() {
                               });
                               if (!res.ok) { feedimAlert("error", t("actionFailed")); setPanelReports(snapshot); }
                             } catch { feedimAlert("error", t("actionFailed")); setPanelReports(snapshot); }
-                          }}
+                          })}
                           className="px-3 py-1.5 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
                         >{t("resolveReport")}</button>
                         <button
-                          onClick={async () => {
+                          onClick={() => requireCaptcha(async () => {
                             const snapshot = panelReports;
                             setPanelReports(prev => prev.filter(x => !(x.content_type === r.content_type && (r.content_type === 'user' ? x.content_author_id === r.content_author_id : x.content_id === r.content_id))));
                             try {
@@ -1585,7 +1605,7 @@ export default function AdminPage() {
                               });
                               if (!res.ok) { feedimAlert("error", t("actionFailed")); setPanelReports(snapshot); }
                             } catch { feedimAlert("error", t("actionFailed")); setPanelReports(snapshot); }
-                          }}
+                          })}
                           className="px-3 py-1.5 rounded-[8px] bg-text-muted/10 text-text-muted hover:bg-text-muted/20 transition text-[0.78rem] font-medium whitespace-nowrap"
                         >{t("dismissReport")}</button>
                       </div>
@@ -1664,12 +1684,17 @@ export default function AdminPage() {
                   <span className="text-[0.62rem] text-text-muted">{(customReasons[`boost-${boost.id}`] || '').length}/150</span>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => takeBoostAction("approve", boost.id)} disabled={boostActionLoading === boost.id} className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap">{tb("startAd")}</button>
+                  <button onClick={() => {
+                    const custom = (customReasons[`boost-${boost.id}`] || '').trim();
+                    const reason = custom || tb("adApproved");
+                    requireCaptcha(() => takeBoostAction("approve", boost.id, reason));
+                  }} disabled={boostActionLoading === boost.id} className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap">{tb("startAd")}</button>
                   <button onClick={() => {
                     const presetReasons = boostRejectReasons[boost.id] || [];
                     const custom = (customReasons[`boost-${boost.id}`] || '').trim();
                     const fullReason = [...presetReasons, ...(custom ? [custom] : [])].join(', ');
-                    takeBoostAction("reject", boost.id, fullReason);
+                    if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
+                    requireCaptcha(() => takeBoostAction("reject", boost.id, fullReason));
                   }} disabled={boostActionLoading === boost.id} className="px-3 py-1.5 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap">{tb("rejectAd")}</button>
                 </div>
               </div>
@@ -1873,7 +1898,10 @@ export default function AdminPage() {
                       </div>
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => takeCopyrightAction('verify', claim.id)}
+                          onClick={() => {
+                            const custom = (claimCustomReasons[claim.id] || '').trim();
+                            requireCaptcha(() => takeCopyrightAction('verify', claim.id, custom || t("copyrightVerified")));
+                          }}
                           disabled={claimActionLoading === claim.id}
                           className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
                         >{t("verifyCopyright")}</button>
@@ -1883,7 +1911,7 @@ export default function AdminPage() {
                             const custom = (claimCustomReasons[claim.id] || '').trim();
                             const fullReason = [...presetReasons, ...(custom ? [custom] : [])].join(', ');
                             if (!fullReason) return feedimAlert('error', t("selectAtLeastOneReason"));
-                            takeCopyrightAction('reject', claim.id, fullReason);
+                            requireCaptcha(() => takeCopyrightAction('reject', claim.id, fullReason));
                           }}
                           disabled={claimActionLoading === claim.id}
                           className="px-3 py-1.5 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -1999,7 +2027,10 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       const reasons = (commentReasons[c.id] || []).filter(r => (COMMENT_APPROVE_KEYS as readonly string[]).includes(r)).map(k => t(k as any));
-                      takeAction("approve_content", "comment", String(c.id), reasons.join(', ') || undefined);
+                      const custom = (customReasons[String(c.id)] || '').trim();
+                      const fullReason = [...reasons, ...(custom ? [custom] : [])].join(', ');
+                      if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
+                      requireCaptcha(() => takeAction("approve_content", "comment", String(c.id), fullReason));
                     }}
                     disabled={actionLoading === String(c.id)}
                     className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -2010,7 +2041,7 @@ export default function AdminPage() {
                       const custom = (customReasons[String(c.id)] || '').trim();
                       const fullReason = [...presetReasons, ...(custom ? [custom] : [])].join(', ');
                       if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
-                      takeAction("reject_content", "comment", String(c.id), fullReason);
+                      requireCaptcha(() => takeAction("reject_content", "comment", String(c.id), fullReason));
                     }}
                     disabled={actionLoading === String(c.id)}
                     className="px-3 py-1.5 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium whitespace-nowrap"
@@ -2130,7 +2161,7 @@ export default function AdminPage() {
                         <button
                           onClick={() => {
                             const custom = (customReasons[`ca_${app.id}`] || '').trim();
-                            takeCopyrightAppAction('approve', app.id, custom || undefined);
+                            requireCaptcha(() => takeCopyrightAppAction('approve', app.id, custom || t("approved")));
                           }}
                           disabled={appActionLoading === app.id}
                           className="px-3 py-1.5 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition text-[0.78rem] font-medium"
@@ -2141,7 +2172,7 @@ export default function AdminPage() {
                             const custom = (customReasons[`ca_${app.id}`] || '').trim();
                             const fullReason = [...presetReasons, ...(custom ? [custom] : [])].join(', ');
                             if (!fullReason) return feedimAlert("error", t("selectAtLeastOneReason"));
-                            takeCopyrightAppAction('reject', app.id, fullReason);
+                            requireCaptcha(() => takeCopyrightAppAction('reject', app.id, fullReason));
                           }}
                           disabled={appActionLoading === app.id}
                           className="px-3 py-1.5 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition text-[0.78rem] font-medium"
@@ -2177,13 +2208,13 @@ export default function AdminPage() {
                       </div>
                       <div className="flex gap-1.5 shrink-0 ml-3">
                         <button
-                          onClick={() => takeMonetizationAction("approve_monetization", app.user_id)}
+                          onClick={() => requireCaptcha(() => takeMonetizationAction("approve_monetization", app.user_id))}
                           disabled={monetizationActionLoading === app.user_id}
                           className="p-2 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition"
                           title={t("approveMonetization")}
                         ><Check className="h-4 w-4" /></button>
                         <button
-                          onClick={() => takeMonetizationAction("reject_monetization", app.user_id)}
+                          onClick={() => requireCaptcha(() => takeMonetizationAction("reject_monetization", app.user_id))}
                           disabled={monetizationActionLoading === app.user_id}
                           className="p-2 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition"
                           title={t("rejectMonetization")}
@@ -2228,13 +2259,13 @@ export default function AdminPage() {
                       </div>
                       <div className="flex gap-1.5 shrink-0 ml-3">
                         <button
-                          onClick={() => takeAction("approve_withdrawal", "withdrawal", w.id)}
+                          onClick={() => requireCaptcha(() => takeAction("approve_withdrawal", "withdrawal", w.id, t("approved")))}
                           disabled={actionLoading === String(w.id)}
                           className="p-2 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition"
                           title={t("approve")}
                         ><Check className="h-4 w-4" /></button>
                         <button
-                          onClick={() => takeAction("reject_withdrawal", "withdrawal", w.id, t("withdrawalRejected"))}
+                          onClick={() => requireCaptcha(() => takeAction("reject_withdrawal", "withdrawal", w.id, t("withdrawalRejected")))}
                           disabled={actionLoading === String(w.id)}
                           className="p-2 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition"
                           title={t("reject")}
@@ -2270,8 +2301,8 @@ export default function AdminPage() {
                         <p className="text-[0.72rem] text-text-muted font-semibold">₺{boost.daily_budget}{tb("perDay")} × {tb("days", { count: boost.duration_days })} = ₺{boost.total_budget}</p>
                       </div>
                       <div className="flex gap-1.5 shrink-0 ml-3">
-                        <button onClick={() => takeBoostAction("approve_refund", boost.id)} disabled={boostActionLoading === boost.id} className="p-2 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition" title={tb("approveRefund")}><Check className="h-4 w-4" /></button>
-                        <button onClick={() => takeBoostAction("reject_refund", boost.id)} disabled={boostActionLoading === boost.id} className="p-2 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition" title={tb("rejectRefund")}><X className="h-4 w-4" /></button>
+                        <button onClick={() => requireCaptcha(() => takeBoostAction("approve_refund", boost.id, tb("refundApproved")))} disabled={boostActionLoading === boost.id} className="p-2 rounded-[8px] bg-success/10 text-success hover:bg-success/20 transition" title={tb("approveRefund")}><Check className="h-4 w-4" /></button>
+                        <button onClick={() => requireCaptcha(() => takeBoostAction("reject_refund", boost.id, tb("refundRejected")))} disabled={boostActionLoading === boost.id} className="p-2 rounded-[8px] bg-error/10 text-error hover:bg-error/20 transition" title={tb("rejectRefund")}><X className="h-4 w-4" /></button>
                       </div>
                     </div>
                   </div>
@@ -2283,6 +2314,7 @@ export default function AdminPage() {
 
         {/* Load-more pagination is now embedded in each section */}
       </div>
+      <PuzzleCaptcha open={captchaOpen} onClose={() => { setCaptchaOpen(false); pendingActionRef.current = null; }} onVerify={handleCaptchaVerify} />
     </AppLayout>
   );
 }

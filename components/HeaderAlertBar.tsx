@@ -68,7 +68,7 @@ export default function HeaderAlertBar() {
       className="bg-accent-main text-white text-[0.66rem] font-medium fixed top-0 left-0 right-0 z-[60]"
     >
       <div className="flex items-center justify-between px-3 py-1.5">
-        <p className="flex-1 truncate">
+        <p className="flex-1 truncate sm:text-center">
           {alert.message}{" "}
           <button
             onClick={() => router.push(alert.href)}

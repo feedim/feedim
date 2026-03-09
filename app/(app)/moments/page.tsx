@@ -778,7 +778,7 @@ function MomentsContent() {
             <MomentCard
               moment={item.moment}
               isActive={displayIndex === activeDisplayIndex && !idlePaused}
-              loadVideo={settledDistance <= 2}
+              loadVideo={displayIndex === activeDisplayIndex || settledDistance <= 2}
               liked={likedSet.has(item.moment.id)}
               saved={savedSet.has(item.moment.id)}
               muted={globalMuted}

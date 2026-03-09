@@ -15,7 +15,7 @@ interface VerifiedBadgeProps {
 export default function VerifiedBadge({ className, size = "sm", variant = "default", role }: VerifiedBadgeProps) {
   const t = useTranslations("common");
   const sizeMap = {
-    sm: "h-[12px] w-[12px] min-w-[12px]",
+    sm: "h-[11px] w-[11px] min-w-[11px]",
     md: "h-[18px] w-[18px] min-w-[18px]",
     lg: "h-[20px] w-[20px] min-w-[20px]",
   };

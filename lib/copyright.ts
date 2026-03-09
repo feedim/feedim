@@ -52,10 +52,11 @@ export const COPYRIGHT_THRESHOLDS = {
     textCheck: true,        // Text duplicate check (same rules as posts)
     thumbnailCheck: true,   // dHash thumbnail comparison
     frameHashCheck: true,   // Video frame hashing (aHash — center-crop)
-    frameHammingThreshold: 17, // aHash Hamming threshold (higher than dHash: aHash more robust)
-    consecutiveFrameThreshold: 4,  // 4+ consecutive frames → duplicate
-    copyrightConsecutiveThreshold: 5, // 5+ consecutive frames → copyright (vs copyright_protected)
-    matchThreshold: 80,     // ≥80% → moderation
+    frameHammingThreshold: 10, // aHash Hamming threshold (stricter: 17 caused mass false positives)
+    consecutiveFrameThreshold: 8,  // 8+ consecutive frames → duplicate (was 4, too low)
+    copyrightConsecutiveThreshold: 10, // 10+ consecutive frames → copyright (vs copyright_protected)
+    matchThreshold: 60,     // ≥60% → moderation (overall frame match ratio)
+    minSimilarityForConsecutive: 15, // Minimum similarity % required alongside consecutive match
   },
 } as const;
 
@@ -419,6 +420,22 @@ export async function computeImageHashFromUrl(url: string): Promise<string | nul
 }
 
 /**
+ * Check if a hash is degenerate (nearly all 0s or all 1s).
+ * These come from low-variance frames (black screens, solid colors)
+ * and match each other falsely across unrelated content.
+ * A hash with fewer than 8 or more than 56 set bits out of 64 is uniform.
+ */
+function isUniformHash(hash: string): boolean {
+  let bits = 0;
+  let val = BigInt('0x' + hash);
+  while (val > 0n) {
+    bits += Number(val & 1n);
+    val >>= 1n;
+  }
+  return bits < 8 || bits > 56;
+}
+
+/**
  * Hamming distance between two hex hash strings.
  * Returns number of differing bits (0 = identical, 64 = max).
  */
@@ -727,7 +744,9 @@ export async function checkVideoFrameCopyright(
       const frameThreshold = COPYRIGHT_THRESHOLDS.video.frameHammingThreshold;
       const matchPairs: { srcIdx: number; candIdx: number }[] = [];
       for (const srcFrame of frameHashes) {
+        if (isUniformHash(srcFrame.hash)) continue;
         for (const candFrame of candidateHashes) {
+          if (isUniformHash(candFrame.hash)) continue;
           const dist = hammingDistance(srcFrame.hash, candFrame.hash);
           if (dist <= frameThreshold) {
             matchPairs.push({ srcIdx: srcFrame.frameIndex, candIdx: candFrame.frameIndex });
@@ -766,15 +785,23 @@ export async function checkVideoFrameCopyright(
       const similarity = Math.round((bestOffsetMatchCount / candidateHashes.length) * 100);
       const match: FrameMatch = { postId: candidatePostId, authorId: info.authorId, similarity, consecutive: maxConsecutive };
 
-      // Copyright: protected post + 5+ consecutive seconds
-      if (info.copyrightProtected && (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.copyrightConsecutiveThreshold || similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold)) {
+      const minSimForConsec = COPYRIGHT_THRESHOLDS.video.minSimilarityForConsecutive;
+
+      // Copyright: protected post + enough consecutive frames + minimum similarity
+      if (info.copyrightProtected && (
+        (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.copyrightConsecutiveThreshold && similarity >= minSimForConsec) ||
+        similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold
+      )) {
         if (!bestTelif || maxConsecutive > bestTelif.consecutive || (maxConsecutive === bestTelif.consecutive && similarity > bestTelif.similarity)) {
           bestTelif = match;
         }
       }
 
-      // Duplicate: any post + 4+ consecutive seconds
-      if (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.consecutiveFrameThreshold || similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold) {
+      // Duplicate: enough consecutive frames + minimum similarity, or high overall match
+      if (
+        (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.consecutiveFrameThreshold && similarity >= minSimForConsec) ||
+        similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold
+      ) {
         if (!bestKopya || maxConsecutive > bestKopya.consecutive || (maxConsecutive === bestKopya.consecutive && similarity > bestKopya.similarity)) {
           bestKopya = match;
         }
@@ -870,7 +897,9 @@ export async function checkAudioCopyright(
 
       const matchPairs: { srcIdx: number; candIdx: number }[] = [];
       for (const srcChunk of audioHashes) {
+        if (isUniformHash(srcChunk.hash)) continue;
         for (const candChunk of candidateHashes) {
+          if (isUniformHash(candChunk.hash)) continue;
           const dist = hammingDistance(srcChunk.hash, candChunk.hash);
           if (dist <= audioThreshold) {
             matchPairs.push({ srcIdx: srcChunk.chunkIndex, candIdx: candChunk.chunkIndex });
@@ -909,15 +938,23 @@ export async function checkAudioCopyright(
       const similarity = Math.round((bestOffsetMatchCount / candidateHashes.length) * 100);
       const match: AudioMatch = { postId: candidatePostId, authorId: info.authorId, similarity, consecutive: maxConsecutive };
 
-      // Copyright: protected post + 5+ consecutive seconds
-      if (info.copyrightProtected && (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.copyrightConsecutiveThreshold || similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold)) {
+      const minSimForConsec = COPYRIGHT_THRESHOLDS.video.minSimilarityForConsecutive;
+
+      // Copyright: protected post + enough consecutive seconds + minimum similarity
+      if (info.copyrightProtected && (
+        (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.copyrightConsecutiveThreshold && similarity >= minSimForConsec) ||
+        similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold
+      )) {
         if (!bestTelif || maxConsecutive > bestTelif.consecutive || (maxConsecutive === bestTelif.consecutive && similarity > bestTelif.similarity)) {
           bestTelif = match;
         }
       }
 
-      // Duplicate: any post + 4+ consecutive seconds
-      if (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.consecutiveFrameThreshold || similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold) {
+      // Duplicate: enough consecutive seconds + minimum similarity, or high overall match
+      if (
+        (maxConsecutive >= COPYRIGHT_THRESHOLDS.video.consecutiveFrameThreshold && similarity >= minSimForConsec) ||
+        similarity >= COPYRIGHT_THRESHOLDS.video.matchThreshold
+      ) {
         if (!bestKopya || maxConsecutive > bestKopya.consecutive || (maxConsecutive === bestKopya.consecutive && similarity > bestKopya.similarity)) {
           bestKopya = match;
         }

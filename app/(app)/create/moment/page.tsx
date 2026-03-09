@@ -683,8 +683,6 @@ function MomentWriteContent() {
         } catch { /* skip */ }
       }
       finalTitle = title.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
-      setTitle(finalTitle);
-      setTags(finalTags);
     }
 
     setSavingAs(status);

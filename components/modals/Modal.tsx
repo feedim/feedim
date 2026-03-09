@@ -49,17 +49,17 @@ const ANIMATION_CONFIG = {
   1: {
     in: `slideInBottom_0.28s_${EASING}`,
     out: `slideOutBottom_0.25s_${EASING}_forwards`,
-    closeDelay: 250,
+    closeDelay: 110,
   },
   2: {
     in: `slideInRight_0.28s_${EASING}`,
     out: `slideOutRight_0.25s_${EASING}_forwards`,
-    closeDelay: 250,
+    closeDelay: 110,
   },
   3: {
     in: `slideIn_0.22s_${EASING}`,
     out: `slideOut_0.2s_${EASING}_forwards`,
-    closeDelay: 200,
+    closeDelay: 90,
   },
 } as const;
 
@@ -190,6 +190,7 @@ export default function Modal({
       sheetRef.current.style.transform = "";
       sheetRef.current.style.transition = "";
       sheetRef.current.style.animation = "";
+      sheetRef.current.style.visibility = "";
     }
     if (backdropRef.current) {
       backdropRef.current.style.opacity = "";
@@ -250,6 +251,7 @@ export default function Modal({
 
   const handleClose = useCallback(() => {
     if (closing) return;
+    setClosing(true);
     clearInlineStyles();
     onClose();
   }, [onClose, closing, clearInlineStyles]);
@@ -299,7 +301,7 @@ export default function Modal({
     scrollParentRef.current = sp;
 
     // Can only drag if no scroll parent or scroll parent is at top
-    canDrag.current = !sp || sp.scrollTop === 0;
+    canDrag.current = !sp || sp.scrollTop <= 1;
 
     dragStartY.current = clientY;
     dragStartX.current = clientX;
@@ -407,17 +409,19 @@ export default function Modal({
       if (backdrop) backdrop.style.opacity = "0";
       resetDragState();
       setTimeout(() => {
-        if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; sheet.style.animation = ""; }
-        if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
+        // visibility: hidden masks any CSS animation replay during close cycle
+        if (sheet) sheet.style.visibility = "hidden";
         onClose();
-      }, 300);
+      }, 280);
     } else {
       // Snap back to origin
       if (sheet) sheet.style.transform = "translateY(0px)";
       if (backdrop) backdrop.style.opacity = "";
       resetDragState();
       setTimeout(() => {
-        if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; sheet.style.animation = ""; }
+        if (sheet) { sheet.style.transition = ""; sheet.style.transform = ""; }
+        // animation: none stays — prevents show animation replay after snap-back
+        // clearInlineStyles() on next open will reset it
         if (backdrop) { backdrop.style.transition = ""; backdrop.style.opacity = ""; }
       }, 300);
     }
@@ -482,7 +486,7 @@ export default function Modal({
   // Sheet layout classes based on animation type
   const sheetLayoutClasses = resolvedType === 2
     ? `relative h-full ${sizeClasses[size]} bg-bg-secondary rounded-l-[20px] overflow-hidden flex flex-col will-change-transform`
-    : `relative w-full ${sizeClasses[size]} bg-bg-secondary ${centerOnMobile ? "!rounded-[20px] max-h-[90vh]" : "rounded-t-[20px] max-h-[90vh]"} ${centerOnDesktop ? "sm:!rounded-[20px] sm:!max-h-[85vh]" : "sm:max-h-[95vh]"} ${fullHeight ? "min-h-[90vh] sm:min-h-[95vh]" : ""} overflow-hidden flex flex-col will-change-transform`;
+    : `relative w-full ${sizeClasses[size]} bg-bg-secondary ${centerOnMobile ? "!rounded-[20px] max-h-[90dvh]" : "rounded-t-[20px] max-h-[90dvh]"} ${centerOnDesktop ? "sm:!rounded-[20px] sm:!max-h-[85dvh]" : "sm:max-h-[95dvh]"} ${fullHeight ? "min-h-[90dvh] sm:min-h-[95dvh]" : ""} overflow-hidden flex flex-col will-change-transform`;
 
   const containerAlignClasses = resolvedType === 2
     ? `fixed inset-0 ${zIndex} flex items-stretch justify-end`
@@ -512,15 +516,15 @@ export default function Modal({
   const animClass =
     resolvedType === 1
       ? (closing
-          ? "animate-[slideOutBottom_0.2s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-          : "animate-[slideInBottom_0.22s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+          ? "animate-[slideOutBottom_0.1s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+          : "animate-[slideInBottom_0.12s_cubic-bezier(0.22,1,0.36,1)_forwards]")
       : resolvedType === 2
         ? (closing
-            ? "animate-[slideOutRight_0.2s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            : "animate-[slideInRight_0.22s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+            ? "animate-[slideOutRight_0.1s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+            : "animate-[slideInRight_0.12s_cubic-bezier(0.22,1,0.36,1)_forwards]")
         : (closing
-            ? "animate-[slideOut_0.15s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            : "animate-[slideIn_0.18s_cubic-bezier(0.25,0.1,0.25,1)_both]");
+            ? "animate-[slideOut_0.08s_cubic-bezier(0.22,1,0.36,1)_forwards]"
+            : "animate-[slideIn_0.1s_cubic-bezier(0.25,0.1,0.25,1)_both]");
 
   return createPortal(
     <div
@@ -528,14 +532,14 @@ export default function Modal({
     >
       <div
         ref={backdropRef}
-        className={`absolute inset-0 bg-black/60 transition-opacity ${closing ? "duration-200 opacity-0" : "duration-200 opacity-100"}`}
+        className={`absolute inset-0 bg-black/60 transition-opacity ${closing ? "duration-150 opacity-0" : "duration-150 opacity-100"}`}
         onClick={handleClose}
       />
 
       <div
         ref={sheetRef}
         data-modal
-        className={`${sheetLayoutClasses} pop-modal-content type${resolvedType} sm-type${resolvedType} ${animClass}`}
+        className={`${sheetLayoutClasses} ${animClass}`}
       >
         {/* Handle — sadece bottom sheet tiplerinde göster */}
         {showDragHandle && (

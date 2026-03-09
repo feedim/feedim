@@ -180,7 +180,7 @@ function VideoWriteContent() {
       const data = await res.json();
       if (res.ok && data.post) {
         setTitle(data.post.title || "");
-        setDescription(data.post.content || "");
+        setDescription((data.post.content || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, ""));
         setDraftId(data.post.id);
         setIsPublished(data.post.status === 'published');
         setVideoUrl(data.post.video_url || "");
@@ -590,8 +590,6 @@ function VideoWriteContent() {
         } catch { /* skip */ }
       }
       finalDescription = description.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
-      setDescription(finalDescription);
-      setTags(finalTags);
     }
 
     setSavingAs(status);
@@ -616,6 +614,9 @@ function VideoWriteContent() {
         } catch { /* use data url as fallback */ }
       }
 
+      // Convert newlines to <br> for proper display (like notes)
+      const contentHtml = finalDescription.trim().replace(/\n/g, "<br>");
+
       const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
       const method = draftId ? "PUT" : "POST";
       const res = await fetch(endpoint, {
@@ -623,7 +624,7 @@ function VideoWriteContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          content: finalDescription.trim(),
+          content: contentHtml,
           content_type: "video",
           status,
           tags: finalTags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),

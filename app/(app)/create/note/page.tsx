@@ -329,8 +329,6 @@ function NoteWriteContent() {
         } catch { /* skip */ }
       }
       finalText = trimmed.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
-      setNoteText(finalText);
-      setTags(finalTags);
     }
 
     setSavingAs(status);

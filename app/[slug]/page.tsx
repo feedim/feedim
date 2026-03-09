@@ -178,7 +178,7 @@ export default async function PostPage({ params }: PageProps) {
   // ─── Video post: YouTube-like layout ───
   if (isVideo) {
     const nextVideo = nextVideos[0] || null;
-    const plainDescription = sanitizedContent ? sanitizedContent.replace(/<[^>]+>/g, '') : '';
+    const plainDescription = sanitizedContent ? sanitizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') : '';
     let videoOrigin: string | null = null;
     if (post.video_url) {
       try { videoOrigin = new URL(post.video_url).origin; } catch {}

@@ -289,7 +289,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
     return (
       <div
         ref={cardRef}
-        className="relative w-full bg-black snap-start snap-always md:h-screen"
+        className="relative w-full bg-black md:h-screen"
         style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: `${h} 100vw` }}
       >
         {(moment.video_thumbnail || moment.featured_image) && (
@@ -306,7 +306,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   return (
     <div
       ref={cardRef}
-      className="relative w-full bg-black snap-start snap-always md:h-screen"
+      className="relative w-full bg-black md:h-screen"
       data-moment-active={isActive ? "true" : undefined}
       style={{ ...viewportHeightStyle, contentVisibility: isActive ? "visible" : "auto", containIntrinsicSize: `${h} 100vw` }}
     >
@@ -315,7 +315,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         <VideoPlayer
           ref={videoRef}
           src={loadVideo ? (moment.video_url || "") : ""}
-          hlsUrl={moment.hls_url || undefined}
+          hlsUrl={loadVideo ? (moment.hls_url || undefined) : undefined}
           poster={moment.video_thumbnail || moment.featured_image}
           moment
           loop
@@ -327,7 +327,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
 
         {/* Hidden audio element for external sound */}
         {hasExternalSound && moment.sounds && (
-          <audio ref={audioRef} src={moment.sounds.audio_url} loop preload={loadVideo ? (preloadHint || "auto") : "none"} />
+          <audio ref={audioRef} src={loadVideo ? moment.sounds.audio_url : undefined} loop preload={loadVideo ? (preloadHint || "auto") : "none"} />
         )}
 
         {/* Play/Pause indicator */}

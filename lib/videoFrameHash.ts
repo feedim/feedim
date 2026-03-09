@@ -19,7 +19,14 @@ export interface ClientFrameHash {
  * Pixels above the mean → 1, below → 0. 64-bit hash → 16-hex string.
  * More robust to re-encoding than dHash because it uses a global threshold.
  */
-function computeAHash(canvas: HTMLCanvasElement): string {
+/**
+ * Minimum standard deviation for a frame to be considered non-uniform.
+ * Frames below this (black screens, solid colors, transitions) produce
+ * near-identical hashes that cause mass false positives.
+ */
+const MIN_FRAME_STD_DEV = 10;
+
+function computeAHash(canvas: HTMLCanvasElement): string | null {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const imageData = ctx.getImageData(0, 0, 8, 8);
   const pixels = imageData.data;
@@ -36,6 +43,16 @@ function computeAHash(canvas: HTMLCanvasElement): string {
   let sum = 0;
   for (let i = 0; i < 64; i++) sum += gray[i];
   const mean = sum / 64;
+
+  // Skip low-variance frames (black screens, solid colors, transitions)
+  // These produce near-identical hashes across unrelated videos
+  let variance = 0;
+  for (let i = 0; i < 64; i++) {
+    const diff = gray[i] - mean;
+    variance += diff * diff;
+  }
+  const stdDev = Math.sqrt(variance / 64);
+  if (stdDev < MIN_FRAME_STD_DEV) return null;
 
   // Pixels >= mean → 1, else → 0
   let hash = BigInt(0);
@@ -238,11 +255,13 @@ export async function extractVideoFrameHashes(
 
         if (!isBlank) {
           const hash = computeAHash(canvas);
-          hashes.push({
-            frameIndex: currentFrame,
-            hash,
-            timestamp: currentFrame,
-          });
+          if (hash) {
+            hashes.push({
+              frameIndex: currentFrame,
+              hash,
+              timestamp: currentFrame,
+            });
+          }
         }
       } catch {
         // Skip frame on error

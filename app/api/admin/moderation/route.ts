@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
           author:profiles!posts_author_id_fkey${countryFilter ? '!inner' : ''}(user_id, username, full_name, avatar_url, language, country)
         `, { count: 'exact' })
         .or('status.eq.moderation,and(status.eq.published,is_nsfw.eq.true)')
-        .order('moderation_due_at', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
       if (countryFilter) flaggedPostsQuery = flaggedPostsQuery.eq('author.country', countryFilter);
       const { data: posts, count } = await flaggedPostsQuery;
@@ -284,7 +284,7 @@ export async function GET(request: NextRequest) {
           user:profiles!withdrawal_requests_user_id_fkey(username, full_name, avatar_url, coin_balance, total_earned)
         `, { count: 'exact' })
         .in('status', ['pending', 'processing'])
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       {
@@ -299,7 +299,7 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .select('user_id, username, full_name, avatar_url, profile_score, spam_score, monetization_applied_at, account_type')
         .eq('monetization_status', 'pending')
-        .order('monetization_applied_at', { ascending: true })
+        .order('monetization_applied_at', { ascending: false })
         .limit(50);
 
       // Get post counts for each applicant
@@ -429,7 +429,7 @@ export async function GET(request: NextRequest) {
           matched_author:profiles!copyright_claims_matched_author_id_fkey(username, full_name, avatar_url)
         `, { count: 'exact' })
         .eq('status', 'pending')
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       // Enrich with verification info for matched posts

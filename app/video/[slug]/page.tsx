@@ -145,7 +145,7 @@ export default async function VideoPage({ params }: PageProps) {
   };
 
   const nextVideo = nextVideos[0] || null;
-  const plainDescription = stripHtmlToText(post.content || "");
+  const plainDescription = (post.content || "").replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
   let videoOrigin: string | null = null;
   if (post.video_url) {
     try { videoOrigin = new URL(post.video_url).origin; } catch {}

@@ -1,4 +1,5 @@
 const MENTION_REGEX = /@([A-Za-z0-9._-]+)/g;
+const URL_REGEX = /(https?:\/\/[^\s<>"']+)/g;
 
 function escapeHTML(text: string): string {
   return text
@@ -10,14 +11,17 @@ function escapeHTML(text: string): string {
 }
 
 /**
- * Convert plain text @username mentions into clickable links.
+ * Convert plain text @username mentions and URLs into clickable links.
  * Only the FIRST occurrence of each unique username becomes a link (up to `max` unique users).
  * Subsequent mentions of the same user stay as plain text.
+ * All URLs are auto-linked with rel="nofollow noopener" and target="_blank".
  */
 export function renderMentionsAsHTML(text: string, max = 3): string {
   const escaped = escapeHTML(text);
   const seen = new Set<string>();
-  return escaped.replace(MENTION_REGEX, (_match, username: string) => {
+
+  // First pass: convert @mentions
+  let result = escaped.replace(MENTION_REGEX, (_match, username: string) => {
     const safe = username.replace(/[^A-Za-z0-9._-]/g, "");
     const lower = safe.toLowerCase();
     if (!seen.has(lower) && seen.size < max) {
@@ -27,6 +31,18 @@ export function renderMentionsAsHTML(text: string, max = 3): string {
     if (!seen.has(lower)) seen.add(lower);
     return `@${safe}`;
   });
+
+  // Second pass: auto-link URLs (skip URLs already inside href attributes)
+  result = result.replace(/(<a\s[^>]*>[\s\S]*?<\/a>)|(https?:\/\/[^\s<>&"']+(?:&amp;[^\s<>&"']+)*)/g, (match, tag) => {
+    if (tag) return tag; // Already inside an <a> tag
+    // Unescape &amp; back to & for the actual URL
+    const url = match.replace(/&amp;/g, '&');
+    // Display: truncate long URLs
+    const display = url.length > 50 ? url.slice(0, 47) + '...' : url;
+    return `<a href="${url}" target="_blank" rel="nofollow noopener noreferrer" class="text-accent-main hover:underline break-all">${escapeHTML(display)}</a>`;
+  });
+
+  return result;
 }
 
 /**

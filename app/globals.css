@@ -449,48 +449,7 @@ input[type="radio"]:active {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Modal animations (WP style) */
-.x32flP4rs.show .pop-modal-content.type1 {
-  animation: slideInBottom 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-.x32flP4rs:not(.show) .pop-modal-content.type1 {
-  animation: slideOutBottom 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-.x32flP4rs.show .pop-modal-content.type2 {
-  animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-.x32flP4rs:not(.show) .pop-modal-content.type2 {
-  animation: slideOutRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-.x32flP4rs.show .pop-modal-content.type3 {
-  animation: slideIn 0.35s cubic-bezier(0.25, 0.1, 0.25, 1) both;
-}
-.x32flP4rs:not(.show) .pop-modal-content.type3 {
-  animation: slideOut 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@media (max-width: 801px) {
-  .pop-modal-content.sm-type1 {
-    animation: slideInBottom 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  .x32flP4rs:not(.show) .pop-modal-content.sm-type1 {
-    animation: slideOutBottom 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  .pop-modal-content.sm-type2 {
-    animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  .x32flP4rs:not(.show) .pop-modal-content.sm-type2 {
-    animation: slideOutRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  .pop-modal-content.sm-type3 {
-    animation: slideIn 0.35s cubic-bezier(0.25, 0.1, 0.25, 1) both;
-  }
-  .x32flP4rs:not(.show) .pop-modal-content.sm-type3 {
-    animation: slideOut 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-}
-
-/* Modal Type 1: Bottom sheet (WP timing) */
+/* Modal Type 1: Bottom sheet */
 @keyframes slideInBottom {
   0% { transform: translateY(100%) scale(1); opacity: 0; }
   80% { transform: translateY(2%) scale(1); opacity: 1; }

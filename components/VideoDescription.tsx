@@ -25,7 +25,11 @@ export default function VideoDescription({ text }: VideoDescriptionProps) {
     <div
       className="mt-3 p-4 rounded-[12px] bg-bg-secondary cursor-pointer transition hover:bg-bg-secondary select-none"
       onCopy={(e) => e.preventDefault()}
-      onClick={() => showToggle && setExpanded(!expanded)}
+      onClick={(e) => {
+        // Don't toggle when clicking links
+        if ((e.target as HTMLElement).closest('a')) return;
+        showToggle && setExpanded(!expanded);
+      }}
     >
       <span className="text-[0.88rem] font-bold block mb-2">{t("description")}</span>
       <div

@@ -69,12 +69,12 @@ export default memo(function EditableAvatar({
     >
       {src ? (
         <>
-          {/* Image wrapper — blur controlled here, not on img (avoids CSS conflicts) */}
+          {/* Image wrapper — skip blur when loading (upload in progress shows dark overlay instead) */}
           <div
             className={`${sizeClass} rounded-full overflow-hidden border border-border-primary`}
             style={{
-              filter: imgLoaded ? "blur(0px)" : "blur(3px)",
-              transition: imgLoaded ? "filter 200ms ease 80ms" : "none",
+              filter: loading ? "none" : imgLoaded ? "blur(0px)" : "blur(3px)",
+              transition: !loading && imgLoaded ? "filter 200ms ease 80ms" : "none",
               transform: "translateZ(0)",
             }}
           >
@@ -85,13 +85,15 @@ export default memo(function EditableAvatar({
               className={`lazyload w-full h-full object-cover bg-bg-tertiary ${imgClassName || ""}`}
             />
           </div>
-          {/* Skeleton pulse — fully opaque until image ready, then fades out */}
-          <div
-            className={`absolute inset-0 rounded-full bg-bg-tertiary border border-border-primary ${
-              imgLoaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
-            }`}
-            style={{ transition: "opacity 250ms ease" }}
-          />
+          {/* Skeleton pulse — hide when loading overlay is active */}
+          {!loading && (
+            <div
+              className={`absolute inset-0 rounded-full bg-bg-tertiary border border-border-primary ${
+                imgLoaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
+              }`}
+              style={{ transition: "opacity 250ms ease" }}
+            />
+          )}
         </>
       ) : (
         <img
