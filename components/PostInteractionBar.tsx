@@ -419,7 +419,7 @@ export default function PostInteractionBar({
         <>
         <button
           onClick={() => { setStatsMounted(true); setStatsOpen(true); }}
-          className="flex flex-col w-full mt-4 py-3 px-4 rounded-[15px] bg-bg-secondary hover:opacity-90 transition text-left"
+          className="flex flex-col w-full mt-4 py-3 px-4 rounded-[11px] bg-bg-secondary hover:opacity-90 transition text-left"
         >
           <span className="text-[0.88rem] font-bold">{t('interaction.stats')}</span>
           <span className="flex items-center gap-1 text-[0.72rem] text-text-muted mt-0.5">
@@ -435,7 +435,7 @@ export default function PostInteractionBar({
         {isBoosted && boostStatus === 'active' ? (
           <button
             onClick={() => { setBoostDetailsMounted(true); setBoostDetailsOpen(true); }}
-            className="flex flex-col w-full mt-2 py-3 px-4 rounded-[15px] bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/8 transition text-left"
+            className="flex flex-col w-full mt-2 py-3 px-4 rounded-[11px] bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/8 transition text-left"
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-1.5">
@@ -448,7 +448,7 @@ export default function PostInteractionBar({
         ) : isBoosted && boostStatus === 'pending_review' ? (
           <button
             onClick={() => { setBoostDetailsMounted(true); setBoostDetailsOpen(true); }}
-            className="flex flex-col w-full mt-2 py-3 px-4 rounded-[15px] bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/8 transition text-left"
+            className="flex flex-col w-full mt-2 py-3 px-4 rounded-[11px] bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/8 transition text-left"
           >
             <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-[var(--accent-color)]" />
@@ -458,7 +458,7 @@ export default function PostInteractionBar({
         ) : isBoosted && boostStatus === 'paused' ? (
           <button
             onClick={() => { setBoostDetailsMounted(true); setBoostDetailsOpen(true); }}
-            className="flex flex-col w-full mt-2 py-3 px-4 rounded-[15px] bg-bg-secondary border border-border-primary/30 hover:bg-bg-tertiary transition text-left"
+            className="flex flex-col w-full mt-2 py-3 px-4 rounded-[11px] bg-bg-secondary border border-border-primary/30 hover:bg-bg-tertiary transition text-left"
           >
             <div className="flex items-center gap-1.5">
               <Pause className="h-4 w-4 text-text-muted" />
@@ -474,7 +474,7 @@ export default function PostInteractionBar({
                 feedimAlert("info", t('boost.requiresProfessional'));
               }
             }}
-            className="flex items-center justify-between w-full mt-2 py-3 px-4 rounded-[15px] bg-bg-secondary hover:bg-bg-tertiary transition text-left"
+            className="flex items-center justify-between w-full mt-2 py-3 px-4 rounded-[11px] bg-bg-secondary hover:bg-bg-tertiary transition text-left"
           >
             <span className="text-[0.82rem] text-text-muted">{t('boost.ctaQuestion')}</span>
             <span className="text-[0.82rem] font-semibold text-accent-main shrink-0 ml-3">

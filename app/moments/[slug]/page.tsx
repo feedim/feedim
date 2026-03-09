@@ -198,7 +198,7 @@ export default async function MomentPage({ params }: PageProps) {
           </div>
         )}
 
-        <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-2" dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(post.title) }} />
+        <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-1" dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(post.title) }} />
 
         <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
           <span>{t("viewCount", { count: formatCount(post.view_count || 0) })}</span>

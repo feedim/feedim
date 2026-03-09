@@ -235,7 +235,7 @@ export default async function PostPage({ params }: PageProps) {
           )}
 
           {/* Title */}
-          <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-2">{post.title}</h1>
+          <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-1">{post.title}</h1>
 
           {/* Stats row */}
           <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
