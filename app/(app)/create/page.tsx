@@ -201,7 +201,6 @@ function WritePageContent() {
       return;
     }
     setTagCreating(true);
-    await new Promise(r => setTimeout(r, 1000));
     try {
       const res = await fetch("/api/tags", {
         method: "POST",

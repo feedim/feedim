@@ -118,7 +118,7 @@ export default async function VideoPage({ params }: PageProps) {
   const tCommonPromise = getTranslations("common");
   const tCTPromise = getTranslations("contentTypes");
   const [nextVideos, t, tCommon, tCT] = await Promise.all([
-    getCachedNextVideos(post.id, post.author_id, locale, ipCountry),
+    getCachedNextVideos(post.id, post.author_id, locale, ipCountry, ["video"]),
     tPromise,
     tCommonPromise,
     tCTPromise,
@@ -144,7 +144,13 @@ export default async function VideoPage({ params }: PageProps) {
     publisher: { "@type": "Organization", name: "Feedim", url: baseUrl, logo: { "@type": "ImageObject", url: `${baseUrl}/favicon.png` } },
   };
 
-  const nextVideo = nextVideos[0] || null;
+  // Build compact next video list for client-side unwatched filtering
+  const nextVideoInfos = nextVideos.map(v => ({
+    slug: v.slug,
+    title: v.title,
+    thumbnail: v.video_thumbnail || v.featured_image || undefined,
+    contentType: v.content_type || "video",
+  }));
   const plainDescription = (post.content || "").replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
   let videoOrigin: string | null = null;
   if (post.video_url) {
@@ -195,9 +201,7 @@ export default async function VideoPage({ params }: PageProps) {
               hlsUrl={post.hls_url || undefined}
               poster={post.video_thumbnail || post.featured_image || undefined}
               slug={post.slug}
-              nextVideoSlug={nextVideo?.slug}
-              nextVideoTitle={nextVideo?.title}
-              nextVideoThumbnail={nextVideo?.video_thumbnail || nextVideo?.featured_image}
+              nextVideos={nextVideoInfos}
               videoDuration={post.video_duration || undefined}
             />
           </div>

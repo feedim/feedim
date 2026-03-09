@@ -8,15 +8,28 @@ import { useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { AD_POSTROLL_MIN, AD_POSTROLL_MAX } from "@/lib/constants";
 import { saveWatchProgress, getWatchProgress, removeWatchProgress } from "@/lib/watchProgress";
+import { addToWatchHistory, getWatchedSlugs } from "@/lib/watchHistory";
 import { useHydrated } from "@/lib/useHydrated";
+import { getPostUrl } from "@/lib/utils";
+
+interface NextVideoInfo {
+  slug: string;
+  title: string;
+  thumbnail?: string;
+  contentType?: string;
+}
 
 interface VideoPlayerClientProps {
   src: string;
   hlsUrl?: string;
   poster?: string;
   slug?: string;
+  nextVideos?: NextVideoInfo[];
+  /** @deprecated Use nextVideos instead */
   nextVideoSlug?: string;
+  /** @deprecated Use nextVideos instead */
   nextVideoTitle?: string;
+  /** @deprecated Use nextVideos instead */
   nextVideoThumbnail?: string;
   videoDuration?: number;
   soundUrl?: string;
@@ -29,7 +42,8 @@ function shouldShowPostRoll(duration?: number): boolean {
 }
 
 export default function VideoPlayerClient({
-  src, hlsUrl, poster, slug, nextVideoSlug, nextVideoTitle, nextVideoThumbnail,
+  src, hlsUrl, poster, slug, nextVideos,
+  nextVideoSlug: legacyNextSlug, nextVideoTitle: legacyNextTitle, nextVideoThumbnail: legacyNextThumb,
   videoDuration, soundUrl,
 }: VideoPlayerClientProps) {
   const t = useTranslations("video");
@@ -43,6 +57,32 @@ export default function VideoPlayerClient({
   const [ended, setEnded] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const watchedRecorded = useRef(false);
+
+  // Pick first unwatched video from the list for autoplay
+  const nextVideo = useMemo(() => {
+    if (!hydrated) {
+      // Before hydration, use first video or legacy props
+      if (nextVideos && nextVideos.length > 0) return nextVideos[0];
+      if (legacyNextSlug) return { slug: legacyNextSlug, title: legacyNextTitle || "", thumbnail: legacyNextThumb };
+      return null;
+    }
+    if (nextVideos && nextVideos.length > 0) {
+      const watched = getWatchedSlugs();
+      // First pass: find first unwatched video
+      const unwatched = nextVideos.find(v => !watched.has(v.slug));
+      if (unwatched) return unwatched;
+      // All watched — return the first one anyway
+      return nextVideos[0];
+    }
+    if (legacyNextSlug) return { slug: legacyNextSlug, title: legacyNextTitle || "", thumbnail: legacyNextThumb };
+    return null;
+  }, [hydrated, nextVideos, legacyNextSlug, legacyNextTitle, legacyNextThumb]);
+
+  const nextVideoSlug = nextVideo?.slug;
+  const nextVideoTitle = nextVideo?.title;
+  const nextVideoThumbnail = nextVideo?.thumbnail;
+  const nextVideoUrl = nextVideoSlug ? `${getPostUrl(nextVideoSlug, nextVideo?.contentType || "video")}?autoplay=1` : null;
 
   // Post-roll ad state (mid-roll kaldırıldı — sadece 4-10 dk post-roll)
   const [postRollActive, setPostRollActive] = useState(false);
@@ -134,7 +174,7 @@ export default function VideoPlayerClient({
     }
   }, [slug]);
 
-  // Save watch progress every 5 seconds during playback
+  // Save watch progress every 5 seconds + record to watch history after 3s
   useEffect(() => {
     if (!slug) return;
     const v = videoRef.current;
@@ -143,6 +183,11 @@ export default function VideoPlayerClient({
     let lastSave = 0;
     const onTimeUpdate = () => {
       if (postRollActive) return;
+      // Record to watch history after 3 seconds of playback
+      if (!watchedRecorded.current && v.currentTime >= 3) {
+        watchedRecorded.current = true;
+        addToWatchHistory(slug);
+      }
       const now = Date.now();
       if (now - lastSave < 5000) return;
       lastSave = now;
@@ -213,7 +258,7 @@ export default function VideoPlayerClient({
     if (countdown === null) return;
     if (countdown <= 0) {
       emitNavigationStart();
-      router.push(`/video/${nextVideoSlug}?autoplay=1`);
+      router.push(nextVideoUrl!);
       return;
     }
     timerRef.current = setInterval(() => {
@@ -229,7 +274,7 @@ export default function VideoPlayerClient({
 
   const playNow = () => {
     emitNavigationStart();
-    router.push(`/video/${nextVideoSlug}?autoplay=1`);
+    router.push(nextVideoUrl!);
   };
 
   const replay = () => {

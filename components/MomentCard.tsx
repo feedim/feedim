@@ -415,7 +415,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         )}
         <div className="flex items-center gap-2 mb-1.5">
           <Link href={`/u/${author?.username}`} className="flex items-center gap-2 min-w-0">
-            <LazyAvatar src={moment.profiles?.avatar_url} alt={moment.profiles?.username || ""} sizeClass="h-10 w-10" borderClass="border border-white/10" />
+            <LazyAvatar src={moment.profiles?.avatar_url} alt={moment.profiles?.username || ""} sizeClass="h-9 w-9" borderClass="border border-white/10" />
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-white font-medium truncate" style={{ fontSize: "0.84rem", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
                 @{author?.username}

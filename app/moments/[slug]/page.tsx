@@ -144,7 +144,12 @@ export default async function MomentPage({ params }: PageProps) {
     publisher: { "@type": "Organization", name: "Feedim", url: baseUrl, logo: { "@type": "ImageObject", url: `${baseUrl}/favicon.png` } },
   };
 
-  const nextVideo = nextVideos[0] || null;
+  const nextVideoInfos = nextVideos.map(v => ({
+    slug: v.slug,
+    title: v.title,
+    thumbnail: v.video_thumbnail || v.featured_image || undefined,
+    contentType: v.content_type || "video",
+  }));
   const plainDescription = (post.content || "").replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
   let videoOrigin: string | null = null;
   if (post.video_url) {
@@ -189,9 +194,7 @@ export default async function MomentPage({ params }: PageProps) {
               hlsUrl={post.hls_url || undefined}
               poster={post.video_thumbnail || post.featured_image || undefined}
               slug={post.slug}
-              nextVideoSlug={nextVideo?.slug}
-              nextVideoTitle={nextVideo?.title}
-              nextVideoThumbnail={nextVideo?.video_thumbnail || nextVideo?.featured_image}
+              nextVideos={nextVideoInfos}
               videoDuration={post.video_duration || undefined}
               soundUrl={post.sounds && post.sounds.status === "active" && post.sounds.audio_url !== post.video_url ? post.sounds.audio_url : undefined}
             />

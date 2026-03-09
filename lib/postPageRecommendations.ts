@@ -193,41 +193,84 @@ export async function getFeaturedContent(currentPostId: number, authorId: string
   return rankRows(filtered, buildContext(locale, country), "discovery").slice(0, 3);
 }
 
-export async function getNextVideos(currentPostId: number, authorId: string, locale?: string, country?: string): Promise<VideoItem[]> {
+export async function getNextVideos(currentPostId: number, authorId: string, locale?: string, country?: string, contentTypes?: string[]): Promise<VideoItem[]> {
   const admin = createAdminClient();
+
+  // Default to video+moment; callers can narrow down
+  const types = contentTypes && contentTypes.length > 0 ? contentTypes : ["video", "moment"];
+  const typeFilter = types.length === 1
+    ? (q: any) => q.eq("content_type", types[0])
+    : (q: any) => q.in("content_type", types);
+
+  // Fetch larger pools: more author videos + much larger discovery pool
   const [{ data: authorVideos }, { data: otherVideos }] = await Promise.all([
-    admin
+    typeFilter(admin
       .from("posts")
-      .select(NEXT_VIDEO_SELECT)
-      .eq("content_type", "video")
+      .select(NEXT_VIDEO_SELECT))
       .eq("status", "published")
       .or("is_nsfw.eq.false,is_nsfw.is.null")
       .eq("author_id", authorId)
       .neq("id", currentPostId)
       .order("published_at", { ascending: false })
-      .limit(5),
-    admin
+      .limit(8),
+    typeFilter(admin
       .from("posts")
-      .select(NEXT_VIDEO_SELECT)
-      .eq("content_type", "video")
+      .select(NEXT_VIDEO_SELECT))
       .eq("status", "published")
       .or("is_nsfw.eq.false,is_nsfw.is.null")
       .neq("author_id", authorId)
       .neq("id", currentPostId)
       .order("trending_score", { ascending: false })
-      .limit(30),
+      .limit(60),
   ]);
 
   const authorList = ((authorVideos || []) as RawRecommendationRow[])
     .filter(hasActiveAuthor)
     .map(withFlatProfile);
+
+  const ctx = buildContext(locale, country);
   const rankedOthers = rankRows(
     ((otherVideos || []) as RawRecommendationRow[]).filter(hasActiveAuthor).map(withFlatProfile),
-    buildContext(locale, country),
+    ctx,
     "discovery",
   );
 
-  return [...authorList, ...rankedOthers].slice(0, 20) as VideoItem[];
+  // Per-author diversity cap: max 3 videos from any single author in discovery
+  const authorCounts = new Map<string, number>();
+  const diverseOthers: RecommendationRow[] = [];
+  for (const row of rankedOthers) {
+    const count = authorCounts.get(row.author_id) || 0;
+    if (count >= 3) continue;
+    authorCounts.set(row.author_id, count + 1);
+    diverseOthers.push(row);
+  }
+
+  // Interleave: 2 author → 4 discovery → 1 author → rest discovery
+  const result: RecommendationRow[] = [];
+  const authorQueue = [...authorList];
+  const discoveryQueue = [...diverseOthers];
+  const seen = new Set<number>();
+
+  const take = (queue: RecommendationRow[], n: number) => {
+    let taken = 0;
+    while (taken < n && queue.length > 0) {
+      const item = queue.shift()!;
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      result.push(item);
+      taken++;
+    }
+  };
+
+  // Slot pattern: 2 from author, 4 discovery, 1 author, then fill with discovery
+  take(authorQueue, 2);
+  take(discoveryQueue, 4);
+  take(authorQueue, 1);
+  take(discoveryQueue, 4);
+  take(authorQueue, authorQueue.length); // remaining author videos
+  take(discoveryQueue, discoveryQueue.length); // remaining discovery
+
+  return result.slice(0, 24) as VideoItem[];
 }
 
 export const getCachedAuthorContent = unstable_cache(getAuthorContent, ["author-content"], {

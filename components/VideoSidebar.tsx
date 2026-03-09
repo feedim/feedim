@@ -7,6 +7,7 @@ import WatchProgressBar from "@/components/WatchProgressBar";
 import { formatCount, formatRelativeDate, getPostUrl } from "@/lib/utils";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { useTranslations } from "next-intl";
+import { getWatchedSlugs } from "@/lib/watchHistory";
 
 export interface VideoItem {
   id: number;
@@ -69,17 +70,27 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
   const t = useTranslations();
   if (videos.length === 0) return null;
 
+  // Sort: unwatched first, watched at bottom
+  const watched = getWatchedSlugs();
+  const sorted = [...videos].sort((a, b) => {
+    const aW = watched.has(a.slug) ? 1 : 0;
+    const bW = watched.has(b.slug) ? 1 : 0;
+    return aW - bW;
+  });
+
   return (
     <div>
       {title && (
         <h3 className="text-[1.1rem] font-bold mb-3">{title}</h3>
       )}
       <div className="space-y-1.5">
-        {videos.map(video => (
+        {sorted.map(video => {
+          const isWatched = watched.has(video.slug);
+          return (
           <Link
             key={video.id}
             href={getPostUrl(video.slug, video.content_type)}
-            className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
+            className={`flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition ${isWatched ? "opacity-60" : ""}`}
           >
             {/* Thumbnail */}
             <div className={`relative rounded-md overflow-hidden bg-bg-tertiary shrink-0 ${compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]"}`}>
@@ -122,7 +133,8 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
               </div>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

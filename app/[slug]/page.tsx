@@ -130,7 +130,7 @@ export default async function PostPage({ params }: PageProps) {
   const tCTPromise = getTranslations("contentTypes");
   const [authorContent, nextVideos, featuredContent, t, tCommon, tCT] = await Promise.all([
     getCachedAuthorContent(post.author_id, post.id, locale, ipCountry),
-    isVideo ? getCachedNextVideos(post.id, post.author_id, locale, ipCountry) : Promise.resolve([]),
+    isVideo ? getCachedNextVideos(post.id, post.author_id, locale, ipCountry, post.content_type === "moment" ? ["video", "moment"] : ["video"]) : Promise.resolve([]),
     getCachedFeaturedContent(post.id, post.author_id, locale, ipCountry),
     tPromise,
     tCommonPromise,
@@ -177,7 +177,12 @@ export default async function PostPage({ params }: PageProps) {
 
   // ─── Video post: YouTube-like layout ───
   if (isVideo) {
-    const nextVideo = nextVideos[0] || null;
+    const nextVideoInfos = nextVideos.map(v => ({
+      slug: v.slug,
+      title: v.title,
+      thumbnail: v.video_thumbnail || v.featured_image || undefined,
+      contentType: v.content_type || "video",
+    }));
     const plainDescription = sanitizedContent ? sanitizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') : '';
     let videoOrigin: string | null = null;
     if (post.video_url) {
@@ -226,9 +231,7 @@ export default async function PostPage({ params }: PageProps) {
                 hlsUrl={post.hls_url || undefined}
                 poster={post.video_thumbnail || post.featured_image || undefined}
                 slug={post.slug}
-                nextVideoSlug={nextVideo?.slug}
-                nextVideoTitle={nextVideo?.title}
-                nextVideoThumbnail={nextVideo?.video_thumbnail || nextVideo?.featured_image}
+                nextVideos={nextVideoInfos}
                 videoDuration={post.video_duration || undefined}
               />
             </div>

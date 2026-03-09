@@ -619,7 +619,6 @@ function MomentWriteContent() {
     if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min })); return; }
     if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max })); return; }
     setTagCreating(true);
-    await new Promise(r => setTimeout(r, 1000));
     try {
       const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
       const data = await res.json();
