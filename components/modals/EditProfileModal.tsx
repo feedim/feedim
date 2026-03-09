@@ -338,6 +338,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                   sizeClass="w-20 h-20"
                   editable={!avatarUploading && !avatarLoading}
                   loading={avatarLoading}
+                  noBlur
                   onClick={() => { if (!avatarUploading && !avatarLoading) openFilePicker(fileInputRef.current); }}
                   onLoad={() => setAvatarLoading(false)}
                   onError={() => setAvatarLoading(false)}

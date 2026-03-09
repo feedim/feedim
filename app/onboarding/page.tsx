@@ -654,6 +654,7 @@ function StepProfilePhoto({ avatarPreview, onAvatarClick, loading, uploading }: 
           sizeClass="w-[150px] h-[150px]"
           editable={!uploading && !loading}
           loading={loading}
+          noBlur
           onClick={onAvatarClick}
         />
       </div>

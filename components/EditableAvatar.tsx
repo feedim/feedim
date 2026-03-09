@@ -9,6 +9,8 @@ interface EditableAvatarProps {
   sizeClass: string;
   editable?: boolean;
   loading?: boolean;
+  /** Skip blur/skeleton — show dark overlay + spinner instead */
+  noBlur?: boolean;
   onClick?: () => void;
   onLoad?: () => void;
   onError?: () => void;
@@ -22,6 +24,7 @@ export default memo(function EditableAvatar({
   sizeClass,
   editable = false,
   loading = false,
+  noBlur = false,
   onClick,
   onLoad,
   onError,
@@ -69,12 +72,12 @@ export default memo(function EditableAvatar({
     >
       {src ? (
         <>
-          {/* Image wrapper — skip blur when loading (upload in progress shows dark overlay instead) */}
+          {/* Image wrapper — skip blur when noBlur (upload areas show dark overlay instead) */}
           <div
             className={`${sizeClass} rounded-full overflow-hidden border border-border-primary`}
             style={{
-              filter: loading ? "none" : imgLoaded ? "blur(0px)" : "blur(3px)",
-              transition: !loading && imgLoaded ? "filter 200ms ease 80ms" : "none",
+              filter: noBlur ? "none" : imgLoaded ? "blur(0px)" : "blur(3px)",
+              transition: !noBlur && imgLoaded ? "filter 200ms ease 80ms" : "none",
               transform: "translateZ(0)",
             }}
           >
@@ -85,8 +88,8 @@ export default memo(function EditableAvatar({
               className={`lazyload w-full h-full object-cover bg-bg-tertiary ${imgClassName || ""}`}
             />
           </div>
-          {/* Skeleton pulse — hide when loading overlay is active */}
-          {!loading && (
+          {/* Skeleton pulse — hide when noBlur */}
+          {!noBlur && (
             <div
               className={`absolute inset-0 rounded-full bg-bg-tertiary border border-border-primary ${
                 imgLoaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
