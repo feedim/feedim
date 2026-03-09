@@ -339,29 +339,29 @@ export default function PostInteractionBar({
             </span>
           </button>
         )}
-        <div className="flex items-center select-none">
+        <div className="flex items-center justify-between select-none">
           {noLike ? (
-            <Link href={postUrl} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
+            <Link href={postUrl} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
               <BookOpen className="h-5 w-5" />
               <span>{t('interaction.seeMore')}</span>
             </Link>
           ) : (
-            <button onClick={handleLike} aria-label={t('tooltip.like')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "text-error" : "text-text-muted hover:text-error")}>
+            <button onClick={handleLike} aria-label={t('tooltip.like')} className={cn("flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "text-error" : "text-text-muted hover:text-error")}>
               <Heart className={cn("h-5 w-5 transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
-              <span>{formatCount(displayLikeCount, locale)}</span>
+              <span className="tabular-nums min-w-[1ch]">{formatCount(displayLikeCount, locale)}</span>
             </button>
           )}
-          <button onClick={openComments} aria-label={t('tooltip.comment')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
+          <button onClick={openComments} aria-label={t('tooltip.comment')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
             <MessageCircle className="h-5 w-5" />
-            <span>{formatCount(liveCommentCount, locale)}</span>
+            <span className="tabular-nums min-w-[1ch]">{formatCount(liveCommentCount, locale)}</span>
           </button>
-          <button onClick={openShare} aria-label={t('tooltip.share')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
+          <button onClick={openShare} aria-label={t('tooltip.share')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
             <ShareIcon className="h-5 w-5" />
-            <span>{formatCount(shareCount, locale)}</span>
+            <span className="tabular-nums min-w-[1ch]">{formatCount(shareCount, locale)}</span>
           </button>
-          <button onClick={handleSave} aria-label={t('tooltip.save')} className={cn("flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "text-accent-main" : "text-text-muted hover:text-accent-main")}>
+          <button onClick={handleSave} aria-label={t('tooltip.save')} className={cn("flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "text-accent-main" : "text-text-muted hover:text-accent-main")}>
             <Bookmark className={cn("h-5 w-5", saved && "fill-current")} />
-            <span>{formatCount(displaySaveCount, locale)}</span>
+            <span className="tabular-nums min-w-[1ch]">{formatCount(displaySaveCount, locale)}</span>
           </button>
         </div>
         {commentsMounted && (

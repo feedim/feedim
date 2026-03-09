@@ -202,8 +202,8 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
     ? (q: any) => q.eq("content_type", types[0])
     : (q: any) => q.in("content_type", types);
 
-  // For logged-in users, exclude recently viewed posts (last 200)
-  let excludeIds: number[] = [currentPostId];
+  // For logged-in users, get viewed post IDs for sorting (NOT excluding)
+  const viewedIds = new Set<number>();
   if (viewerId) {
     const { data: viewedRows } = await admin
       .from("post_views")
@@ -212,8 +212,7 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
       .order("created_at", { ascending: false })
       .limit(200);
     if (viewedRows?.length) {
-      const viewedPostIds = viewedRows.map(r => r.post_id as number);
-      excludeIds = [...new Set([currentPostId, ...viewedPostIds])];
+      for (const r of viewedRows) viewedIds.add(r.post_id as number);
     }
   }
 
@@ -224,6 +223,7 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
     .eq("status", "published")
     .or("is_nsfw.eq.false,is_nsfw.is.null")
     .eq("author_id", authorId)
+    .neq("id", currentPostId)
     .order("published_at", { ascending: false })
     .limit(8);
 
@@ -233,29 +233,22 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
     .eq("status", "published")
     .or("is_nsfw.eq.false,is_nsfw.is.null")
     .neq("author_id", authorId)
+    .neq("id", currentPostId)
     .order("trending_score", { ascending: false })
     .limit(60);
-
-  // Exclude viewed posts — use .not("id","in","(...)") for small sets, filter for larger
-  if (excludeIds.length <= 50) {
-    const excludeFilter = `(${excludeIds.join(",")})`;
-    authorQuery.not("id", "in", excludeFilter);
-    otherQuery.not("id", "in", excludeFilter);
-  }
 
   const [{ data: authorVideos }, { data: otherVideos }] = await Promise.all([
     authorQuery,
     otherQuery,
   ]);
 
-  const excludeSet = new Set(excludeIds);
   const authorList = ((authorVideos || []) as RawRecommendationRow[])
-    .filter(r => hasActiveAuthor(r) && !excludeSet.has(r.id))
+    .filter(hasActiveAuthor)
     .map(withFlatProfile);
 
   const ctx = buildContext(locale, country);
   const rankedOthers = rankRows(
-    ((otherVideos || []) as RawRecommendationRow[]).filter(r => hasActiveAuthor(r) && !excludeSet.has(r.id)).map(withFlatProfile),
+    ((otherVideos || []) as RawRecommendationRow[]).filter(hasActiveAuthor).map(withFlatProfile),
     ctx,
     "discovery",
   );
@@ -295,7 +288,17 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
   take(authorQueue, authorQueue.length); // remaining author videos
   take(discoveryQueue, discoveryQueue.length); // remaining discovery
 
-  return result.slice(0, 24) as VideoItem[];
+  // Sort: unwatched first, watched at bottom (priority change only, never remove)
+  const final = result.slice(0, 24);
+  if (viewedIds.size > 0) {
+    final.sort((a, b) => {
+      const aWatched = viewedIds.has(a.id) ? 1 : 0;
+      const bWatched = viewedIds.has(b.id) ? 1 : 0;
+      return aWatched - bWatched;
+    });
+  }
+
+  return final as VideoItem[];
 }
 
 export const getCachedAuthorContent = unstable_cache(getAuthorContent, ["author-content"], {

@@ -585,7 +585,7 @@ function NoteWriteContent() {
                     onChange={e => setTagSearch(e.target.value)}
                     onKeyDown={handleTagKeyDown}
                     placeholder={t("tagSearchPlaceholder")}
-                    className="input-modern w-full"
+                    className="input-modern w-full pr-20"
                   />
                   {tagSuggestions.length > 0 && (
                     <div className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto">
@@ -610,7 +610,7 @@ function NoteWriteContent() {
                     <button
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                      className="absolute right-1.5 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                       {tagCreating ? (
                         <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>

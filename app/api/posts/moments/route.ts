@@ -343,7 +343,8 @@ export async function GET(req: NextRequest) {
       moments: ordered,
       hasMore,
     });
-  } catch {
+  } catch (err) {
+    console.error("[moments] Error:", err);
     const tErrors = await getTranslations("apiErrors");
     return NextResponse.json({ error: tErrors("serverError") }, { status: 500 });
   }

@@ -177,7 +177,7 @@ export default function LinksModal({ open, onClose, onBack, links, onSave, premi
           <button
             type="button"
             onClick={addSlot}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-[14px] border-[1.5px] border-dashed border-border-primary hover:border-text-muted text-text-muted hover:text-text-primary transition text-sm font-medium"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-[14px] border-[1.5px] border-border-primary hover:border-text-muted text-text-muted hover:text-text-primary transition text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
             {t("addLink")}

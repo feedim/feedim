@@ -751,7 +751,7 @@ function WritePageContent() {
                       onChange={e => setTagSearch(e.target.value)}
                       onKeyDown={handleTagKeyDown}
                       placeholder={t("tagSearchPlaceholder")}
-                      className="input-modern w-full"
+                      className="input-modern w-full pr-20"
                     />
                     {/* Suggestions dropdown */}
                     {tagSuggestions.length > 0 && (
@@ -778,7 +778,7 @@ function WritePageContent() {
                     <button
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-2 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                      className="absolute right-1.5 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                         {tagCreating ? (
                           <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
@@ -871,7 +871,7 @@ function WritePageContent() {
                     }}
                     role="button"
                     tabIndex={0}
-                    className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-xl cursor-pointer transition ${
+                    className={`flex flex-col items-center justify-center h-48 border-2 rounded-xl cursor-pointer transition px-10 ${
                       coverDragging
                         ? "border-accent-main bg-accent-main/5"
                         : "border-border-primary hover:border-accent-main/50"
