@@ -23,7 +23,7 @@ export default function VideoDescription({ text }: VideoDescriptionProps) {
 
   return (
     <div
-      className="mt-3 p-4 rounded-[12px] bg-bg-secondary cursor-pointer transition hover:bg-bg-secondary select-none"
+      className="mt-3 mb-3 p-4 rounded-[12px] bg-bg-secondary cursor-pointer transition hover:bg-bg-secondary select-none"
       onCopy={(e) => e.preventDefault()}
       onClick={(e) => {
         // Don't toggle when clicking links

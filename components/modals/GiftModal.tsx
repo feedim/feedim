@@ -378,7 +378,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   key={key}
                   onClick={() => { setSelected(key); setCount(1); }}
                   disabled={!canAfford}
-                  className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                  className={`relative flex items-center gap-2.5 px-3 py-3.5 rounded-lg transition-all duration-200 ${
                     isSelected
                       ? "bg-accent-main/10 ring-2 ring-accent-main"
                       : canAfford

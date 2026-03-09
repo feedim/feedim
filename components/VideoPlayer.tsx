@@ -73,9 +73,19 @@ interface VideoPlayerProps {
   videoClassName?: string;
   /** Preload hint for moment mode — "auto" loads full video, "metadata" loads only metadata */
   preloadHint?: "auto" | "metadata";
+  /** Callback when "next" button is clicked (video page only) */
+  onNext?: () => void;
+  /** Callback when "previous" button is clicked (video page only) */
+  onPrev?: () => void;
+  /** Whether next/prev buttons should be visible */
+  hasNext?: boolean;
+  hasPrev?: boolean;
+  /** Autoplay next video toggle (video page) */
+  autoplayNext?: boolean;
+  onToggleAutoplay?: () => void;
 }
 
-const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function VideoPlayer({ src, hlsUrl, poster, onEnded, autoStart, disabled, moment, externalMuted, externalPaused, loop, videoClassName, preloadHint }, fwdRef) {
+const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function VideoPlayer({ src, hlsUrl, poster, onEnded, autoStart, disabled, moment, externalMuted, externalPaused, loop, videoClassName, preloadHint, onNext, onPrev, hasNext, hasPrev, autoplayNext, onToggleAutoplay }, fwdRef) {
   const t = useTranslations("video");
   // Compute saved position ONCE on mount — must be stable across re-renders.
   // If recomputed every render, effectiveSrc changes (video.mp4 → video.mp4#t=X)
@@ -739,6 +749,11 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
       // Only show spinner if video isn't ready yet
       if (v.readyState < 3) setLoading(true);
 
+      // Recovery: if src is set but nothing loaded, force reload
+      if (v.readyState === 0 && (v.src || v.currentSrc)) {
+        v.load();
+      }
+
       const tryPlay = () => {
         if (v.paused && !externalPaused) {
           v.play().catch(() => {});
@@ -833,18 +848,18 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     tapCountRef.current += 1;
     const isMobile = window.matchMedia("(pointer: coarse)").matches;
     if (tapCountRef.current === 1) {
+      // Instant play/pause — no delay
+      if (isMobile) {
+        if (!controlsVisibleRef.current) { showControls(); } else { togglePlay(); showControls(); }
+      } else { togglePlay(); showControls(); }
       doubleTapTimer.current = setTimeout(() => {
-        if (tapCountRef.current === 1) {
-          if (isMobile) {
-            // Controls hidden → show them; controls visible → toggle play
-            if (!controlsVisibleRef.current) { showControls(); } else { togglePlay(); showControls(); }
-          } else { togglePlay(); showControls(); }
-        }
         tapCountRef.current = 0;
       }, 300);
     } else if (tapCountRef.current === 2) {
       if (doubleTapTimer.current) clearTimeout(doubleTapTimer.current);
       tapCountRef.current = 0;
+      // Undo the instant toggle so net effect is just seek
+      togglePlay();
       const v = videoRef.current;
       if (!v) return;
       const dur = v.duration || 0;
@@ -1059,6 +1074,18 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                   )}
                 </button>
 
+                {/* Prev/Next — only when callbacks provided */}
+                {hasPrev && onPrev && (
+                  <button onClick={onPrev} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={t("skipBack10")} data-tooltip={t("skipBack10")}>
+                    <svg className="h-5 w-5" fill="white" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
+                  </button>
+                )}
+                {hasNext && onNext && (
+                  <button onClick={onNext} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label={t("nextVideo")} data-tooltip={t("nextVideo")}>
+                    <svg className="h-[22px] w-[22px]" fill="white" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+                  </button>
+                )}
+
                 {/* Volume */}
                 <div className="flex items-center gap-0.5 group/vol">
                   <button onClick={toggleMute} aria-label={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} data-tooltip={muted ? `${t("unmute")} (m)` : `${t("mute")} (m)`} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -1070,7 +1097,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                       <svg className="h-6 w-6" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
                     )}
                   </button>
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="vp-volume-slider w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100" aria-label={t("volumeLevel")} />
+                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="vp-volume-slider w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100" aria-label={t("volumeLevel")} style={{ "--vol-fill": `${(muted ? 0 : volume) * 100}%` } as React.CSSProperties} />
                 </div>
 
                 <span ref={timeRef} className="text-[0.8rem] tabular-nums ml-1 text-white/90 font-medium">0:00 / 0:00</span>
@@ -1089,7 +1116,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                     <>
                     {/* Backdrop — dismiss on tap outside */}
                     <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setSettingsMenu(false); settingsOpenRef.current = false; setSettingsTab("main"); }} />
-                    <div className="absolute right-0 top-full mt-1 sm:top-auto sm:bottom-full sm:mt-0 sm:mb-2 rounded-xl max-h-[50vh] overflow-y-auto z-50 bg-neutral-900/95 backdrop-blur-md min-w-[200px] max-w-[min(280px,calc(100vw-32px))] shadow-xl border border-white/10">
+                    <div className="absolute right-0 bottom-full mb-2 rounded-xl max-h-[50vh] overflow-y-auto z-50 bg-neutral-900/95 backdrop-blur-md min-w-[200px] max-w-[min(280px,calc(100vw-32px))] shadow-xl border border-white/10">
                       {settingsTab === "main" ? (
                         <>
                           {/* Cinema mode toggle — hidden on mobile */}
@@ -1103,6 +1130,19 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${cinemaMode ? "left-[18px]" : "left-0.5"}`} />
                             </button>
                           </div>
+                          {/* Autoplay next toggle */}
+                          {onToggleAutoplay && (
+                            <div className="flex px-3.5 py-2.5 items-center justify-between border-b border-white/10">
+                              <span className="text-[0.82rem] text-white font-medium">{t("autoplay")}</span>
+                              <button
+                                onClick={onToggleAutoplay}
+                                className="relative w-9 h-5 rounded-full transition-colors"
+                                style={autoplayNext ? { backgroundColor: "var(--accent-color)" } : { backgroundColor: "rgba(255,255,255,0.2)" }}
+                              >
+                                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoplayNext ? "left-[18px]" : "left-0.5"}`} />
+                              </button>
+                            </div>
+                          )}
                           {/* Speed — navigate to sub-tab */}
                           <button onClick={() => setSettingsTab("speed")} className="w-full px-3.5 py-2.5 flex items-center justify-between hover:bg-white/10 transition-colors border-b border-white/10">
                             <span className="text-[0.82rem] text-white font-medium">{t("speed")}</span>

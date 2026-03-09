@@ -11,7 +11,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import { useTranslations } from "next-intl";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import LazyAvatar from "@/components/LazyAvatar";
-import BlurImage from "@/components/BlurImage";
+
 
 interface MomentCardProps {
   moment: {
@@ -70,7 +70,7 @@ interface MomentCardProps {
   viewportHeight?: string;
 }
 
-export default memo(function MomentCard({ moment, isActive = false, loadVideo = false, onLike, onComment, onShare, onSave, onOptions, onLikesClick, liked = false, saved = false, muted = true, onToggleMute, preloadHint, viewportHeight }: MomentCardProps) {
+export default memo(function MomentCard({ moment, isActive = false, loadVideo = true, onLike, onComment, onShare, onSave, onOptions, onLikesClick, liked = false, saved = false, muted = true, onToggleMute, preloadHint, viewportHeight }: MomentCardProps) {
   const t = useTranslations("tooltip");
   const tPost = useTranslations("post");
   const tc = useTranslations("common");
@@ -283,25 +283,6 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true } as EventListenerOptions);
   }, [isActive, onToggleMute, togglePlayPause]);
-
-  // Lightweight render for far-off cards to reduce scroll jank (Android)
-  if (!loadVideo && !isActive) {
-    return (
-      <div
-        ref={cardRef}
-        className="relative w-full bg-black md:h-screen"
-        style={{ ...viewportHeightStyle, contentVisibility: "auto", containIntrinsicSize: `${h} 100vw` }}
-      >
-        {(moment.video_thumbnail || moment.featured_image) && (
-          <BlurImage
-            src={moment.video_thumbnail || moment.featured_image || ""}
-            alt={moment.title}
-            className="absolute inset-0 w-full h-full"
-          />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div

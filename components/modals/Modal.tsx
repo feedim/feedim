@@ -564,7 +564,7 @@ export default function Modal({
                 </button>
               )}
             </div>
-            <h2 className="text-[1.1rem] font-bold text-center flex-1 truncate select-none">{title}</h2>
+            <h2 className="text-[1.08rem] font-bold text-center flex-1 truncate select-none">{title}</h2>
             <div className="w-16 flex items-center justify-end">
               {rightAction || (infoText && (
                 <button onClick={() => feedimAlert("info", infoText)} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={t("info")}>

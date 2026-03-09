@@ -163,7 +163,7 @@
   border-radius: 50px;
   height: 47px;
   font-size: 0.91rem;
-  font-weight: 600;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -242,7 +242,7 @@
 
 /* ── Follow Button (WordPress birebir) ── */
 .follow-btn {
-  height: 39px;
+  height: 37px;
   width: max-content;
   padding: 0 16px;
   border-radius: 50px;
@@ -622,7 +622,7 @@ a .loader {
 .vp-volume-slider::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.3);
+  background: linear-gradient(to right, var(--accent-color) var(--vol-fill, 0%), rgba(255,255,255,0.3) var(--vol-fill, 0%));
   border: none;
 }
 .vp-volume-slider::-webkit-slider-thumb {
@@ -638,7 +638,7 @@ a .loader {
 .vp-volume-slider::-moz-range-track {
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.3);
+  background: linear-gradient(to right, var(--accent-color) var(--vol-fill, 0%), rgba(255,255,255,0.3) var(--vol-fill, 0%));
   border: none;
 }
 .vp-volume-slider::-moz-range-thumb {

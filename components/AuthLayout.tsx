@@ -26,7 +26,8 @@ export default function AuthLayout({ title, subtitle, children, showRulesModal }
     if (!showRulesModal) return;
     try {
       if (!sessionStorage.getItem(RULES_DISMISSED_KEY)) {
-        setRulesOpen(true);
+        const timer = setTimeout(() => setRulesOpen(true), 700);
+        return () => clearTimeout(timer);
       }
     } catch {}
   }, [showRulesModal]);
@@ -73,7 +74,7 @@ export default function AuthLayout({ title, subtitle, children, showRulesModal }
             <div className="space-y-3 text-[0.88rem] font-bold uppercase leading-relaxed max-h-[220px] overflow-y-auto px-2">
               <div>
                 <p className="text-[0.78rem] font-semibold text-accent-main">GELİN TÜRKİYE'NİN SOSYAL İÇERİK PROJESİNİ BİRLİKTE İNŞA EDELİM.</p>
-                <p className="text-[0.65rem] text-accent-main tracking-[0.3em] mt-1">————————————————</p>
+                <div className="h-[1.5px] bg-accent-main/40 mt-2 rounded-full" />
               </div>
               <p>1. {t("rule1")}</p>
               <p>2. {t("rule2")}</p>

@@ -293,9 +293,9 @@ export default function VideoPlayerClient({
   const countdownMax = 10;
 
   return (
-    <div className="relative overflow-hidden sm:rounded-lg">
+    <div className="relative sm:rounded-lg">
       <div className={postRollActive ? "pointer-events-none" : ""}>
-        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} />
+        <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} hasNext={!!nextVideoUrl} onNext={nextVideoUrl ? () => { emitNavigationStart(); router.push(nextVideoUrl); } : undefined} autoplayNext={autoplay} onToggleAutoplay={toggleAutoplay} />
       </div>
       {soundUrl && <audio ref={audioRef} src={soundUrl} preload="auto" />}
 

@@ -466,7 +466,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           )}
 
           {/* Actions — inside content column */}
-          <div className="relative z-[1] mt-1.5">
+          <div className="relative z-[1] mt-0.5 mx-1">
             <PostInteractionBar
               postId={post.id}
               postUrl={postHref}

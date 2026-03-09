@@ -61,7 +61,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
           )}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
           {video.video_duration && (
-            <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[0.7rem] font-medium px-1.5 py-0.5 rounded tabular-nums">
+            <span className="absolute bottom-1.5 right-2 bg-black/80 text-white text-[0.7rem] font-medium px-1.5 py-0.5 rounded-md tabular-nums">
               {formatDuration(video.video_duration)}
             </span>
           )}
@@ -90,7 +90,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
             {video.published_at && (
               <>
                 <span className="text-text-muted/40 text-xs mx-[2px]">·</span>
-                <span className="shrink-0">{formatRelativeDate(video.published_at)}</span>
+                <span className="shrink-0" suppressHydrationWarning>{formatRelativeDate(video.published_at)}</span>
               </>
             )}
           </p>

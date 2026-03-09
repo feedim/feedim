@@ -12,7 +12,7 @@ import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import VideoPlayerClient from "@/components/VideoPlayerClient";
 import VideoSidebarPortal from "@/components/VideoSidebarPortal";
 import VideoDescription from "@/components/VideoDescription";
-import VideoGridCard from "@/components/VideoGridCard";
+import NextVideosGrid from "@/components/NextVideosGrid";
 import VideoViewTracker from "@/components/VideoViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
 import VerifiedBadge from "@/components/VerifiedBadge";
@@ -118,7 +118,7 @@ export default async function MomentPage({ params }: PageProps) {
   const tCommonPromise = getTranslations("common");
   const tCTPromise = getTranslations("contentTypes");
   const [nextVideos, t, tCommon, tCT] = await Promise.all([
-    getCachedNextVideos(post.id, post.author_id, locale, ipCountry),
+    getCachedNextVideos(post.id, post.author_id, locale, ipCountry, undefined, currentUserId),
     tPromise,
     tCommonPromise,
     tCTPromise,
@@ -281,16 +281,7 @@ export default async function MomentPage({ params }: PageProps) {
           allowComments={post.allow_comments !== false}
         />
 
-        {nextVideos.length > 0 && (
-          <div className="xl:hidden mb-6 pt-3.5">
-            <h3 className="text-[1.1rem] font-bold mb-4">{t("nextVideos")}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
-              {nextVideos.map(video => (
-                <VideoGridCard key={video.id} video={video} />
-              ))}
-            </div>
-          </div>
-        )}
+        <NextVideosGrid videos={nextVideos} />
 
         <div className="h-8 md:h-0" />
       </article>

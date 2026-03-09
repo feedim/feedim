@@ -610,7 +610,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             <button onClick={() => setMutualFollowersOpen(true)} className="flex items-center gap-1.5 mt-2.5 w-full text-left hover:underline hover:opacity-80 transition">
               <div className="flex -space-x-2">
                 {profile.mutual_followers.slice(0, 3).map((m) => (
-                  <LazyAvatar key={m.username} src={m.avatar_url} alt="" sizeClass="h-[22px] w-[22px]" borderClass="border-2 border-bg-primary" />
+                  <LazyAvatar key={m.username} src={m.avatar_url} alt="" sizeClass="h-[22px] w-[22px]" borderClass="border-[1.5px] border-border-primary" />
                 ))}
               </div>
               <span className="text-[0.82rem] text-text-muted">

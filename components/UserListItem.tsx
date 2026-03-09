@@ -73,7 +73,7 @@ export default function UserListItem({
         <LazyAvatar src={user.avatar_url} alt={user.username} sizeClass={avatarSize} />
       </Link>
       <Link href={`/u/${user.username}`} onClick={onNavigate} className="flex-1 min-w-0">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <p className={`${nameSize} font-semibold truncate hover:underline`}>{displayName}</p>
           {user.is_verified && (
             <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} role={user.role} />

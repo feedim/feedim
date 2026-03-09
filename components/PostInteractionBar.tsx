@@ -326,7 +326,7 @@ export default function PostInteractionBar({
           >
             <div className="flex -space-x-2 shrink-0">
               {likedByUsers.map((u) => (
-                <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border-2 border-bg-primary" />
+                <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border-[1.5px] border-border-primary" />
               ))}
             </div>
             <span>
@@ -397,7 +397,7 @@ export default function PostInteractionBar({
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
-              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-2 border-bg-primary" />
+              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-[1.5px] border-border-primary" />
             ))}
           </div>
           <span>
@@ -486,7 +486,7 @@ export default function PostInteractionBar({
       ) : contentType !== "note" && contentType !== "moment" ? (
         <button
           onClick={openGift}
-          className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
+          className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
         >
           <Gift className="h-4 w-4" />
           <span>{t('interaction.sendGift')}</span>
@@ -559,12 +559,12 @@ export default function PostInteractionBar({
       {likedByBottom && displayLikeCount > 0 && likedByUsers.length > 0 && (
         <button
           onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-          className="flex items-center gap-2.5 py-2 px-2 sm:px-0 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
+          className="flex items-center gap-2 py-2 px-2 sm:px-0 text-[0.84rem] text-text-muted transition w-full text-left hover:underline"
           aria-label={t('interaction.seeLikers')}
         >
           <div className="flex -space-x-2 shrink-0">
             {likedByUsers.map((u) => (
-              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-2 border-bg-primary" />
+              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-[1.5px] border-border-primary" />
             ))}
           </div>
           <span>

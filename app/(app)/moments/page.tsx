@@ -122,8 +122,8 @@ function getMomentsPerfHints(): MomentsPerfHints {
 export default function MomentsPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-bg-primary">
-        <span className="loader" style={{ width: 32, height: 32 }} />
+      <div className="flex justify-center" style={{ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" }}>
+        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     }>
       <MomentsContent />
@@ -199,16 +199,9 @@ function MomentsContent() {
   const [optionsModal, setOptionsModal] = useState<{ postId: number; slug: string; title: string; authorUsername?: string; authorUserId?: string; authorName?: string; authorRole?: string; visibility?: string } | null>(null);
   const [likesModalPostId, setLikesModalPostId] = useState<number | null>(null);
 
-  const [vpHeight, setVpHeight] = useState("100dvh");
-  useEffect(() => {
-    const update = () => setVpHeight(`${window.innerHeight}px`);
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
   const viewportHeightStyle = useMemo(
-    () => ({ height: vpHeight, minHeight: vpHeight, maxHeight: vpHeight }),
-    [vpHeight]
+    () => ({ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" } as const),
+    []
   );
 
   // Capture initial slug only on mount — ignore subsequent URL changes
@@ -245,14 +238,13 @@ function MomentsContent() {
   const reassertLayout = useCallback(() => {
     const main = document.querySelector("main");
     const wrapper = main?.firstElementChild as HTMLElement | null;
-    const h = `${window.innerHeight}px`;
     if (main) {
       main.style.paddingBottom = "0";
       main.style.paddingTop = "0";
       main.style.overflow = "hidden";
-      main.style.height = h;
+      main.style.height = "100dvh";
       main.style.minHeight = "0";
-      main.style.maxHeight = h;
+      main.style.maxHeight = "100dvh";
     }
     if (wrapper) {
       wrapper.style.height = "100%";
@@ -461,12 +453,12 @@ function MomentsContent() {
                   setSettledIndex(pendingActiveRef.current);
                   pendingActiveRef.current = null;
                 }
-              }, 150);
+              }, 80);
             }
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.45 }
     );
     return () => {
       observerRef.current?.disconnect();
@@ -529,10 +521,10 @@ function MomentsContent() {
     });
 
     if (dismissCount > 0 && containerRef.current) {
-      const vh = window.innerHeight;
+      const container = containerRef.current;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          containerRef.current?.scrollBy(0, -vh * dismissCount);
+          container.scrollBy(0, -container.clientHeight * dismissCount);
         });
       });
     }
@@ -659,8 +651,8 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="flex justify-center md:h-screen bg-bg-primary" style={viewportHeightStyle}>
-        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: 480 }} />
+      <div className="flex justify-center" style={viewportHeightStyle}>
+        <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     );
   }
@@ -675,7 +667,7 @@ function MomentsContent() {
   }
 
   return (
-    <div className="flex justify-center md:h-screen" style={viewportHeightStyle}>
+    <div className="flex justify-center md:h-screen overflow-hidden" style={viewportHeightStyle}>
       {/* Centered Reels column */}
       <div
         className="relative w-full h-full"
@@ -778,7 +770,7 @@ function MomentsContent() {
             <MomentCard
               moment={item.moment}
               isActive={displayIndex === activeDisplayIndex && !idlePaused}
-              loadVideo={displayIndex === activeDisplayIndex || settledDistance <= 2}
+              loadVideo
               liked={likedSet.has(item.moment.id)}
               saved={savedSet.has(item.moment.id)}
               muted={globalMuted}
@@ -790,7 +782,6 @@ function MomentsContent() {
               onSave={() => handleSave(item.moment.id)}
               onOptions={() => handleOptions(item.moment)}
               preloadHint={preloadHint}
-              viewportHeight={vpHeight}
             />
           </div>
         );

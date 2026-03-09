@@ -49,7 +49,7 @@ export function VideoSidebarSkeleton({ count = 4, title, compact }: { count?: nu
   const thumbW = compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]";
   return (
     <div>
-      {title && <div className="h-[18px] w-28 bg-bg-secondary rounded-[5px] animate-pulse mb-3" />}
+      {title && <div className="h-[22px] w-32 bg-bg-secondary rounded-[5px] animate-pulse mb-3" />}
       <div className="space-y-1.5">
         {Array.from({ length: count }).map((_, i) => (
           <div key={i} className="flex gap-2.5 p-1.5 -mx-1.5">
@@ -121,7 +121,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                   <span className="truncate">@{video.profiles?.username}</span>
                   {(video.profiles?.is_verified || video.profiles?.role === "admin") && <VerifiedBadge size="sm" variant={getBadgeVariant(video.profiles.premium_plan)} role={video.profiles?.role} />}
                   {video.published_at && (
-                    <span className="shrink-0 text-text-muted/70">· {formatRelativeDate(video.published_at)}</span>
+                    <span className="shrink-0 text-text-muted/70" suppressHydrationWarning>· {formatRelativeDate(video.published_at)}</span>
                   )}
                 </p>
                 <p className="text-[0.62rem] text-text-muted">

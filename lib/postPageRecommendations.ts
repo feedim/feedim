@@ -193,7 +193,7 @@ export async function getFeaturedContent(currentPostId: number, authorId: string
   return rankRows(filtered, buildContext(locale, country), "discovery").slice(0, 3);
 }
 
-export async function getNextVideos(currentPostId: number, authorId: string, locale?: string, country?: string, contentTypes?: string[]): Promise<VideoItem[]> {
+export async function getNextVideos(currentPostId: number, authorId: string, locale?: string, country?: string, contentTypes?: string[], viewerId?: string | null): Promise<VideoItem[]> {
   const admin = createAdminClient();
 
   // Default to video+moment; callers can narrow down
@@ -202,35 +202,60 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
     ? (q: any) => q.eq("content_type", types[0])
     : (q: any) => q.in("content_type", types);
 
+  // For logged-in users, exclude recently viewed posts (last 200)
+  let excludeIds: number[] = [currentPostId];
+  if (viewerId) {
+    const { data: viewedRows } = await admin
+      .from("post_views")
+      .select("post_id")
+      .eq("viewer_id", viewerId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (viewedRows?.length) {
+      const viewedPostIds = viewedRows.map(r => r.post_id as number);
+      excludeIds = [...new Set([currentPostId, ...viewedPostIds])];
+    }
+  }
+
   // Fetch larger pools: more author videos + much larger discovery pool
+  const authorQuery = typeFilter(admin
+    .from("posts")
+    .select(NEXT_VIDEO_SELECT))
+    .eq("status", "published")
+    .or("is_nsfw.eq.false,is_nsfw.is.null")
+    .eq("author_id", authorId)
+    .order("published_at", { ascending: false })
+    .limit(8);
+
+  const otherQuery = typeFilter(admin
+    .from("posts")
+    .select(NEXT_VIDEO_SELECT))
+    .eq("status", "published")
+    .or("is_nsfw.eq.false,is_nsfw.is.null")
+    .neq("author_id", authorId)
+    .order("trending_score", { ascending: false })
+    .limit(60);
+
+  // Exclude viewed posts — use .not("id","in","(...)") for small sets, filter for larger
+  if (excludeIds.length <= 50) {
+    const excludeFilter = `(${excludeIds.join(",")})`;
+    authorQuery.not("id", "in", excludeFilter);
+    otherQuery.not("id", "in", excludeFilter);
+  }
+
   const [{ data: authorVideos }, { data: otherVideos }] = await Promise.all([
-    typeFilter(admin
-      .from("posts")
-      .select(NEXT_VIDEO_SELECT))
-      .eq("status", "published")
-      .or("is_nsfw.eq.false,is_nsfw.is.null")
-      .eq("author_id", authorId)
-      .neq("id", currentPostId)
-      .order("published_at", { ascending: false })
-      .limit(8),
-    typeFilter(admin
-      .from("posts")
-      .select(NEXT_VIDEO_SELECT))
-      .eq("status", "published")
-      .or("is_nsfw.eq.false,is_nsfw.is.null")
-      .neq("author_id", authorId)
-      .neq("id", currentPostId)
-      .order("trending_score", { ascending: false })
-      .limit(60),
+    authorQuery,
+    otherQuery,
   ]);
 
+  const excludeSet = new Set(excludeIds);
   const authorList = ((authorVideos || []) as RawRecommendationRow[])
-    .filter(hasActiveAuthor)
+    .filter(r => hasActiveAuthor(r) && !excludeSet.has(r.id))
     .map(withFlatProfile);
 
   const ctx = buildContext(locale, country);
   const rankedOthers = rankRows(
-    ((otherVideos || []) as RawRecommendationRow[]).filter(hasActiveAuthor).map(withFlatProfile),
+    ((otherVideos || []) as RawRecommendationRow[]).filter(r => hasActiveAuthor(r) && !excludeSet.has(r.id)).map(withFlatProfile),
     ctx,
     "discovery",
   );
@@ -283,7 +308,9 @@ export const getCachedFeaturedContent = unstable_cache(getFeaturedContent, ["fea
   tags: ["posts"],
 });
 
-export const getCachedNextVideos = unstable_cache(getNextVideos, ["next-videos"], {
-  revalidate: 300,
-  tags: ["posts"],
-});
+export const getCachedNextVideos = (currentPostId: number, authorId: string, locale?: string, country?: string, contentTypes?: string[], viewerId?: string | null) =>
+  unstable_cache(
+    () => getNextVideos(currentPostId, authorId, locale, country, contentTypes, viewerId),
+    ["next-videos", String(currentPostId), authorId, locale || "", country || "", (contentTypes || []).join(","), viewerId || "anon"],
+    { revalidate: 300, tags: ["posts"] },
+  )();

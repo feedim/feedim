@@ -17,7 +17,7 @@ import PostContentClient from "@/components/PostContentClient";
 import VideoPlayerClient from "@/components/VideoPlayerClient";
 import VideoSidebarPortal from "@/components/VideoSidebarPortal";
 import VideoDescription from "@/components/VideoDescription";
-import VideoGridCard from "@/components/VideoGridCard";
+import NextVideosGrid from "@/components/NextVideosGrid";
 import PostViewTracker from "@/components/PostViewTracker";
 import VideoViewTracker from "@/components/VideoViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
@@ -130,7 +130,7 @@ export default async function PostPage({ params }: PageProps) {
   const tCTPromise = getTranslations("contentTypes");
   const [authorContent, nextVideos, featuredContent, t, tCommon, tCT] = await Promise.all([
     getCachedAuthorContent(post.author_id, post.id, locale, ipCountry),
-    isVideo ? getCachedNextVideos(post.id, post.author_id, locale, ipCountry, post.content_type === "moment" ? ["video", "moment"] : ["video"]) : Promise.resolve([]),
+    isVideo ? getCachedNextVideos(post.id, post.author_id, locale, ipCountry, post.content_type === "moment" ? ["video", "moment"] : ["video"], currentUserId) : Promise.resolve([]),
     getCachedFeaturedContent(post.id, post.author_id, locale, ipCountry),
     tPromise,
     tCommonPromise,
@@ -328,16 +328,7 @@ export default async function PostPage({ params }: PageProps) {
           />
 
           {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
-          {nextVideos.length > 0 && (
-            <div className="xl:hidden mb-6 pt-3.5">
-              <h3 className="text-[1.1rem] font-bold mb-4">{t("nextVideos")}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
-                {nextVideos.map(video => (
-                  <VideoGridCard key={video.id} video={video} />
-                ))}
-              </div>
-            </div>
-          )}
+          <NextVideosGrid videos={nextVideos} />
 
           {/* Bottom padding for mobile nav bar */}
           <div className="h-8 md:h-0" />
