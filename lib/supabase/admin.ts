@@ -9,7 +9,7 @@ export function createAdminClient() {
   if (!adminClient) {
     adminClient = createClient(
       (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim(),
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+      (process.env.SUPABASE_SECRET_KEY || '').trim(),
       {
         auth: { autoRefreshToken: false, persistSession: false },
         db: { schema: 'public' },
