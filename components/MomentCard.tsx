@@ -468,7 +468,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <Link
             href={`/sounds/${encodeId(moment.sounds.id)}`}
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-2 mt-[5px]"
+            className="flex items-center gap-2"
           >
             <Music className="h-3 w-3 text-white/80 shrink-0" />
             <div className="overflow-hidden max-w-[200px]">

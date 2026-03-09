@@ -737,7 +737,7 @@ function MomentsContent() {
               ref={makeSlotRef(displayIndex)}
               data-index={displayIndex}
               data-slug={item.moment.slug}
-              className="snap-start"
+              className="snap-start snap-always"
               style={{ ...viewportHeightStyle, backgroundColor: "#000" }}
             />
           );
@@ -750,7 +750,7 @@ function MomentsContent() {
               key={`m-${item.moment.slug}`}
               ref={makeSlotRef(displayIndex)}
               data-index={displayIndex}
-              className="snap-start"
+              className="snap-start snap-always"
               style={{
                 ...viewportHeightStyle,
                 backgroundColor: "#000",
@@ -766,7 +766,7 @@ function MomentsContent() {
         const settledDistance = Math.abs(displayIndex - settledIndex);
         const preloadHint: "auto" | "metadata" = settledDistance <= 1 ? "auto" : "metadata";
         return (
-          <div key={`m-${item.moment.slug}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start" style={viewportHeightStyle}>
+          <div key={`m-${item.moment.slug}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start snap-always" style={viewportHeightStyle}>
             <MomentCard
               moment={item.moment}
               isActive={displayIndex === activeDisplayIndex && !idlePaused}
