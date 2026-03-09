@@ -31,8 +31,7 @@ export default function BlurImage({
   const [loaded, setLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => { setLoaded(false); }, [src]);
+  const prevSrcRef = useRef(src);
 
   useEffect(() => {
     if (!blurhash || !canvasRef.current) return;
@@ -50,8 +49,12 @@ export default function BlurImage({
     }
   }, [blurhash, width, height]);
 
-  // Before paint — skip skeleton for cached images
+  // Before paint — reset on src change + skip skeleton for cached images
   useLayoutEffect(() => {
+    if (prevSrcRef.current !== src) {
+      prevSrcRef.current = src;
+      setLoaded(false);
+    }
     const img = imgRef.current;
     if (img?.classList.contains("lazyloaded")) setLoaded(true);
   }, [src]);
