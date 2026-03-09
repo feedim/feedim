@@ -189,10 +189,10 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
               <Link href={`/u/${u.username}`} className="text-center w-full my-[2px]">
                 <div className="space-y-0.5">
                   <div className="flex items-center justify-center gap-0.5">
-                    <p className="text-[0.79rem] font-semibold truncate leading-tight">{displayName}</p>
+                    <p className="text-[0.82rem] font-semibold truncate leading-tight">{displayName}</p>
                     {u.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(u.premium_plan)} role={u.role} />}
                   </div>
-                  <p className="text-[0.68rem] text-text-muted truncate leading-tight">@{u.username}</p>
+                  <p className="text-[0.7rem] text-text-muted truncate leading-tight">@{u.username}</p>
                 </div>
               </Link>
               <FollowButton
@@ -200,7 +200,7 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
                 followsMe={u.follows_me && !isFollowing}
                 onClick={() => { void handleFollow(u.username, u.user_id); }}
                 disabled={pending.has(u.user_id)}
-                className="mt-2 w-full !h-[28px] !text-[0.7rem] !rounded-lg"
+                className="mt-2 w-full !h-[31px] !text-[0.7rem] !rounded-lg"
               />
             </div>
           );

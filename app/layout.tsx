@@ -33,6 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t("title"),
     description: t("description"),
     keywords: ["feedim", "content platform", "video platform", "blog", "explore", "share"],
+    verification: {
+      google: "I8CY0hR_GowetpKa76UOMSP3zl2FOWHQIrBpoDzqksQ",
+    },
     authors: [{ name: "Feedim" }],
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
     icons: {

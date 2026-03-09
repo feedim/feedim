@@ -528,8 +528,8 @@ function NoteWriteContent() {
                       onChange={(e) => handleNoteChange(e.target.value)}
                       onKeyDown={handleMentionKeyDown}
                       placeholder={t("whatsOnYourMind")}
-                      className="w-full bg-transparent text-[1rem] leading-[1.55] text-text-primary placeholder:text-[1rem] placeholder:leading-[1.55] placeholder:text-text-muted/50 resize-none min-h-0 overflow-hidden"
-                      style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto", fontSize: "1rem" }}
+                      className="w-full bg-transparent text-[1.06rem] leading-[1.55] text-text-primary placeholder:text-[1.06rem] placeholder:leading-[1.55] placeholder:text-text-muted/50 resize-none min-h-0 overflow-hidden"
+                      style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto", fontSize: "1.06rem" }}
                       rows={1}
                       maxLength={MAX_CHARS}
                       autoFocus
