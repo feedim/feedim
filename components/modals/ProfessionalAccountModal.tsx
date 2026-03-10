@@ -330,7 +330,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       infoText={t("proAccountInfoText")}
       leftAction={
         step > 1 && step < 4 && !stepping ? (
-          <button onClick={() => setStep(step - 1)} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={tc("back")}>
+          <button onClick={() => setStep(step - 1)} className="i-btn !w-10 !h-10 text-text-muted" aria-label={tc("back")}>
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
         ) : undefined

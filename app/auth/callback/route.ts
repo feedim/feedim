@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   if (data.user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("onboarding_completed, status, google_linked, moderation_reason")
+      .select("onboarding_completed, status, google_linked, moderation_reason, avatar_url")
       .eq("user_id", data.user.id)
       .single();
 
@@ -121,14 +121,18 @@ export async function GET(request: NextRequest) {
       // Sync Google profile name on re-login (name may have changed)
       const meta = data.user.user_metadata || {};
       const providerName = meta.full_name || meta.name || "";
-      if (providerName) {
+      const googleAvatarCleanupNeeded = isGoogleLogin && !!profile.avatar_url && /googleusercontent\.com/i.test(profile.avatar_url);
+      if (providerName || googleAvatarCleanupNeeded) {
         const parts = providerName.split(" ");
         await supabase
           .from("profiles")
           .update({
-            full_name: providerName,
-            name: parts[0] || "",
-            surname: parts.slice(1).join(" ") || "",
+            ...(providerName ? {
+              full_name: providerName,
+              name: parts[0] || "",
+              surname: parts.slice(1).join(" ") || "",
+            } : {}),
+            ...(googleAvatarCleanupNeeded ? { avatar_url: null } : {}),
           })
           .eq("user_id", data.user.id);
       }

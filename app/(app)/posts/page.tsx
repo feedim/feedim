@@ -27,7 +27,7 @@ export default function PostsPage() {
   const { requireAuth } = useAuthModal();
   const [interactions, setInteractions] = useState<Record<number, { liked: boolean; saved: boolean }>>({});
   const fetchedInteractionIds = useRef(new Set<number>());
-  const cacheScope = currentUser?.id ? `user:${currentUser.id}` : "guest";
+  const cacheScope = currentUser?.id ? `user:${currentUser.id}:pi2` : "guest:pi2";
 
   const getPostsUrl = useCallback((pageNum: number) => (
     withCacheScope(`/api/posts/feed?tab=posts&page=${pageNum}`, cacheScope)

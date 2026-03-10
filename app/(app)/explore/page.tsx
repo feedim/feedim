@@ -21,6 +21,7 @@ import SoundPreviewButton from "@/components/SoundPreviewButton";
 import BlurImage from "@/components/BlurImage";
 import { isBlockedContent } from "@/lib/blockedWords";
 import { feedimAlert } from "@/components/FeedimAlert";
+import { useUser } from "@/components/UserContext";
 
 interface ExplorePost {
   id: number;
@@ -170,11 +171,12 @@ function ExploreContent() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { requireAuth } = useAuthModal();
+  const { user: currentUser } = useUser();
 
   // Batch interaction state (like/save)
   const [interactions, setInteractions] = useState<Record<number, { liked: boolean; saved: boolean }>>({});
   const fetchedInteractionIds = useRef(new Set<number>());
-  const cacheScope = `locale:${locale}`;
+  const cacheScope = currentUser?.id ? `locale:${locale}:user:${currentUser.id}:pi2` : `locale:${locale}:guest:pi2`;
 
   const getScopedUrl = useCallback((url: string) => withCacheScope(url, cacheScope), [cacheScope]);
 

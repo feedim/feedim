@@ -51,6 +51,9 @@
   --bg-secondary: #f5f5f5;
   --bg-tertiary: #ebebeb;
   --bg-elevated: #f0f0f0;
+  --bg-solid-secondary: #f5f5f5;
+  --bg-solid-tertiary: #ebebeb;
+  --bg-solid-elevated: #f0f0f0;
   --bg-inverse: #000000;
   --bg-overlay: rgba(0, 0, 0, 0.5);
   --bg-blur-overlay: rgba(240, 240, 240, 0.97);
@@ -82,6 +85,9 @@
   --bg-secondary: rgba(26, 26, 26, 1);
   --bg-tertiary: rgba(43, 43, 43, 1);
   --bg-elevated: rgba(36, 36, 36, 1);
+  --bg-solid-secondary: rgba(26, 26, 26, 1);
+  --bg-solid-tertiary: rgba(43, 43, 43, 1);
+  --bg-solid-elevated: rgba(36, 36, 36, 1);
   --bg-inverse: rgba(223, 223, 223, 1);
   --bg-overlay: rgba(0, 0, 0, 0.7);
   --bg-blur-overlay: rgba(26, 26, 26, 0.97);
@@ -111,6 +117,9 @@
   --bg-secondary: rgba(26, 37, 51, 1);
   --bg-tertiary: rgba(38, 52, 70, 1);
   --bg-elevated: rgba(32, 45, 62, 1);
+  --bg-solid-secondary: rgba(26, 37, 51, 1);
+  --bg-solid-tertiary: rgba(38, 52, 70, 1);
+  --bg-solid-elevated: rgba(32, 45, 62, 1);
   --bg-inverse: rgba(223, 223, 223, 1);
   --bg-overlay: rgba(0, 0, 0, 0.6);
   --bg-blur-overlay: rgba(26, 37, 51, 0.97);
@@ -170,15 +179,14 @@
   gap: 8px;
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s ease, background-color 0.2s ease;
+  transition: opacity 0.2s ease;
   user-select: none;
   z-index: 1;
 }
 
 .t-btn:hover,
 .t-btn:active {
-  opacity: 0.85;
-  filter: brightness(0.92);
+  opacity: 0.72;
 }
 
 .t-btn:disabled {
@@ -195,14 +203,14 @@
   justify-content: center;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: opacity 0.2s ease;
   background: transparent;
   color: var(--text-primary);
 }
 
 .i-btn:hover,
 .i-btn:active {
-  background: var(--bg-tertiary);
+  opacity: 0.72;
 }
 
 
@@ -227,7 +235,7 @@
 
 .accept:hover,
 .accept:active {
-  opacity: 0.85;
+  opacity: 0.72;
 }
 
 .cancel {
@@ -235,9 +243,13 @@
   background-color: var(--bg-secondary);
 }
 
+.t-btn.cancel {
+  background-color: var(--bg-tertiary);
+}
+
 .cancel:hover,
 .cancel:active {
-  opacity: 0.85;
+  opacity: 0.72;
 }
 
 /* ── Follow Button (WordPress birebir) ── */
@@ -1627,19 +1639,19 @@ html[data-ambient-light] .sticky-ambient {
 }
 /* Modals: restore solid backgrounds so they are not transparent with ambient light */
 html[data-ambient-light][data-theme="dark"] [data-modal] {
-  --bg-secondary: rgba(26, 26, 26, 1);
-  --bg-tertiary: rgba(43, 43, 43, 1);
-  --bg-elevated: rgba(36, 36, 36, 1);
+  --bg-secondary: var(--bg-solid-secondary);
+  --bg-tertiary: var(--bg-solid-tertiary);
+  --bg-elevated: var(--bg-solid-elevated);
 }
 html[data-ambient-light][data-theme="dim"] [data-modal] {
-  --bg-secondary: rgba(26, 37, 51, 1);
-  --bg-tertiary: rgba(38, 52, 70, 1);
-  --bg-elevated: rgba(32, 45, 62, 1);
+  --bg-secondary: var(--bg-solid-secondary);
+  --bg-tertiary: var(--bg-solid-tertiary);
+  --bg-elevated: var(--bg-solid-elevated);
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal] {
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #ebebeb;
-  --bg-elevated: #f0f0f0;
+  --bg-secondary: var(--bg-solid-secondary);
+  --bg-tertiary: var(--bg-solid-tertiary);
+  --bg-elevated: var(--bg-solid-elevated);
 }
 
 /* Ambient light: frosted glass overlays (e.g. İstatistikler card) */
@@ -1662,28 +1674,22 @@ html[data-ambient-light] .cancel {
   -webkit-backdrop-filter: blur(12px) saturate(1.2);
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .t-btn.cancel {
-  background-color: var(--bg-secondary) !important;
+  background-color: var(--bg-solid-elevated) !important;
   opacity: 1;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .t-btn.cancel:hover,
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .t-btn.cancel:active {
-  background-color: var(--bg-secondary) !important;
+  background-color: var(--bg-solid-elevated) !important;
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel {
-  background-color: var(--bg-tertiary) !important;
+  background-color: var(--bg-solid-elevated) !important;
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel:hover,
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel:active {
-  background-color: var(--bg-tertiary) !important;
+  background-color: var(--bg-solid-elevated) !important;
 }
-html[data-ambient-light] .i-btn:hover,
-html[data-ambient-light] .i-btn:active {
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
-}
-
 /* Full-screen loaders: always opaque regardless of ambient light */
 .bg-solid-primary {
   background-color: var(--bg-primary);
@@ -1801,11 +1807,6 @@ html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-so
     -webkit-backdrop-filter: blur(12px);
   }
   html[data-ambient-light] .cancel {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  html[data-ambient-light] .i-btn:hover,
-  html[data-ambient-light] .i-btn:active {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }

@@ -220,20 +220,21 @@ export default function PostInteractionBar({
   const savePending = useRef(false);
 
   // Sync when batch interaction data arrives (compact/feed mode)
-  const interactionSynced = useRef(false);
+  const likedInteractionHydrated = useRef(initialLiked);
+  const savedInteractionHydrated = useRef(initialSaved);
   useEffect(() => {
-    if (!compact || interactionSynced.current) return;
-    if (initialLiked) {
+    if (!compact) return;
+    if (initialLiked && !likedInteractionHydrated.current) {
       setLiked(true);
       likedRef.current = true;
       setLikeCount((prev) => Math.max(prev, normalizeCount(initialLikeCount), 1));
-      interactionSynced.current = true;
+      likedInteractionHydrated.current = true;
     }
-    if (initialSaved) {
+    if (initialSaved && !savedInteractionHydrated.current) {
       setSaved(true);
       savedRef.current = true;
       setSaveCount((prev) => Math.max(prev, normalizeCount(initialSaveCount), 1));
-      interactionSynced.current = true;
+      savedInteractionHydrated.current = true;
     }
   }, [initialLiked, initialSaved, initialLikeCount, initialSaveCount, compact]);
 
@@ -322,11 +323,11 @@ export default function PostInteractionBar({
         {displayLikeCount > 0 && likedByUsers.length > 0 && (
           <button
             onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-            className="flex items-center gap-1.5 pb-2 px-2 sm:px-0 text-[0.8rem] text-text-muted transition w-full text-left hover:underline"
+            className="flex items-center gap-1 pb-2 px-2 sm:px-0 text-[0.78rem] text-text-muted transition w-full text-left hover:underline"
           >
-            <div className="flex -space-x-2 shrink-0">
+            <div className="flex -space-x-1.5 shrink-0">
               {likedByUsers.map((u) => (
-                <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border-[1.5px] border-border-primary" />
+                <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border border-border-primary" />
               ))}
             </div>
             <span>
@@ -392,12 +393,12 @@ export default function PostInteractionBar({
       {!likedByBottom && displayLikeCount > 0 && likedByUsers.length > 0 && (
         <button
           onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-          className="flex items-center gap-1.5 py-2 px-2 sm:px-0 text-[0.9rem] text-text-muted transition w-full text-left hover:underline"
+          className="flex items-center gap-1 py-2 px-2 sm:px-0 text-[0.86rem] text-text-muted transition w-full text-left hover:underline"
           aria-label={t('interaction.seeLikers')}
         >
-          <div className="flex -space-x-2 shrink-0">
+          <div className="flex -space-x-1.5 shrink-0">
             {likedByUsers.map((u) => (
-              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-[1.5px] border-border-primary" />
+              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border border-border-primary" />
             ))}
           </div>
           <span>
@@ -559,12 +560,12 @@ export default function PostInteractionBar({
       {likedByBottom && displayLikeCount > 0 && likedByUsers.length > 0 && (
         <button
           onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-          className="flex items-center gap-2 py-2 px-2 sm:px-0 text-[0.84rem] text-text-muted transition w-full text-left hover:underline"
+          className="flex items-center gap-1 py-2 px-2 sm:px-0 text-[0.8rem] text-text-muted transition w-full text-left hover:underline"
           aria-label={t('interaction.seeLikers')}
         >
-          <div className="flex -space-x-2 shrink-0">
+          <div className="flex -space-x-1.5 shrink-0">
             {likedByUsers.map((u) => (
-              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-7 w-7" borderClass="border-[1.5px] border-border-primary" />
+              <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border border-border-primary" />
             ))}
           </div>
           <span>

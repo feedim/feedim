@@ -404,7 +404,7 @@ export default async function PostPage({ params }: PageProps) {
 
             {/* View count — below content */}
             {(post.view_count || 0) > 0 && (
-              <p className="text-[0.75rem] text-text-muted">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
+              <p className="text-[0.75rem] text-text-muted mt-[4px]">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
             )}
 
             {/* Tags */}

@@ -28,7 +28,17 @@ function checkAvatarLimit(userId: string): boolean {
 export async function POST(req: NextRequest) {
   const tErrors = await getTranslations("apiErrors");
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  let { data: { user } } = await supabase.auth.getUser();
+
+  // Mobile app fallback: read Bearer token from Authorization header
+  if (!user) {
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const { data } = await supabase.auth.getUser(authHeader.slice(7));
+      user = data.user;
+    }
+  }
+
   if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
 
   const adminClient = createAdminClient();

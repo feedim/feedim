@@ -247,7 +247,7 @@ export default function ThumbnailPickerModal({
   const scrubPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const closeBtn = (
-    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary">
+    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted">
       <X className="h-5 w-5" />
     </button>
   );

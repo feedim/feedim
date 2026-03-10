@@ -559,7 +559,7 @@ export default function Modal({
           >
             <div className="w-16 flex items-center">
               {leftAction || (
-                <button onClick={handleClose} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={t("close")}>
+                <button onClick={handleClose} className="i-btn !w-10 !h-10 text-text-muted" aria-label={t("close")}>
                   <ArrowLeft className="h-6 w-6" />
                 </button>
               )}
@@ -567,7 +567,7 @@ export default function Modal({
             <h2 className="text-[1.08rem] font-bold text-center flex-1 truncate select-none">{title}</h2>
             <div className="w-16 flex items-center justify-end">
               {rightAction || (infoText && (
-                <button onClick={() => feedimAlert("info", infoText)} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={t("info")}>
+                <button onClick={() => feedimAlert("info", infoText)} className="i-btn !w-10 !h-10 text-text-muted" aria-label={t("info")}>
                   <Info className="h-[22px] w-[22px]" />
                 </button>
               ))}

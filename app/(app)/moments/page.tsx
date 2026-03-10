@@ -69,6 +69,8 @@ interface Moment {
     is_original?: boolean;
   } | null;
   visibility?: string;
+  viewer_liked?: boolean;
+  viewer_saved?: boolean;
 }
 
 interface MomentsPerfHints {
@@ -140,7 +142,7 @@ function MomentsContent() {
   const t = useTranslations("moments");
   const tErrors = useTranslations("errors");
   const tTooltip = useTranslations("tooltip");
-  const momentsCacheScope = `${locale}:${ctxUser?.id || "guest"}`;
+  const momentsCacheScope = `${locale}:${ctxUser?.id || "guest"}:pi2`;
   const [moments, setMoments] = useState<Moment[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -325,44 +327,71 @@ function MomentsContent() {
     }
   }, [getMomentsUrl]);
 
-  const hydrateInteractions = useCallback((items: Moment[]) => {
-    const idleWindow = window as IdleWindow;
-    const ids = items.map((m: Moment) => m.id).slice(0, 50);
-    if (ids.length === 0) return;
+  const seedMomentInteractions = useCallback((items: Moment[]) => {
+    const likedIds = items.filter((item) => item.viewer_liked === true).map((item) => item.id);
+    const savedIds = items.filter((item) => item.viewer_saved === true).map((item) => item.id);
 
-    const run = () => {
-      fetch(`/api/posts/batch-interactions?ids=${ids.join(",")}`)
-        .then(r => r.json())
-        .then((d: InteractionResponse) => {
-          if (d.interactions) {
-            const liked = new Set<number>();
-            const saved = new Set<number>();
-            for (const [id, status] of Object.entries(d.interactions)) {
-              if (status.liked) liked.add(Number(id));
-              if (status.saved) saved.add(Number(id));
-            }
-            setLikedSet(prev => {
-              const next = new Set(prev);
-              liked.forEach(id => next.add(id));
-              return next;
-            });
-            setSavedSet(prev => {
-              const next = new Set(prev);
-              saved.forEach(id => next.add(id));
-              return next;
-            });
-          }
-        })
-        .catch(() => {});
-    };
-
-    if (idleWindow.requestIdleCallback && !perfHintsRef.current.constrained) {
-      idleWindow.requestIdleCallback(run, { timeout: perfHintsRef.current.warmupDelayMs });
-      return;
+    if (likedIds.length > 0) {
+      setLikedSet((prev) => {
+        const next = new Set(prev);
+        likedIds.forEach((id) => next.add(id));
+        return next;
+      });
     }
 
-    window.setTimeout(run, perfHintsRef.current.warmupDelayMs);
+    if (savedIds.length > 0) {
+      setSavedSet((prev) => {
+        const next = new Set(prev);
+        savedIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
   }, []);
+
+  const hydrateInteractions = useCallback((items: Moment[]) => {
+    seedMomentInteractions(items);
+
+    if (!isLoggedIn || items.length === 0) return;
+    const ids = items
+      .filter((item) => typeof item.viewer_liked !== "boolean" || typeof item.viewer_saved !== "boolean")
+      .map((item) => item.id)
+      .slice(0, 50);
+    if (ids.length === 0) return;
+
+    fetch(`/api/posts/batch-interactions?ids=${ids.join(",")}`)
+      .then((r) => r.json())
+      .then((d: InteractionResponse) => {
+        if (!d.interactions) return;
+
+        const liked = new Set<number>();
+        const saved = new Set<number>();
+        for (const [id, status] of Object.entries(d.interactions)) {
+          if (status.liked) liked.add(Number(id));
+          if (status.saved) saved.add(Number(id));
+        }
+
+        setLikedSet((prev) => {
+          const next = new Set(prev);
+          liked.forEach((id) => next.add(id));
+          return next;
+        });
+        setSavedSet((prev) => {
+          const next = new Set(prev);
+          saved.forEach((id) => next.add(id));
+          return next;
+        });
+        setMoments((prev) => prev.map((moment) => {
+          const status = d.interactions?.[String(moment.id)];
+          if (!status) return moment;
+          return {
+            ...moment,
+            viewer_liked: status.liked === true,
+            viewer_saved: status.saved === true,
+          };
+        }));
+      })
+      .catch(() => {});
+  }, [isLoggedIn, seedMomentInteractions]);
 
   useEffect(() => {
     (async () => {
@@ -559,16 +588,25 @@ function MomentsContent() {
     }
   }, [settledIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments]);
 
+  const isMomentLiked = useCallback((moment: Moment) => (
+    likedSet.has(moment.id) || moment.viewer_liked === true
+  ), [likedSet]);
+
+  const isMomentSaved = useCallback((moment: Moment) => (
+    savedSet.has(moment.id) || moment.viewer_saved === true
+  ), [savedSet]);
+
   const handleLike = useCallback((momentId: number) => {
     if (!requireAuth()) return;
-    const wasLiked = likedSet.has(momentId);
+    const currentMoment = moments.find((moment) => moment.id === momentId);
+    const wasLiked = currentMoment ? isMomentLiked(currentMoment) : likedSet.has(momentId);
     setLikedSet(prev => {
       const next = new Set(prev);
       if (wasLiked) next.delete(momentId); else next.add(momentId);
       return next;
     });
     setMoments(prev => prev.map(m =>
-      m.id === momentId ? { ...m, like_count: (m.like_count || 0) + (wasLiked ? -1 : 1) } : m
+      m.id === momentId ? { ...m, viewer_liked: !wasLiked, like_count: (m.like_count || 0) + (wasLiked ? -1 : 1) } : m
     ));
     fetch(`/api/posts/${momentId}/like`, { method: "POST", keepalive: true }).then(res => { if (!res.ok) throw res; }).catch(async (err) => {
       setLikedSet(prev => {
@@ -577,25 +615,26 @@ function MomentsContent() {
         return next;
       });
       setMoments(prev => prev.map(m =>
-        m.id === momentId ? { ...m, like_count: (m.like_count || 0) + (wasLiked ? 1 : -1) } : m
+        m.id === momentId ? { ...m, viewer_liked: wasLiked, like_count: (m.like_count || 0) + (wasLiked ? 1 : -1) } : m
       ));
       if (err instanceof Response && (err.status === 403 || err.status === 429)) {
         const data = await err.json().catch(() => ({}));
         feedimAlert("error", data.error || tErrors("likeLimitReached"));
       }
     });
-  }, [likedSet, requireAuth, tErrors]);
+  }, [isMomentLiked, likedSet, moments, requireAuth, tErrors]);
 
   const handleSave = useCallback((momentId: number) => {
     if (!requireAuth()) return;
-    const wasSaved = savedSet.has(momentId);
+    const currentMoment = moments.find((moment) => moment.id === momentId);
+    const wasSaved = currentMoment ? isMomentSaved(currentMoment) : savedSet.has(momentId);
     setSavedSet(prev => {
       const next = new Set(prev);
       if (wasSaved) next.delete(momentId); else next.add(momentId);
       return next;
     });
     setMoments(prev => prev.map(m =>
-      m.id === momentId ? { ...m, save_count: (m.save_count || 0) + (wasSaved ? -1 : 1) } : m
+      m.id === momentId ? { ...m, viewer_saved: !wasSaved, save_count: (m.save_count || 0) + (wasSaved ? -1 : 1) } : m
     ));
     fetch(`/api/posts/${momentId}/save`, { method: "POST", keepalive: true }).then(res => { if (!res.ok) throw res; }).catch(async (err) => {
       setSavedSet(prev => {
@@ -604,14 +643,14 @@ function MomentsContent() {
         return next;
       });
       setMoments(prev => prev.map(m =>
-        m.id === momentId ? { ...m, save_count: (m.save_count || 0) + (wasSaved ? 1 : -1) } : m
+        m.id === momentId ? { ...m, viewer_saved: wasSaved, save_count: (m.save_count || 0) + (wasSaved ? 1 : -1) } : m
       ));
       if (err instanceof Response && (err.status === 403 || err.status === 429)) {
         const data = await err.json().catch(() => ({}));
         feedimAlert("error", data.error || tErrors("saveLimitReached"));
       }
     });
-  }, [savedSet, requireAuth, tErrors]);
+  }, [isMomentSaved, moments, requireAuth, savedSet, tErrors]);
 
   const handleComment = useCallback((moment: Moment) => {
     if (!requireAuth()) return;
@@ -771,8 +810,8 @@ function MomentsContent() {
               moment={item.moment}
               isActive={displayIndex === activeDisplayIndex && !idlePaused}
               loadVideo
-              liked={likedSet.has(item.moment.id)}
-              saved={savedSet.has(item.moment.id)}
+              liked={isMomentLiked(item.moment)}
+              saved={isMomentSaved(item.moment)}
               muted={globalMuted}
               onToggleMute={handleToggleMute}
               onLike={() => handleLike(item.moment.id)}
@@ -880,4 +919,3 @@ function MomentsContent() {
     </div>
   );
 }
-

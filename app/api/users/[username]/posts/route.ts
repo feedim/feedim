@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { safeError } from "@/lib/apiError";
 import { getTranslations } from "next-intl/server";
 import { safePage } from "@/lib/utils";
+import { attachViewerPostInteractions } from "@/lib/postViewerInteractions";
 
 export async function GET(
   req: NextRequest,
@@ -107,8 +108,12 @@ export async function GET(
     profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
   }));
 
+  const enrichedPosts = user
+    ? await attachViewerPostInteractions(normalized, user.id, admin)
+    : normalized;
+
   return NextResponse.json({
-    posts: normalized,
+    posts: enrichedPosts,
     hasMore: allPosts.length > limit,
   });
   } catch (err) {

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { safeError } from "@/lib/apiError";
 import { getTranslations } from "next-intl/server";
 import { safePage } from "@/lib/utils";
+import { attachViewerPostInteractions } from "@/lib/postViewerInteractions";
 
 export async function GET(
   req: NextRequest,
@@ -98,8 +99,13 @@ export async function GET(
     })
     .filter(Boolean);
 
+  const pagePosts = posts.slice(0, limit);
+  const enrichedPosts = user
+    ? await attachViewerPostInteractions(pagePosts, user.id, admin)
+    : pagePosts;
+
   return NextResponse.json({
-    posts: posts.slice(0, limit),
+    posts: enrichedPosts,
     hasMore: (comments || []).length > limit,
   });
   } catch (err) {

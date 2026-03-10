@@ -6,6 +6,7 @@ import { cached } from '@/lib/cache';
 import { safePage, safeNotInFilter } from '@/lib/utils';
 import { safeError } from '@/lib/apiError';
 import { getTranslations } from 'next-intl/server';
+import { attachViewerPostInteractions } from '@/lib/postViewerInteractions';
 import {
   computeFeedScore,
   type FeedCandidate,
@@ -353,6 +354,10 @@ export async function GET(request: NextRequest) {
         is_boosted: boostMap.has(p.id),
         boost_status: boostMap.get(p.id) || null,
       }));
+    }
+
+    if (user) {
+      pagePosts = await attachViewerPostInteractions(pagePosts, user.id, admin);
     }
 
     // If tag filter, include tag info in response

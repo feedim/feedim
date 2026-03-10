@@ -378,7 +378,7 @@ export default function VideoTrimModal({
   const endPct = duration > 0 ? (endTime / duration) * 100 : 100;
 
   const closeBtn = (
-    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary">
+    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted">
       <X className="h-5 w-5" />
     </button>
   );

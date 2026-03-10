@@ -356,12 +356,12 @@ export default function SuggestionWidget() {
         <div className="space-y-0">
           {[1, 2, 3].map(i => (
             <div key={i} className="flex items-center gap-3 px-2 py-2.5">
-              <div className="h-[40px] w-[40px] rounded-full bg-bg-secondary shrink-0" />
+              <div className="h-[40px] w-[40px] rounded-full bg-bg-secondary shrink-0 animate-pulse" />
               <div className="flex-1 min-w-0 space-y-[6px]">
                 <div className={`${bone} w-24`} />
                 <div className={`${bone} w-16`} />
               </div>
-              <div className="h-[30px] w-[72px] bg-bg-secondary rounded-lg shrink-0" />
+              <div className="h-[30px] w-[72px] bg-bg-secondary rounded-lg shrink-0 animate-pulse" />
             </div>
           ))}
         </div>
@@ -378,7 +378,7 @@ export default function SuggestionWidget() {
             <div key={i} className="px-3 py-3">
               {i > 1 && <div className="mx-2 h-px bg-border-primary/40 mb-3" />}
               <div className="flex items-center gap-[6px] mb-2">
-                <div className="h-[26px] w-[26px] rounded-full bg-bg-secondary shrink-0" />
+                <div className="h-[26px] w-[26px] rounded-full bg-bg-secondary shrink-0 animate-pulse" />
                 <div className={`${bone} w-20`} />
               </div>
               <div className="flex justify-between items-start gap-3">
@@ -387,7 +387,7 @@ export default function SuggestionWidget() {
                   <div className={`${bone} w-3/4`} />
                   <div className={`${bone} w-14 mt-1`} />
                 </div>
-                <div className="w-[88px] h-[48px] rounded-md bg-bg-secondary shrink-0" />
+                <div className="w-[88px] h-[48px] rounded-md bg-bg-secondary shrink-0 animate-pulse" />
               </div>
             </div>
           ))}

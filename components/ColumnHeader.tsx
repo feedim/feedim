@@ -126,7 +126,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
           ) : isHome && !customTitle ? (
             <button
               onClick={() => setMobileNavOpen(true)}
-              className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary md:!hidden"
+              className="i-btn !w-9 !h-9 text-text-muted md:!hidden"
               aria-label={t("nav.menu")}
             >
               <Menu className="h-6 w-6" />

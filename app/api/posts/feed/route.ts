@@ -5,6 +5,7 @@ import { FEED_PAGE_SIZE, FEED_CANDIDATE_POOL, FEED_DISCOVERY_QUALITY_GATE, FEED_
 import { cached } from '@/lib/cache';
 import { safePage, safeNotInFilter } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
+import { attachViewerPostInteractions } from '@/lib/postViewerInteractions';
 import {
   computeFeedScore,
   enforceDiversity,
@@ -614,6 +615,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    orderedPosts = await attachViewerPostInteractions(orderedPosts, user.id, admin);
+
     const response = NextResponse.json({ posts: orderedPosts, page, hasMore });
     response.headers.set('Cache-Control', 'private, max-age=30');
     return response;
@@ -928,6 +931,8 @@ async function handleContentTab(
   let orderedPosts = orderRowsById(pageIds, (fullPosts || []) as FeedPostRow[]);
   orderedPosts = filterVisiblePosts(orderedPosts, user.id, followedUserIdSet);
 
+  orderedPosts = await attachViewerPostInteractions(orderedPosts, user.id, admin);
+
   const response = NextResponse.json({ posts: orderedPosts, page, hasMore });
   response.headers.set('Cache-Control', 'private, max-age=30');
   return response;
@@ -1113,6 +1118,8 @@ async function handleFollowingTab(
       boost_status: boostMap.get(post.id) || null,
     }));
   }
+
+  orderedPosts = await attachViewerPostInteractions(orderedPosts, user.id, admin);
 
   const response = NextResponse.json({ posts: orderedPosts, page, hasMore });
   response.headers.set('Cache-Control', 'private, max-age=30');
@@ -1327,6 +1334,8 @@ async function handleFollowingDiscovery(
 
   let orderedPosts = orderRowsById(pageIds, (fullPosts || []) as FeedPostRow[]);
   orderedPosts = filterVisiblePosts(orderedPosts);
+
+  orderedPosts = await attachViewerPostInteractions(orderedPosts, user.id, admin);
 
   const response = NextResponse.json({ posts: orderedPosts, page, hasMore, is_discovery: true });
   response.headers.set('Cache-Control', 'private, max-age=30');

@@ -177,7 +177,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
     } catch { return items; }
   }, [ctxUser?.id]);
 
-  const cacheScope = ctxUser?.id ? `user:${ctxUser.id}` : "guest";
+  const cacheScope = ctxUser?.id ? `user:${ctxUser.id}:pi2` : "guest:pi2";
 
   const getFeedEndpoint = useCallback((tab: string, pageNum: number, includeSeenIds = true) => {
     let endpoint = "/api/posts/feed?tab=for-you&page=" + pageNum;
@@ -189,7 +189,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
       endpoint = `/api/posts/explore?page=${pageNum}&tag=${encodeURIComponent(tagSlug)}`;
     }
 
-    if ((tab === "for-you" || tab === "followed") && includeSeenIds && seenPostIds.current.size > 0) {
+    if ((tab === "for-you" || tab === "followed") && pageNum > 1 && includeSeenIds && seenPostIds.current.size > 0) {
       const ids = Array.from(seenPostIds.current).slice(-FEED_MAX_SEEN_IDS).join(",");
       endpoint += `&seen_ids=${ids}`;
     }

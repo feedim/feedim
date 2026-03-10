@@ -292,7 +292,7 @@ export default function AvatarCropModal({ open, onClose, file, onCrop }: AvatarC
         <div data-modal-no-drag className="flex items-center gap-3 mt-4 w-full max-w-[280px]">
           <button
             onClick={() => handleZoom(-0.2)}
-            className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
+            className="i-btn !w-9 !h-9 text-text-muted"
             style={{ background: "var(--bg-tertiary)" }}
           >
             <Minus className="h-4 w-4" />
@@ -320,7 +320,7 @@ export default function AvatarCropModal({ open, onClose, file, onCrop }: AvatarC
           </div>
           <button
             onClick={() => handleZoom(0.2)}
-            className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
+            className="i-btn !w-9 !h-9 text-text-muted"
             style={{ background: "var(--bg-tertiary)" }}
           >
             <Plus className="h-4 w-4" />

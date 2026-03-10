@@ -12,6 +12,7 @@ import {
   type FeedContext,
 } from "@/lib/feedAlgorithm";
 import { getViewerAffinity } from "@/lib/viewerAffinity";
+import { attachViewerPostInteractions } from "@/lib/postViewerInteractions";
 
 export async function GET(req: NextRequest) {
   try {
@@ -339,8 +340,12 @@ export async function GET(req: NextRequest) {
         sounds: Array.isArray(m.sounds) ? m.sounds[0] : (m.sounds || null),
       }));
 
+    const enrichedMoments = user
+      ? await attachViewerPostInteractions(ordered, user.id, admin)
+      : ordered;
+
     return NextResponse.json({
-      moments: ordered,
+      moments: enrichedMoments,
       hasMore,
     });
   } catch (err) {

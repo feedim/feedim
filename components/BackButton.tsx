@@ -33,7 +33,7 @@ export default function BackButton({ fallback = "/dashboard", variant = "default
   return (
     <button
       onClick={handleClick}
-      className={className || "i-btn !w-8 !h-8 text-text-muted hover:text-text-primary"}
+      className={className || "i-btn !w-8 !h-8 text-text-muted"}
       aria-label={t("back")}
     >
       <ArrowLeft className="h-5 w-5" />

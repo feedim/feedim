@@ -239,7 +239,7 @@ export default function MyBoostsModal({ open, onClose }: MyBoostsModalProps) {
                         <button
                           onClick={(e) => handleAction(e, "pause", boost)}
                           disabled={actionLoading === boost.id}
-                          className="i-btn !w-7 !h-7 text-warning hover:bg-warning/10 disabled:opacity-50"
+                          className="i-btn !w-7 !h-7 text-warning disabled:opacity-50"
                           title={t("pauseBoost")}
                         >
                           {actionLoading === boost.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pause className="h-3.5 w-3.5" />}
@@ -249,7 +249,7 @@ export default function MyBoostsModal({ open, onClose }: MyBoostsModalProps) {
                         <button
                           onClick={(e) => handleAction(e, "resume", boost)}
                           disabled={actionLoading === boost.id}
-                          className="i-btn !w-7 !h-7 text-success hover:bg-success/10 disabled:opacity-50"
+                          className="i-btn !w-7 !h-7 text-success disabled:opacity-50"
                           title={t("resumeBoost")}
                         >
                           {actionLoading === boost.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
@@ -259,7 +259,7 @@ export default function MyBoostsModal({ open, onClose }: MyBoostsModalProps) {
                         <button
                           onClick={(e) => handleAction(e, "delete_boost", boost)}
                           disabled={actionLoading === boost.id}
-                          className="i-btn !w-7 !h-7 text-error hover:bg-error/10 disabled:opacity-50"
+                          className="i-btn !w-7 !h-7 text-error disabled:opacity-50"
                           title={t("deleteBoost")}
                         >
                           {actionLoading === boost.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}

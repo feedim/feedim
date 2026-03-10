@@ -252,7 +252,7 @@ export default function SuggestionsPage() {
     <button
       onClick={handleRefresh}
       disabled={refreshing || refreshCooldown}
-      className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary disabled:opacity-40"
+      className="i-btn !w-9 !h-9 text-text-muted disabled:opacity-40"
       title={t("refresh")}
     >
       <svg

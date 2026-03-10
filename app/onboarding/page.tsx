@@ -520,7 +520,7 @@ export default function OnboardingPage() {
         {/* Navigation */}
         <div className="flex items-center gap-[10px] mt-[15px]">
           {step > 1 && (
-            <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" style={{ background: "var(--bg-elevated)" }} aria-label={tCommon("back")}>
+            <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" aria-label={tCommon("back")}>
               {processing === "prev" ? <Spinner size={18} /> : tCommon("back")}
             </button>
           )}

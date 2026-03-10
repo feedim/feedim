@@ -59,7 +59,7 @@ export default function CommunityNotesPage() {
   const router = useRouter();
   const { user: ctxUser, isLoggedIn } = useUser();
   const { requireAuth } = useAuthModal();
-  const cacheScope = ctxUser?.id ? `user:${ctxUser.id}` : "guest";
+  const cacheScope = ctxUser?.id ? `user:${ctxUser.id}:pi2` : "guest:pi2";
 
   const getNotesUrl = useCallback((pageNum: number) => (
     withCacheScope(`/api/posts/feed?tab=notes&page=${pageNum}`, cacheScope)

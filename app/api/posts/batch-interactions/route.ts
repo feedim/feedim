@@ -35,6 +35,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ interactions }, {
-    headers: { "Cache-Control": "private, max-age=10" },
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

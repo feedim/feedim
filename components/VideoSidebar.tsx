@@ -53,7 +53,7 @@ export function VideoSidebarSkeleton({ count = 4, title, compact }: { count?: nu
       <div className="space-y-1.5">
         {Array.from({ length: count }).map((_, i) => (
           <div key={i} className="flex gap-2.5 p-1.5 -mx-1.5">
-            <div className={`${thumbW} rounded-md bg-bg-secondary shrink-0`} />
+            <div className={`${thumbW} rounded-md bg-bg-secondary shrink-0 animate-pulse`} />
             <div className="flex-1 min-w-0 py-0.5 space-y-2">
               <div className="h-[11px] w-[90%] bg-bg-secondary rounded-[5px] animate-pulse" />
               <div className="h-[11px] w-[60%] bg-bg-secondary rounded-[5px] animate-pulse" />

@@ -344,7 +344,7 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
           <button
             type="button"
             onClick={loadChallenge}
-            className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary"
+            className="i-btn !w-10 !h-10 text-text-muted"
             aria-label={t("retry")}
           >
             <RefreshCw className="h-[18px] w-[18px]" />

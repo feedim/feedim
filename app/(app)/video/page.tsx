@@ -86,9 +86,9 @@ export default function VideoPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-7 p-4 sm:p-6">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i}>
-                <div className="aspect-video rounded-xl bg-bg-secondary mb-3" />
+                <div className="aspect-video rounded-xl bg-bg-secondary mb-3 animate-pulse" />
                 <div className="flex gap-3 px-0.5">
-                  <div className="h-10 w-10 rounded-full bg-bg-secondary shrink-0" />
+                  <div className="h-10 w-10 rounded-full bg-bg-secondary shrink-0 animate-pulse" />
                   <div className="flex-1 min-w-0 space-y-[6px] pt-0.5">
                     <div className="h-[11px] w-[80%] bg-bg-secondary rounded-[5px] animate-pulse" />
                     <div className="h-[9px] w-24 bg-bg-secondary rounded-[5px] animate-pulse" />

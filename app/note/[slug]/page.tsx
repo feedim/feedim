@@ -201,7 +201,7 @@ export default async function NotePage({ params }: PageProps) {
           />
 
           {(post.view_count || 0) > 0 && (
-            <p className="text-[0.75rem] text-text-muted">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
+            <p className="text-[0.75rem] text-text-muted mt-[4px]">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}
 
           <PostInteractionBar
@@ -228,7 +228,7 @@ export default async function NotePage({ params }: PageProps) {
             allowComments={post.allow_comments !== false}
           >
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mt-[7px]">
                 {tags.map((tag: { id: number; name: string; slug: string }) => (
                   <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                     className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">

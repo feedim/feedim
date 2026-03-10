@@ -73,6 +73,8 @@ interface PostCardProps {
     is_sponsored?: boolean;
     is_boosted?: boolean;
     boost_status?: string | null;
+    viewer_liked?: boolean;
+    viewer_saved?: boolean;
     post_tags?: { tag_id: number; tags: { id: number; name: string; slug: string } }[];
     profiles?: {
       user_id: string;
@@ -107,6 +109,8 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   const { requireAuth } = useAuthModal();
   const [isDeleted, setIsDeleted] = useState(false);
   const authorUsername = author?.username;
+  const resolvedInitialLiked = initialLiked ?? post.viewer_liked ?? false;
+  const resolvedInitialSaved = initialSaved ?? post.viewer_saved ?? false;
 
   const [inView, setInView] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
@@ -475,8 +479,8 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
               likeCount={post.like_count || 0}
               commentCount={post.comment_count || 0}
               saveCount={post.save_count || 0}
-              initialLiked={initialLiked ?? false}
-              initialSaved={initialSaved ?? false}
+              initialLiked={resolvedInitialLiked}
+              initialSaved={resolvedInitialSaved}
               isVideo={isVideo}
               contentType={post.content_type}
               compact={isVideo || isNote ? "full" : "no-like"}

@@ -33,7 +33,7 @@ export default function BookmarksPage() {
   const { user: currentUser } = useUser();
 
   const getBookmarksCacheUrl = useCallback((pageNum: number, contentType: BookmarkFilter = "all") => (
-    withCacheScope(`/internal/bookmarks?page=${pageNum}&type=${contentType}`, currentUser?.id ? `user:${currentUser.id}` : null)
+    withCacheScope(`/internal/bookmarks?page=${pageNum}&type=${contentType}`, currentUser?.id ? `user:${currentUser.id}:pi2` : null)
   ), [currentUser?.id]);
 
   const filterOptions: { id: BookmarkFilter; label: string; icon: typeof LayoutGrid }[] = [
@@ -101,16 +101,26 @@ export default function BookmarksPage() {
         postsQuery = postsQuery.eq("content_type", contentType);
       }
 
-      const { data: postsData } = await postsQuery;
+      const [{ data: postsData }, { data: likesData }] = await Promise.all([
+        postsQuery,
+        supabase
+          .from("likes")
+          .select("post_id")
+          .eq("user_id", user.id)
+          .in("post_id", postIds),
+      ]);
 
       // Preserve bookmark order
       const postMap = new Map((postsData || []).map(p => [p.id, p]));
+      const likedIds = new Set((likesData || []).map((like) => like.post_id));
       const ordered = postIds.map(id => postMap.get(id)).filter(Boolean);
 
       // Normalize profiles
       const normalized = ordered.map((p: any) => ({
         ...p,
         profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
+        viewer_liked: likedIds.has(p.id),
+        viewer_saved: true,
       }));
 
       if (pageNum === 1) {

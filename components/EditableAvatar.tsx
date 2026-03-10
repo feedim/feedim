@@ -2,6 +2,7 @@
 
 import { memo, useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { sanitizeAvatarUrl } from "@/lib/avatarUrl";
 
 interface EditableAvatarProps {
   src?: string | null;
@@ -32,16 +33,17 @@ export default memo(function EditableAvatar({
   imgClassName,
 }: EditableAvatarProps) {
   const t = useTranslations("profile");
+  const sanitizedSrc = sanitizeAvatarUrl(src);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  useEffect(() => { setImgLoaded(false); }, [src]);
+  useEffect(() => { setImgLoaded(false); }, [sanitizedSrc]);
 
   // Before paint — if cached, skip skeleton entirely
   useLayoutEffect(() => {
     const img = imgRef.current;
     if (img?.classList.contains("lazyloaded")) setImgLoaded(true);
-  }, [src]);
+  }, [sanitizedSrc]);
 
   const markLoaded = useCallback(() => {
     setImgLoaded(true);
@@ -70,7 +72,7 @@ export default memo(function EditableAvatar({
       className={`relative block group ${editable ? "cursor-pointer" : ""} ${className || ""}`}
       aria-label={t("viewAvatar")}
     >
-      {src ? (
+      {sanitizedSrc ? (
         <>
           {/* Image wrapper — skip blur when noBlur (upload areas show dark overlay instead) */}
           <div
@@ -83,7 +85,7 @@ export default memo(function EditableAvatar({
           >
             <img
               ref={imgRef}
-              data-src={src}
+              data-src={sanitizedSrc}
               alt={alt}
               className={`lazyload w-full h-full object-cover bg-bg-tertiary ${imgClassName || ""}`}
             />

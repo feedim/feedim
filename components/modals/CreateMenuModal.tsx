@@ -134,7 +134,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
       centerOnDesktop
       infoText={view === "drafts" ? t("draftsInfoText") : t("createMenuInfoText")}
       leftAction={view === "drafts" ? (
-        <button onClick={() => setView("menu")} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary" aria-label={tc("back")}>
+        <button onClick={() => setView("menu")} className="i-btn !w-10 !h-10 text-text-muted" aria-label={tc("back")}>
           <ArrowLeft className="h-6 w-6" />
         </button>
       ) : undefined}

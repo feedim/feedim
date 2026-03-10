@@ -118,7 +118,7 @@ export default function BlockedWordsPage() {
               <button
                 onClick={addBlockedWord}
                 disabled={adding || !newBlockedWord.trim() || newBlockedWord.trim().replace(/\s/g, "").length < 3}
-                className="i-btn !w-10 !h-10 bg-bg-tertiary text-text-muted hover:text-text-primary disabled:opacity-40 shrink-0"
+                className="i-btn !w-10 !h-10 bg-bg-tertiary text-text-muted disabled:opacity-40 shrink-0"
               >
                 {adding ? <span className="loader" style={{ width: 16, height: 16 }} /> : <Plus className="h-4.5 w-4.5" />}
               </button>

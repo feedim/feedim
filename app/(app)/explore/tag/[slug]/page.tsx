@@ -83,7 +83,7 @@ export default function TagPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { requireAuth } = useAuthModal();
   const { user: currentUser } = useUser();
-  const cacheScope = `locale:${locale}`;
+  const cacheScope = currentUser?.id ? `locale:${locale}:user:${currentUser.id}:pi2` : `locale:${locale}:guest:pi2`;
 
   const getTagPostsUrl = useCallback((pageNum: number, sort: string, contentType?: string) => {
     let url = `/api/posts/explore?tag=${encodeURIComponent(slug)}&page=${pageNum}&sort=${sort}`;

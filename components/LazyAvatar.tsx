@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, memo } from "react";
+import { sanitizeAvatarUrl } from "@/lib/avatarUrl";
 
 interface LazyAvatarProps {
   src?: string | null;
@@ -17,15 +18,16 @@ export default memo(function LazyAvatar({
   className = "",
   borderClass = "border border-border-primary",
 }: LazyAvatarProps) {
+  const sanitizedSrc = sanitizeAvatarUrl(src);
   const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => { setLoaded(false); }, [src]);
+  useEffect(() => { setLoaded(false); }, [sanitizedSrc]);
 
   useLayoutEffect(() => {
     const img = imgRef.current;
     if (img?.classList.contains("lazyloaded")) setLoaded(true);
-  }, [src]);
+  }, [sanitizedSrc]);
 
   const markLoaded = useCallback(() => setLoaded(true), []);
 
@@ -37,7 +39,7 @@ export default memo(function LazyAvatar({
     return () => img.removeEventListener("lazyloaded", markLoaded);
   }, [markLoaded]);
 
-  if (!src) {
+  if (!sanitizedSrc) {
     return (
       <img
         className={`default-avatar-auto bg-bg-tertiary ${sizeClass} rounded-full object-cover ${borderClass} ${className}`}
@@ -60,7 +62,7 @@ export default memo(function LazyAvatar({
         <img
           ref={imgRef}
           suppressHydrationWarning
-          data-src={src}
+          data-src={sanitizedSrc}
           alt={alt}
           decoding="async"
           className="lazyload w-full h-full object-cover bg-bg-tertiary"

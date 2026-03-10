@@ -50,7 +50,7 @@ export default function PostHeaderActions({ postId, postUrl, postTitle, authorUs
   const button = (
     <button
       onClick={() => setMoreOpen(true)}
-      className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
+      className="i-btn !w-9 !h-9 text-text-muted"
       aria-label={t("postOptions")}
     >
       <MoreHorizontal className="h-[20px] w-[20px]" />

@@ -9,6 +9,7 @@ import {
 } from "@/lib/feedAlgorithm";
 import { getViewerAffinity } from "@/lib/viewerAffinity";
 import { logServerError } from "@/lib/runtimeLogger";
+import { attachViewerPostInteractions } from "@/lib/postViewerInteractions";
 
 type SearchSound = {
   id: number;
@@ -297,7 +298,13 @@ export async function GET(req: NextRequest) {
         results.sounds = (sounds || []).map(stripSearchSoundCountry);
       }
     }
-    return NextResponse.json(results);
+    if (user && results.posts && results.posts.length > 0) {
+      results.posts = await attachViewerPostInteractions(results.posts, user.id, admin);
+    }
+
+    const response = NextResponse.json(results);
+    response.headers.set("Cache-Control", user ? "private, max-age=30" : "public, s-maxage=30, stale-while-revalidate=120");
+    return response;
   }
 
   const searchType = isUserIntent ? "users" : type;
@@ -641,8 +648,12 @@ export async function GET(req: NextRequest) {
       .map(stripSearchSoundCountry);
   }
 
+  if (user && results.posts && results.posts.length > 0) {
+    results.posts = await attachViewerPostInteractions(results.posts, user.id, admin);
+  }
+
   const response = NextResponse.json(results);
-  response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+  response.headers.set('Cache-Control', user ? 'private, max-age=30' : 'public, s-maxage=30, stale-while-revalidate=120');
   return response;
   } catch (error: unknown) {
     logServerError("[Search] request failed", error, { operation: "search" });

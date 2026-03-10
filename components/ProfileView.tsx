@@ -100,7 +100,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
 
   const { requireAuth } = useAuthModal();
   const { user: currentUser } = useUser();
-  const profileCacheScope = currentUser?.id ? `viewer:${currentUser.id}` : "guest";
+  const profileCacheScope = currentUser?.id ? `viewer:${currentUser.id}:pi2` : "guest:pi2";
 
   const getProfileListUrl = useCallback((pageNum: number, contentType?: string) => (
     withCacheScope(
@@ -462,13 +462,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </div>
           <div className="flex items-center gap-1">
             {profile.is_own ? (
-              <Link href="/settings" className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary flex items-center justify-center" aria-label={t("settings")}>
+              <Link href="/settings" className="i-btn !w-9 !h-9 text-text-muted flex items-center justify-center" aria-label={t("settings")}>
                 <Menu className="h-5 w-5" />
               </Link>
             ) : (
               <button
                 onClick={() => setMoreOpen(true)}
-                className="i-btn !w-9 !h-9 text-text-muted hover:text-text-primary"
+                className="i-btn !w-9 !h-9 text-text-muted"
                 aria-label={t("moreOptions")}
               >
                 <MoreHorizontal className="h-5 w-5" />
@@ -526,7 +526,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
         </div>
 
         {/* Name & Bio */}
-        <div className="mb-4">
+        <div className="mb-[14px]">
           <div className="flex items-center gap-1.5">
             <h1 className="text-[1.1rem] font-bold truncate">{displayName}</h1>
             {!isAnyBlocked && (profile.role === "admin" || profile.is_verified) && (

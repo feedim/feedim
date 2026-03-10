@@ -320,7 +320,7 @@ export default function CropModal({
   }
 
   const closeBtn = (
-    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted hover:text-text-primary">
+    <button onClick={onClose} className="i-btn !w-10 !h-10 text-text-muted">
       <X className="h-5 w-5" />
     </button>
   );
