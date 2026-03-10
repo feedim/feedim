@@ -76,7 +76,7 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen text-text-primary">
       <header className="z-50">
-        <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
+        <nav className="container mx-auto px-3 flex items-center justify-between h-[53px] max-w-[520px]">
           <div className="flex items-center gap-2">
             <BackButton fallback="/" />
             {/* eslint-disable-next-line @next/next/no-img-element */}

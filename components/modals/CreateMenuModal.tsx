@@ -224,7 +224,7 @@ export default function CreateMenuModal({ open, onClose }: CreateMenuModalProps)
             </div>
           ) : drafts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-[0.74rem] text-text-muted font-semibold">{t("noDrafts")}</p>
+              <p className="text-[0.78rem] text-text-muted font-semibold">{t("noDrafts")}</p>
             </div>
           ) : (
             <>

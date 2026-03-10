@@ -448,7 +448,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
     <div>
       {/* Header */}
       <header className="z-30">
-        <nav className="px-4 flex items-center justify-between h-[53px]">
+        <nav className="px-3 flex items-center justify-between h-[53px]">
           <div className="flex items-center gap-2">
             <BackButton />
             <span className="text-[1.1rem] font-semibold">{isBlockedBy ? t("blockedUser") : `@${profile.username}`}</span>

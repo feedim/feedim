@@ -1008,14 +1008,14 @@ function MomentWriteContent() {
 
         {/* Step 2: Details */}
         {step === 2 && loadingDraft && (
-          <div className="flex-1 px-2 sm:px-4 pt-4 space-y-2.5">
+          <div className="flex-1 px-[11px] sm:px-4 pt-4 space-y-2.5">
             <div className="mx-auto w-40 aspect-[9/16] rounded-xl bg-bg-secondary animate-pulse" />
             <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
           </div>
         )}
         {step === 2 && !loadingDraft && (
-          <div className="flex flex-col flex-1 px-2 sm:px-4 pt-4 pb-20 space-y-5">
+          <div className="flex flex-col flex-1 px-[11px] sm:px-4 pt-4 pb-20 space-y-5">
 
             {/* Thumbnail — top center */}
             <div className="flex flex-col items-center">

@@ -130,7 +130,7 @@ function getMomentsPerfHints(): MomentsPerfHints {
 export default function MomentsPage() {
   return (
     <Suspense fallback={
-      <div className="flex justify-center" style={{ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" }}>
+      <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-black md:relative md:inset-auto md:z-auto md:h-screen" style={{ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" }}>
         <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     }>
@@ -842,7 +842,7 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="flex justify-center" style={viewportHeightStyle}>
+      <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-black md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
         <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     );
@@ -850,7 +850,7 @@ function MomentsContent() {
 
   if (moments.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-text-primary">
+      <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black text-text-primary md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
         <p className="text-lg font-semibold mb-2">{t("noMoments")}</p>
         <p className="text-sm text-text-muted">{t("createFirst")}</p>
       </div>
@@ -858,7 +858,7 @@ function MomentsContent() {
   }
 
   return (
-    <div className="flex justify-center md:h-screen overflow-hidden" style={viewportHeightStyle}>
+    <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-black md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
       {/* Centered Reels column */}
       <div
         className="relative w-full h-full"

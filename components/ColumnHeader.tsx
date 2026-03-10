@@ -95,7 +95,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
   return (
     <>
     <header className="z-50 mt-[4px] select-none">
-      <nav className="relative flex items-center justify-between px-4 h-[53px]">
+      <nav className="relative flex items-center justify-between px-3 h-[53px]">
         {/* Left */}
         {isHome && !customTitle ? (
           <>

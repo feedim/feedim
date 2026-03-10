@@ -75,7 +75,7 @@ export default function BoostPaymentPage() {
   return (
     <div className="min-h-screen text-text-primary">
       <header className="z-50">
-        <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
+        <nav className="container mx-auto px-3 flex items-center justify-between h-[53px] max-w-[520px]">
           <BackButton fallback="/" />
           <h1 className="text-[0.95rem] font-semibold">{tb("feedimAds")}</h1>
           <div className="w-8" />

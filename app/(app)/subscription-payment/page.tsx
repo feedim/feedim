@@ -145,7 +145,7 @@ export default function SubscriptionPaymentPage() {
     <div className="min-h-screen text-text-primary">
       {/* Header */}
       <header className="z-50 border-b border-border-primary/50">
-        <nav className="container mx-auto px-4 flex items-center justify-between h-[53px] max-w-[520px]">
+        <nav className="container mx-auto px-3 flex items-center justify-between h-[53px] max-w-[520px]">
           <BackButton fallback="/premium" />
           <h1 className="text-[0.95rem] font-semibold">{isUpgrade ? t("upgradePlan") : t("subscription")}</h1>
           <div className="w-8" />

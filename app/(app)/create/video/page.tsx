@@ -866,7 +866,7 @@ function VideoWriteContent() {
 
         {/* ─── Step 2: Title + Description + Tags + Thumbnail + Settings ─── */}
         {step === 2 && loadingDraft && (
-          <div className="flex-1 px-2 sm:px-4 pt-4 space-y-2.5">
+          <div className="flex-1 px-[11px] sm:px-4 pt-4 space-y-2.5">
             <div className="h-5 w-[55%] bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-full bg-bg-secondary rounded-[5px] animate-pulse" />
             <div className="h-[9px] w-[50%] bg-bg-secondary rounded-[5px] animate-pulse" />
@@ -874,7 +874,7 @@ function VideoWriteContent() {
           </div>
         )}
         {step === 2 && !loadingDraft && (
-          <div className="flex flex-col flex-1 px-2 sm:px-4 pt-4 pb-20 space-y-5">
+          <div className="flex flex-col flex-1 px-[11px] sm:px-4 pt-4 pb-20 space-y-5">
 
             {/* Title */}
             <input

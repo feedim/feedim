@@ -23,7 +23,6 @@ const LikesModal = lazy(() => import("@/components/modals/LikesModal"));
 const ShareModal = lazy(() => import("@/components/modals/ShareModal"));
 const GiftModal = lazy(() => import("@/components/modals/GiftModal"));
 const PostStatsModal = lazy(() => import("@/components/modals/PostStatsModal"));
-const BoostModal = lazy(() => import("@/components/modals/BoostModal"));
 const BoostDetailsModal = lazy(() => import("@/components/modals/BoostDetailsModal"));
 
 let commonInteractionModalsPreloaded = false;
@@ -42,7 +41,6 @@ function preloadOwnerInteractionModals() {
   if (ownerInteractionModalsPreloaded) return;
   ownerInteractionModalsPreloaded = true;
   void import("@/components/modals/PostStatsModal");
-  void import("@/components/modals/BoostModal");
   void import("@/components/modals/BoostDetailsModal");
 }
 
@@ -147,8 +145,6 @@ export default function PostInteractionBar({
   const [giftMounted, setGiftMounted] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsMounted, setStatsMounted] = useState(false);
-  const [boostOpen, setBoostOpen] = useState(false);
-  const [boostMounted, setBoostMounted] = useState(false);
   const [boostDetailsOpen, setBoostDetailsOpen] = useState(false);
   const [boostDetailsMounted, setBoostDetailsMounted] = useState(false);
   const [avgDuration, setAvgDuration] = useState<number | null>(null);
@@ -444,12 +440,6 @@ export default function PostInteractionBar({
     setStatsOpen(true);
   };
 
-  const openBoost = () => {
-    preloadOwnerInteractionModals();
-    setBoostMounted(true);
-    setBoostOpen(true);
-  };
-
   const openBoostDetails = () => {
     preloadOwnerInteractionModals();
     setBoostDetailsMounted(true);
@@ -620,24 +610,6 @@ export default function PostInteractionBar({
               <span className="text-[0.82rem] font-semibold text-text-muted">{t('boost.boostPaused')}</span>
             </div>
           </button>
-        ) : !currentUser?.accountPrivate && visibility === "public" && !isModeration ? (
-          <button
-            onClick={() => {
-              if (currentUser?.accountType === "creator" || currentUser?.accountType === "business") {
-                openBoost();
-              } else {
-                feedimAlert("info", t('boost.requiresProfessional'));
-              }
-            }}
-            onPointerDown={preloadOwnerInteractionModals}
-            onMouseEnter={preloadOwnerInteractionModals}
-            className="flex items-center justify-between w-full mt-2 py-3 px-4 rounded-[11px] bg-bg-secondary hover:bg-bg-tertiary transition text-left"
-          >
-            <span className="text-[0.82rem] font-medium text-text-muted">{t('boost.ctaQuestion')}</span>
-            <span className="text-[0.82rem] font-semibold text-accent-main shrink-0 ml-3">
-              {t('boost.ctaButton')}
-            </span>
-          </button>
         ) : null}
         </>
       ) : contentType !== "note" && contentType !== "moment" ? (
@@ -798,16 +770,6 @@ export default function PostInteractionBar({
           <PostStatsModal
             open={statsOpen}
             onClose={() => setStatsOpen(false)}
-            postId={postId}
-          />
-        </Suspense>
-      )}
-
-      {isOwnPost && boostMounted && (
-        <Suspense fallback={null}>
-          <BoostModal
-            open={boostOpen}
-            onClose={() => setBoostOpen(false)}
             postId={postId}
           />
         </Suspense>

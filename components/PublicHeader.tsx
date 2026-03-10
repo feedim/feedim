@@ -44,12 +44,12 @@ export default async function PublicHeader({ variant = "back", backLabel }: Publ
   return (
     <header>
       <nav className="container mx-auto px-6 py-6 flex items-center justify-between select-none">
-        <Link href="/" aria-label={`Feedim ${t("nav.home")}`} className="flex items-center gap-3">
+        <Link href="/" aria-label={`Feedim ${t("nav.home")}`} className="flex items-center gap-2">
           <FeedimIcon className="h-14 w-14" />
           <span className="w-px h-7 bg-border-primary" />
           <span className="text-lg font-bold">{t("nav.helpCenter")}</span>
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {variant === "home" ? (
             !userInfo && (
               <Link href="/login" className="t-btn cancel text-sm h-10 px-5">

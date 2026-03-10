@@ -139,6 +139,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
   const resolvedPlaceholder = placeholder || t("defaultPlaceholder");
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(false);
@@ -271,12 +272,25 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     if (!vv) return;
     if (!initialVvHeight.current) initialVvHeight.current = vv.height;
 
+    const isEditorFocused = () => {
+      const editor = editorRef.current;
+      const active = document.activeElement as HTMLElement | null;
+      if (!editor || !active) return false;
+      return active === editor || editor.contains(active);
+    };
+
     const applyOffset = () => {
-      const baseHeight = Math.max(window.innerHeight, initialVvHeight.current);
-      const offset = baseHeight - vv.height;
-      const toolbar = document.querySelector(".feedim-toolbar") as HTMLElement | null;
+      const toolbar = toolbarRef.current;
       if (!toolbar) return;
-      toolbar.style.bottom = offset > 50 ? `${offset}px` : "";
+
+      const baseHeight = Math.max(window.innerHeight, initialVvHeight.current);
+      const offset = Math.max(0, Math.round(baseHeight - vv.height - vv.offsetTop));
+      toolbar.style.bottom = offset > 24 ? `${offset}px` : "";
+    };
+
+    const scheduleOffset = () => {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = requestAnimationFrame(applyOffset);
     };
 
     // rAF polling — focus alındığında her frame kontrol et (klavye animasyonu sırasında bile)
@@ -284,23 +298,36 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     let pollStart = 0;
     const poll = () => {
       applyOffset();
-      if (polling && Date.now() - pollStart < 600) {
+      if (polling && Date.now() - pollStart < 900) {
         rafIdRef.current = requestAnimationFrame(poll);
       } else {
         polling = false;
       }
     };
     const startPolling = () => {
+      pollStart = Date.now();
       if (polling) return;
       polling = true;
-      pollStart = Date.now();
       rafIdRef.current = requestAnimationFrame(poll);
     };
-    const stopPolling = () => { polling = false; cancelAnimationFrame(rafIdRef.current); };
+    const stopPolling = () => {
+      polling = false;
+      cancelAnimationFrame(rafIdRef.current);
+    };
 
     // Focus/blur — klavye açılış/kapanış anını yakala
     const onFocusIn = () => startPolling();
-    const onFocusOut = () => { startPolling(); /* kapanış animasyonunu da yakala */ };
+    const onFocusOut = () => {
+      const toolbar = toolbarRef.current;
+      if (toolbar) {
+        requestAnimationFrame(() => {
+          if (!isEditorFocused()) {
+            toolbar.style.bottom = "";
+          }
+        });
+      }
+      startPolling(); /* kapanış animasyonunu da yakala */
+    };
 
     const editor = editorRef.current;
     if (editor) {
@@ -314,18 +341,22 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     document.addEventListener("selectionchange", onSelectionChange);
 
     // Fallback: visualViewport event'leri (polling bitince de çalışsın)
-    vv.addEventListener("resize", applyOffset);
-    vv.addEventListener("scroll", applyOffset);
+    vv.addEventListener("resize", scheduleOffset);
+    vv.addEventListener("scroll", scheduleOffset);
+    scheduleOffset();
 
     return () => {
       stopPolling();
+      if (toolbarRef.current) {
+        toolbarRef.current.style.bottom = "";
+      }
       if (editor) {
         editor.removeEventListener("focusin", onFocusIn);
         editor.removeEventListener("focusout", onFocusOut);
       }
       document.removeEventListener("selectionchange", onSelectionChange);
-      vv.removeEventListener("resize", applyOffset);
-      vv.removeEventListener("scroll", applyOffset);
+      vv.removeEventListener("resize", scheduleOffset);
+      vv.removeEventListener("scroll", scheduleOffset);
     };
   }, []);
 
@@ -1947,7 +1978,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       )}
 
       {/* Floating Toolbar — WordPress birebir pill design — hidden when editing captions */}
-      <div className={`feedim-toolbar ${captionFocused ? "!hidden" : ""}`}>
+      <div ref={toolbarRef} className={`feedim-toolbar ${captionFocused ? "!hidden" : ""}`}>
         {toolbarButtons.map((btn, i) =>
           btn === null ? (
             <div key={`sep-${i}`} className="toolbar-separator" />

@@ -573,7 +573,7 @@ function NoteWriteContent() {
 
         {/* Step 2: Tags + Settings */}
         {step === 2 && (
-          <div className="space-y-6 px-1.5 sm:px-3 pt-4 pb-8">
+          <div className="space-y-6 px-[9px] sm:px-3 pt-4 pb-8">
             {/* Tags */}
             <div>
               <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>

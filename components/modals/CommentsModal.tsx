@@ -126,6 +126,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const { user: ctxUser } = useUser();
   const viewerIdRef = useRef<string | null>(ctxUser?.id ?? null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerShellRef = useRef<HTMLDivElement>(null);
+  const initialVvHeightRef = useRef(0);
+  const composerRafIdRef = useRef(0);
 
   const maxCommentLength = (ctxUser?.role === "admin" || ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business")
     ? VALIDATION.comment.maxPremium
@@ -168,6 +171,98 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     viewerIdRef.current = ctxUser?.id ?? null;
     setCurrentUserId(ctxUser?.id ?? null);
   }, [ctxUser?.id]);
+
+  useEffect(() => {
+    const shell = composerShellRef.current;
+    const textarea = inputRef.current;
+    const resetComposerStyles = () => {
+      if (!shell) return;
+      shell.style.transform = "";
+      shell.style.willChange = "";
+    };
+
+    if (!open) {
+      resetComposerStyles();
+      return;
+    }
+
+    const vv = window.visualViewport;
+    if (!vv || !textarea || !shell) return;
+    if (!initialVvHeightRef.current) initialVvHeightRef.current = vv.height;
+
+    const isComposerFocused = () => {
+      const active = document.activeElement as HTMLElement | null;
+      return !!active && (active === textarea || shell.contains(active));
+    };
+
+    const applyOffset = () => {
+      const baseHeight = Math.max(window.innerHeight, initialVvHeightRef.current);
+      const offset = Math.max(0, Math.round(baseHeight - vv.height - vv.offsetTop));
+      const shouldFloat = window.innerWidth < 640 && isComposerFocused() && offset > 24;
+
+      if (!shouldFloat) {
+        resetComposerStyles();
+        return;
+      }
+
+      shell.style.transform = `translateY(-${offset}px)`;
+      shell.style.willChange = "transform";
+    };
+
+    const scheduleOffset = () => {
+      cancelAnimationFrame(composerRafIdRef.current);
+      composerRafIdRef.current = requestAnimationFrame(applyOffset);
+    };
+
+    let polling = false;
+    let pollStart = 0;
+
+    const poll = () => {
+      applyOffset();
+      if (polling && Date.now() - pollStart < 900) {
+        composerRafIdRef.current = requestAnimationFrame(poll);
+      } else {
+        polling = false;
+      }
+    };
+
+    const startPolling = () => {
+      pollStart = Date.now();
+      if (polling) return;
+      polling = true;
+      composerRafIdRef.current = requestAnimationFrame(poll);
+    };
+
+    const stopPolling = () => {
+      polling = false;
+      cancelAnimationFrame(composerRafIdRef.current);
+    };
+
+    const onFocus = () => startPolling();
+    const onBlur = () => {
+      requestAnimationFrame(() => {
+        if (!isComposerFocused()) {
+          resetComposerStyles();
+        }
+      });
+      startPolling();
+    };
+
+    textarea.addEventListener("focus", onFocus);
+    textarea.addEventListener("blur", onBlur);
+    vv.addEventListener("resize", scheduleOffset);
+    vv.addEventListener("scroll", scheduleOffset);
+    scheduleOffset();
+
+    return () => {
+      stopPolling();
+      resetComposerStyles();
+      textarea.removeEventListener("focus", onFocus);
+      textarea.removeEventListener("blur", onBlur);
+      vv.removeEventListener("resize", scheduleOffset);
+      vv.removeEventListener("scroll", scheduleOffset);
+    };
+  }, [open]);
 
   const loadComments = useCallback(async (
     pageNum: number,
@@ -632,7 +727,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   }, []);
 
   const commentFormFooter = (
-    <div className="z-[99998] px-3 py-[2px] pb-[env(safe-area-inset-bottom,8px)]">
+    <div className="relative z-[99998] px-3 py-[2px] pb-[env(safe-area-inset-bottom,8px)]">
       {/* Reply indicator */}
       {replyTo && (
         <div className="flex items-center gap-2 py-[11px] px-[2px] ml-[5px] w-full border-b border-bg-tertiary text-[0.85rem]">
@@ -670,92 +765,94 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       )}
 
       {/* Form row */}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 my-[10px] w-full">
-        {/* Avatar */}
-        <div className="shrink-0 mb-[7px]">
-          <LazyAvatar src={ctxUser?.avatarUrl} alt="" sizeClass="h-9 w-9" />
-        </div>
-        <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary" style={{ position: "relative" }}>
-          {/* Mention dropdown — positioned above textarea */}
-          <MentionDropdown
-            users={mention.mentionUsers}
-            activeIndex={mention.mentionIndex}
-            onSelect={selectMentionUser}
-            onHover={mention.setMentionIndex}
-            style={{ bottom: "100%", left: 0, marginBottom: 8, top: "auto" }}
-          />
-          <textarea
-            data-hotkey="comment-input"
-            ref={inputRef}
-            value={newComment}
-            onChange={e => {
-              if (pendingGif) return;
-              handleCommentChange(e.target.value);
-            }}
-            readOnly={!!pendingGif}
-            maxLength={maxCommentLength}
-            placeholder={pendingGif ? t("gifSelected") : t("sharePlaceholder")}
-            rows={1}
-            className={cn(
-              "comment-textarea flex-1 py-[13px] pl-[18px] pr-[10px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] min-h-[35px] text-text-readable placeholder:text-[0.9rem] placeholder:text-text-muted",
-              pendingGif && "opacity-20 cursor-default"
-            )}
-            style={{ fontFamily: 'inherit' }}
-            onInput={resizeTextarea}
-            onKeyDown={handleMentionKeyDown}
-          />
-          {newComment.length >= 100 && (
-            <span className="absolute right-3 top-1.5 text-[0.65rem] text-text-muted/50 pointer-events-none select-none">
-              {newComment.length}/{maxCommentLength}
-            </span>
-          )}
-          <div className="flex items-center shrink-0 mb-[9px] mt-auto mr-[7px] gap-[2px]">
-            <button
-              type="button"
-              onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
-              aria-label="GIF"
-              data-tooltip="GIF"
+      <div ref={composerShellRef}>
+        <form onSubmit={handleSubmit} className="flex items-end gap-2 my-[10px] w-full">
+            {/* Avatar */}
+          <div className="shrink-0 mb-[7px]">
+            <LazyAvatar src={ctxUser?.avatarUrl} alt="" sizeClass="h-9 w-9" />
+          </div>
+          <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary" style={{ position: "relative" }}>
+            {/* Mention dropdown — positioned above textarea */}
+            <MentionDropdown
+              users={mention.mentionUsers}
+              activeIndex={mention.mentionIndex}
+              onSelect={selectMentionUser}
+              onHover={mention.setMentionIndex}
+              style={{ bottom: "100%", left: 0, marginBottom: 8, top: "auto" }}
+            />
+            <textarea
+              data-hotkey="comment-input"
+              ref={inputRef}
+              value={newComment}
+              onChange={e => {
+                if (pendingGif) return;
+                handleCommentChange(e.target.value);
+              }}
+              readOnly={!!pendingGif}
+              maxLength={maxCommentLength}
+              placeholder={pendingGif ? t("gifSelected") : t("sharePlaceholder")}
+              rows={1}
               className={cn(
-                "flex items-center justify-center h-[35px] w-[35px] rounded-full transition text-[0.75rem] font-bold",
-                showGifPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"
+                "comment-textarea flex-1 py-[13px] pl-[18px] pr-[10px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] min-h-[35px] text-text-readable placeholder:text-[0.9rem] placeholder:text-text-muted",
+                pendingGif && "opacity-20 cursor-default"
               )}
-            >
-              GIF
-            </button>
-            {!pendingGif && (
+              style={{ fontFamily: 'inherit' }}
+              onInput={resizeTextarea}
+              onKeyDown={handleMentionKeyDown}
+            />
+            {newComment.length >= 100 && (
+              <span className="absolute right-3 top-1.5 text-[0.65rem] text-text-muted/50 pointer-events-none select-none">
+                {newComment.length}/{maxCommentLength}
+              </span>
+            )}
+            <div className="flex items-center shrink-0 mb-[9px] mt-auto mr-[7px] gap-[2px]">
               <button
                 type="button"
-                onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
-                aria-label="Emoji"
-                data-tooltip="Emoji"
+                onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+                aria-label="GIF"
+                data-tooltip="GIF"
                 className={cn(
-                  "flex items-center justify-center h-[35px] w-[35px] rounded-full transition",
-                  showEmojiPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"
+                  "flex items-center justify-center h-[35px] w-[35px] rounded-full transition text-[0.75rem] font-bold",
+                  showGifPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"
                 )}
               >
-                <Smile className="h-[20px] w-[20px]" />
+                GIF
               </button>
-            )}
-            {(newComment.trim() || pendingGif) && (
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center justify-center relative h-[35px] w-auto min-w-[53px] rounded-[2rem] bg-bg-inverse text-bg-primary disabled:opacity-50 transition shrink-0"
-                aria-label={tc("send")}
-                data-tooltip={tc("send")}
-              >
-                {submitting ? (
-                  <span className="loader" style={{ width: 16, height: 16, borderTopColor: 'var(--bg-primary)' }} />
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 6V18M12 6L7 11M12 6L17 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </button>
-            )}
+              {!pendingGif && (
+                <button
+                  type="button"
+                  onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                  aria-label="Emoji"
+                  data-tooltip="Emoji"
+                  className={cn(
+                    "flex items-center justify-center h-[35px] w-[35px] rounded-full transition",
+                    showEmojiPicker ? "text-accent-main" : "text-text-muted hover:text-text-primary"
+                  )}
+                >
+                  <Smile className="h-[20px] w-[20px]" />
+                </button>
+              )}
+              {(newComment.trim() || pendingGif) && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center justify-center relative h-[35px] w-auto min-w-[53px] rounded-[2rem] bg-bg-inverse text-bg-primary disabled:opacity-50 transition shrink-0"
+                  aria-label={tc("send")}
+                  data-tooltip={tc("send")}
+                >
+                  {submitting ? (
+                    <span className="loader" style={{ width: 16, height: 16, borderTopColor: 'var(--bg-primary)' }} />
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 6V18M12 6L7 11M12 6L17 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 
