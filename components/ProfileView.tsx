@@ -488,7 +488,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </div>
         )}
         {/* Profile header */}
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex items-start gap-3 mb-4">
           {/* Avatar */}
           <div className="relative shrink-0 z-[2]">
             <EditableAvatar

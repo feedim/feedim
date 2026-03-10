@@ -769,7 +769,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     } else {
       const notificationUserId = await resolvePostNotificationRecipient(admin, postId);
       if (notificationUserId) {
-        await createNotification({ admin, user_id: notificationUserId, actor_id: user.id, type: 'comment', object_type: 'post', object_id: postId, content: notifContent });
+        await createNotification({
+          admin,
+          user_id: notificationUserId,
+          actor_id: user.id,
+          type: 'comment',
+          object_type: 'comment',
+          object_id: comment.id,
+          content: notifContent,
+        });
       }
     }
 
