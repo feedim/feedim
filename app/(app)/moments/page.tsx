@@ -158,6 +158,7 @@ function MomentsContent() {
   const containerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const perfHintsRef = useRef<MomentsPerfHints>(getMomentsPerfHints());
+  const adDismissTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const getMomentsUrl = useCallback((excludeIds?: number[]) => (
     withCacheScope(`/api/posts/moments?limit=10${excludeIds?.length ? `&exclude=${excludeIds.join(",")}` : ""}&locale=${locale}&_t=${Date.now()}`, momentsCacheScope)
@@ -550,6 +551,7 @@ function MomentsContent() {
   // Dismiss ads once the user has fully scrolled past them
   // Dismissed ads collapse to 0 height — compensate scroll position
   useEffect(() => {
+    clearTimeout(adDismissTimeoutRef.current);
     const item = displayItems[settledIndex];
     if (!item || item.type === "ad") return;
 
@@ -565,20 +567,24 @@ function MomentsContent() {
     }
     if (toAdd.length === 0) return;
 
-    setDismissedAdKeys(prev => {
-      const next = new Set(prev);
-      toAdd.forEach(k => next.add(k));
-      return next;
-    });
-
-    if (dismissCount > 0 && containerRef.current) {
-      const container = containerRef.current;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          container.scrollBy(0, -container.clientHeight * dismissCount);
-        });
+    adDismissTimeoutRef.current = setTimeout(() => {
+      setDismissedAdKeys(prev => {
+        const next = new Set(prev);
+        toAdd.forEach(k => next.add(k));
+        return next;
       });
-    }
+
+      if (dismissCount > 0 && containerRef.current) {
+        const container = containerRef.current;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.scrollBy(0, -container.clientHeight * dismissCount);
+          });
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(adDismissTimeoutRef.current);
   }, [settledIndex, displayItems, dismissedAdKeys]);
 
   // Infinite loading — guests redirected to login on loadMore
