@@ -63,7 +63,7 @@ function HeartIcon({ size = 40 }: { size?: number }) {
           <stop offset="1" stopColor="#EE3A6D" />
         </linearGradient>
       </defs>
-      <path d="M24 42s-14-8.4-14-20a9 9 0 0118 0 9 9 0 0118 0c0 11.6-14 20-14 20z" fill="url(#heart-g)" />
+      <path d="M24 41s-13-7.8-13-18.6C11 16 15.2 12 20.3 12c3 0 5.8 1.5 7.7 4.3 1.9-2.8 4.7-4.3 7.7-4.3C40.8 12 45 16 45 22.4 45 33.2 32 41 32 41z" fill="url(#heart-g)" transform="translate(-4 0)" />
       <ellipse cx="17.5" cy="18" rx="3" ry="2.5" fill="white" opacity="0.25" />
     </svg>
   );
@@ -391,7 +391,7 @@ export default function GiftModal({ open, onClose, postId, onGiftSent }: GiftMod
                   </div>
                   <div className="flex flex-col items-start min-w-0">
                     <span className="text-[0.72rem] font-semibold leading-tight truncate max-w-full">{tg(gift.labelKey.replace("gifts.", ""))}</span>
-                    <span className="text-[0.62rem] text-text-muted flex items-center gap-0.5 mt-0.5">
+                    <span className="text-[0.65rem] text-text-muted flex items-center gap-0.5 mt-0.5">
                       <Coins className="h-2.5 w-2.5 text-accent-main" />
                       {gift.coins}
                     </span>

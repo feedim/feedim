@@ -66,6 +66,7 @@ interface CommentMutationResponse {
 
 interface RepliesResponse {
   replies?: Comment[];
+  userLikedIds?: number[];
 }
 
 interface CommentsModalProps {
@@ -166,6 +167,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 
   useEffect(() => {
     viewerIdRef.current = ctxUser?.id ?? null;
+    setCurrentUserId(ctxUser?.id ?? null);
   }, [ctxUser?.id]);
 
   const loadComments = useCallback(async (
@@ -232,7 +234,9 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           });
         }
         setHasMore(!!data.hasMore);
-        if (data.userLikedIds?.length) {
+        if (pageNum === 1) {
+          setLikedComments(new Set(data.userLikedIds || []));
+        } else if (data.userLikedIds?.length) {
           setLikedComments(prev => {
             const next = new Set(prev);
             data.userLikedIds?.forEach((id) => next.add(id));
@@ -249,34 +253,18 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     }
   }, [postId]);
 
-  const loadLikedCommentsRef = useRef(false);
-  const loadLikedComments = useCallback(async () => {
-    const viewerId = viewerIdRef.current;
-    if (!viewerId) return;
-    setCurrentUserId(viewerId);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("comment_likes")
-      .select("comment_id")
-      .eq("user_id", viewerId);
-
-    if (data && !loadLikedCommentsRef.current) {
-      setLikedComments(new Set(data.map((like) => like.comment_id)));
-      loadLikedCommentsRef.current = true;
-    }
-  }, []);
-
   useEffect(() => {
     if (open) {
       const startingCount = initialCountRef.current;
       mismatchRetryDoneRef.current = false;
-      loadLikedCommentsRef.current = false;
       setComments([]);
       setLoading(true);
       setHasMore(false);
       setPage(1);
       setTotalCount(startingCount);
       setEmptyStateVerified(startingCount === 0);
+      setLikedComments(new Set());
+      setCurrentUserId(viewerIdRef.current);
       tabCacheRef.current = {};
       void loadComments(1, currentSortRef.current, { target: targetCommentId }).then((res) => {
         if (targetCommentId) {
@@ -294,15 +282,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           }, 500);
         }
       });
-      void loadLikedComments();
     } else {
       abortRef.current?.abort();
-      loadLikedCommentsRef.current = false;
       tabCacheRef.current = {};
       setComments([]);
+      setLikedComments(new Set());
       setLoading(true);
     }
-  }, [loadComments, loadLikedComments, open, targetCommentId]);
+  }, [loadComments, open, targetCommentId]);
 
   useEffect(() => {
     if (replyTo && inputRef.current) {
@@ -621,6 +608,13 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             return c;
           }));
         }
+        if (data.userLikedIds?.length) {
+          setLikedComments(prev => {
+            const next = new Set(prev);
+            data.userLikedIds?.forEach((id) => next.add(id));
+            return next;
+          });
+        }
       }
     } catch {}
     setLoadingReplies(prev => { const next = new Set(prev); next.delete(commentId); return next; });
@@ -707,7 +701,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             onKeyDown={handleMentionKeyDown}
           />
           {newComment.length >= 100 && (
-            <span className="absolute right-3 top-1.5 text-[0.62rem] tabular-nums text-text-muted/50 pointer-events-none select-none">
+            <span className="absolute right-3 top-1.5 text-[0.65rem] text-text-muted/50 pointer-events-none select-none">
               {newComment.length}/{maxCommentLength}
             </span>
           )}
@@ -761,11 +755,13 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     </div>
   );
 
+  const showSortSelect = loading || comments.length > 0 || Math.max(initialCount, totalCount) > 0;
+
   return (
     <>
     <Modal open={open} onClose={onClose} title={t("commentsTitle")} size="md" infoText={t("commentsInfoText")} footer={allowComments ? commentFormFooter : undefined} fullHeight>
         {/* Sort select - sticky */}
-        {comments.length > 0 && (
+        {showSortSelect && (
           <div className="sticky top-0 z-10 bg-bg-secondary flex items-center py-1 px-[5px] select-none">
             <div className="relative inline-flex items-center">
               <select

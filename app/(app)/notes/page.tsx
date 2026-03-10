@@ -34,6 +34,8 @@ interface NotePost {
   blurhash?: string | null;
   is_nsfw?: boolean;
   moderation_category?: string | null;
+  viewer_liked?: boolean;
+  viewer_saved?: boolean;
   profiles?: {
     user_id: string;
     name?: string;
@@ -105,7 +107,12 @@ export default function CommunityNotesPage() {
   // Batch-fetch liked/saved status
   useEffect(() => {
     if (!isLoggedIn || posts.length === 0) return;
-    const newIds = posts.map(p => p.id).filter(id => !fetchedInteractionIds.current.has(id));
+    const newIds = posts
+      .filter((post) => (
+        typeof post.viewer_liked !== "boolean" ||
+        typeof post.viewer_saved !== "boolean"
+      ) && !fetchedInteractionIds.current.has(post.id))
+      .map((post) => post.id);
     if (newIds.length === 0) return;
     const toFetch = newIds.slice(0, 50);
     toFetch.forEach(id => fetchedInteractionIds.current.add(id));

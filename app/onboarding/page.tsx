@@ -899,7 +899,7 @@ function StepWelcome({ profile, avatarPreview }: { profile: Profile; avatarPrevi
         <LazyAvatar src={avatarPreview} alt="" sizeClass="w-[120px] h-[120px]" />
       </div>
       <h2 className="text-xl font-bold mb-2">{t("welcome", { name })}</h2>
-      <p className="text-xs text-text-muted">{t("welcomeDesc")}</p>
+      <p className="text-[0.82rem] leading-[1.55] text-text-muted max-w-[290px] mx-auto">{t("welcomeDesc")}</p>
     </div>
   );
 }

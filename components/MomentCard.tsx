@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
 import { Heart, MessageCircle, Bookmark, MoreHorizontal, Music, Clock } from "lucide-react";
-import { formatCount, formatRelativeDate } from "@/lib/utils";
+import { formatCount, formatDisplayTagLabel, formatRelativeDate } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import ShareIcon from "@/components/ShareIcon";
@@ -407,8 +407,8 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <Link
             href={`/u/${author?.username}`}
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-white text-[0.62rem] font-semibold border border-white/20 bg-transparent hover:bg-white/10 transition"
-            style={{ borderRadius: 6, padding: "0 6px", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+            className="shrink-0 text-white text-[0.65rem] font-semibold border border-white/20 bg-transparent hover:bg-white/10 transition"
+            style={{ borderRadius: 6, padding: "1px 8px", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
           >
             {tc("viewProfile")}
           </Link>
@@ -454,10 +454,11 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
               <Link
                 key={tag.id}
                 href={`/explore/tag/${tag.slug}`}
+                title={`#${tag.name}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-[0.72rem] font-semibold text-white/80 bg-white/15 backdrop-blur-sm px-2 py-0.5 rounded-full hover:bg-white/25 transition"
               >
-                #{tag.name}
+                {formatDisplayTagLabel(tag.name)}
               </Link>
             ))}
           </div>

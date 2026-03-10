@@ -303,7 +303,7 @@ export default function ThumbnailPickerModal({
         {/* Time display & timeline — hidden when showing custom uploaded image */}
         {!customImage && (
           <>
-            <div className="text-center text-xs text-text-muted tabular-nums font-medium !mb-1">
+            <div className="text-center text-xs text-text-muted font-medium !mb-1">
               {fmtTime(currentTime)} / {fmtTime(duration)}
             </div>
 

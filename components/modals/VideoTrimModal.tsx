@@ -415,7 +415,7 @@ export default function VideoTrimModal({
         />
 
         {/* Duration display */}
-        <div className="text-center text-xs text-text-muted tabular-nums font-medium !mb-1">
+        <div className="text-center text-xs text-text-muted font-medium !mb-1">
           {fmtTime(startTime)} — {fmtTime(endTime)}{" "}
           <span className="text-text-primary font-medium">({Math.round(trimDuration)}s)</span>
         </div>

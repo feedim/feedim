@@ -336,9 +336,9 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 ml-15">
-            <div><p className="text-[0.62rem] text-text-muted">{t("last", { period: periodLabel })}</p><p className="text-sm font-bold">0</p></div>
+            <div><p className="text-[0.65rem] text-text-muted">{t("last", { period: periodLabel })}</p><p className="text-sm font-bold">0</p></div>
             <div className="w-px h-6 bg-border-primary" />
-            <div><p className="text-[0.62rem] text-text-muted">{t("total")}</p><p className="text-sm font-bold">0</p></div>
+            <div><p className="text-[0.65rem] text-text-muted">{t("total")}</p><p className="text-sm font-bold">0</p></div>
           </div>
         </div>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -366,17 +366,17 @@ function EarningsCard({ earnings, periodLabel, isPro }: { earnings: EarningsData
         </div>
         <div className="flex items-center gap-4 mt-3 ml-15">
           <div>
-            <p className="text-[0.62rem] text-text-muted">{t("last", { period: periodLabel })}</p>
+            <p className="text-[0.65rem] text-text-muted">{t("last", { period: periodLabel })}</p>
             <p className="text-sm font-bold">+{formatCount(earnings.periodEarned)}</p>
           </div>
           <div className="w-px h-6 bg-border-primary" />
           <div>
-            <p className="text-[0.62rem] text-text-muted">{t("totalEarnings")}</p>
+            <p className="text-[0.65rem] text-text-muted">{t("totalEarnings")}</p>
             <p className="text-sm font-bold">{formatCount(earnings.totalEarned)}</p>
           </div>
           <div className="w-px h-6 bg-border-primary" />
           <div>
-            <p className="text-[0.62rem] text-text-muted">{t("qualifiedReads")}</p>
+            <p className="text-[0.65rem] text-text-muted">{t("qualifiedReads")}</p>
             <p className="text-sm font-bold">{formatCount(earnings.qualifiedReads)}</p>
           </div>
         </div>
@@ -432,7 +432,7 @@ function ChangeBadge({ current, previous }: { current: number; previous: number 
   const change = smartChange(current, previous);
   if (!change.show) return null;
   return (
-    <span className={`inline-flex items-center gap-0.5 mt-1.5 text-[0.62rem] font-bold px-1.5 py-0.5 rounded-full ${
+    <span className={`inline-flex items-center gap-0.5 mt-1.5 text-[0.65rem] font-bold px-1.5 py-0.5 rounded-full ${
       change.isUp ? "bg-accent-main/10 text-accent-main" : "bg-error/10 text-error"
     }`}>
       {change.isUp ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
@@ -455,14 +455,14 @@ function MetricCard({ icon: Icon, label, value, prev, prevLabel }: { icon: any; 
           <span className="text-[0.72rem] text-text-muted">{label}</span>
         </div>
         {change.show && (
-          <span className={`text-[0.62rem] font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${change.isUp ? "bg-accent-main/10 text-accent-main" : "bg-error/10 text-error"}`}>
+          <span className={`text-[0.65rem] font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${change.isUp ? "bg-accent-main/10 text-accent-main" : "bg-error/10 text-error"}`}>
             {change.isUp ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
             {change.text}
           </span>
         )}
       </div>
       <p className="text-2xl font-bold">{formatCount(value)}</p>
-      {prev > 0 && <p className="text-[0.62rem] text-text-muted mt-0.5">{t("previousPeriod", { value: formatCount(prev) })}</p>}
+      {prev > 0 && <p className="text-[0.65rem] text-text-muted mt-0.5">{t("previousPeriod", { value: formatCount(prev) })}</p>}
     </div>
   );
 }
@@ -759,12 +759,12 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
             <div className="flex items-center gap-1.5 bg-bg-secondary rounded-full px-3 py-1.5 shrink-0">
               <Film className="h-3 w-3 text-text-muted" />
               <span className="text-[0.68rem] font-bold">{data.videoCount}</span>
-              <span className="text-[0.62rem] text-text-muted">{t("videoCount")}</span>
+              <span className="text-[0.65rem] text-text-muted">{t("videoCount")}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-bg-secondary rounded-full px-3 py-1.5 shrink-0">
               <Eye className="h-3 w-3 text-text-muted" />
               <span className="text-[0.68rem] font-bold">{formatCount(data.totalWatchers)}</span>
-              <span className="text-[0.62rem] text-text-muted">{t("watchers")}</span>
+              <span className="text-[0.65rem] text-text-muted">{t("watchers")}</span>
             </div>
           </div>
 
@@ -788,8 +788,8 @@ function VideoAnalyticsCard({ data, periodLabel }: { data: VideoAnalyticsData; p
                     <div className="flex-1 min-w-0">
                       <p className="text-[0.78rem] font-medium truncate group-hover:text-accent-main transition">{video.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[0.62rem] text-text-muted">{t("viewCount", { count: formatCount(video.views) })}</span>
-                        <span className="text-[0.62rem] text-text-muted">{t("watchHours", { hours: video.watchHours })}</span>
+                        <span className="text-[0.65rem] text-text-muted">{t("viewCount", { count: formatCount(video.views) })}</span>
+                        <span className="text-[0.65rem] text-text-muted">{t("watchHours", { hours: video.watchHours })}</span>
                       </div>
                     </div>
                   </Link>
@@ -884,7 +884,7 @@ function FollowerDemographicsCard({ data }: { data: FollowerDemographicsData }) 
             <div className="flex h-6 rounded-full overflow-hidden bg-bg-tertiary">
               {data.gender.male > 0 && (
                 <div
-                  className="h-full bg-accent-main flex items-center justify-center text-[0.62rem] font-semibold text-white"
+                  className="h-full bg-accent-main flex items-center justify-center text-[0.65rem] font-semibold text-white"
                   style={{ width: `${(data.gender.male / genderTotal) * 100}%` }}
                 >
                   {Math.round((data.gender.male / genderTotal) * 100)}% {t("demographicsMale")}
@@ -892,7 +892,7 @@ function FollowerDemographicsCard({ data }: { data: FollowerDemographicsData }) 
               )}
               {data.gender.female > 0 && (
                 <div
-                  className="h-full bg-accent-main/60 flex items-center justify-center text-[0.62rem] font-semibold text-white"
+                  className="h-full bg-accent-main/60 flex items-center justify-center text-[0.65rem] font-semibold text-white"
                   style={{ width: `${(data.gender.female / genderTotal) * 100}%` }}
                 >
                   {Math.round((data.gender.female / genderTotal) * 100)}% {t("demographicsFemale")}

@@ -21,6 +21,7 @@ export default memo(function LazyAvatar({
   const sanitizedSrc = sanitizeAvatarUrl(src);
   const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const avatarBorderStyle = /\bborder\b/.test(borderClass) ? { borderWidth: "0.9px" } : undefined;
 
   useEffect(() => { setLoaded(false); }, [sanitizedSrc]);
 
@@ -45,6 +46,7 @@ export default memo(function LazyAvatar({
         className={`default-avatar-auto bg-bg-tertiary ${sizeClass} rounded-full object-cover ${borderClass} ${className}`}
         alt=""
         loading="lazy"
+        style={avatarBorderStyle}
       />
     );
   }
@@ -54,6 +56,7 @@ export default memo(function LazyAvatar({
       <div
         className={`w-full h-full rounded-full overflow-hidden ${borderClass}`}
         style={{
+          ...avatarBorderStyle,
           filter: loaded ? "blur(0px)" : "blur(3px)",
           transition: loaded ? "filter 200ms ease 80ms" : "none",
           transform: "translateZ(0)",
@@ -72,7 +75,7 @@ export default memo(function LazyAvatar({
         className={`absolute inset-0 rounded-full bg-bg-tertiary ${borderClass} ${
           loaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
         }`}
-        style={{ transition: "opacity 250ms ease" }}
+        style={{ ...avatarBorderStyle, transition: "opacity 250ms ease" }}
       />
     </div>
   );

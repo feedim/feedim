@@ -9,7 +9,7 @@ import PostHeaderActions from "@/components/PostHeaderActions";
 import RelatedPosts from "@/components/RelatedPosts";
 import Link from "next/link";
 
-import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
+import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import PostViewTracker from "@/components/PostViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
 import VerifiedBadge from "@/components/VerifiedBadge";
@@ -20,6 +20,7 @@ function getBadgeVariantServer(premiumPlan?: string | null): "default" | "max" {
 }
 import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
+import ExpandableMentionText from "@/components/ExpandableMentionText";
 
 import { getTranslations, getLocale } from "next-intl/server";
 import { getAlternateLanguages } from "@/lib/seo";
@@ -30,7 +31,6 @@ import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPageRecommendations";
 
 const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
-import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import AdBanner from "@/components/AdBanner";
 
 interface PageProps {
@@ -176,13 +176,13 @@ export default async function NotePage({ params }: PageProps) {
             isBoosted={boostInfo.isBoosted}
           />
 
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-2 mb-2.5">
             <Link href={`/u/${author?.username}`} className="shrink-0">
               <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.92rem] hover:underline truncate">@{author?.username}</Link>
+              <div className="flex items-center gap-1">
+                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
                 {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
               </div>
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
@@ -195,13 +195,28 @@ export default async function NotePage({ params }: PageProps) {
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved compact />
           </div>
 
-          <p
-            className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line"
-            dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
+          <ExpandableMentionText
+            text={noteText}
+            maxChars={240}
+            maxLines={8}
+            className="text-[1rem] leading-[1.55] text-text-primary whitespace-pre-line"
+            buttonClassName="mt-0.5 inline-flex w-fit text-[0.84rem] font-bold text-text-muted hover:underline"
           />
 
           {(post.view_count || 0) > 0 && (
             <p className="text-[0.75rem] text-text-muted mt-[4px]">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
+          )}
+
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+              {tags.map((tag: { id: number; name: string; slug: string }) => (
+                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                  title={`#${tag.name}`}
+                  className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
+                  {formatDisplayTagLabel(tag.name)}
+                </Link>
+              ))}
+            </div>
           )}
 
           <PostInteractionBar
@@ -226,18 +241,7 @@ export default async function NotePage({ params }: PageProps) {
             visibility={post.visibility || "public"}
             isModeration={!!post.is_nsfw || post.status === 'moderation'}
             allowComments={post.allow_comments !== false}
-          >
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-[7px]">
-                {tags.map((tag: { id: number; name: string; slug: string }) => (
-                  <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                    className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                    #{tag.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </PostInteractionBar>
+          />
         </div>
 
         <RelatedPosts

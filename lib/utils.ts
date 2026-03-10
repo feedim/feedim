@@ -124,7 +124,7 @@ export function filterNameInput(input: string): string {
  * Tag adını sosyal medya formatına çevirir:
  * "Türkçe Şölen!" → "turkcesolen"
  * "İstanbul/Ankara" → "istanbulankara"
- * Kurallar: Türkçe karakter → ASCII, sadece a-z 0-9, max 50 karakter
+ * Kurallar: Türkçe karakter → ASCII, sadece a-z 0-9, max 30 karakter
  */
 export function formatTagName(name: string): string {
   return name
@@ -146,7 +146,17 @@ export function formatTagName(name: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
-    .substring(0, 50);
+    .substring(0, 30);
+}
+
+export function formatDisplayTagLabel(name: string, maxChars = 30): string {
+  const normalized = (name || "").trim();
+  if (!normalized) return "#";
+
+  const chars = Array.from(normalized);
+  return chars.length > maxChars
+    ? `#${chars.slice(0, maxChars).join("")}...`
+    : `#${normalized}`;
 }
 
 const TIME_LABELS: Record<string, { justNow: string; m: string; h: string; d: string; w: string; mo: string; y: string }> = {

@@ -1886,7 +1886,8 @@
   },
   "relatedPosts": {
     "moreFromAuthor": "@{username} adlı kişiden daha fazla",
-    "featured": "Öne Çıkanlar"
+    "featured": "Öne Çıkanlar",
+    "forYou": "Senin için"
   },
   "moderation": {
     "contentUnderReview": "İçeriğiniz inceleniyor",

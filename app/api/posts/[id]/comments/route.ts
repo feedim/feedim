@@ -290,7 +290,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
 
       const resultReplies = filteredReplies.slice(0, replyLimit);
-      return NextResponse.json({ replies: resultReplies, hasMore: filteredReplies.length > replyLimit });
+      let userLikedIds: number[] = [];
+      if (user && resultReplies.length > 0) {
+        const { data: rawLikes } = await admin
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', user.id)
+          .in('comment_id', resultReplies.map((reply) => reply.id));
+        const likes = (rawLikes || []) as Pick<CommentLikeRow, "comment_id">[];
+        userLikedIds = likes.map((like) => like.comment_id);
+      }
+
+      return NextResponse.json({
+        replies: resultReplies,
+        hasMore: filteredReplies.length > replyLimit,
+        userLikedIds,
+      });
     }
 
     let query = admin

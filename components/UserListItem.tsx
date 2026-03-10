@@ -81,7 +81,7 @@ export default function UserListItem({
         </div>
         <p className="text-xs text-text-muted truncate">@{user.username}</p>
         {resolvedSubtitle && (
-          <p className="text-[0.66rem] text-text-muted truncate max-w-[200px]">{resolvedSubtitle.length > 50 ? resolvedSubtitle.slice(0, 50) + "…" : resolvedSubtitle}</p>
+          <p className="text-[0.66rem] text-text-muted truncate max-w-[200px] mt-px">{resolvedSubtitle.length > 50 ? resolvedSubtitle.slice(0, 50) + "…" : resolvedSubtitle}</p>
         )}
       </Link>
       {action && <div className="shrink-0">{action}</div>}

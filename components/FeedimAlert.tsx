@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { useHydrated } from "@/lib/useHydrated";
 import { lockScroll, unlockScroll } from "@/lib/scrollLock";
@@ -22,6 +21,14 @@ interface AlertState extends AlertOptions {
   id: number;
   type: AlertType;
   message: string;
+}
+
+interface AlertLabels {
+  notification: string;
+  no: string;
+  yes: string;
+  ok: string;
+  cancel: string;
 }
 
 // ── Global store ──
@@ -89,8 +96,7 @@ if (typeof window !== "undefined") {
 }
 
 /** Alert Provider — mount once in root layout */
-export default function FeedimAlertProvider() {
-  const t = useTranslations("common");
+export default function FeedimAlertProvider({ labels }: { labels: AlertLabels }) {
   const hydrated = useHydrated();
   const currentAlerts = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set());
@@ -205,7 +211,7 @@ export default function FeedimAlertProvider() {
             >
               <div className="flex items-center gap-2 h-11 px-1">
                 <span className="text-[1.1rem] font-bold flex-1">
-                  {alert.showInput ? alert.message : t("notification")}
+                  {alert.showInput ? alert.message : labels.notification}
                 </span>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-text-primary shrink-0">
                   <path d="M12 8H12.01M12 11V16M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -218,20 +224,20 @@ export default function FeedimAlertProvider() {
               )}
               {alert.showInput ? (
                 <div className="mt-1">
-                  <InputAlert alert={alert} onSubmit={(val) => { alert.onSubmit?.(val); closeWithAnimation(alert); }} onCancel={() => handleNo(alert)} />
+                  <InputAlert labels={labels} alert={alert} onSubmit={(val) => { alert.onSubmit?.(val); closeWithAnimation(alert); }} onCancel={() => handleNo(alert)} />
                 </div>
               ) : alert.showYesNo ? (
                 <div className="flex gap-2">
                   <button onClick={() => handleNo(alert)} disabled={isLoading} className="t-btn cancel flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50 !bg-bg-tertiary">
-                    {t("no")}
+                    {labels.no}
                   </button>
-                  <button onClick={() => handleYes(alert)} disabled={isLoading} className="t-btn accept flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50" aria-label={t("yes")}>
-                    {isLoading ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("yes")}
+                  <button onClick={() => handleYes(alert)} disabled={isLoading} className="t-btn accept flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50" aria-label={labels.yes}>
+                    {isLoading ? <span className="loader" style={{ width: 16, height: 16 }} /> : labels.yes}
                   </button>
                 </div>
               ) : (
                 <button onClick={() => handleClose(alert)} className="t-btn accept w-full !h-[42px] !text-[0.84rem]">
-                  {t("ok")}
+                  {labels.ok}
                 </button>
               )}
             </div>
@@ -243,8 +249,7 @@ export default function FeedimAlertProvider() {
   );
 }
 
-function InputAlert({ alert, onSubmit, onCancel }: { alert: AlertState; onSubmit: (val: string) => void; onCancel: () => void }) {
-  const t = useTranslations("common");
+function InputAlert({ labels, alert, onSubmit, onCancel }: { labels: AlertLabels; alert: AlertState; onSubmit: (val: string) => void; onCancel: () => void }) {
   const [value, setValue] = useState(alert.inputDefaultValue || "");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -274,14 +279,14 @@ function InputAlert({ alert, onSubmit, onCancel }: { alert: AlertState; onSubmit
       />
       <div className="flex gap-2">
         <button onClick={onCancel} className="t-btn cancel flex-1 !h-[42px] !text-[0.84rem] !bg-bg-tertiary">
-          {t("cancel")}
+          {labels.cancel}
         </button>
         <button
           onClick={() => value.trim() && onSubmit(value.trim())}
           disabled={!value.trim()}
           className="t-btn accept flex-1 !h-[42px] !text-[0.84rem] disabled:opacity-50"
         >
-          {t("ok")}
+          {labels.ok}
         </button>
       </div>
     </div>

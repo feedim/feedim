@@ -100,11 +100,19 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
         if (pageNum === 1) {
           setComments(data.comments || []);
           setEmptyStateVerified((data.comments?.length || 0) > 0 || initialCount === 0 || mismatchRetryDoneRef.current);
+          setLikedComments(new Set(data.userLikedIds || []));
         } else {
           setComments(prev => {
             const existingIds = new Set(prev.map(c => c.id));
             return [...prev, ...(data.comments || []).filter((c: Comment) => !existingIds.has(c.id))];
           });
+          if (data.userLikedIds?.length) {
+            setLikedComments(prev => {
+              const next = new Set(prev);
+              data.userLikedIds.forEach((id: number) => next.add(id));
+              return next;
+            });
+          }
         }
         setHasMore(data.hasMore);
       }
@@ -116,39 +124,15 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   }, [postId, initialCount]);
 
   useEffect(() => {
-    let cancelled = false;
     mismatchRetryDoneRef.current = false;
     setComments([]);
     setHasMore(false);
     setPage(1);
     setTotalCount(initialCount);
     setEmptyStateVerified(initialCount === 0);
+    setLikedComments(new Set());
     loadComments(1);
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled || !user) return;
-      const { data } = await supabase
-        .from("comment_likes")
-        .select("comment_id")
-        .eq("user_id", user.id);
-      if (!cancelled && data) {
-        setLikedComments(new Set(data.map(l => l.comment_id)));
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [postId, initialCount, loadComments, supabase]);
-
-  const loadLikedComments = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("comment_likes")
-      .select("comment_id")
-      .eq("user_id", user.id);
-    if (data) {
-      setLikedComments(new Set(data.map(l => l.comment_id)));
-    }
-  };
+  }, [postId, initialCount, loadComments]);
 
   const handleEmojiSelect = (emoji: string) => {
     const textarea = commentRef.current;
@@ -402,7 +386,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
               style={{ bottom: "100%", top: "auto", marginBottom: 8 }}
             />
             {newComment.length >= 100 && (
-              <span className="text-[0.66rem] tabular-nums text-text-muted/60 pointer-events-none" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
+              <span className="text-[0.66rem] text-text-muted/60 pointer-events-none" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
                 {newComment.length}/{maxCommentLength}
               </span>
             )}

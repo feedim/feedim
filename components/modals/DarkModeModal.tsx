@@ -54,7 +54,7 @@ export default function DarkModeModal({ open, onClose }: DarkModeModalProps) {
 
   return (
     <Modal open={open} onClose={onClose} title={t("appearanceTitle")} size="sm" infoText={t("appearanceInfoText")}>
-      <div className="p-3 space-y-2">
+      <div className="p-2 space-y-2">
         {themes.map((theme) => {
           const Icon = theme.icon;
           const isActive = current === theme.id;

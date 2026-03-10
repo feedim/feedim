@@ -7,7 +7,15 @@ type IdleCallbackWindow = Window & {
   cancelIdleCallback?: (handle: number) => void;
 };
 
-function preloadAllModals() {
+let criticalModalsPreloaded = false;
+let allModalsPreloaded = false;
+let criticalPrewarmScheduled = false;
+
+function preloadCriticalModals() {
+  if (criticalModalsPreloaded) return;
+  criticalModalsPreloaded = true;
+
+  import("@/components/modals/Modal");
   import("@/components/modals/CommentsModal");
   import("@/components/modals/ShareModal");
   import("@/components/modals/PostMoreModal");
@@ -27,35 +35,62 @@ function preloadAllModals() {
   import("@/components/modals/ProfileVisitorsModal");
   import("@/components/modals/CreateMenuModal");
   import("@/components/modals/DarkModeModal");
+  import("@/components/modals/BoostModal");
+  import("@/components/modals/BoostDetailsModal");
+  import("@/components/modals/MyBoostsModal");
+  import("@/components/modals/PremiumWelcomeModal");
+  import("@/components/modals/ProfileLinksModal");
+}
+
+function preloadAllModals() {
+  if (allModalsPreloaded) return;
+  allModalsPreloaded = true;
+
+  preloadCriticalModals();
+  import("@/components/modals/ProfessionalAccountModal");
+  import("@/components/modals/LinksModal");
+}
+
+if (typeof window !== "undefined" && !criticalPrewarmScheduled) {
+  criticalPrewarmScheduled = true;
+  Promise.resolve().then(() => preloadCriticalModals());
 }
 
 export default function ModalsPreload() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const idleWindow = window as IdleCallbackWindow;
+    let rafId: number | null = null;
+    let criticalTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let fullTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
 
-    const run = () => preloadAllModals();
+    rafId = window.requestAnimationFrame(() => {
+      criticalTimeoutId = setTimeout(() => preloadCriticalModals(), 0);
+    });
 
     if (idleWindow.requestIdleCallback) {
-      idleWindow.requestIdleCallback(() => run(), { timeout: 500 });
+      idleId = idleWindow.requestIdleCallback(() => preloadAllModals(), { timeout: 900 });
     } else {
-      setTimeout(run, 300);
+      fullTimeoutId = setTimeout(() => preloadAllModals(), 220);
     }
 
     const onFirstInteraction = () => {
-      run();
-      window.removeEventListener("touchstart", onFirstInteraction);
-      window.removeEventListener("mousedown", onFirstInteraction);
+      preloadCriticalModals();
+      preloadAllModals();
+      window.removeEventListener("pointerdown", onFirstInteraction);
       window.removeEventListener("keydown", onFirstInteraction);
     };
 
-    window.addEventListener("touchstart", onFirstInteraction, { passive: true });
-    window.addEventListener("mousedown", onFirstInteraction, { passive: true });
+    window.addEventListener("pointerdown", onFirstInteraction, { passive: true });
     window.addEventListener("keydown", onFirstInteraction);
 
     return () => {
-      window.removeEventListener("touchstart", onFirstInteraction);
-      window.removeEventListener("mousedown", onFirstInteraction);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      if (criticalTimeoutId !== null) clearTimeout(criticalTimeoutId);
+      if (fullTimeoutId !== null) clearTimeout(fullTimeoutId);
+      if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId);
+      window.removeEventListener("pointerdown", onFirstInteraction);
       window.removeEventListener("keydown", onFirstInteraction);
     };
   }, []);

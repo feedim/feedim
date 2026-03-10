@@ -1267,7 +1267,7 @@ export default function AdminPage() {
                     placeholder={t("customReasonPlaceholder")}
                     className="input-modern w-full !py-2 !text-[0.78rem] mt-2"
                   />
-                  <span className="text-[0.62rem] text-text-muted">{(customReasons[String(p.id)] || '').length}/150</span>
+                  <span className="text-[0.65rem] text-text-muted">{(customReasons[String(p.id)] || '').length}/150</span>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
@@ -1435,7 +1435,7 @@ export default function AdminPage() {
                     placeholder={t("customReasonPlaceholder")}
                     className="input-modern w-full !py-2 !text-[0.78rem]"
                   />
-                  <span className="text-[0.62rem] text-text-muted">{(customReasons[u.user_id] || '').length}/150</span>
+                  <span className="text-[0.65rem] text-text-muted">{(customReasons[u.user_id] || '').length}/150</span>
                 </div>
                 <div className="flex justify-end gap-2 mt-1.5">
                   <button
@@ -1681,7 +1681,7 @@ export default function AdminPage() {
                     placeholder={t("customReasonPlaceholder")}
                     className="input-modern w-full !py-2 !text-[0.78rem]"
                   />
-                  <span className="text-[0.62rem] text-text-muted">{(customReasons[`boost-${boost.id}`] || '').length}/150</span>
+                  <span className="text-[0.65rem] text-text-muted">{(customReasons[`boost-${boost.id}`] || '').length}/150</span>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button onClick={() => {
@@ -1894,7 +1894,7 @@ export default function AdminPage() {
                           placeholder={t("customReasonPlaceholder")}
                           className="input-modern w-full !py-2 !text-[0.78rem] mt-2"
                         />
-                        <span className="text-[0.62rem] text-text-muted">{(claimCustomReasons[claim.id] || '').length}/150</span>
+                        <span className="text-[0.65rem] text-text-muted">{(claimCustomReasons[claim.id] || '').length}/150</span>
                       </div>
                       <div className="flex justify-end gap-2">
                         <button
@@ -2021,7 +2021,7 @@ export default function AdminPage() {
                     placeholder={t("customReasonPlaceholder")}
                     className="input-modern w-full !py-2 !text-[0.78rem] mt-2"
                   />
-                  <span className="text-[0.62rem] text-text-muted">{(customReasons[String(c.id)] || '').length}/150</span>
+                  <span className="text-[0.65rem] text-text-muted">{(customReasons[String(c.id)] || '').length}/150</span>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button

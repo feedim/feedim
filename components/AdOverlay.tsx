@@ -330,7 +330,7 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
                   style={{ transition: "stroke-dashoffset 1s linear" }}
                 />
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-white text-[0.7rem] font-bold tabular-nums">
+              <span className="absolute inset-0 flex items-center justify-center text-white text-[0.7rem] font-bold">
                 {countdown}
               </span>
             </div>

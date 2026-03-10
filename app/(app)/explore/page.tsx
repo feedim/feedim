@@ -11,7 +11,7 @@ import PostCard from "@/components/PostCard";
 import MomentGridCard from "@/components/MomentGridCard";
 import MomentsCarousel from "@/components/MomentsCarousel";
 import PostCardSkeleton from "@/components/PostCardSkeleton";
-import { cn, formatCount } from "@/lib/utils";
+import { cn, formatCount, formatDisplayTagLabel } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import UserListItem from "@/components/UserListItem";
 import { useAuthModal } from "@/components/AuthModal";
@@ -43,6 +43,8 @@ interface ExplorePost {
   blurhash?: string | null;
   is_nsfw?: boolean;
   moderation_category?: string | null;
+  viewer_liked?: boolean;
+  viewer_saved?: boolean;
   profiles?: {
     user_id: string;
     username: string;
@@ -449,10 +451,17 @@ function ExploreContent() {
 
   // Fetch batch interactions for all loaded posts
   useEffect(() => {
-    const allIds = [
+    if (!currentUser) return;
+    const pendingPosts = [
       ...trendingPosts, ...latestPosts, ...videoPosts, ...notePosts,
       ...(searchResults?.posts || []),
-    ].map(p => p.id).filter(id => id && !fetchedInteractionIds.current.has(id));
+    ].filter((post) => (
+      typeof post.viewer_liked !== "boolean" ||
+      typeof post.viewer_saved !== "boolean"
+    ));
+    const allIds = pendingPosts
+      .map((post) => post.id)
+      .filter((id) => id && !fetchedInteractionIds.current.has(id));
     const unique = [...new Set(allIds)];
     if (unique.length === 0) return;
     const toFetch = unique.slice(0, 50);
@@ -463,7 +472,7 @@ function ExploreContent() {
         if (data.interactions) setInteractions(prev => ({ ...prev, ...data.interactions }));
       })
       .catch(() => {});
-  }, [trendingPosts, latestPosts, videoPosts, notePosts, searchResults]);
+  }, [trendingPosts, latestPosts, videoPosts, notePosts, searchResults, currentUser]);
 
   const loadMoreRef = useRef(false);
   const loadMore = async () => {
@@ -670,7 +679,7 @@ function ExploreContent() {
           <Hash className="h-5 w-5 text-text-muted" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[0.9rem] font-semibold">#{tag.name}</p>
+          <p className="text-[0.9rem] font-semibold truncate" title={`#${tag.name}`}>{formatDisplayTagLabel(tag.name)}</p>
           <p className="text-xs text-text-muted">{t("postCount", { count: formatCount(tag.post_count || 0) })}</p>
         </div>
       </Link>

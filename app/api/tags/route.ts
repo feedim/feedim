@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: tErrors("tagNameOnlyNumbers") }, { status: 400 });
     }
 
-    // Sanitize: Turkish chars → ASCII, only a-z0-9, max 50 chars
+    // Sanitize: Turkish chars → ASCII, only a-z0-9, max 30 chars
     const sanitizedName = formatTagName(trimmedName);
 
     if (!sanitizedName || sanitizedName.length < VALIDATION.tagName.min) {

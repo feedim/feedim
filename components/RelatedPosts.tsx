@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import PostCard from "@/components/PostCard";
+import { getAuthUserId } from "@/lib/auth";
+import { attachViewerPostInteractions } from "@/lib/postViewerInteractions";
 
 interface PostItem {
   id: number;
@@ -54,6 +56,8 @@ interface RenderablePostItem {
   video_url?: string;
   blurhash?: string | null;
   published_at?: string;
+  viewer_liked?: boolean;
+  viewer_saved?: boolean;
   profiles?: {
     user_id: string;
     name?: string;
@@ -68,7 +72,10 @@ interface RenderablePostItem {
 }
 
 export default async function RelatedPosts({ posts, featuredPosts = [], authorUsername }: RelatedPostsProps) {
-  const t = await getTranslations("relatedPosts");
+  const [t, currentUserId] = await Promise.all([
+    getTranslations("relatedPosts"),
+    getAuthUserId(),
+  ]);
   const hasAuthorContent = posts.length > 0;
   const hasFeatured = featuredPosts.length > 0;
 
@@ -114,15 +121,18 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
         profiles,
       }];
     });
+  if (renderableItems.length === 0) return null;
+
+  const postsWithViewerInteractions = await attachViewerPostInteractions(renderableItems, currentUserId);
   const title = hasAuthorContent
-        ? t("moreFromAuthor", { username: authorUsername || "" })
-        : t("featured");
+    ? t("moreFromAuthor", { username: authorUsername || "" })
+    : t("forYou");
 
   return (
     <section className="max-w-[565px] mx-auto">
       <h3 className="text-lg font-bold mb-2 px-3">{title}</h3>
       <div className="flex flex-col gap-[16px] mt-[10px]">
-        {renderableItems.map(post => (
+        {postsWithViewerInteractions.map(post => (
           <PostCard key={post.id} post={post} />
         ))}
       </div>

@@ -137,7 +137,7 @@ export const VALIDATION = {
   postContent: { minChars: 50, maxWords: 5000, maxWordsMax: 10000, maxListItems: 300 },
   noteContent: { min: 1, max: 280 },
   postTags: { max: 5 },
-  tagName: { min: 2, max: 50, pattern: /^[a-zA-ZçÇğĞıİöÖşŞüÜâÂêÊîÎôÔûÛäÄëËïÏ0-9\s\-_.&#+]+$/ },
+  tagName: { min: 2, max: 30, pattern: /^[a-zA-ZçÇğĞıİöÖşŞüÜâÂêÊîÎôÔûÛäÄëËïÏ0-9\s\-_.&#+]+$/ },
   imageCaption: { max: 60 },
   mentions: { max: 3 },
   comment: { max: 250, maxPremium: 400, maxLinks: 2 },

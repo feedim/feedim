@@ -1055,7 +1055,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                 <div className="rounded-lg overflow-hidden shadow-xl border border-white/20 bg-black w-[120px] sm:w-[160px]">
                   <video ref={previewRef} preload="none" muted controlsList="nodownload" disablePictureInPicture className="w-[120px] h-[68px] sm:w-[160px] sm:h-[90px] object-cover pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
                 </div>
-                <div ref={previewTimeRef} className="text-white text-[0.7rem] sm:text-[0.75rem] text-center mt-1 sm:mt-1.5 font-medium tabular-nums bg-black/80 rounded px-2 py-0.5 mx-auto w-fit" />
+                <div ref={previewTimeRef} className="text-white text-[0.7rem] sm:text-[0.75rem] text-center mt-1 sm:mt-1.5 font-medium bg-black/80 rounded px-2 py-0.5 mx-auto w-fit" />
               </div>
 
               <div ref={bufferRef} className="absolute h-full rounded-full top-0 left-0" style={{ width: "0%", backgroundColor: "rgba(255,255,255,0.3)" }} />
@@ -1100,7 +1100,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="vp-volume-slider w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100" aria-label={t("volumeLevel")} style={{ "--vol-fill": `${(muted ? 0 : volume) * 100}%` } as React.CSSProperties} />
                 </div>
 
-                <span ref={timeRef} className="text-[0.8rem] tabular-nums ml-1 text-white/90 font-medium">0:00 / 0:00</span>
+                <span ref={timeRef} className="text-[0.8rem] ml-1 text-white/90 font-medium">0:00 / 0:00</span>
                 <div className="flex-1" />
 
                 {/* Settings (speed + cinema mode) */}

@@ -25,6 +25,26 @@ const PostStatsModal = lazy(() => import("@/components/modals/PostStatsModal"));
 const BoostModal = lazy(() => import("@/components/modals/BoostModal"));
 const BoostDetailsModal = lazy(() => import("@/components/modals/BoostDetailsModal"));
 
+let commonInteractionModalsPreloaded = false;
+let ownerInteractionModalsPreloaded = false;
+
+function preloadCommonInteractionModals() {
+  if (commonInteractionModalsPreloaded) return;
+  commonInteractionModalsPreloaded = true;
+  void import("@/components/modals/CommentsModal");
+  void import("@/components/modals/LikesModal");
+  void import("@/components/modals/ShareModal");
+  void import("@/components/modals/GiftModal");
+}
+
+function preloadOwnerInteractionModals() {
+  if (ownerInteractionModalsPreloaded) return;
+  ownerInteractionModalsPreloaded = true;
+  void import("@/components/modals/PostStatsModal");
+  void import("@/components/modals/BoostModal");
+  void import("@/components/modals/BoostDetailsModal");
+}
+
 type IdleCallbackWindow = Window & {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
@@ -145,8 +165,8 @@ export default function PostInteractionBar({
   // Preload most common modals after idle — eliminates first-open delay
   useEffect(() => {
     const preload = () => {
-      import("@/components/modals/CommentsModal");
-      import("@/components/modals/ShareModal");
+      preloadCommonInteractionModals();
+      if (isOwnPost) preloadOwnerInteractionModals();
     };
     const idleWindow = window as IdleCallbackWindow;
     if (idleWindow.requestIdleCallback) {
@@ -156,7 +176,7 @@ export default function PostInteractionBar({
       const id = setTimeout(preload, 300);
       return () => clearTimeout(id);
     }
-  }, []);
+  }, [isOwnPost]);
 
   // Auto-open comments modal from ?comment= URL param (obfuscated ID)
   useEffect(() => {
@@ -300,18 +320,45 @@ export default function PostInteractionBar({
   };
 
   const openComments = () => {
+    preloadCommonInteractionModals();
     setCommentsMounted(true);
     setCommentsOpen(true);
   };
 
   const openShare = () => {
+    preloadCommonInteractionModals();
     setShareMounted(true);
     setShareOpen(true);
   };
 
   const openGift = () => {
+    preloadCommonInteractionModals();
     setGiftOpen(true);
     setGiftMounted(true);
+  };
+
+  const openLikes = () => {
+    preloadCommonInteractionModals();
+    setLikesMounted(true);
+    setLikesOpen(true);
+  };
+
+  const openStats = () => {
+    preloadOwnerInteractionModals();
+    setStatsMounted(true);
+    setStatsOpen(true);
+  };
+
+  const openBoost = () => {
+    preloadOwnerInteractionModals();
+    setBoostMounted(true);
+    setBoostOpen(true);
+  };
+
+  const openBoostDetails = () => {
+    preloadOwnerInteractionModals();
+    setBoostDetailsMounted(true);
+    setBoostDetailsOpen(true);
   };
 
   // Compact: feed action buttons + modals
@@ -322,20 +369,22 @@ export default function PostInteractionBar({
         {/* Liked by */}
         {displayLikeCount > 0 && likedByUsers.length > 0 && (
           <button
-            onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-            className="flex items-center gap-1 pb-2 px-2 sm:px-0 text-[0.78rem] text-text-muted transition w-full text-left hover:underline"
+            onClick={openLikes}
+            onPointerDown={preloadCommonInteractionModals}
+            onMouseEnter={preloadCommonInteractionModals}
+            className="group flex items-center gap-1 pb-2 px-2 sm:px-0 text-[0.78rem] text-text-muted transition w-full text-left hover:underline"
           >
             <div className="flex -space-x-1.5 shrink-0">
               {likedByUsers.map((u) => (
                 <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border border-border-primary" />
               ))}
             </div>
-            <span>
+            <span className="min-w-0 flex-1 truncate group-hover:underline">
               {displayLikeCount === 1
-                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
+                ? <><strong className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
                 : displayLikeCount === 2 && likedByUsers.length >= 2
-                  ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
-                  : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">{formatCount(displayLikeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
+                  ? <><strong className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
+                  : <><strong className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary group-hover:underline">{formatCount(displayLikeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
               }
             </span>
           </button>
@@ -349,20 +398,20 @@ export default function PostInteractionBar({
           ) : (
             <button onClick={handleLike} aria-label={t('tooltip.like')} className={cn("flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", liked ? "text-error" : "text-text-muted hover:text-error")}>
               <Heart className={cn("h-5 w-5 transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
-              <span className="tabular-nums min-w-[1ch]">{formatCount(displayLikeCount, locale)}</span>
+              <span className="min-w-[1ch]">{formatCount(displayLikeCount, locale)}</span>
             </button>
           )}
-          <button onClick={openComments} aria-label={t('tooltip.comment')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
+          <button onClick={openComments} onPointerDown={preloadCommonInteractionModals} onMouseEnter={preloadCommonInteractionModals} aria-label={t('tooltip.comment')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
             <MessageCircle className="h-5 w-5" />
-            <span className="tabular-nums min-w-[1ch]">{formatCount(liveCommentCount, locale)}</span>
+            <span className="min-w-[1ch]">{formatCount(liveCommentCount, locale)}</span>
           </button>
-          <button onClick={openShare} aria-label={t('tooltip.share')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
+          <button onClick={openShare} onPointerDown={preloadCommonInteractionModals} onMouseEnter={preloadCommonInteractionModals} aria-label={t('tooltip.share')} className="flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold text-text-muted hover:text-accent-main transition">
             <ShareIcon className="h-5 w-5" />
-            <span className="tabular-nums min-w-[1ch]">{formatCount(shareCount, locale)}</span>
+            <span className="min-w-[1ch]">{formatCount(shareCount, locale)}</span>
           </button>
           <button onClick={handleSave} aria-label={t('tooltip.save')} className={cn("flex items-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold transition", saved ? "text-accent-main" : "text-text-muted hover:text-accent-main")}>
             <Bookmark className={cn("h-5 w-5", saved && "fill-current")} />
-            <span className="tabular-nums min-w-[1ch]">{formatCount(displaySaveCount, locale)}</span>
+            <span className="min-w-[1ch]">{formatCount(displaySaveCount, locale)}</span>
           </button>
         </div>
         {commentsMounted && (
@@ -392,8 +441,10 @@ export default function PostInteractionBar({
       {/* Liked by — top position (default for regular posts) */}
       {!likedByBottom && displayLikeCount > 0 && likedByUsers.length > 0 && (
         <button
-          onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-          className="flex items-center gap-1 py-2 px-2 sm:px-0 text-[0.86rem] text-text-muted transition w-full text-left hover:underline"
+          onClick={openLikes}
+          onPointerDown={preloadCommonInteractionModals}
+          onMouseEnter={preloadCommonInteractionModals}
+          className="group flex items-center gap-1 py-2 px-2 sm:px-0 text-[0.86rem] text-text-muted transition w-full text-left hover:underline"
           aria-label={t('interaction.seeLikers')}
         >
           <div className="flex -space-x-1.5 shrink-0">
@@ -401,12 +452,12 @@ export default function PostInteractionBar({
               <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border border-border-primary" />
             ))}
           </div>
-          <span>
+          <span className="min-w-0 flex-1 truncate group-hover:underline">
             {displayLikeCount === 1
-              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
+              ? <><strong className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
               : displayLikeCount === 2 && likedByUsers.length >= 2
-                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
-                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">{formatCount(displayLikeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
+                ? <><strong className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
+                : <><strong className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary group-hover:underline">{formatCount(displayLikeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
             }
           </span>
         </button>
@@ -419,7 +470,9 @@ export default function PostInteractionBar({
       {isOwnPost ? (
         <>
         <button
-          onClick={() => { setStatsMounted(true); setStatsOpen(true); }}
+          onClick={openStats}
+          onPointerDown={preloadOwnerInteractionModals}
+          onMouseEnter={preloadOwnerInteractionModals}
           className="flex flex-col w-full mt-4 py-3 px-4 rounded-[11px] bg-bg-secondary hover:opacity-90 transition text-left"
         >
           <span className="text-[0.88rem] font-bold">{t('interaction.stats')}</span>
@@ -435,7 +488,9 @@ export default function PostInteractionBar({
         {/* Boost section */}
         {isBoosted && boostStatus === 'active' ? (
           <button
-            onClick={() => { setBoostDetailsMounted(true); setBoostDetailsOpen(true); }}
+            onClick={openBoostDetails}
+            onPointerDown={preloadOwnerInteractionModals}
+            onMouseEnter={preloadOwnerInteractionModals}
             className="flex flex-col w-full mt-2 py-3 px-4 rounded-[11px] bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/8 transition text-left"
           >
             <div className="flex items-center justify-between w-full">
@@ -448,7 +503,9 @@ export default function PostInteractionBar({
           </button>
         ) : isBoosted && boostStatus === 'pending_review' ? (
           <button
-            onClick={() => { setBoostDetailsMounted(true); setBoostDetailsOpen(true); }}
+            onClick={openBoostDetails}
+            onPointerDown={preloadOwnerInteractionModals}
+            onMouseEnter={preloadOwnerInteractionModals}
             className="flex flex-col w-full mt-2 py-3 px-4 rounded-[11px] bg-[var(--accent-color)]/5 border border-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/8 transition text-left"
           >
             <div className="flex items-center gap-1.5">
@@ -458,7 +515,9 @@ export default function PostInteractionBar({
           </button>
         ) : isBoosted && boostStatus === 'paused' ? (
           <button
-            onClick={() => { setBoostDetailsMounted(true); setBoostDetailsOpen(true); }}
+            onClick={openBoostDetails}
+            onPointerDown={preloadOwnerInteractionModals}
+            onMouseEnter={preloadOwnerInteractionModals}
             className="flex flex-col w-full mt-2 py-3 px-4 rounded-[11px] bg-bg-secondary border border-border-primary/30 hover:bg-bg-tertiary transition text-left"
           >
             <div className="flex items-center gap-1.5">
@@ -470,14 +529,16 @@ export default function PostInteractionBar({
           <button
             onClick={() => {
               if (currentUser?.accountType === "creator" || currentUser?.accountType === "business") {
-                setBoostMounted(true); setBoostOpen(true);
+                openBoost();
               } else {
                 feedimAlert("info", t('boost.requiresProfessional'));
               }
             }}
+            onPointerDown={preloadOwnerInteractionModals}
+            onMouseEnter={preloadOwnerInteractionModals}
             className="flex items-center justify-between w-full mt-2 py-3 px-4 rounded-[11px] bg-bg-secondary hover:bg-bg-tertiary transition text-left"
           >
-            <span className="text-[0.82rem] text-text-muted">{t('boost.ctaQuestion')}</span>
+            <span className="text-[0.82rem] font-medium text-text-muted">{t('boost.ctaQuestion')}</span>
             <span className="text-[0.82rem] font-semibold text-accent-main shrink-0 ml-3">
               {t('boost.ctaButton')}
             </span>
@@ -487,6 +548,8 @@ export default function PostInteractionBar({
       ) : contentType !== "note" && contentType !== "moment" ? (
         <button
           onClick={openGift}
+          onPointerDown={preloadCommonInteractionModals}
+          onMouseEnter={preloadCommonInteractionModals}
           className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
         >
           <Gift className="h-4 w-4" />
@@ -508,19 +571,21 @@ export default function PostInteractionBar({
             liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error"
           )}
         >
-          <Heart className={cn("h-4 w-4 transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
+          <Heart className={cn("h-[17px] w-[17px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
           <span>{formatCount(displayLikeCount, locale)}</span>
         </button>
 
         {/* Comments */}
         <button
           onClick={openComments}
+          onPointerDown={preloadCommonInteractionModals}
+          onMouseEnter={preloadCommonInteractionModals}
           data-hotkey="comments"
           data-tooltip={t('tooltip.comment')}
           aria-label={t('tooltip.comment')}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
-          <MessageCircle className="h-4 w-4" />
+          <MessageCircle className="h-[17px] w-[17px]" />
           <span>{formatCount(liveCommentCount, locale)}</span>
         </button>
 
@@ -535,19 +600,21 @@ export default function PostInteractionBar({
             saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main"
           )}
         >
-          <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+          <Bookmark className={cn("h-[17px] w-[17px]", saved && "fill-current")} />
           <span>{formatCount(displaySaveCount, locale)}</span>
         </button>
 
         {/* Share */}
         <button
           onClick={openShare}
+          onPointerDown={preloadCommonInteractionModals}
+          onMouseEnter={preloadCommonInteractionModals}
           data-hotkey="share"
           data-tooltip={t('tooltip.share')}
           aria-label={t('tooltip.share')}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
-          <ShareIcon className="h-4 w-4" />
+          <ShareIcon className="h-[17px] w-[17px]" />
           <span>{formatCount(shareCount, locale)}</span>
         </button>
         </div>
@@ -559,8 +626,10 @@ export default function PostInteractionBar({
       {/* Liked by — bottom position (for video pages) */}
       {likedByBottom && displayLikeCount > 0 && likedByUsers.length > 0 && (
         <button
-          onClick={() => { setLikesMounted(true); setLikesOpen(true); }}
-          className="flex items-center gap-1 py-2 px-2 sm:px-0 text-[0.8rem] text-text-muted transition w-full text-left hover:underline"
+          onClick={openLikes}
+          onPointerDown={preloadCommonInteractionModals}
+          onMouseEnter={preloadCommonInteractionModals}
+          className="group flex items-center gap-1 py-2 px-2 sm:px-0 text-[0.8rem] text-text-muted transition w-full text-left hover:underline"
           aria-label={t('interaction.seeLikers')}
         >
           <div className="flex -space-x-1.5 shrink-0">
@@ -568,12 +637,12 @@ export default function PostInteractionBar({
               <LazyAvatar key={u.username} src={u.avatar_url} alt="" sizeClass="h-6 w-6" borderClass="border border-border-primary" />
             ))}
           </div>
-          <span>
+          <span className="min-w-0 flex-1 truncate group-hover:underline">
             {displayLikeCount === 1
-              ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
+              ? <><strong className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.liked')}</>
               : displayLikeCount === 2 && likedByUsers.length >= 2
-                ? <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
-                : <><strong className="font-semibold text-text-primary">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary">{formatCount(displayLikeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
+                ? <><strong className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{likedByUsers[1]?.username}</strong> {t('interaction.liked')}</>
+                : <><strong className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{likedByUsers[0]?.username}</strong> {t('interaction.and')} <strong className="font-semibold text-text-primary group-hover:underline">{formatCount(displayLikeCount - 1, locale)} {t('interaction.people')}</strong> {t('interaction.liked')}</>
             }
           </span>
         </button>

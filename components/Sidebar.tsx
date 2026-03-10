@@ -193,6 +193,8 @@ export default memo(function Sidebar() {
           onClick={() => setDarkModeOpen(true)}
           aria-label={t("tooltip.theme")}
           data-tooltip={t("tooltip.theme")}
+          onPointerDown={() => { void import("@/components/modals/DarkModeModal"); }}
+          onMouseEnter={() => { void import("@/components/modals/DarkModeModal"); }}
           className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium"
         >
           {themeIcon()}
@@ -220,6 +222,8 @@ export default memo(function Sidebar() {
               onClick={() => setCreateModalOpen(true)}
               data-tooltip={t("tooltip.create")}
               aria-label={t("tooltip.create")}
+              onPointerDown={() => { void import("@/components/modals/CreateMenuModal"); }}
+              onMouseEnter={() => { void import("@/components/modals/CreateMenuModal"); }}
               className="flex items-center gap-3 transition-all px-2 w-full"
             >
               <div className="flex items-center gap-2 w-full h-[44px] rounded-full bg-bg-inverse text-bg-primary justify-center font-semibold text-[0.91rem]">
@@ -258,21 +262,17 @@ export default memo(function Sidebar() {
       <PublicFooter variant="compact" />
 
       {/* Modals */}
-      {darkModeOpen && (
-        <Suspense fallback={null}>
-          <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setThemeVersion((version) => version + 1); }} />
-        </Suspense>
-      )}
-      {createModalVisible && (
-        <Suspense fallback={null}>
-          <CreateMenuModal open={createModalVisible} onClose={() => {
-            try {
-              sessionStorage.removeItem("fdm-open-create-modal");
-            } catch {}
-            setCreateModalOpen(false);
-          }} />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setThemeVersion((version) => version + 1); }} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CreateMenuModal open={createModalVisible} onClose={() => {
+          try {
+            sessionStorage.removeItem("fdm-open-create-modal");
+          } catch {}
+          setCreateModalOpen(false);
+        }} />
+      </Suspense>
     </aside>
   );
 })

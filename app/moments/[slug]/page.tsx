@@ -8,7 +8,7 @@ import PostInteractionBar from "@/components/PostInteractionBar";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import Link from "next/link";
 
-import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
+import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import VideoPlayerClient from "@/components/VideoPlayerClient";
 import VideoSidebarPortal from "@/components/VideoSidebarPortal";
 import VideoDescription from "@/components/VideoDescription";
@@ -213,19 +213,19 @@ export default async function MomentPage({ params }: PageProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <Link href={`/u/${author?.username}`} className="shrink-0">
             <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
           </Link>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Link href={`/u/${author?.username}`} className="font-semibold text-[0.9rem] hover:underline truncate">
+            <div className="flex items-center gap-1">
+              <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">
                 @{author?.username}
               </Link>
               {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
             </div>
             {author?.follower_count !== undefined && (
-              <p className="text-[0.72rem] text-text-muted">{t("followers", { count: formatCount(author.follower_count) })}</p>
+              <p className="text-[0.72rem] leading-none text-text-muted -mt-[1px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
             )}
           </div>
           <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
@@ -244,15 +244,16 @@ export default async function MomentPage({ params }: PageProps) {
           </div>
         )}
 
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2 mb-2">
-            {tags.map((tag: { id: number; name: string; slug: string }) => (
-              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                #{tag.name}
-              </Link>
-            ))}
-          </div>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+              {tags.map((tag: { id: number; name: string; slug: string }) => (
+                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
+                title={`#${tag.name}`}
+                className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
+                  {formatDisplayTagLabel(tag.name)}
+                </Link>
+              ))}
+            </div>
         )}
 
         <PostInteractionBar

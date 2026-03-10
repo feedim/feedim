@@ -36,6 +36,8 @@ interface TagPost {
   blurhash?: string | null;
   is_nsfw?: boolean;
   moderation_category?: string | null;
+  viewer_liked?: boolean;
+  viewer_saved?: boolean;
   profiles?: {
     user_id: string;
     username: string;
@@ -119,7 +121,12 @@ export default function TagPage() {
   // Batch-fetch liked/saved status
   const batchFetchInteractions = useCallback((items: TagPost[]) => {
     if (!isLoggedIn || items.length === 0) return;
-    const newIds = items.map(p => p.id).filter(id => !fetchedInteractionIds.current.has(id));
+    const newIds = items
+      .filter((item) => (
+        typeof item.viewer_liked !== "boolean" ||
+        typeof item.viewer_saved !== "boolean"
+      ) && !fetchedInteractionIds.current.has(item.id))
+      .map((item) => item.id);
     if (newIds.length === 0) return;
     const toFetch = newIds.slice(0, 50);
     toFetch.forEach(id => fetchedInteractionIds.current.add(id));

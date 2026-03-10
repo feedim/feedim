@@ -74,7 +74,12 @@ export default function PostsPage() {
 
   useEffect(() => {
     if (!currentUser || posts.length === 0) return;
-    const newIds = posts.map(p => p.id).filter((id: number) => !fetchedInteractionIds.current.has(id));
+    const newIds = posts
+      .filter((post: any) => (
+        typeof post.viewer_liked !== "boolean" ||
+        typeof post.viewer_saved !== "boolean"
+      ) && !fetchedInteractionIds.current.has(post.id))
+      .map((post: any) => post.id);
     if (newIds.length === 0) return;
     const toFetch = newIds.slice(0, 50);
     toFetch.forEach((id: number) => fetchedInteractionIds.current.add(id));

@@ -213,7 +213,13 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
       ...noteFeed.items,
       ...likesFeed.items,
       ...commentsFeed.items,
-    ].map((post) => post.id).filter((id) => id && !fetchedInteractionIds.current.has(id));
+    ]
+      .filter((post) => (
+        typeof post.viewer_liked !== "boolean" ||
+        typeof post.viewer_saved !== "boolean"
+      ))
+      .map((post) => post.id)
+      .filter((id) => id && !fetchedInteractionIds.current.has(id));
     const unique = [...new Set(allIds)];
     if (unique.length === 0) return;
     const toFetch = unique.slice(0, 50);
@@ -545,15 +551,15 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
             ) : null}
           </div>
           {!isAnyBlocked && isProfessional(profile.account_type || undefined) && profile.professional_category && (
-            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-              <span className="inline-flex items-center gap-1 text-[0.75rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5 mb-0.5">
+              <span className="inline-flex items-center gap-1 text-[0.7rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full">
                 <Briefcase className="h-3 w-3" />
                 {tProf(getCategoryLabelKey(profile.account_type || "business", profile.professional_category))}
               </span>
               {profile.contact_email && (
                 <a
                   href={`mailto:${profile.contact_email}`}
-                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-text-muted bg-bg-secondary px-3 py-0.5 rounded-full hover:bg-bg-tertiary transition"
+                  className="inline-flex items-center gap-1 text-[0.7rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full hover:bg-bg-tertiary transition"
                 >
                   {t("email")}
                 </a>
@@ -561,7 +567,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
               {profile.contact_phone && (
                 <a
                   href={`tel:${profile.contact_phone}`}
-                  className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-text-muted bg-bg-secondary px-3 py-0.5 rounded-full hover:bg-bg-tertiary transition"
+                  className="inline-flex items-center gap-1 text-[0.7rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full hover:bg-bg-tertiary transition"
                 >
                   <Phone className="h-3 w-3" /> {t("call")}
                 </a>
@@ -607,18 +613,18 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
 
           {/* Mutual followers */}
           {!isAnyBlocked && !profile.is_own && profile.mutual_followers && profile.mutual_followers.length > 0 && (
-            <button onClick={() => setMutualFollowersOpen(true)} className="flex items-center gap-1.5 mt-2.5 w-full text-left hover:underline hover:opacity-80 transition">
+            <button onClick={() => setMutualFollowersOpen(true)} className="group flex items-center gap-1.5 mt-2.5 w-full text-left hover:underline hover:opacity-80 transition">
               <div className="flex -space-x-2">
                 {profile.mutual_followers.slice(0, 3).map((m) => (
-                  <LazyAvatar key={m.username} src={m.avatar_url} alt="" sizeClass="h-[22px] w-[22px]" borderClass="border-[1.5px] border-border-primary" />
+                  <LazyAvatar key={m.username} src={m.avatar_url} alt="" sizeClass="h-[22px] w-[22px]" borderClass="border border-border-primary" />
                 ))}
               </div>
-              <span className="text-[0.82rem] text-text-muted">
+              <span className="text-[0.82rem] text-text-muted min-w-0 flex-1 truncate group-hover:underline">
                 {profile.mutual_followers.length === 1
-                  ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> {t("mutualFollowsVerb")}</>
+                  ? <><span className="font-semibold text-text-primary inline-block max-w-[14ch] truncate align-bottom group-hover:underline">@{profile.mutual_followers[0].username}</span> {t("mutualFollowsVerb")}</>
                   : profile.mutual_followers.length === 2
-                    ? <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span> {t("and")} <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> {t("mutualFollowsVerb")}</>
-                    : <><span className="font-semibold text-text-primary">{profile.mutual_followers[0].full_name || `@${profile.mutual_followers[0].username}`}</span>, <span className="font-semibold text-text-primary">{profile.mutual_followers[1].full_name || `@${profile.mutual_followers[1].username}`}</span> {t("and")} <span className="font-semibold text-text-primary">{t("others")}</span> {t("mutualFollowsVerb")}</>
+                    ? <><span className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{profile.mutual_followers[0].username}</span> {t("and")} <span className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{profile.mutual_followers[1].username}</span> {t("mutualFollowsVerb")}</>
+                    : <><span className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{profile.mutual_followers[0].username}</span>, <span className="font-semibold text-text-primary inline-block max-w-[12ch] truncate align-bottom group-hover:underline">@{profile.mutual_followers[1].username}</span> {t("and")} <span className="font-semibold text-text-primary group-hover:underline">{t("others")}</span> {t("mutualFollowsVerb")}</>
                 }
               </span>
             </button>

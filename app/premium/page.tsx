@@ -336,7 +336,7 @@ export default function PremiumPage() {
           <h3 className="text-[1.1rem] sm:text-[1.1rem] font-bold mb-5">{t("comparePlans")}</h3>
           <div className="rounded-[14px] overflow-hidden border border-border-primary">
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_repeat(4,36px)] sm:grid-cols-[1fr_50px_50px_50px_60px] items-center px-3 sm:px-4 py-3 bg-bg-secondary text-[0.62rem] sm:text-[0.72rem] font-semibold text-text-muted">
+            <div className="grid grid-cols-[1fr_repeat(4,36px)] sm:grid-cols-[1fr_50px_50px_50px_60px] items-center px-3 sm:px-4 py-3 bg-bg-secondary text-[0.65rem] sm:text-[0.72rem] font-semibold text-text-muted">
               <span className="text-[0.75rem] sm:text-[0.78rem]">{t("featureLabel")}</span>
               <span className="text-center">Super</span>
               <span className="text-center">Pro</span>

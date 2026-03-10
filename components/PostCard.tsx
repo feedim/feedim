@@ -17,6 +17,7 @@ import { useAuthModal } from "@/components/AuthModal";
 import { useTranslations, useLocale } from "next-intl";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import LazyAvatar from "@/components/LazyAvatar";
+import ExpandableText from "@/components/ExpandableText";
 import FeedItemViewTracker from "@/components/FeedItemViewTracker";
 import { feedPreviewStore } from "@/lib/stores/feedPreviewStore";
 import { getFollowStatus, setFollowStatus, deleteFollowStatus, subscribeFollowStore } from "@/lib/stores/followStore";
@@ -27,25 +28,36 @@ import { emitMutation } from "@/lib/mutationEvents";
 const NOTE_TRUNCATE_LENGTH = 280;
 const NOTE_TRUNCATE_LINES = 5;
 
-function NoteContent({ text }: { text: string }) {
-  const t = useTranslations();
-  const [expanded, setExpanded] = useState(false);
-  const isLong = (text?.length || 0) > NOTE_TRUNCATE_LENGTH || (text?.split("\n").length || 0) > NOTE_TRUNCATE_LINES;
-  return (
-    <>
-      <p
-        className={`text-[0.95rem] leading-[1.45] text-text-primary whitespace-pre-line ${!expanded && isLong ? "line-clamp-5" : ""}`}
-        dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(text) }}
-      />
-      {isLong && !expanded && (
-        <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(true); }}
-          className="text-[0.78rem] text-text-muted font-medium relative z-[1] pointer-events-auto"
+function NoteContent({ text, href }: { text: string; href: string }) {
+  const t = useTranslations("common");
+  const normalizedText = (text || "").replace(/\r\n?/g, "\n").trimEnd();
+  const isServerPreview = normalizedText.endsWith("…") || normalizedText.endsWith("...");
+
+  if (isServerPreview) {
+    return (
+      <div className="relative z-[1] text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line break-words [overflow-wrap:anywhere]">
+        <span dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(normalizedText) }} />
+        <Link
+          href={href}
+          className="relative z-[2] pointer-events-auto inline ml-1 text-[0.82rem] font-bold text-text-muted hover:underline"
         >
-          {t('common.readMore')}
-        </button>
-      )}
-    </>
+          {t("readMoreShort")}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative z-[1]">
+      <ExpandableText
+        text={normalizedText}
+        maxChars={NOTE_TRUNCATE_LENGTH}
+        maxLines={NOTE_TRUNCATE_LINES}
+        className="text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line"
+        buttonClassName="relative z-[2] pointer-events-auto mt-0.5 inline-flex w-fit text-[0.82rem] font-bold text-text-muted hover:underline"
+        htmlRenderer={renderMentionsAsHTML}
+      />
+    </div>
   );
 }
 
@@ -259,7 +271,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
       />
     )}
     <article ref={cardRef} className="pt-[4px] pb-[9px] px-[12px] rounded-[24px] overflow-hidden">
-      <div className="flex gap-2 items-stretch">
+      <div className="flex gap-2.5 items-stretch">
         {/* Avatar — fixed left column with timeline line */}
           <div className="shrink-0 w-[42px] pt-[11px] pb-0 flex flex-col items-center">
             <Link href={`/u/${author?.username}`} className="relative z-[2]">
@@ -280,7 +292,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           {/* Name row */}
           <div className="flex items-center justify-between relative z-[1] pointer-events-none select-none">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-[0.84rem] font-semibold truncate">@{author?.username || t('common.anonymous')}</span>
+              <span className="text-[0.89rem] font-semibold truncate">@{author?.username || t('common.anonymous')}</span>
               {(author?.is_verified || author?.role === "admin") && <VerifiedBadge variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
               {!isSelf && ((!ctxUser && !!authorUsername) || isFollowing === false) && (
                 <>
@@ -297,15 +309,15 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
               {post.published_at && (
                 <>
                   <span className="text-text-muted/40 text-xs">·</span>
-                  <span className="text-[0.62rem] text-text-muted shrink-0">{formatRelativeDate(post.published_at, locale)}</span>
+                  <span className="text-[0.65rem] text-text-muted shrink-0">{formatRelativeDate(post.published_at, locale)}</span>
                 </>
               )}
               <span className="text-text-muted/40 text-xs">·</span>
-              <span className="text-[0.62rem] text-text-muted shrink-0">{post.content_type === "moment" ? t('contentTypes.moment') : post.content_type === "video" ? t('contentTypes.video') : post.content_type === "note" ? t('contentTypes.note') : t('contentTypes.post')}</span>
+              <span className="text-[0.65rem] text-text-muted shrink-0">{post.content_type === "moment" ? t('contentTypes.moment') : post.content_type === "video" ? t('contentTypes.video') : post.content_type === "note" ? t('contentTypes.note') : t('contentTypes.post')}</span>
               {(post.is_sponsored || (post.is_boosted && post.boost_status === 'active')) && (
                 <>
                   <span className="text-text-muted/40 text-xs">·</span>
-                  <span className="text-[0.62rem] text-accent-main font-semibold shrink-0">{t('boost.sponsored')}</span>
+                  <span className="text-[0.65rem] text-accent-main font-semibold shrink-0">{t('boost.sponsored')}</span>
                 </>
               )}
             </div>
@@ -330,7 +342,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           </div>
 
           {isNote ? (
-            <NoteContent text={post.excerpt || post.title} />
+            <NoteContent text={post.excerpt || post.title} href={postHref} />
           ) : (
             <>
               {/* Title */}

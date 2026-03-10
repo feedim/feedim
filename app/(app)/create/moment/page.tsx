@@ -15,7 +15,7 @@ import {
   MOMENT_MAX_DURATION,
   MOMENT_MAX_SIZE_MB,
 } from "@/lib/constants";
-import { formatCount, getPostUrl } from "@/lib/utils";
+import { formatCount, formatDisplayTagLabel, getPostUrl } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import BlurImage from "@/components/BlurImage";
@@ -1116,7 +1116,7 @@ function MomentWriteContent() {
                 >
                   <Smile className="h-[18px] w-[18px]" />
                 </button>
-                <span className={`text-[0.66rem] tabular-nums ${title.length >= VALIDATION.postTitle.max - 20 ? "text-error" : "text-text-muted/60"}`}>
+                <span className={`text-[0.66rem] ${title.length >= VALIDATION.postTitle.max - 20 ? "text-error" : "text-text-muted/60"}`}>
                   {title.length}/{VALIDATION.postTitle.max}
                 </span>
               </div>
@@ -1176,7 +1176,7 @@ function MomentWriteContent() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {tags.map(tag => (
                     <span key={tag.id} className="flex items-center gap-1.5 bg-accent-main/10 text-accent-main text-sm font-medium px-3 py-1.5 rounded-full">
-                      #{tag.name}
+                      <span title={`#${tag.name}`}>{formatDisplayTagLabel(tag.name)}</span>
                       <button onClick={() => removeTag(tag.id)} className="hover:text-error transition"><X className="h-3 w-3" /></button>
                     </span>
                   ))}
@@ -1218,7 +1218,7 @@ function MomentWriteContent() {
                 <button
                   disabled={isPublished}
                   onClick={() => setAllowComments(!allowComments)}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
                 >
                   <div>
                     <p className="text-sm font-semibold">{t("allowComments")}</p>

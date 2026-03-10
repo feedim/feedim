@@ -42,24 +42,17 @@ const sizeClasses: Record<ModalSize, string> = {
   full: "max-w-full",
 };
 
-const EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 const ANIMATION_CONFIG = {
   1: {
-    in: `slideInBottom_0.28s_${EASING}`,
-    out: `slideOutBottom_0.25s_${EASING}_forwards`,
-    closeDelay: 110,
+    closeDelay: 170,
   },
   2: {
-    in: `slideInRight_0.28s_${EASING}`,
-    out: `slideOutRight_0.25s_${EASING}_forwards`,
-    closeDelay: 110,
+    closeDelay: 170,
   },
   3: {
-    in: `slideIn_0.22s_${EASING}`,
-    out: `slideOut_0.2s_${EASING}_forwards`,
-    closeDelay: 90,
+    closeDelay: 140,
   },
 } as const;
 
@@ -202,12 +195,13 @@ export default function Modal({
 
   useEffect(() => {
     if (open) {
-      lockScroll();
-      hasLockRef.current = true;
       setRendered(true);
       setClosing(false);
-      // Clear any drag inline styles so CSS animations can run
-      requestAnimationFrame(() => clearInlineStyles());
+      if (!hasLockRef.current) {
+        lockScroll();
+        hasLockRef.current = true;
+      }
+      clearInlineStyles();
       return;
     }
     if (rendered) {
@@ -485,8 +479,8 @@ export default function Modal({
 
   // Sheet layout classes based on animation type
   const sheetLayoutClasses = resolvedType === 2
-    ? `relative h-full ${sizeClasses[size]} bg-bg-secondary rounded-l-[20px] overflow-hidden flex flex-col will-change-transform`
-    : `relative w-full ${sizeClasses[size]} bg-bg-secondary ${centerOnMobile ? "!rounded-[20px] max-h-[90dvh]" : "rounded-t-[20px] max-h-[90dvh]"} ${centerOnDesktop ? "sm:!rounded-[20px] sm:!max-h-[85dvh]" : "sm:max-h-[95dvh]"} ${fullHeight ? "min-h-[90dvh] sm:min-h-[95dvh]" : ""} overflow-hidden flex flex-col will-change-transform`;
+    ? `relative h-full ${sizeClasses[size]} bg-bg-secondary rounded-l-[20px] overflow-hidden flex flex-col will-change-transform transform-gpu`
+    : `relative w-full ${sizeClasses[size]} bg-bg-secondary ${centerOnMobile ? "!rounded-[20px] max-h-[90dvh]" : "rounded-t-[20px] max-h-[90dvh]"} ${centerOnDesktop ? "sm:!rounded-[20px] sm:!max-h-[85dvh]" : "sm:max-h-[95dvh]"} ${fullHeight ? "min-h-[90dvh] sm:min-h-[95dvh]" : ""} overflow-hidden flex flex-col will-change-transform transform-gpu`;
 
   const containerAlignClasses = resolvedType === 2
     ? `fixed inset-0 ${zIndex} flex items-stretch justify-end`
@@ -516,15 +510,15 @@ export default function Modal({
   const animClass =
     resolvedType === 1
       ? (closing
-          ? "animate-[slideOutBottom_0.1s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-          : "animate-[slideInBottom_0.12s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+          ? "animate-[slideOutBottom_0.16s_cubic-bezier(0.32,0.72,0,1)_forwards]"
+          : "animate-[slideInBottom_0.18s_cubic-bezier(0.16,1,0.3,1)_forwards]")
       : resolvedType === 2
         ? (closing
-            ? "animate-[slideOutRight_0.1s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            : "animate-[slideInRight_0.12s_cubic-bezier(0.22,1,0.36,1)_forwards]")
+            ? "animate-[slideOutRight_0.16s_cubic-bezier(0.32,0.72,0,1)_forwards]"
+            : "animate-[slideInRight_0.18s_cubic-bezier(0.16,1,0.3,1)_forwards]")
         : (closing
-            ? "animate-[slideOut_0.08s_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            : "animate-[slideIn_0.1s_cubic-bezier(0.25,0.1,0.25,1)_both]");
+            ? "animate-[slideOut_0.12s_cubic-bezier(0.32,0.72,0,1)_forwards]"
+            : "animate-[slideIn_0.16s_cubic-bezier(0.16,1,0.3,1)_both]");
 
   return createPortal(
     <div
@@ -532,7 +526,7 @@ export default function Modal({
     >
       <div
         ref={backdropRef}
-        className={`absolute inset-0 bg-black/60 transition-opacity ${closing ? "duration-150 opacity-0" : "duration-150 opacity-100"}`}
+        className={`absolute inset-0 bg-black/60 transition-opacity will-change-[opacity] ${closing ? "duration-150 opacity-0" : "duration-150 opacity-100"}`}
         onClick={handleClose}
       />
 
@@ -540,6 +534,7 @@ export default function Modal({
         ref={sheetRef}
         data-modal
         className={`${sheetLayoutClasses} ${animClass}`}
+        style={{ backfaceVisibility: "hidden", contain: "layout paint style" }}
       >
         {/* Handle — sadece bottom sheet tiplerinde göster */}
         {showDragHandle && (
@@ -554,7 +549,7 @@ export default function Modal({
         {/* Header */}
         {!hideHeader && (
           <div
-            className={`flex items-center justify-between px-[13px] pt-[5px] pb-0 shrink-0 ${enableHeaderDrag ? "touch-none select-none" : ""}`}
+            className={`flex items-center justify-between px-[10px] pt-[5px] pb-0 shrink-0 ${enableHeaderDrag ? "touch-none select-none" : ""}`}
             {...headerDragProps}
           >
             <div className="w-16 flex items-center">
@@ -564,7 +559,7 @@ export default function Modal({
                 </button>
               )}
             </div>
-            <h2 className="text-[1.08rem] font-bold text-center flex-1 truncate select-none">{title}</h2>
+            <h2 className="text-[1.06rem] font-bold text-center flex-1 truncate select-none">{title}</h2>
             <div className="w-16 flex items-center justify-end">
               {rightAction || (infoText && (
                 <button onClick={() => feedimAlert("info", infoText)} className="i-btn !w-10 !h-10 text-text-muted" aria-label={t("info")}>

@@ -1886,7 +1886,8 @@
   },
   "relatedPosts": {
     "moreFromAuthor": "More from @{username}",
-    "featured": "Featured"
+    "featured": "Featured",
+    "forYou": "For You"
   },
   "moderation": {
     "contentUnderReview": "Your content is under review",

@@ -75,6 +75,7 @@ export default async function RootLayout({
   const adsSettings = await getAdsSettings();
   const locale = await getLocale();
   const messages = await getMessages();
+  const tCommon = await getTranslations("common");
   const inLanguage = localeToHtml[locale] || "tr-TR";
   return (
     <html
@@ -134,7 +135,15 @@ export default async function RootLayout({
             <RootClientBootstrap />
             {children}
           </AuthModalProvider>
-          <FeedimAlertProvider />
+          <FeedimAlertProvider
+            labels={{
+              notification: tCommon("notification"),
+              no: tCommon("no"),
+              yes: tCommon("yes"),
+              ok: tCommon("ok"),
+              cancel: tCommon("cancel"),
+            }}
+          />
         </NextIntlClientProvider>
       </body>
     </html>

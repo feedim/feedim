@@ -146,7 +146,7 @@ export default function ErrorLogPage() {
           {logs.map(log => (
             <details key={log.id} className="bg-bg-secondary rounded-xl overflow-hidden group">
               <summary className="flex items-start gap-3 p-4 cursor-pointer hover:bg-bg-tertiary/50 transition select-none">
-                <span className="shrink-0 mt-0.5 bg-red-500/10 text-red-500 text-[0.7rem] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                <span className="shrink-0 mt-0.5 bg-red-500/10 text-red-500 text-[0.7rem] font-bold px-2 py-0.5 rounded-full">
                   ×{log.count}
                 </span>
                 <div className="flex-1 min-w-0">

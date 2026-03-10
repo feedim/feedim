@@ -67,7 +67,7 @@ export default function DigitInput({
                   : "border-border-primary"
               }`}
             >
-              <span className="inline-flex h-[2.18rem] items-end justify-center text-[2.18rem] leading-none font-semibold tabular-nums">
+              <span className="inline-flex h-[2.18rem] items-end justify-center text-[2.18rem] leading-none font-semibold">
                 {value[i] ? (
                   value[i]
                 ) : showCaret ? (

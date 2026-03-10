@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import { cn, formatDisplayTagLabel } from "@/lib/utils";
 import { redirectToLogin } from "@/lib/loginNext";
 
 interface FeedTabsProps {
@@ -26,7 +26,7 @@ export default memo(function FeedTabs({
   const tabs = [
     { id: "for-you", label: t("forYou") },
     { id: "followed", label: t("following") },
-    ...followedTags.map(tag => ({ id: `tag-${tag.slug}`, label: `#${tag.name}` })),
+    ...followedTags.map(tag => ({ id: `tag-${tag.slug}`, label: formatDisplayTagLabel(tag.name) })),
   ];
 
   const handleClick = useCallback((tabId: string) => {

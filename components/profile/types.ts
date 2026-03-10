@@ -45,6 +45,8 @@ export type ProfilePostItem = {
   video_duration?: number;
   view_count?: number;
   is_nsfw?: boolean;
+  viewer_liked?: boolean;
+  viewer_saved?: boolean;
   [key: string]: unknown;
 };
 

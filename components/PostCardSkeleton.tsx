@@ -5,7 +5,7 @@ const article = "pt-[4px] pb-[9px] px-[12px] rounded-[24px] overflow-hidden";
 function PostSkeleton() {
   return (
     <article className={article}>
-      <div className="flex gap-2 items-stretch">
+      <div className="flex gap-2.5 items-stretch">
         <div className="shrink-0 w-[42px] pt-[3px] flex flex-col items-center">
           <div className="h-[42px] w-[42px] rounded-full bg-bg-secondary animate-pulse" />
         </div>
@@ -23,7 +23,7 @@ function PostSkeleton() {
 function VideoSkeleton() {
   return (
     <article className={article}>
-      <div className="flex gap-2 items-stretch">
+      <div className="flex gap-2.5 items-stretch">
         <div className="shrink-0 w-[42px] pt-[3px] flex flex-col items-center">
           <div className="h-[42px] w-[42px] rounded-full bg-bg-secondary animate-pulse" />
         </div>
@@ -40,7 +40,7 @@ function VideoSkeleton() {
 function NoteSkeleton() {
   return (
     <article className={article}>
-      <div className="flex gap-2 items-stretch">
+      <div className="flex gap-2.5 items-stretch">
         <div className="shrink-0 w-[42px] pt-[3px] flex flex-col items-center">
           <div className="h-[42px] w-[42px] rounded-full bg-bg-secondary animate-pulse" />
         </div>

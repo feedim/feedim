@@ -5,9 +5,13 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import { UserProvider } from "@/components/UserContext";
 import { getInitialUserForShell } from "@/lib/initialUser";
 import { VideoSidebarSkeleton } from "@/components/VideoSidebar";
+import { getTranslations } from "next-intl/server";
 
 export default async function PostLayout({ children }: { children: React.ReactNode }) {
-  const initialUser = await getInitialUserForShell();
+  const [initialUser, t] = await Promise.all([
+    getInitialUserForShell(),
+    getTranslations("video"),
+  ]);
 
   return (
     <UserProvider initialUser={initialUser}>
@@ -24,7 +28,7 @@ export default async function PostLayout({ children }: { children: React.ReactNo
               <div className="fixed top-0 w-[350px] h-screen p-4 pt-6 space-y-3 overflow-y-auto overscroll-contain scrollbar-hide">
                 <div id="right-sidebar-top">
                   <div id="right-sidebar-video-skeleton">
-                    <VideoSidebarSkeleton count={4} title="placeholder" />
+                    <VideoSidebarSkeleton count={4} title={t("nextVideos")} />
                   </div>
                 </div>
               </div>

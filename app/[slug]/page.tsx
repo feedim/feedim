@@ -10,7 +10,7 @@ import RelatedPosts from "@/components/RelatedPosts";
 import AdBanner from "@/components/AdBanner";
 import Link from "next/link";
 
-import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
+import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
 import sanitizeHtml from "sanitize-html";
 import PostContentClient from "@/components/PostContentClient";
@@ -257,8 +257,8 @@ export default async function PostPage({ params }: PageProps) {
               <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.9rem] hover:underline truncate">
+              <div className="flex items-center gap-1">
+                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">
                   @{author?.username}
                 </Link>
                 {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
@@ -267,7 +267,7 @@ export default async function PostPage({ params }: PageProps) {
                 )}
               </div>
               {author?.follower_count !== undefined && (
-                <p className="text-[0.72rem] text-text-muted">{t("followers", { count: formatCount(author.follower_count) })}</p>
+                <p className="text-[0.72rem] leading-none text-text-muted -mt-[1px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
               )}
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
@@ -290,11 +290,12 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Tags */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
               {tags.map((tag: { id: number; name: string; slug: string }) => (
                 <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                  #{tag.name}
+                  title={`#${tag.name}`}
+                  className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
+                  {formatDisplayTagLabel(tag.name)}
                 </Link>
               ))}
             </div>
@@ -382,8 +383,8 @@ export default async function PostPage({ params }: PageProps) {
                 <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
               </Link>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <Link href={`/u/${author?.username}`} className="font-semibold text-[0.92rem] hover:underline truncate">@{author?.username}</Link>
+                <div className="flex items-center gap-1">
+                  <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
                   {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
                 </div>
                 <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
@@ -398,7 +399,7 @@ export default async function PostPage({ params }: PageProps) {
 
             {/* Note content — large font, plain text */}
             <p
-              className="text-[1.15rem] leading-[1.65] text-text-primary whitespace-pre-line"
+              className="text-[1rem] leading-[1.55] text-text-primary whitespace-pre-line"
               dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
             />
 
@@ -409,11 +410,12 @@ export default async function PostPage({ params }: PageProps) {
 
             {/* Tags */}
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
                 {tags.map((tag: { id: number; name: string; slug: string }) => (
                   <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                    className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary">
-                    #{tag.name}
+                    title={`#${tag.name}`}
+                    className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
+                    {formatDisplayTagLabel(tag.name)}
                   </Link>
                 ))}
               </div>
@@ -512,8 +514,8 @@ export default async function PostPage({ params }: PageProps) {
               <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.92rem] hover:underline truncate">@{author?.username}</Link>
+              <div className="flex items-center gap-1">
+                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
                 {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
               </div>
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
@@ -584,14 +586,15 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Tags — right after content, before interaction bar */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
               {tags.map((tag: { id: number; name: string; slug: string }) => (
                 <Link
                   key={tag.id}
                   href={`/explore/tag/${tag.slug}`}
-                  className="bg-bg-secondary text-text-primary text-[0.86rem] font-bold px-4 py-1.5 rounded-full transition hover:bg-bg-tertiary"
+                  title={`#${tag.name}`}
+                  className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary"
                 >
-                  #{tag.name}
+                  {formatDisplayTagLabel(tag.name)}
                 </Link>
               ))}
             </div>

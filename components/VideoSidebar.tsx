@@ -49,7 +49,7 @@ export function VideoSidebarSkeleton({ count = 4, title, compact }: { count?: nu
   const thumbW = compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]";
   return (
     <div>
-      {title && <div className="h-[22px] w-32 bg-bg-secondary rounded-[5px] animate-pulse mb-3" />}
+      {title && <h3 className="text-[1.1rem] font-bold mb-3">{title}</h3>}
       <div className="space-y-1.5">
         {Array.from({ length: count }).map((_, i) => (
           <div key={i} className="flex gap-2.5 p-1.5 -mx-1.5">
@@ -85,12 +85,11 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
       )}
       <div className="space-y-1.5">
         {sorted.map(video => {
-          const isWatched = watched.has(video.slug);
           return (
           <Link
             key={video.id}
             href={getPostUrl(video.slug, video.content_type)}
-            className={`flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition ${isWatched ? "opacity-60" : ""}`}
+            className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
           >
             {/* Thumbnail */}
             <div className={`relative rounded-md overflow-hidden bg-bg-tertiary shrink-0 ${compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]"}`}>
@@ -104,7 +103,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                 <NoImage className="w-full h-full" iconSize={24} />
               )}
               {video.video_duration && (
-                <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[0.62rem] px-1.5 py-0.5 rounded-md font-medium tabular-nums">
+                <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[0.65rem] px-1.5 py-0.5 rounded-md font-medium">
                   {formatDuration(video.video_duration)}
                 </span>
               )}
@@ -124,7 +123,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                     <span className="shrink-0 text-text-muted/70" suppressHydrationWarning>· {formatRelativeDate(video.published_at)}</span>
                   )}
                 </p>
-                <p className="text-[0.62rem] text-text-muted">
+                <p className="text-[0.65rem] text-text-muted">
                   {video.view_count ? `${formatCount(video.view_count)} ${t('common.views')}` : ""}
                   {video.visibility && (
                     <span>{video.view_count ? " · " : ""}{video.visibility === 'followers' ? t('post.visibilityFollowers') : video.visibility === 'only_me' ? t('post.visibilityOnlyMe') : t('post.visibilityPublic')}</span>

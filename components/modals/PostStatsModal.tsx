@@ -134,7 +134,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
               <div className="bg-bg-secondary rounded-[15px] p-3 mb-3">
                 <div className="flex items-center gap-1 mb-1.5">
                   <Clock className="h-3 w-3 text-text-muted" />
-                  <span className="text-[0.62rem] text-text-muted">{t("watchDuration")}</span>
+                  <span className="text-[0.65rem] text-text-muted">{t("watchDuration")}</span>
                 </div>
                 <p className="text-lg font-bold">{fmtDuration(videoStats?.avgWatchDuration ?? 0)}</p>
               </div>
@@ -142,7 +142,7 @@ export default function PostStatsModal({ open, onClose, postId }: PostStatsModal
               <div className="bg-bg-secondary rounded-[15px] p-3 mb-3">
                 <div className="flex items-center gap-1 mb-1.5">
                   <Clock className="h-3 w-3 text-text-muted" />
-                  <span className="text-[0.62rem] text-text-muted">{t("readDuration")}</span>
+                  <span className="text-[0.65rem] text-text-muted">{t("readDuration")}</span>
                 </div>
                 <p className="text-lg font-bold">{fmtDuration(readStats.avgReadDuration)}</p>
               </div>

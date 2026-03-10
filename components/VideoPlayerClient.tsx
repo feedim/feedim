@@ -344,7 +344,7 @@ export default function VideoPlayerClient({
                   style={{ transition: "stroke-dashoffset 1s linear" }}
                 />
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold tabular-nums">
+              <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold">
                 {countdown}
               </span>
             </div>
