@@ -60,7 +60,7 @@ export default function PostCardSkeleton({ count = 5, variant }: { count?: numbe
     : Array(count).fill(variant) as ("post" | "video" | "note")[];
 
   return (
-    <div className="flex flex-col gap-[16px] mt-[10px]">
+    <div className="flex flex-col gap-[14px] mt-[10px]">
       {Array.from({ length: count }).map((_, i) => {
         const type = pattern[i % pattern.length];
         if (type === "video") return <VideoSkeleton key={i} />;

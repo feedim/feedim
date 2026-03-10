@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createNotification } from '@/lib/notifications';
+import { createNotification, resolvePostNotificationRecipient } from '@/lib/notifications';
 import { getUserPlan, checkDailyLimit, isAdminPlan, logRateLimitHit, COMMENT_CHAR_LIMITS } from '@/lib/limits';
 import { checkTextContent } from '@/lib/moderation';
 import { safePage, safeNotInFilter } from '@/lib/utils';
@@ -767,13 +767,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         await createNotification({ admin, user_id: parentComment.author_id, actor_id: user.id, type: 'reply', object_type: 'comment', object_id: comment.id, content: notifContent });
       }
     } else {
-      const { data: post } = await admin
-        .from('posts')
-        .select('user_id')
-        .eq('id', postId)
-        .single();
-      if (post) {
-        await createNotification({ admin, user_id: post.user_id, actor_id: user.id, type: 'comment', object_type: 'post', object_id: postId, content: notifContent });
+      const notificationUserId = await resolvePostNotificationRecipient(admin, postId);
+      if (notificationUserId) {
+        await createNotification({ admin, user_id: notificationUserId, actor_id: user.id, type: 'comment', object_type: 'post', object_id: postId, content: notifContent });
       }
     }
 

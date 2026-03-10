@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createNotification } from '@/lib/notifications';
+import { createNotification, resolvePostNotificationRecipient } from '@/lib/notifications';
 import { getUserPlan, checkDailyLimit, isAdminPlan, logRateLimitHit } from '@/lib/limits';
 import { safeError } from '@/lib/apiError';
 import { checkEmailVerified } from '@/lib/emailGate';
@@ -117,16 +117,11 @@ export async function POST(
     const { data: updated } = await admin.from('posts').select('like_count').eq('id', postId).single();
 
     // Create notification for post author
-    const { data: post } = await admin
-      .from('posts')
-      .select('user_id, content_type')
-      .eq('id', postId)
-      .single();
-
-    if (post) {
+    const notificationUserId = await resolvePostNotificationRecipient(admin, postId);
+    if (notificationUserId) {
       await createNotification({
         admin,
-        user_id: post.user_id,
+        user_id: notificationUserId,
         actor_id: user.id,
         type: 'like',
         object_type: 'post',

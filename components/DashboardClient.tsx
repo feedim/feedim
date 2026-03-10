@@ -316,7 +316,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
       ) : visiblePosts.length > 0 ? (
         <>
           {isDiscoveryFeed && activeTab === "followed" && <SuggestionCarousel />}
-          <div className="flex flex-col gap-[16px] mt-[10px]">
+          <div className="flex flex-col gap-[14px] mt-[10px]">
             {visiblePosts.map((post, index) => (
               <div key={post.id}>
                 <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} onDelete={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />

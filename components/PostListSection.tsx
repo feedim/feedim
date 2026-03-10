@@ -83,7 +83,7 @@ export default function PostListSection({
 
   return (
     <>
-      <div className="flex flex-col gap-[16px]">
+      <div className="flex flex-col gap-[14px]">
       {visiblePosts.filter((post) => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post) => (
         <PostCard key={post.id} post={post as unknown as PostCardPost} initialLiked={interactions?.[post.id]?.liked} initialSaved={interactions?.[post.id]?.saved} onDelete={onDelete ? () => onDelete(post.id) : undefined} />
       ))}

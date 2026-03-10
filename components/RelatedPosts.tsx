@@ -131,7 +131,7 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
   return (
     <section className="max-w-[565px] mx-auto">
       <h3 className="text-lg font-bold mb-2 px-3">{title}</h3>
-      <div className="flex flex-col gap-[16px] mt-[10px]">
+      <div className="flex flex-col gap-[14px] mt-[10px]">
         {postsWithViewerInteractions.map(post => (
           <PostCard key={post.id} post={post} />
         ))}

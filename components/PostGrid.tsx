@@ -29,7 +29,7 @@ interface PostGridProps {
 
 export default function PostGrid({ posts, interactions, onDelete }: PostGridProps) {
   return (
-    <div className="flex flex-col gap-[16px] mt-[10px]">
+    <div className="flex flex-col gap-[14px] mt-[10px]">
       {posts.map(post => (
         <PostCard key={post.id} post={post} initialLiked={interactions?.[post.id]?.liked} initialSaved={interactions?.[post.id]?.saved} onDelete={onDelete ? () => onDelete(post.id) : undefined} />
       ))}

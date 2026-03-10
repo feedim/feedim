@@ -11,6 +11,31 @@ interface CreateNotificationParams {
   content?: string;
 }
 
+interface PostNotificationRecipientRow {
+  author_id?: string | null;
+  user_id?: string | null;
+}
+
+export async function resolvePostNotificationRecipient(
+  admin: SupabaseClient,
+  postId: number,
+): Promise<string | null> {
+  const { data: post, error } = await admin
+    .from("posts")
+    .select("author_id, user_id")
+    .eq("id", postId)
+    .single<PostNotificationRecipientRow>();
+
+  if (error) {
+    logServerError("[notification] post owner lookup failed", error, {
+      post_id: postId,
+    });
+    return null;
+  }
+
+  return post?.author_id || post?.user_id || null;
+}
+
 /**
  * Create a notification with 24-hour duplicate prevention.
  * Same actor + type + object = skip within 24 hours.
