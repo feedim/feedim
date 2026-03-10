@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useCallback, useLayoutEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Heart, MessageCircle, Bookmark, Gift, BookOpen, Rocket, Clock, Pause } from "lucide-react";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import { fetchWithCache, withCacheScope, invalidateCache } from "@/lib/fetchWithCache";
 import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
 import { onMutation } from "@/lib/mutationEvents";
+import { readPostInteraction, subscribePostInteractions, writePostInteraction, type StoredPostInteraction } from "@/lib/postInteractionStore";
 
 const CommentsModal = lazy(() => import("@/components/modals/CommentsModal"));
 const LikesModal = lazy(() => import("@/components/modals/LikesModal"));
@@ -49,6 +50,8 @@ type IdleCallbackWindow = Window & {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
+
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 interface LikedByUser {
   username: string;
@@ -120,10 +123,17 @@ export default function PostInteractionBar({
   allowComments = true,
   compact,
 }: PostInteractionBarProps) {
+  const { requireAuth } = useAuthModal();
+  const { user: currentUser } = useUser();
+  const searchParams = useSearchParams();
+  const t = useTranslations();
+  const locale = useLocale();
+  const baseLikeCount = Math.max(normalizeCount(initialLikeCount), initialLiked ? 1 : 0);
+  const baseSaveCount = Math.max(normalizeCount(initialSaveCount), initialSaved ? 1 : 0);
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
-  const [likeCount, setLikeCount] = useState(() => Math.max(normalizeCount(initialLikeCount), initialLiked ? 1 : 0));
-  const [saveCount, setSaveCount] = useState(() => Math.max(normalizeCount(initialSaveCount), initialSaved ? 1 : 0));
+  const [likeCount, setLikeCount] = useState(baseLikeCount);
+  const [saveCount, setSaveCount] = useState(baseSaveCount);
   const [shareCount, setShareCount] = useState(() => normalizeCount(initialShareCount));
   const [liveCommentCount, setLiveCommentCount] = useState(() => normalizeCount(commentCount));
   const [likeAnimating, setLikeAnimating] = useState(false);
@@ -145,11 +155,6 @@ export default function PostInteractionBar({
   const [engagementRate, setEngagementRate] = useState<number | null>(null);
   const [likedByUsers, setLikedByUsers] = useState<LikedByUser[]>([]);
   const [targetCommentId, setTargetCommentId] = useState<number | null>(null);
-  const { requireAuth } = useAuthModal();
-  const { user: currentUser } = useUser();
-  const searchParams = useSearchParams();
-  const t = useTranslations();
-  const locale = useLocale();
   const displayLikeCount = liked ? Math.max(likeCount, 1) : likeCount;
   const displaySaveCount = saved ? Math.max(saveCount, 1) : saveCount;
 
@@ -236,21 +241,73 @@ export default function PostInteractionBar({
   // Refs to track latest state for rapid clicks
   const likedRef = useRef(initialLiked);
   const savedRef = useRef(initialSaved);
+  const likeCountRef = useRef(baseLikeCount);
+  const saveCountRef = useRef(baseSaveCount);
   const likePending = useRef(false);
   const savePending = useRef(false);
 
   // Sync when batch interaction data arrives (compact/feed mode)
   const likedInteractionHydrated = useRef(initialLiked);
   const savedInteractionHydrated = useRef(initialSaved);
+  const storedInteractionApplied = useRef(false);
+  const syncFromStoredInteraction = useCallback((stored: StoredPostInteraction | null) => {
+    if (!stored) return;
+    storedInteractionApplied.current = true;
+
+    if (typeof stored.liked === "boolean") {
+      likedRef.current = stored.liked;
+      likedInteractionHydrated.current = stored.liked;
+      setLiked(stored.liked);
+    }
+
+    if (typeof stored.saved === "boolean") {
+      savedRef.current = stored.saved;
+      savedInteractionHydrated.current = stored.saved;
+      setSaved(stored.saved);
+    }
+
+    if (typeof stored.likeCount === "number") {
+      likeCountRef.current = stored.likeCount;
+      setLikeCount(stored.likeCount);
+    }
+
+    if (typeof stored.saveCount === "number") {
+      saveCountRef.current = stored.saveCount;
+      setSaveCount(stored.saveCount);
+    }
+  }, []);
+
+  useEffect(() => {
+    likeCountRef.current = likeCount;
+  }, [likeCount]);
+
+  useEffect(() => {
+    saveCountRef.current = saveCount;
+  }, [saveCount]);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!currentUser?.id) return;
+    syncFromStoredInteraction(readPostInteraction(currentUser.id, postId));
+  }, [currentUser?.id, postId, syncFromStoredInteraction]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    return subscribePostInteractions((detail) => {
+      if (detail.viewerId !== currentUser.id || detail.postId !== postId) return;
+      syncFromStoredInteraction(detail.value);
+    });
+  }, [currentUser?.id, postId, syncFromStoredInteraction]);
+
   useEffect(() => {
     if (!compact) return;
-    if (initialLiked && !likedInteractionHydrated.current) {
+    if (initialLiked && !likedInteractionHydrated.current && !storedInteractionApplied.current) {
       setLiked(true);
       likedRef.current = true;
       setLikeCount((prev) => Math.max(prev, normalizeCount(initialLikeCount), 1));
       likedInteractionHydrated.current = true;
     }
-    if (initialSaved && !savedInteractionHydrated.current) {
+    if (initialSaved && !savedInteractionHydrated.current && !storedInteractionApplied.current) {
       setSaved(true);
       savedRef.current = true;
       setSaveCount((prev) => Math.max(prev, normalizeCount(initialSaveCount), 1));
@@ -260,13 +317,20 @@ export default function PostInteractionBar({
 
   const handleLike = async () => {
     if (likePending.current) return;
-    if (!currentUser) { const user = await requireAuth(); if (!user) return; }
+    const actingUser = currentUser ?? await requireAuth();
+    if (!actingUser) return;
 
     likePending.current = true;
     const newLiked = !likedRef.current;
+    const nextLikeCount = Math.max(0, likeCountRef.current + (newLiked ? 1 : -1));
     likedRef.current = newLiked;
+    likeCountRef.current = nextLikeCount;
     setLiked(newLiked);
-    setLikeCount(c => Math.max(0, c + (newLiked ? 1 : -1)));
+    setLikeCount(nextLikeCount);
+    writePostInteraction(actingUser.id, postId, {
+      liked: newLiked,
+      likeCount: nextLikeCount,
+    });
     if (newLiked) {
       setLikeAnimating(true);
       setTimeout(() => setLikeAnimating(false), 400);
@@ -274,9 +338,15 @@ export default function PostInteractionBar({
 
     fetch(`/api/posts/${postId}/like`, { method: "POST", keepalive: true }).then(res => {
       if (!res.ok) {
+        const rollbackLikeCount = Math.max(0, nextLikeCount + (newLiked ? -1 : 1));
         likedRef.current = !newLiked;
+        likeCountRef.current = rollbackLikeCount;
         setLiked(!newLiked);
-        setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
+        setLikeCount(rollbackLikeCount);
+        writePostInteraction(actingUser.id, postId, {
+          liked: !newLiked,
+          likeCount: rollbackLikeCount,
+        });
         if (res.status === 429 || res.status === 403) {
           res.json().then(data => feedimAlert("error", data.error || t('errors.likeLimitReached'))).catch(() => {});
         }
@@ -284,27 +354,46 @@ export default function PostInteractionBar({
         invalidateCache(`/api/posts/${postId}/stats`);
       }
     }).catch(() => {
+      const rollbackLikeCount = Math.max(0, nextLikeCount + (newLiked ? -1 : 1));
       likedRef.current = !newLiked;
+      likeCountRef.current = rollbackLikeCount;
       setLiked(!newLiked);
-      setLikeCount(c => Math.max(0, c + (newLiked ? -1 : 1)));
+      setLikeCount(rollbackLikeCount);
+      writePostInteraction(actingUser.id, postId, {
+        liked: !newLiked,
+        likeCount: rollbackLikeCount,
+      });
     }).finally(() => { likePending.current = false; });
   };
 
   const handleSave = async () => {
     if (savePending.current) return;
-    if (!currentUser) { const user = await requireAuth(); if (!user) return; }
+    const actingUser = currentUser ?? await requireAuth();
+    if (!actingUser) return;
 
     savePending.current = true;
     const newSaved = !savedRef.current;
+    const nextSaveCount = Math.max(0, saveCountRef.current + (newSaved ? 1 : -1));
     savedRef.current = newSaved;
+    saveCountRef.current = nextSaveCount;
     setSaved(newSaved);
-    setSaveCount(c => Math.max(0, c + (newSaved ? 1 : -1)));
+    setSaveCount(nextSaveCount);
+    writePostInteraction(actingUser.id, postId, {
+      saved: newSaved,
+      saveCount: nextSaveCount,
+    });
 
     fetch(`/api/posts/${postId}/save`, { method: "POST", keepalive: true }).then(res => {
       if (!res.ok) {
+        const rollbackSaveCount = Math.max(0, nextSaveCount + (newSaved ? -1 : 1));
         savedRef.current = !newSaved;
+        saveCountRef.current = rollbackSaveCount;
         setSaved(!newSaved);
-        setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
+        setSaveCount(rollbackSaveCount);
+        writePostInteraction(actingUser.id, postId, {
+          saved: !newSaved,
+          saveCount: rollbackSaveCount,
+        });
         if (res.status === 429 || res.status === 403) {
           res.json().then(data => feedimAlert("error", data.error || t('errors.saveLimitReached'))).catch(() => {});
         }
@@ -313,9 +402,15 @@ export default function PostInteractionBar({
         invalidateCache(`/api/posts/${postId}/stats`);
       }
     }).catch(() => {
+      const rollbackSaveCount = Math.max(0, nextSaveCount + (newSaved ? -1 : 1));
       savedRef.current = !newSaved;
+      saveCountRef.current = rollbackSaveCount;
       setSaved(!newSaved);
-      setSaveCount(c => Math.max(0, c + (newSaved ? -1 : 1)));
+      setSaveCount(rollbackSaveCount);
+      writePostInteraction(actingUser.id, postId, {
+        saved: !newSaved,
+        saveCount: rollbackSaveCount,
+      });
     }).finally(() => { savePending.current = false; });
   };
 

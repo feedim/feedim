@@ -32,7 +32,7 @@ function LeavingContent() {
       </p>
 
       {url && isSafeUrl && (
-        <div className="w-full max-w-sm bg-bg-secondary rounded-[9px] px-4 py-3 mb-6 break-all text-sm text-text-muted text-left">
+        <div className="w-full max-w-sm bg-bg-secondary rounded-[11px] px-4 py-3 mb-6 break-all text-[11px] font-medium text-text-muted text-left">
           {url}
         </div>
       )}

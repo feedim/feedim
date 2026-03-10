@@ -7,6 +7,34 @@ import { safeError } from "@/lib/apiError";
 import { getTranslations } from "next-intl/server";
 import { safePage } from "@/lib/utils";
 
+const FOLLOW_REQUIRED_NOTIFICATION_TYPES = new Set(["first_post", "comeback_post"]);
+
+async function filterFollowerOnlyNotifications<T extends { type: string; actor_id?: string | null }>(
+  admin: ReturnType<typeof createAdminClient>,
+  viewerId: string,
+  notifications: T[]
+) {
+  const gatedActorIds = [...new Set(
+    notifications
+      .filter((n) => FOLLOW_REQUIRED_NOTIFICATION_TYPES.has(n.type) && n.actor_id)
+      .map((n) => n.actor_id!)
+  )];
+
+  if (gatedActorIds.length === 0) return notifications;
+
+  const { data: follows } = await admin
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", viewerId)
+    .in("following_id", gatedActorIds);
+
+  const allowedActorIds = new Set((follows || []).map((f) => f.following_id));
+
+  return notifications.filter((n) =>
+    !FOLLOW_REQUIRED_NOTIFICATION_TYPES.has(n.type) || !n.actor_id || allowedActorIds.has(n.actor_id)
+  );
+}
+
 // GET — fetch notifications with unread count
 export async function GET(request: NextRequest) {
   try {
@@ -54,11 +82,18 @@ export async function GET(request: NextRequest) {
         return response;
       }
 
+      const admin = createAdminClient();
+      const gatedUnreadNotifs = await filterFollowerOnlyNotifications(admin, user.id, unreadNotifs);
+      if (gatedUnreadNotifs.length === 0) {
+        const response = NextResponse.json({ unread_count: 0 });
+        response.headers.set("Cache-Control", buildPrivateCacheControl(FRESHNESS_WINDOWS.notificationCount));
+        return response;
+      }
+
       // Filter out inactive actors (frozen, deleted, etc.)
-      const actorIds = [...new Set(unreadNotifs.filter(n => n.actor_id).map(n => n.actor_id))];
+      const actorIds = [...new Set(gatedUnreadNotifs.filter(n => n.actor_id).map(n => n.actor_id))];
       let inactiveActors = new Set<string>();
       if (actorIds.length > 0) {
-        const admin = createAdminClient();
         const { data: profiles } = await admin
           .from("profiles")
           .select("user_id, status")
@@ -75,7 +110,7 @@ export async function GET(request: NextRequest) {
         .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
       const blockedIds = new Set((blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id));
 
-      const count = unreadNotifs.filter(n =>
+      const count = gatedUnreadNotifs.filter(n =>
         !n.actor_id || (!inactiveActors.has(n.actor_id) && !blockedIds.has(n.actor_id))
       ).length;
 
@@ -109,12 +144,13 @@ export async function GET(request: NextRequest) {
 
     let { data: notifications, error } = await query;
     if (error) return safeError(error);
+    const admin = createAdminClient();
+    notifications = await filterFollowerOnlyNotifications(admin, user.id, notifications || []);
 
     // Filter out notifications from inactive actors (frozen, blocked, deleted)
     if (notifications && notifications.length > 0) {
       const actorIds = [...new Set(notifications.map((n: any) => n.actor_id).filter(Boolean))];
       if (actorIds.length > 0) {
-        const admin = createAdminClient();
         const { data: actorProfiles } = await admin
           .from("profiles")
           .select("user_id, status")

@@ -131,7 +131,10 @@ export default function SimilarAccountsCarousel({ userId, username, onClose, vis
         </div>
         <div className="flex gap-2.5 overflow-hidden px-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="flex-1 h-[180px] rounded-[14px] bg-bg-tertiary animate-pulse" />
+            <div
+              key={i}
+              className="shrink-0 w-[130px] h-[180px] rounded-[14px] bg-bg-tertiary animate-pulse"
+            />
           ))}
         </div>
       </div>

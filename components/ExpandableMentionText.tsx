@@ -9,6 +9,9 @@ interface ExpandableMentionTextProps {
   maxLines?: number;
   className?: string;
   buttonClassName?: string;
+  collapseButtonClassName?: string;
+  defaultExpanded?: boolean;
+  showCollapseButton?: boolean;
 }
 
 export default function ExpandableMentionText({
@@ -17,6 +20,9 @@ export default function ExpandableMentionText({
   maxLines,
   className,
   buttonClassName,
+  collapseButtonClassName,
+  defaultExpanded,
+  showCollapseButton,
 }: ExpandableMentionTextProps) {
   return (
     <ExpandableText
@@ -25,7 +31,10 @@ export default function ExpandableMentionText({
       maxLines={maxLines}
       className={className}
       buttonClassName={buttonClassName}
+      collapseButtonClassName={collapseButtonClassName}
       htmlRenderer={renderMentionsAsHTML}
+      defaultExpanded={defaultExpanded}
+      showCollapseButton={showCollapseButton}
     />
   );
 }

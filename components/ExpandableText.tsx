@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useTranslations } from "next-intl";
 
 interface ExpandableTextProps {
@@ -9,7 +9,11 @@ interface ExpandableTextProps {
   maxLines?: number;
   className?: string;
   buttonClassName?: string;
+  collapseButtonClassName?: string;
   htmlRenderer?: (text: string) => string;
+  defaultExpanded?: boolean;
+  showCollapseButton?: boolean;
+  onReadMore?: () => void;
 }
 
 function buildCollapsedText(text: string, maxChars: number, maxLines: number) {
@@ -38,11 +42,15 @@ export default function ExpandableText({
   maxLines = 5,
   className,
   buttonClassName,
+  collapseButtonClassName,
   htmlRenderer,
+  defaultExpanded = false,
+  showCollapseButton = false,
+  onReadMore,
 }: ExpandableTextProps) {
   const t = useTranslations("common");
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [measuredOverflow, setMeasuredOverflow] = useState(false);
 
   const normalizedText = useMemo(
@@ -56,8 +64,8 @@ export default function ExpandableText({
   const hasInlineTruncation = collapsed.truncated && collapsed.text !== normalizedText;
 
   useEffect(() => {
-    setExpanded(false);
-  }, [normalizedText, maxChars, maxLines]);
+    setExpanded(defaultExpanded);
+  }, [normalizedText, maxChars, maxLines, defaultExpanded]);
 
   useEffect(() => {
     if (expanded || hasInlineTruncation) {
@@ -80,6 +88,15 @@ export default function ExpandableText({
   };
 
   const textClasses = `${className || ""} break-words [overflow-wrap:anywhere]`;
+  const handleReadMore = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onReadMore) {
+      onReadMore();
+      return;
+    }
+    setExpanded(true);
+  };
 
   if (!expanded && hasInlineTruncation) {
     return (
@@ -88,11 +105,7 @@ export default function ExpandableText({
         <span aria-hidden="true">... </span>
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setExpanded(true);
-          }}
+          onClick={handleReadMore}
           className={buttonClassName || "font-bold text-text-muted hover:underline"}
           aria-expanded={expanded}
         >
@@ -119,15 +132,25 @@ export default function ExpandableText({
       {!expanded && measuredOverflow && (
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setExpanded(true);
-          }}
+          onClick={handleReadMore}
           className={buttonClassName || "mt-0.5 font-bold text-text-muted hover:underline"}
           aria-expanded={expanded}
         >
           {t("readMoreShort")}
+        </button>
+      )}
+      {expanded && showCollapseButton && (hasInlineTruncation || measuredOverflow || collapsed.truncated) && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded(false);
+          }}
+          className={collapseButtonClassName || buttonClassName || "mt-0.5 font-bold text-text-muted hover:underline"}
+          aria-expanded={expanded}
+        >
+          {t("showLess")}
         </button>
       )}
     </div>

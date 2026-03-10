@@ -24,6 +24,7 @@ import { FRESHNESS_WINDOWS } from "@/lib/freshnessPolicy";
 import type { Profile, ProfileInteractions, ProfilePostItem, ProfileTabId } from "@/components/profile/types";
 import { usePaginatedProfileFeed } from "@/components/profile/usePaginatedProfileFeed";
 import LazyAvatar from "@/components/LazyAvatar";
+import ExpandableText from "@/components/ExpandableText";
 
 const EditProfileModal = lazy(() => import("@/components/modals/EditProfileModal"));
 const FollowersModal = lazy(() => import("@/components/modals/FollowersModal"));
@@ -36,30 +37,16 @@ const MutualFollowersModal = lazy(() => import("@/components/modals/MutualFollow
 const ProfileLinksModal = lazy(() => import("@/components/modals/ProfileLinksModal"));
 
 function BioText({ text }: { text: string }) {
-  const t = useTranslations("common");
-  const [expanded, setExpanded] = useState(false);
-  const [clamped, setClamped] = useState(false);
-  const ref = useCallback((node: HTMLParagraphElement | null) => {
-    if (node) setClamped(node.scrollHeight > node.clientHeight + 1);
-  }, []);
-
   return (
-    <div>
-      <p
-        ref={ref}
-        className={`text-[0.84rem] text-text-secondary leading-snug whitespace-pre-line break-words ${!expanded ? "line-clamp-3" : ""}`}
-      >
-        {text}
-      </p>
-      {clamped && !expanded && (
-        <button
-          onClick={() => setExpanded(true)}
-          className="text-[0.8rem] font-semibold text-text-muted hover:text-text-primary transition hover:underline mt-0.5"
-        >
-          {t("more")}
-        </button>
-      )}
-    </div>
+    <ExpandableText
+      text={text}
+      maxChars={220}
+      maxLines={3}
+      className="text-[0.84rem] text-text-secondary leading-snug whitespace-pre-line"
+      buttonClassName="mt-0.5 inline-flex w-fit text-[0.8rem] font-semibold text-text-muted hover:text-text-primary transition hover:underline"
+      collapseButtonClassName="mt-0.5 inline-flex w-fit text-[0.8rem] font-semibold text-text-muted hover:text-text-primary transition hover:underline"
+      showCollapseButton
+    />
   );
 }
 

@@ -23,7 +23,6 @@ import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import { copyTextToClipboard } from "@/lib/copyTextToClipboard";
 import { emitMutation } from "@/lib/mutationEvents";
 import LazyAvatar from "@/components/LazyAvatar";
-import BlurImage from "@/components/BlurImage";
 
 
 interface Comment {
@@ -652,7 +651,12 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       {pendingGif && !newComment.trim() && (
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="relative">
-            <BlurImage src={pendingGif.preview} alt="GIF" className="h-[60px] w-[60px] rounded-md overflow-hidden" />
+            <img
+              src={pendingGif.preview}
+              alt="GIF"
+              decoding="async"
+              className="h-[60px] w-[60px] rounded-md overflow-hidden object-cover"
+            />
             <button
               type="button"
               onClick={() => setPendingGif(null)}
@@ -1057,6 +1061,85 @@ interface CommentCardProps {
 const COMMENT_TRUNCATE_LENGTH = 300;
 const COMMENT_TRUNCATE_LINES = 6;
 
+function isAnimatedVideoUrl(url: string) {
+  return /\.(mp4|webm)(?:$|\?)/i.test(url);
+}
+
+function CommentGifMedia({
+  src,
+  alt,
+  previewSrc,
+}: {
+  src: string;
+  alt: string;
+  previewSrc?: string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const isVideo = isAnimatedVideoUrl(src);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "220px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="relative mt-0.5 w-fit max-w-[180px] overflow-hidden rounded-[10px] bg-bg-tertiary">
+      {!loaded && (
+        previewSrc ? (
+          <img
+            src={previewSrc}
+            alt=""
+            aria-hidden="true"
+            className="block h-auto max-h-[180px] w-auto max-w-[180px] object-cover"
+          />
+        ) : (
+          <div className="h-[132px] w-[180px] animate-pulse bg-bg-secondary" />
+        )
+      )}
+      {visible && isVideo ? (
+        <video
+          src={src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          onLoadedData={() => setLoaded(true)}
+          className={cn(
+            "block h-auto max-h-[180px] w-auto max-w-[180px] object-cover transition-opacity duration-200",
+            loaded ? "opacity-100" : "opacity-0"
+          )}
+        />
+      ) : visible ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          className={cn(
+            "block h-auto max-h-[180px] w-auto max-w-[180px] object-cover transition-opacity duration-200",
+            loaded ? "opacity-100" : "opacity-0"
+          )}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 const CommentCard = memo(function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, onToggleMenu, onLike, onReply, renderMentionContent }: CommentCardProps) {
   const t = useTranslations("modals");
   const tc = useTranslations("common");
@@ -1114,9 +1197,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           </div>
         )}
         {comment.content_type === "gif" && comment.gif_url ? (
-          <>
-            <BlurImage src={comment.gif_url} alt="GIF" className="mt-0.5 max-w-[200px] max-h-[200px] rounded-[10px] overflow-hidden" />
-          </>
+          <CommentGifMedia src={comment.gif_url} alt="GIF" />
         ) : (
           <>
             <div

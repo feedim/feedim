@@ -35,6 +35,7 @@ import AdBanner from "@/components/AdBanner";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ expand?: string | string[] }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -88,8 +89,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function NotePage({ params }: PageProps) {
+export default async function NotePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const expandParam = resolvedSearchParams?.expand;
+  const autoExpandFromCard = Array.isArray(expandParam) ? expandParam.includes("1") : expandParam === "1";
   const post = await getCachedPost(slug);
   if (!post) notFound();
 
@@ -201,6 +205,9 @@ export default async function NotePage({ params }: PageProps) {
             maxLines={8}
             className="text-[1rem] leading-[1.55] text-text-primary whitespace-pre-line"
             buttonClassName="mt-0.5 inline-flex w-fit text-[0.84rem] font-bold text-text-muted hover:underline"
+            collapseButtonClassName="mt-0.5 inline-flex w-fit text-[0.84rem] font-bold text-text-muted hover:underline"
+            defaultExpanded={autoExpandFromCard}
+            showCollapseButton
           />
 
           {(post.view_count || 0) > 0 && (

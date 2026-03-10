@@ -28,17 +28,18 @@ import { emitMutation } from "@/lib/mutationEvents";
 const NOTE_TRUNCATE_LENGTH = 280;
 const NOTE_TRUNCATE_LINES = 5;
 
-function NoteContent({ text, href }: { text: string; href: string }) {
+function NoteContent({ text, href, onOpen }: { text: string; href: string; onOpen: () => void }) {
   const t = useTranslations("common");
   const normalizedText = (text || "").replace(/\r\n?/g, "\n").trimEnd();
   const isServerPreview = normalizedText.endsWith("…") || normalizedText.endsWith("...");
+  const expandedHref = href.includes("?") ? `${href}&expand=1` : `${href}?expand=1`;
 
   if (isServerPreview) {
     return (
-      <div className="relative z-[1] text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line break-words [overflow-wrap:anywhere]">
+      <div className="relative z-[1] pointer-events-none text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line break-words [overflow-wrap:anywhere]">
         <span dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(normalizedText) }} />
         <Link
-          href={href}
+          href={expandedHref}
           className="relative z-[2] pointer-events-auto inline ml-1 text-[0.82rem] font-bold text-text-muted hover:underline"
         >
           {t("readMoreShort")}
@@ -48,7 +49,7 @@ function NoteContent({ text, href }: { text: string; href: string }) {
   }
 
   return (
-    <div className="relative z-[1]">
+    <div className="relative z-[1] pointer-events-none">
       <ExpandableText
         text={normalizedText}
         maxChars={NOTE_TRUNCATE_LENGTH}
@@ -56,6 +57,7 @@ function NoteContent({ text, href }: { text: string; href: string }) {
         className="text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line"
         buttonClassName="relative z-[2] pointer-events-auto mt-0.5 inline-flex w-fit text-[0.82rem] font-bold text-text-muted hover:underline"
         htmlRenderer={renderMentionsAsHTML}
+        onReadMore={onOpen}
       />
     </div>
   );
@@ -117,6 +119,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   const canPreview = isVideo && !!post.video_url;
   const router = useRouter();
   const postHref = getPostUrl(post.slug, post.content_type);
+  const noteExpandedHref = postHref.includes("?") ? `${postHref}&expand=1` : `${postHref}?expand=1`;
   const { user: ctxUser } = useUser();
   const { requireAuth } = useAuthModal();
   const [isDeleted, setIsDeleted] = useState(false);
@@ -342,17 +345,17 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           </div>
 
           {isNote ? (
-            <NoteContent text={post.excerpt || post.title} href={postHref} />
+            <NoteContent text={post.excerpt || post.title} href={postHref} onOpen={() => router.push(noteExpandedHref)} />
           ) : (
             <>
               {/* Title */}
-              <h3 className="text-[1.12rem] font-semibold leading-snug text-text-primary line-clamp-2">
+              <h3 className="pointer-events-none text-[1.12rem] font-semibold leading-snug text-text-primary line-clamp-2">
                 {post.title}
               </h3>
 
               {/* Excerpt */}
               {post.excerpt && (
-                <p className="text-[0.77rem] text-text-muted leading-snug line-clamp-2 mt-[3px]">
+                <p className="pointer-events-none text-[0.78rem] text-text-muted leading-snug line-clamp-2 mt-[3px]">
                   {post.excerpt}
                 </p>
               )}
@@ -459,7 +462,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
 
           {/* View count + visibility — hide for notes */}
           {!isNote && (
-            <div className="relative z-[1] flex items-center gap-1.5 mt-[5px] ml-[3px]">
+            <div className="relative z-[1] pointer-events-none flex items-center gap-1.5 mt-[5px] ml-[3px]">
               {(post.view_count ?? 0) > 0 && (
                 <span className="text-[0.7rem] text-text-muted">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
               )}

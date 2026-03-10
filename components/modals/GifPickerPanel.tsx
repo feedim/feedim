@@ -15,7 +15,8 @@ interface GifPickerPanelProps {
 interface GiphyGif {
   id: string;
   images: {
-    fixed_width_downsampled: { url: string; width: string; height: string };
+    fixed_width_downsampled: { url: string; width: string; height: string; webp?: string };
+    fixed_width?: { url: string; width: string; height: string; webp?: string; mp4?: string };
     fixed_width_small_still: { url: string; width: string; height: string };
     original: { url: string };
   };
@@ -42,6 +43,7 @@ function GifThumb({ gif, onSelect }: { gif: GiphyGif; onSelect: () => void }) {
   }, []);
 
   const still = gif.images.fixed_width_small_still;
+  const animatedPreview = gif.images.fixed_width?.webp || gif.images.fixed_width_downsampled.webp || gif.images.fixed_width_downsampled.url;
   const w = Number(still.width) || 200;
   const h = Number(still.height) || 200;
 
@@ -56,7 +58,7 @@ function GifThumb({ gif, onSelect }: { gif: GiphyGif; onSelect: () => void }) {
     >
       {visible && (
         <img
-          src={hovered ? gif.images.fixed_width_downsampled.url : still.url}
+          src={hovered ? animatedPreview : still.url}
           alt={gif.title}
           decoding="async"
           className="w-full h-full object-cover block"
@@ -110,24 +112,38 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
     </div>
   );
 
+  const getOptimizedGifUrl = useCallback((gif: GiphyGif) => {
+    return gif.images.fixed_width?.webp
+      || gif.images.fixed_width_downsampled.webp
+      || gif.images.fixed_width?.url
+      || gif.images.fixed_width_downsampled.url
+      || gif.images.original.url;
+  }, []);
+
   return (
     <Modal open={true} onClose={onClose} title={t("gifTitle")} size="sm" zIndex="z-[10001]" footer={giphyFooter} infoText={t("gifPickerInfo")}>
       {/* Search bar */}
-      <div className="sticky top-0 z-10 bg-bg-secondary flex items-center gap-2.5 px-4 py-2.5 border-b border-border-primary">
-        <Search className="h-4 w-4 text-text-muted shrink-0" />
-        <input
-          ref={searchRef}
-          type="text"
-          value={query}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder={t("gifSearchPlaceholder")}
-          className="flex-1 bg-transparent border-none outline-none text-[0.88rem] text-text-primary placeholder:text-text-muted"
-        />
-        {query && (
-          <button onClick={() => { setQuery(""); fetchGifs(""); }} className="text-text-muted hover:text-text-primary transition hover:underline">
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      <div className="sticky top-0 z-10 bg-bg-secondary px-4 py-2.5 border-b border-border-primary">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none z-10" />
+          <input
+            ref={searchRef}
+            type="text"
+            value={query}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder={t("gifSearchPlaceholder")}
+            className="input-modern w-full !pl-10 pr-9 py-2.5 text-[0.9rem]"
+          />
+          {query && (
+            <button
+              onClick={() => { setQuery(""); fetchGifs(""); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition"
+              aria-label={t("clear")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* GIF grid */}
@@ -148,7 +164,7 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
               <GifThumb
                 key={gif.id}
                 gif={gif}
-                onSelect={() => onGifSelect(gif.images.original.url, gif.images.fixed_width_downsampled.url)}
+                onSelect={() => onGifSelect(getOptimizedGifUrl(gif), gif.images.fixed_width_small_still.url)}
               />
             ))}
           </div>

@@ -15,6 +15,7 @@ import { smartBack } from "@/lib/smartBack";
 import { Volume2, VolumeX } from "lucide-react";
 import MomentAdCard from "@/components/MomentAdCard";
 import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
+import { readPostInteraction, subscribePostInteractions, writePostInteraction } from "@/lib/postInteractionStore";
 
 type DisplayItem =
   | { type: "moment"; moment: Moment; realIndex: number }
@@ -236,6 +237,25 @@ function MomentsContent() {
     return false;
   }, [isLoggedIn]);
 
+  const applyStoredInteractionToMoment = useCallback((moment: Moment): Moment => {
+    if (!ctxUser?.id) return moment;
+
+    const stored = readPostInteraction(ctxUser.id, moment.id);
+    if (!stored) return moment;
+
+    return {
+      ...moment,
+      viewer_liked: typeof stored.liked === "boolean" ? stored.liked : moment.viewer_liked,
+      viewer_saved: typeof stored.saved === "boolean" ? stored.saved : moment.viewer_saved,
+      like_count: typeof stored.likeCount === "number" ? stored.likeCount : moment.like_count,
+      save_count: typeof stored.saveCount === "number" ? stored.saveCount : moment.save_count,
+    };
+  }, [ctxUser?.id]);
+
+  const applyStoredInteractions = useCallback((items: Moment[]) => (
+    ctxUser?.id ? items.map((moment) => applyStoredInteractionToMoment(moment)) : items
+  ), [applyStoredInteractionToMoment, ctxUser?.id]);
+
   // Re-assert moments layout (guards against modal scroll lock resetting styles)
   const reassertLayout = useCallback(() => {
     const main = document.querySelector("main");
@@ -349,10 +369,11 @@ function MomentsContent() {
   }, []);
 
   const hydrateInteractions = useCallback((items: Moment[]) => {
-    seedMomentInteractions(items);
+    const itemsWithOverrides = applyStoredInteractions(items);
+    seedMomentInteractions(itemsWithOverrides);
 
-    if (!isLoggedIn || items.length === 0) return;
-    const ids = items
+    if (!isLoggedIn || itemsWithOverrides.length === 0) return;
+    const ids = itemsWithOverrides
       .filter((item) => typeof item.viewer_liked !== "boolean" || typeof item.viewer_saved !== "boolean")
       .map((item) => item.id)
       .slice(0, 50);
@@ -380,7 +401,7 @@ function MomentsContent() {
           saved.forEach((id) => next.add(id));
           return next;
         });
-        setMoments((prev) => prev.map((moment) => {
+        setMoments((prev) => applyStoredInteractions(prev.map((moment) => {
           const status = d.interactions?.[String(moment.id)];
           if (!status) return moment;
           return {
@@ -388,10 +409,10 @@ function MomentsContent() {
             viewer_liked: status.liked === true,
             viewer_saved: status.saved === true,
           };
-        }));
+        })));
       })
       .catch(() => {});
-  }, [isLoggedIn, seedMomentInteractions]);
+  }, [applyStoredInteractions, isLoggedIn, seedMomentInteractions]);
 
   useEffect(() => {
     (async () => {
@@ -416,13 +437,14 @@ function MomentsContent() {
         }
       }
 
-      setMoments(items);
+      const itemsWithOverrides = applyStoredInteractions(items);
+      setMoments(itemsWithOverrides);
       setHasMore(data.hasMore);
       setLoading(false);
 
-      hydrateInteractions(items);
+      hydrateInteractions(itemsWithOverrides);
     })();
-  }, [hydrateInteractions, loadMoments, startSlug]);
+  }, [applyStoredInteractions, hydrateInteractions, loadMoments, startSlug]);
 
   // Preload first visible moment video for faster initial playback
   useEffect(() => {
@@ -575,7 +597,7 @@ function MomentsContent() {
         }
         setLoadingMore(true);
         const data = await loadMoments(moments.map(m => m.id));
-        const newMoments = data.moments as Moment[];
+        const newMoments = applyStoredInteractions(data.moments as Moment[]);
         setMoments(prev => {
           const existingIds = new Set(prev.map(m => m.id));
           return [...prev, ...newMoments.filter(m => !existingIds.has(m.id))];
@@ -586,7 +608,7 @@ function MomentsContent() {
       };
       void run();
     }
-  }, [settledIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments]);
+  }, [applyStoredInteractions, settledIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments]);
 
   const isMomentLiked = useCallback((moment: Moment) => (
     likedSet.has(moment.id) || moment.viewer_liked === true
@@ -596,61 +618,121 @@ function MomentsContent() {
     savedSet.has(moment.id) || moment.viewer_saved === true
   ), [savedSet]);
 
+  useEffect(() => {
+    if (!ctxUser?.id) return;
+
+    return subscribePostInteractions((detail) => {
+      if (detail.viewerId !== ctxUser.id) return;
+
+      if (typeof detail.value?.liked === "boolean") {
+        setLikedSet((prev) => {
+          const next = new Set(prev);
+          if (detail.value?.liked) next.add(detail.postId);
+          else next.delete(detail.postId);
+          return next;
+        });
+      }
+
+      if (typeof detail.value?.saved === "boolean") {
+        setSavedSet((prev) => {
+          const next = new Set(prev);
+          if (detail.value?.saved) next.add(detail.postId);
+          else next.delete(detail.postId);
+          return next;
+        });
+      }
+
+      setMoments((prev) => prev.map((moment) => {
+        if (moment.id !== detail.postId) return moment;
+
+        return {
+          ...moment,
+          viewer_liked: typeof detail.value?.liked === "boolean" ? detail.value.liked : moment.viewer_liked,
+          viewer_saved: typeof detail.value?.saved === "boolean" ? detail.value.saved : moment.viewer_saved,
+          like_count: typeof detail.value?.likeCount === "number" ? detail.value.likeCount : moment.like_count,
+          save_count: typeof detail.value?.saveCount === "number" ? detail.value.saveCount : moment.save_count,
+        };
+      }));
+    });
+  }, [ctxUser?.id]);
+
   const handleLike = useCallback((momentId: number) => {
     if (!requireAuth()) return;
+    if (!ctxUser?.id) return;
     const currentMoment = moments.find((moment) => moment.id === momentId);
     const wasLiked = currentMoment ? isMomentLiked(currentMoment) : likedSet.has(momentId);
+    const nextLikeCount = Math.max(0, (currentMoment?.like_count || 0) + (wasLiked ? -1 : 1));
     setLikedSet(prev => {
       const next = new Set(prev);
       if (wasLiked) next.delete(momentId); else next.add(momentId);
       return next;
     });
     setMoments(prev => prev.map(m =>
-      m.id === momentId ? { ...m, viewer_liked: !wasLiked, like_count: (m.like_count || 0) + (wasLiked ? -1 : 1) } : m
+      m.id === momentId ? { ...m, viewer_liked: !wasLiked, like_count: nextLikeCount } : m
     ));
+    writePostInteraction(ctxUser.id, momentId, {
+      liked: !wasLiked,
+      likeCount: nextLikeCount,
+    });
     fetch(`/api/posts/${momentId}/like`, { method: "POST", keepalive: true }).then(res => { if (!res.ok) throw res; }).catch(async (err) => {
+      const rollbackLikeCount = Math.max(0, nextLikeCount + (wasLiked ? 1 : -1));
       setLikedSet(prev => {
         const next = new Set(prev);
         if (wasLiked) next.add(momentId); else next.delete(momentId);
         return next;
       });
       setMoments(prev => prev.map(m =>
-        m.id === momentId ? { ...m, viewer_liked: wasLiked, like_count: (m.like_count || 0) + (wasLiked ? 1 : -1) } : m
+        m.id === momentId ? { ...m, viewer_liked: wasLiked, like_count: rollbackLikeCount } : m
       ));
+      writePostInteraction(ctxUser.id, momentId, {
+        liked: wasLiked,
+        likeCount: rollbackLikeCount,
+      });
       if (err instanceof Response && (err.status === 403 || err.status === 429)) {
         const data = await err.json().catch(() => ({}));
         feedimAlert("error", data.error || tErrors("likeLimitReached"));
       }
     });
-  }, [isMomentLiked, likedSet, moments, requireAuth, tErrors]);
+  }, [ctxUser?.id, isMomentLiked, likedSet, moments, requireAuth, tErrors]);
 
   const handleSave = useCallback((momentId: number) => {
     if (!requireAuth()) return;
+    if (!ctxUser?.id) return;
     const currentMoment = moments.find((moment) => moment.id === momentId);
     const wasSaved = currentMoment ? isMomentSaved(currentMoment) : savedSet.has(momentId);
+    const nextSaveCount = Math.max(0, (currentMoment?.save_count || 0) + (wasSaved ? -1 : 1));
     setSavedSet(prev => {
       const next = new Set(prev);
       if (wasSaved) next.delete(momentId); else next.add(momentId);
       return next;
     });
     setMoments(prev => prev.map(m =>
-      m.id === momentId ? { ...m, viewer_saved: !wasSaved, save_count: (m.save_count || 0) + (wasSaved ? -1 : 1) } : m
+      m.id === momentId ? { ...m, viewer_saved: !wasSaved, save_count: nextSaveCount } : m
     ));
+    writePostInteraction(ctxUser.id, momentId, {
+      saved: !wasSaved,
+      saveCount: nextSaveCount,
+    });
     fetch(`/api/posts/${momentId}/save`, { method: "POST", keepalive: true }).then(res => { if (!res.ok) throw res; }).catch(async (err) => {
+      const rollbackSaveCount = Math.max(0, nextSaveCount + (wasSaved ? 1 : -1));
       setSavedSet(prev => {
         const next = new Set(prev);
         if (wasSaved) next.add(momentId); else next.delete(momentId);
         return next;
       });
       setMoments(prev => prev.map(m =>
-        m.id === momentId ? { ...m, viewer_saved: wasSaved, save_count: (m.save_count || 0) + (wasSaved ? 1 : -1) } : m
+        m.id === momentId ? { ...m, viewer_saved: wasSaved, save_count: rollbackSaveCount } : m
       ));
+      writePostInteraction(ctxUser.id, momentId, {
+        saved: wasSaved,
+        saveCount: rollbackSaveCount,
+      });
       if (err instanceof Response && (err.status === 403 || err.status === 429)) {
         const data = await err.json().catch(() => ({}));
         feedimAlert("error", data.error || tErrors("saveLimitReached"));
       }
     });
-  }, [isMomentSaved, moments, requireAuth, savedSet, tErrors]);
+  }, [ctxUser?.id, isMomentSaved, moments, requireAuth, savedSet, tErrors]);
 
   const handleComment = useCallback((moment: Moment) => {
     if (!requireAuth()) return;
