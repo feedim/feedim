@@ -461,7 +461,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           )}
 
           {/* View count + visibility */}
-          <div className="relative z-[1] pointer-events-none flex items-center gap-1.5 mt-[5px] ml-[3px]">
+          <div className="relative z-[1] pointer-events-none flex items-center gap-1.5 mt-[4px] ml-[1px]">
             {(post.view_count ?? 0) > 0 && (
               <span className="text-[0.7rem] text-text-muted">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
             )}
