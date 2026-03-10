@@ -31,15 +31,14 @@ import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 
 import { getTranslations, getLocale } from "next-intl/server";
-import { getAlternateLanguages } from "@/lib/seo";
 import { getCachedPost } from "@/lib/postQueries";
 import { getCachedAuthorContent, getCachedFeaturedContent, getCachedNextVideos } from "@/lib/postPageRecommendations";
-
-const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
 import { renderMentionsAsHTML, renderMentionsInHTML } from "@/lib/mentionRenderer";
 import { headers } from "next/headers";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import LazyAvatar from "@/components/LazyAvatar";
+import { buildContentMetadata } from "@/lib/socialMetadata";
+import { getShareablePostUrl } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -52,11 +51,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!post) return { title: tp("postNotFound") };
 
   const locale = await getLocale();
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
   const title = post.meta_title || post.title;
-  const description = post.meta_description || post.excerpt || "";
-  const postPath = getPostUrl(encodeURIComponent(post.slug), post.content_type);
-  const url = `${baseUrl}${postPath}`;
+  const description = post.meta_description || post.excerpt || sanitizeHtml(post.content || "", { allowedTags: [], allowedAttributes: {} });
+  const postPath = getShareablePostUrl(encodeURIComponent(post.slug), post.content_type);
   const authorName = post.profiles?.full_name || post.profiles?.username || "Feedim";
 
   const keywords = post.meta_keywords
@@ -64,40 +61,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : undefined;
 
   const isVideo = post.content_type === "video" || post.content_type === "moment";
-  const ogImage = post.video_thumbnail || post.featured_image;
+  const ogImage = post.video_thumbnail || post.featured_image || post.profiles?.avatar_url || null;
 
-  return {
-    title: `${title} | Feedim`,
+  return buildContentMetadata({
+    title,
     description,
+    locale,
+    path: postPath,
+    authorName,
+    publishedTime: post.published_at,
+    modifiedTime: post.updated_at,
+    imageUrl: ogImage,
     keywords,
-    authors: [{ name: authorName }],
-    openGraph: {
-      title,
-      description,
-      type: isVideo ? "video.other" : "article",
-      url,
-      publishedTime: post.published_at,
-      modifiedTime: post.updated_at,
-      authors: [authorName],
-      images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : undefined,
-      ...(isVideo && post.video_url ? { videos: [{ url: post.video_url, type: "video/mp4" }] } : {}),
-      siteName: "Feedim",
-      locale: OG_LOCALES[locale] || "en_US",
-    },
-    twitter: {
-      card: isVideo ? "player" : "summary_large_image",
-      title,
-      description,
-      images: ogImage ? [ogImage] : undefined,
-    },
-    alternates: {
-      canonical: url,
-      languages: getAlternateLanguages(postPath),
-      types: {
-        'application/json+oembed': `${baseUrl}/api/oembed?url=${encodeURIComponent(url)}&format=json`,
-      },
-    },
-  };
+    videoUrl: isVideo ? post.video_url : null,
+    kind: isVideo ? "video" : "article",
+  });
 }
 
 export default async function PostPage({ params }: PageProps) {

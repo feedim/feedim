@@ -4,10 +4,9 @@ import "./globals.css";
 import { AuthModalProvider } from "@/components/AuthModal";
 import FeedimAlertProvider from "@/components/FeedimAlert";
 import RootClientBootstrap from "@/components/RootClientBootstrap";
-
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
-
+import { buildPageMetadata, getSiteUrl } from "@/lib/socialMetadata";
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",
@@ -18,7 +17,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const localeToOg: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
 const localeToHtml: Record<string, string> = { tr: "tr-TR", en: "en-US", az: "az-AZ" };
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -29,7 +27,15 @@ const inter = Inter({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("metadata");
   const locale = await getLocale();
+  const baseMetadata = buildPageMetadata({
+    title: t("title"),
+    description: t("ogDescription"),
+    locale,
+    path: "/",
+  });
+
   return {
+    ...baseMetadata,
     title: t("title"),
     description: t("description"),
     keywords: ["feedim", "content platform", "video platform", "blog", "explore", "share"],
@@ -38,7 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
       yandex: "15489be5145a1fa8",
     },
     authors: [{ name: "Feedim" }],
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+    metadataBase: new URL(getSiteUrl()),
     icons: {
       icon: [
         { url: "/favicon.png", sizes: "512x512", type: "image/png" },
@@ -49,20 +55,6 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     },
     manifest: "/manifest.json",
-    openGraph: {
-      title: t("title"),
-      description: t("ogDescription"),
-      type: "website",
-      locale: localeToOg[locale] || "tr_TR",
-      siteName: "Feedim",
-      images: [{ url: "/favicon-512x512.png", width: 512, height: 512, alt: "Feedim" }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("title"),
-      description: t("ogDescription"),
-      images: ["/favicon-512x512.png"],
-    },
   };
 }
 import { getAdsSettings } from "@/lib/siteSettings";
@@ -103,13 +95,13 @@ export default async function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              url: process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com",
+              url: getSiteUrl(),
               name: "Feedim",
               description: messages && typeof messages === 'object' && 'metadata' in messages ? (messages.metadata as Record<string, string>).siteDescription : "Discover and Share",
               inLanguage,
               potentialAction: {
                 "@type": "SearchAction",
-                target: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/explore?q={search_term_string}`,
+                target: `${getSiteUrl()}/explore?q={search_term_string}`,
                 "query-input": "required name=search_term_string",
               },
             }),
@@ -122,8 +114,8 @@ export default async function RootLayout({
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "Feedim",
-              url: process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com",
-              logo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com"}/favicon.png`,
+              url: getSiteUrl(),
+              logo: `${getSiteUrl()}/favicon.png`,
               sameAs: [],
             }),
           }}

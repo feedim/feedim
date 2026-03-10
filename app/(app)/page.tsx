@@ -1,14 +1,18 @@
 import { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "@/components/DashboardClient";
+import { buildPageMetadata } from "@/lib/socialMetadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("metadata");
-  return {
+  const locale = await getLocale();
+  return buildPageMetadata({
     title: t("homeTitle"),
     description: t("homeDescription"),
-  };
+    locale,
+    path: "/",
+  });
 }
 
 export const dynamic = "force-dynamic";

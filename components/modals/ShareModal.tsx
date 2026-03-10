@@ -6,6 +6,7 @@ import { Check, Link as LinkIcon, ChevronRight, Code2 } from "lucide-react";
 import { copyTextToClipboard } from "@/lib/copyTextToClipboard";
 import Modal from "./Modal";
 import { feedimAlert } from "@/components/FeedimAlert";
+import { getShareablePostUrl } from "@/lib/utils";
 
 interface ShareModalProps {
   open: boolean;
@@ -33,7 +34,8 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
   const [embedCopied, setEmbedCopied] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
 
-  const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${url}` : url;
+  const sharePath = postSlug ? getShareablePostUrl(postSlug, contentType) : url;
+  const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${sharePath}` : sharePath;
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://feedim.com";
   const isMoment = contentType === "moment";
   const embedCode = postSlug

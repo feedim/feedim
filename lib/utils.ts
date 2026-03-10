@@ -218,3 +218,10 @@ export function getPostUrl(slug: string, contentType?: string) {
     default: return `/${slug}`;
   }
 }
+
+export function getShareablePostUrl(slug: string, contentType?: string) {
+  switch (contentType) {
+    case "moment": return `/moments/${slug}`;
+    default: return getPostUrl(slug, contentType);
+  }
+}

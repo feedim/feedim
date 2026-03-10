@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { locales, defaultLocale } from '@/i18n/config'
-import { getPostUrl } from '@/lib/utils'
+import { getShareablePostUrl } from '@/lib/utils'
 import { encodeId } from '@/lib/hashId'
 
 function buildAlternates(baseUrl: string, path: string) {
@@ -80,7 +80,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (posts) {
       postPages = posts.map(post => {
-        const path = getPostUrl(post.slug, post.content_type)
+        const path = getShareablePostUrl(post.slug, post.content_type)
         return {
           url: `${baseUrl}${path}`,
           lastModified: post.updated_at || post.published_at || now,

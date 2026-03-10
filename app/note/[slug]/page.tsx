@@ -29,8 +29,8 @@ import LazyAvatar from "@/components/LazyAvatar";
 import { stripHtmlToText } from "@/lib/htmlToText";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPageRecommendations";
-
-const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
+import { buildContentMetadata } from "@/lib/socialMetadata";
+import { getShareablePostUrl } from "@/lib/utils";
 import AdBanner from "@/components/AdBanner";
 
 interface PageProps {
@@ -45,48 +45,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!post) return { title: tp("postNotFound") };
 
   const locale = await getLocale();
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://feedim.com";
   const title = post.meta_title || post.title;
-  const description = post.meta_description || post.excerpt || "";
-  const postPath = `/note/${encodeURIComponent(post.slug)}`;
-  const url = `${baseUrl}${postPath}`;
+  const description = post.meta_description || post.excerpt || stripHtmlToText(post.content || "");
+  const postPath = getShareablePostUrl(encodeURIComponent(post.slug), post.content_type);
   const authorName = post.profiles?.full_name || post.profiles?.username || "Feedim";
 
   const keywords = post.meta_keywords
     ? post.meta_keywords.split(",").map((k: string) => k.trim()).filter(Boolean)
     : undefined;
 
-  return {
-    title: `${title} | Feedim`,
+  return buildContentMetadata({
+    title,
     description,
+    locale,
+    path: postPath,
+    authorName,
+    publishedTime: post.published_at,
+    modifiedTime: post.updated_at,
+    imageUrl: post.featured_image || post.profiles?.avatar_url || null,
     keywords,
-    authors: [{ name: authorName }],
-    openGraph: {
-      title,
-      description,
-      type: "article",
-      url,
-      publishedTime: post.published_at,
-      modifiedTime: post.updated_at,
-      authors: [authorName],
-      images: post.featured_image ? [{ url: post.featured_image, width: 1200, height: 630 }] : undefined,
-      siteName: "Feedim",
-      locale: OG_LOCALES[locale] || "en_US",
-    },
-    twitter: {
-      card: post.featured_image ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: post.featured_image ? [post.featured_image] : undefined,
-    },
-    alternates: {
-      canonical: url,
-      languages: getAlternateLanguages(postPath),
-      types: {
-        'application/json+oembed': `${baseUrl}/api/oembed?url=${encodeURIComponent(url)}&format=json`,
-      },
-    },
-  };
+    kind: "article",
+  });
 }
 
 export default async function NotePage({ params, searchParams }: PageProps) {
