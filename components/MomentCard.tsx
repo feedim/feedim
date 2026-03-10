@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { renderMentionsAsHTML } from "@/lib/mentionRenderer";
 import LazyAvatar from "@/components/LazyAvatar";
 
+const OVERLAY_TEXT_SHADOW = "0 1px 4px rgba(0,0,0,0.45)";
 
 interface MomentCardProps {
   moment: {
@@ -341,7 +342,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <button
             onClick={(e) => { e.stopPropagation(); onLikesClick?.(); }}
             className="text-white text-[0.68rem] leading-none font-semibold active:scale-95 transition-transform"
-            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+            style={{ textShadow: OVERLAY_TEXT_SHADOW }}
           >
             {formatCount(displayLikeCount)}
           </button>
@@ -352,7 +353,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
             <MessageCircle strokeWidth={1.7} className="h-[27px] w-[27px] md:h-[23px] md:w-[23px] text-white" />
           </div>
-          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
+          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: OVERLAY_TEXT_SHADOW }}>
             {formatCount(moment.comment_count || 0)}
           </span>
         </button>
@@ -362,7 +363,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
             <Bookmark strokeWidth={1.7} className={`h-[27px] w-[27px] md:h-[23px] md:w-[23px] transition-transform ${saved ? "fill-white text-white scale-110" : "text-white"}`} />
           </div>
-          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
+          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: OVERLAY_TEXT_SHADOW }}>
             {formatCount(displaySaveCount)}
           </span>
         </button>
@@ -372,7 +373,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <div className="w-[43px] h-[43px] md:w-[39px] md:h-[39px] flex items-center justify-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
             <ShareIcon strokeWidth={1.7} className="h-[27px] w-[27px] md:h-[23px] md:w-[23px] text-white" />
           </div>
-          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
+          <span className="text-white text-[0.68rem] leading-none font-semibold" style={{ textShadow: OVERLAY_TEXT_SHADOW }}>
             {formatCount(moment.share_count || 0)}
           </span>
         </button>
@@ -396,9 +397,9 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
         )}
         <div className="flex items-center gap-2 mb-1.5">
           <Link href={`/u/${author?.username}`} className="flex items-center gap-2 min-w-0">
-            <LazyAvatar src={moment.profiles?.avatar_url} alt={moment.profiles?.username || ""} sizeClass="h-9 w-9" borderClass="border border-white/10" />
+            <LazyAvatar src={moment.profiles?.avatar_url} alt={moment.profiles?.username || ""} sizeClass="h-8 w-8" borderClass="border border-white/10" />
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-white font-medium truncate" style={{ fontSize: "0.84rem", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
+              <span className="text-white font-medium truncate" style={{ fontSize: "0.8rem", textShadow: OVERLAY_TEXT_SHADOW }}>
                 @{author?.username}
               </span>
               {(author?.is_verified || author?.role === "admin") && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} className="!w-3.5 !h-3.5 !min-w-[14px]" />}
@@ -408,7 +409,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
             href={`/u/${author?.username}`}
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 text-white text-[0.65rem] font-semibold border border-white/20 bg-transparent hover:bg-white/10 transition"
-            style={{ borderRadius: 6, padding: "1px 8px", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+            style={{ borderRadius: 6, padding: "1px 8px", textShadow: OVERLAY_TEXT_SHADOW }}
           >
             {tc("viewProfile")}
           </Link>
@@ -419,20 +420,20 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
           <p
             ref={titleRef}
             className={`text-white text-[0.82rem] font-medium leading-snug ${expanded ? "" : "line-clamp-2"}`}
-            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+            style={{ textShadow: OVERLAY_TEXT_SHADOW }}
             dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(moment.title) }}
           />
           {isClamped && !expanded && (
             <button
               onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
               className="text-white/70 text-[0.82rem] font-semibold hover:text-white transition"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+              style={{ textShadow: OVERLAY_TEXT_SHADOW }}
             >
               {tc("readMoreShort")}
             </button>
           )}
           {expanded && moment.published_at && (
-            <p className="text-white/50 text-[0.7rem] font-medium mt-0.5" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
+            <p className="text-white/50 text-[0.7rem] font-medium mt-0.5" style={{ textShadow: OVERLAY_TEXT_SHADOW }}>
               {formatRelativeDate(moment.published_at)}
             </p>
           )}
@@ -440,7 +441,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
             <button
               onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
               className="text-white/70 text-[0.82rem] font-semibold hover:text-white transition"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+              style={{ textShadow: OVERLAY_TEXT_SHADOW }}
             >
               {tc("showLess")}
             </button>
@@ -475,7 +476,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
             <div className="overflow-hidden max-w-[200px]">
               <span
                 className="text-white/90 text-[0.68rem] font-medium whitespace-nowrap animate-marquee"
-                style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+                style={{ textShadow: OVERLAY_TEXT_SHADOW }}
               >
                 {moment.sounds.title}{moment.sounds.artist ? ` \u00B7 ${moment.sounds.artist}` : ""}
               </span>

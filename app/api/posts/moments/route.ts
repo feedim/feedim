@@ -14,10 +14,243 @@ import {
 import { getViewerAffinity } from "@/lib/viewerAffinity";
 import { attachViewerPostInteractions } from "@/lib/postViewerInteractions";
 
+async function buildMomentsResponse(
+  admin: ReturnType<typeof createAdminClient>,
+  pageIds: number[],
+  hasMore: boolean,
+  userId?: string,
+  followedUserIdSet: Set<string> = new Set<string>(),
+) {
+  if (pageIds.length === 0) {
+    return NextResponse.json({ moments: [], hasMore: false });
+  }
+
+  const { data: fullMoments, error } = await admin
+    .from("posts")
+    .select(`
+      id, title, slug, excerpt, featured_image, video_url, hls_url, video_duration, video_thumbnail, blurhash, visibility, is_nsfw, moderation_category,
+      like_count, comment_count, view_count, save_count, share_count, published_at, author_id,
+      profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private),
+      post_tags(tag_id, tags(id, name, slug)),
+      sounds!posts_sound_id_fkey(id, title, artist, audio_url, duration, status, cover_image_url, is_original)
+    `)
+    .in("id", pageIds)
+    .in("status", ["published", "moderation"]);
+
+  if (error) {
+    return safeError(error);
+  }
+
+  const postMap = new Map((fullMoments || []).map((moment: any) => [moment.id, moment]));
+  const ordered = pageIds
+    .map((id) => postMap.get(id))
+    .filter((moment: any) => {
+      if (!moment) return false;
+      const author = Array.isArray(moment.profiles) ? moment.profiles[0] : moment.profiles;
+      if (!author) return false;
+      if (author.status && author.status !== "active") return false;
+      if (author.account_private && author.user_id !== userId && !followedUserIdSet.has(author.user_id)) return false;
+      return true;
+    })
+    .map((moment: any) => ({
+      ...moment,
+      profiles: Array.isArray(moment.profiles) ? moment.profiles[0] : moment.profiles,
+      sounds: Array.isArray(moment.sounds) ? moment.sounds[0] : (moment.sounds || null),
+    }));
+
+  const enrichedMoments = userId
+    ? await attachViewerPostInteractions(ordered, userId, admin)
+    : ordered;
+
+  return NextResponse.json({
+    moments: enrichedMoments,
+    hasMore,
+  });
+}
+
+async function handleFollowingMoments(
+  admin: ReturnType<typeof createAdminClient>,
+  user: { id: string },
+  limit: number,
+  excludeIds: Set<number>,
+  followedUserIds: string[],
+  followedTagIds: number[],
+  followedUserIdSet: Set<string>,
+  blockedIds: Set<string>,
+  isStaff: boolean,
+  likedAuthorIds: Set<string>,
+  viewerAffinity: { language?: string | null; country?: string | null },
+  likedTagIds: Set<number>,
+  trendingTagIds: Set<number>,
+  userInterestIds: Set<number>,
+) {
+  if (followedUserIds.length === 0 && followedTagIds.length === 0) {
+    return null;
+  }
+
+  const candidateFields = "id, author_id, content_type, published_at, trending_score, quality_score, spam_score, like_count, comment_count, save_count, share_count, view_count, is_nsfw, status";
+
+  const [userPostsResult, tagPostsResult] = await Promise.all([
+    followedUserIds.length > 0
+      ? admin
+          .from("posts")
+          .select(candidateFields)
+          .in("author_id", followedUserIds)
+          .eq("content_type", "moment")
+          .in("status", ["published", "moderation"])
+          .order("published_at", { ascending: false })
+          .limit(120)
+          .then((result) => (result.data || []).map((post: any) => ({ ...post, source: "followed" as const })))
+      : Promise.resolve([] as FeedCandidate[]),
+
+    followedTagIds.length > 0
+      ? admin
+          .from("post_tags")
+          .select("post_id")
+          .in("tag_id", followedTagIds)
+          .limit(240)
+          .then((result) => result.data || [])
+      : Promise.resolve([] as { post_id: number }[]),
+  ]);
+
+  let tagPosts: FeedCandidate[] = [];
+  if (tagPostsResult.length > 0) {
+    const existingIds = new Set(userPostsResult.map((post) => post.id));
+    const tagPostIds = tagPostsResult
+      .map((row) => row.post_id)
+      .filter((id) => !existingIds.has(id));
+
+    if (tagPostIds.length > 0) {
+      const { data: validPosts } = await admin
+        .from("posts")
+        .select(candidateFields)
+        .in("id", tagPostIds)
+        .eq("content_type", "moment")
+        .in("status", ["published", "moderation"]);
+
+      tagPosts = (validPosts || []).map((post: any) => ({ ...post, source: "tag" as const }));
+    }
+  }
+
+  const dedupeMap = new Map<number, FeedCandidate>();
+  for (const candidate of [...userPostsResult, ...tagPosts]) {
+    if (!dedupeMap.has(candidate.id)) dedupeMap.set(candidate.id, candidate);
+  }
+
+  const candidates = Array.from(dedupeMap.values()).filter((candidate) => {
+    if (blockedIds.has(candidate.author_id)) return false;
+    if (candidate.is_nsfw && candidate.author_id !== user.id && !isStaff) return false;
+    if (candidate.status === "moderation" && candidate.author_id !== user.id && !isStaff) return false;
+    return candidate.content_type === "moment";
+  });
+
+  if (candidates.length === 0) {
+    return NextResponse.json({ moments: [], hasMore: false });
+  }
+
+  const candidateIds = candidates.map((candidate) => candidate.id);
+  const authorIds = [...new Set(candidates.map((candidate) => candidate.author_id))];
+  const followedTagIdSet = new Set(followedTagIds);
+
+  const [authorProfiles, postTagMappings, postInterestMappings] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("user_id, profile_score, is_verified, follower_count, language, country")
+      .in("user_id", authorIds)
+      .then((result) => {
+        const map = new Map<string, any>();
+        for (const profile of (result.data || [])) map.set(profile.user_id, profile);
+        return map;
+      }),
+
+    (followedTagIds.length > 0 || likedTagIds.size > 0 || trendingTagIds.size > 0)
+      ? admin
+          .from("post_tags")
+          .select("post_id, tag_id")
+          .in("post_id", candidateIds)
+          .then((result) => {
+            const map = new Map<number, number[]>();
+            for (const row of (result.data || [])) {
+              if (!map.has(row.post_id)) map.set(row.post_id, []);
+              map.get(row.post_id)!.push(row.tag_id);
+            }
+            return map;
+          })
+      : Promise.resolve(new Map<number, number[]>()),
+
+    userInterestIds.size > 0
+      ? admin
+          .from("post_interests")
+          .select("post_id, interest_id")
+          .in("post_id", candidateIds)
+          .then((result) => {
+            const map = new Map<number, number[]>();
+            for (const row of (result.data || [])) {
+              if (!map.has(row.post_id)) map.set(row.post_id, []);
+              map.get(row.post_id)!.push(row.interest_id);
+            }
+            return map;
+          })
+      : Promise.resolve(new Map<number, number[]>()),
+  ]);
+
+  for (const candidate of candidates) {
+    const profile = authorProfiles.get(candidate.author_id);
+    if (profile) {
+      candidate.author_profile_score = profile.profile_score || 0;
+      candidate.author_is_verified = profile.is_verified || false;
+      candidate.author_follower_count = profile.follower_count || 0;
+      candidate.author_language = profile.language || undefined;
+      candidate.author_country = profile.country || undefined;
+    }
+
+    const postTags = postTagMappings.get(candidate.id) || [];
+    candidate.matched_tag_count = followedTagIdSet.size > 0
+      ? postTags.filter((tagId) => followedTagIdSet.has(tagId)).length
+      : 0;
+    candidate.matched_liked_tag_count = likedTagIds.size > 0
+      ? postTags.filter((tagId) => likedTagIds.has(tagId)).length
+      : 0;
+    candidate.has_trending_tag = postTags.some((tagId) => trendingTagIds.has(tagId));
+
+    const postInterests = postInterestMappings.get(candidate.id) || [];
+    candidate.matched_interest_count = postInterests.filter((interestId) => userInterestIds.has(interestId)).length;
+  }
+
+  const context: FeedContext = {
+    followedUserIds: followedUserIdSet,
+    likedAuthorIds,
+    blockedIds,
+    userId: user.id,
+    userLanguage: viewerAffinity.language || undefined,
+    userCountry: viewerAffinity.country || undefined,
+    likedTagIds,
+  };
+
+  const scored = candidates.map((candidate) => ({
+    candidate,
+    score: computeFeedScore(candidate, context),
+  }));
+
+  const diversified = enforceDiversity(scored, 120, candidates.length >= 12);
+  const available = diversified.filter((candidate) => !excludeIds.has(candidate.id));
+  const pageCandidates = available.slice(0, limit);
+  const hasMore = available.length > limit;
+
+  return buildMomentsResponse(
+    admin,
+    pageCandidates.map((candidate) => candidate.id),
+    hasMore,
+    user.id,
+    followedUserIdSet,
+  );
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get("limit") || String(MOMENT_PAGE_SIZE)), 20);
+    const tab = searchParams.get("tab") || "for-you";
     const excludeParam = searchParams.get("exclude");
     const excludeIds = excludeParam
       ? new Set(excludeParam.split(",").map(Number).filter(n => !isNaN(n)).slice(0, 200))
@@ -28,6 +261,10 @@ export async function GET(req: NextRequest) {
     // Get user for NSFW/block filtering
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (tab === "following" && !user) {
+      const tErrors = await getTranslations("apiErrors");
+      return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+    }
 
     // Check staff role for NSFW visibility
     let isStaff = false;
@@ -37,7 +274,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Cached user data (parallel)
-    const [blockedIds, followedUserIds, likedAuthorIds, viewerAffinity, likedTagIds, trendingTagIds, userInterestIds] = await Promise.all([
+    const [blockedIds, followedUserIds, followedTagIds, likedAuthorIds, viewerAffinity, likedTagIds, trendingTagIds, userInterestIds] = await Promise.all([
       user ? cached(`user:${user.id}:blocks`, 30, async () => {
         const { data: blocks } = await admin
           .from("blocks")
@@ -53,6 +290,14 @@ export async function GET(req: NextRequest) {
           .eq("follower_id", user.id);
         return (follows || []).map(f => f.following_id);
       }) : Promise.resolve([] as string[]),
+
+      user ? cached(`user:${user.id}:tag-follows`, 30, async () => {
+        const { data: followedTags } = await admin
+          .from("tag_follows")
+          .select("tag_id")
+          .eq("user_id", user.id);
+        return (followedTags || []).map((follow) => follow.tag_id);
+      }) : Promise.resolve([] as number[]),
 
       user ? cached(`user:${user.id}:liked-authors`, 600, async () => {
         const { data: recentLikes } = await admin
@@ -106,6 +351,29 @@ export async function GET(req: NextRequest) {
     ]);
 
     const followedUserIdSet = new Set(followedUserIds.filter(id => !blockedIds.has(id)));
+
+    if (user && tab === "following") {
+      const followingResponse = await handleFollowingMoments(
+        admin,
+        user,
+        limit,
+        excludeIds,
+        followedUserIds,
+        followedTagIds,
+        followedUserIdSet,
+        blockedIds,
+        isStaff,
+        likedAuthorIds,
+        viewerAffinity,
+        likedTagIds,
+        trendingTagIds,
+        userInterestIds,
+      );
+      if (followingResponse) {
+        return followingResponse;
+      }
+    }
+
     const cutoff30d = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
     const candidateFields = "id, author_id, content_type, published_at, trending_score, quality_score, spam_score, like_count, comment_count, save_count, share_count, view_count, is_nsfw, status";
 
@@ -300,54 +568,13 @@ export async function GET(req: NextRequest) {
     const pageCandidates = available.slice(0, limit);
     const hasMore = available.length > limit;
 
-    if (pageCandidates.length === 0) {
-      return NextResponse.json({ moments: [], hasMore: false });
-    }
-
-    // Fetch full moment data with joins (sounds, post_tags)
-    const pageIds = pageCandidates.map(c => c.id);
-    const { data: fullMoments, error } = await admin
-      .from("posts")
-      .select(`
-        id, title, slug, excerpt, featured_image, video_url, hls_url, video_duration, video_thumbnail, blurhash, visibility, is_nsfw, moderation_category,
-        like_count, comment_count, view_count, save_count, share_count, published_at, author_id,
-        profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private),
-        post_tags(tag_id, tags(id, name, slug)),
-        sounds!posts_sound_id_fkey(id, title, artist, audio_url, duration, status, cover_image_url, is_original)
-      `)
-      .in("id", pageIds)
-      .in("status", ["published", "moderation"]);
-
-    if (error) {
-      return safeError(error);
-    }
-
-    // Maintain score order + filter inactive/private
-    const postMap = new Map((fullMoments || []).map((m: any) => [m.id, m]));
-    const ordered = pageIds
-      .map(id => postMap.get(id))
-      .filter((m: any) => {
-        if (!m) return false;
-        const author = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-        if (!author) return false;
-        if (author.status && author.status !== "active") return false;
-        if (author.account_private && author.user_id !== user?.id && !followedUserIdSet.has(author.user_id)) return false;
-        return true;
-      })
-      .map((m: any) => ({
-        ...m,
-        profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles,
-        sounds: Array.isArray(m.sounds) ? m.sounds[0] : (m.sounds || null),
-      }));
-
-    const enrichedMoments = user
-      ? await attachViewerPostInteractions(ordered, user.id, admin)
-      : ordered;
-
-    return NextResponse.json({
-      moments: enrichedMoments,
+    return buildMomentsResponse(
+      admin,
+      pageCandidates.map((candidate) => candidate.id),
       hasMore,
-    });
+      user?.id,
+      followedUserIdSet,
+    );
   } catch (err) {
     console.error("[moments] Error:", err);
     const tErrors = await getTranslations("apiErrors");

@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { redirectToLogin } from "@/lib/loginNext";
 
 import ColumnHeader from "@/components/ColumnHeader";
 import MomentsCarousel from "@/components/MomentsCarousel";
@@ -11,38 +12,55 @@ import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import VideoGridCard from "@/components/VideoGridCard";
 import type { VideoGridItem } from "@/components/VideoGridCard";
-import { fetchWithCache, readCache } from "@/lib/fetchWithCache";
+import FeedFilterSelect from "@/components/FeedFilterSelect";
+import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
 import { useAuthModal } from "@/components/AuthModal";
 import { isBlockedContent } from "@/lib/blockedWords";
+import { useUser } from "@/components/UserContext";
 
 type VideoPost = VideoGridItem & { like_count?: number };
-
-const VIDEO_URL = "/api/posts/feed?tab=videos&page=1";
+type FeedMode = "for-you" | "following";
 
 export default function VideoPage() {
   useSearchParams();
   const t = useTranslations("video");
+  const tExplore = useTranslations("explore");
+  const tFeed = useTranslations("feed");
   const [videos, setVideos] = useState<VideoPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [feedMode, setFeedMode] = useState<FeedMode>("for-you");
   const { requireAuth } = useAuthModal();
+  const { user: currentUser, isLoggedIn } = useUser();
+  const cacheScope = currentUser?.id ? `user:${currentUser.id}:video-feed` : "guest:video-feed";
+  const filterOptions = [
+    { id: "for-you", label: tFeed("forYou") },
+    { id: "following", label: tFeed("following") },
+  ];
+
+  const getVideoUrl = useCallback((pageNum: number, mode: FeedMode = feedMode) => {
+    const baseUrl = mode === "following"
+      ? `/api/posts/feed?tab=following&content_type=video&page=${pageNum}`
+      : `/api/posts/feed?tab=videos&page=${pageNum}`;
+    return withCacheScope(baseUrl, cacheScope);
+  }, [cacheScope, feedMode]);
 
   // Read cache before first paint — avoids skeleton flash for cached data
   useLayoutEffect(() => {
-    const cached = readCache(VIDEO_URL) as any;
+    const cached = readCache(getVideoUrl(1, feedMode)) as any;
     if (cached?.posts?.length) {
       setVideos(cached.posts);
       setLoading(false);
     }
-  }, []);
+  }, [feedMode, getVideoUrl]);
 
-  const loadVideos = useCallback(async (pageNum: number) => {
+  const loadVideos = useCallback(async (pageNum: number, mode: FeedMode = feedMode) => {
     if (pageNum === 1) setLoading(true);
     try {
       const data = await fetchWithCache(
-        `/api/posts/feed?tab=videos&page=${pageNum}`,
+        getVideoUrl(pageNum, mode),
         { ttlSeconds: 30, forceRefresh: pageNum > 1 }
       ) as any;
       const posts = data.posts || [];
@@ -61,25 +79,47 @@ export default function VideoPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [feedMode, getVideoUrl]);
 
   useEffect(() => {
-    loadVideos(1);
-  }, [loadVideos]);
+    setVideos([]);
+    setHasMore(false);
+    setPage(1);
+    setLoading(true);
+    void loadVideos(1, feedMode);
+  }, [feedMode, loadVideos]);
 
   const loadMore = async () => {
     const user = await requireAuth();
     if (!user) return;
     setLoadingMore(true);
-    await loadVideos(page + 1);
+    await loadVideos(page + 1, feedMode);
     setLoadingMore(false);
+  };
+
+  const handleFeedModeChange = (nextValue: string) => {
+    const nextMode = nextValue as FeedMode;
+    if (nextMode === "following" && !isLoggedIn) {
+      redirectToLogin();
+      return;
+    }
+    setFeedMode(nextMode);
   };
 
   return (
     <div className="min-h-screen">
-      <ColumnHeader />
+      <ColumnHeader
+        rightAction={
+          <FeedFilterSelect
+            value={feedMode}
+            options={filterOptions}
+            onChange={handleFeedModeChange}
+            modalTitle={tExplore("filter")}
+          />
+        }
+      />
       {/* Moments (Shorts) carousel */}
-      <MomentsCarousel maxItems={8} noBg />
+      <MomentsCarousel maxItems={8} noBg feedMode={feedMode} />
 
       <div className="pb-8">
         {loading ? (

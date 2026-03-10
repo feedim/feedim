@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useState, useCallback, useRef } from "react
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
+import { redirectToLogin } from "@/lib/loginNext";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import PostCardSkeleton from "@/components/PostCardSkeleton";
@@ -14,6 +15,7 @@ import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache"
 import { useAuthModal } from "@/components/AuthModal";
 import { isBlockedContent } from "@/lib/blockedWords";
 import LazyAvatar from "@/components/LazyAvatar";
+import FeedFilterSelect from "@/components/FeedFilterSelect";
 
 interface NotePost {
   id: number;
@@ -51,33 +53,43 @@ interface NotePost {
 
 export default function CommunityNotesPage() {
   const t = useTranslations("notes");
+  const tExplore = useTranslations("explore");
+  const tFeed = useTranslations("feed");
   const [posts, setPosts] = useState<NotePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [feedMode, setFeedMode] = useState<"for-you" | "following">("for-you");
   const [interactions, setInteractions] = useState<Record<number, { liked: boolean; saved: boolean }>>({});
   const fetchedInteractionIds = useRef(new Set<number>());
   const router = useRouter();
   const { user: ctxUser, isLoggedIn } = useUser();
   const { requireAuth } = useAuthModal();
   const cacheScope = ctxUser?.id ? `user:${ctxUser.id}:pi2` : "guest:pi2";
+  const filterOptions = [
+    { id: "for-you", label: tFeed("forYou") },
+    { id: "following", label: tFeed("following") },
+  ];
 
-  const getNotesUrl = useCallback((pageNum: number) => (
-    withCacheScope(`/api/posts/feed?tab=notes&page=${pageNum}`, cacheScope)
-  ), [cacheScope]);
+  const getNotesUrl = useCallback((pageNum: number, mode: "for-you" | "following" = feedMode) => {
+    const baseUrl = mode === "following"
+      ? `/api/posts/feed?tab=following&content_type=note&page=${pageNum}`
+      : `/api/posts/feed?tab=notes&page=${pageNum}`;
+    return withCacheScope(baseUrl, cacheScope);
+  }, [cacheScope, feedMode]);
 
   useLayoutEffect(() => {
-    const cached = readCache(getNotesUrl(1)) as any;
+    const cached = readCache(getNotesUrl(1, feedMode)) as any;
     if (!cached?.posts) return;
     setPosts(cached.posts || []);
     setHasMore(cached.hasMore || false);
     setPage(1);
     setLoading(false);
-  }, [getNotesUrl]);
+  }, [feedMode, getNotesUrl]);
 
-  const loadNotes = useCallback(async (pageNum: number) => {
-    const url = getNotesUrl(pageNum);
+  const loadNotes = useCallback(async (pageNum: number, mode: "for-you" | "following" = feedMode) => {
+    const url = getNotesUrl(pageNum, mode);
     if (pageNum === 1) {
     }
     try {
@@ -98,11 +110,16 @@ export default function CommunityNotesPage() {
     } finally {
       setLoading(false);
     }
-  }, [getNotesUrl]);
+  }, [feedMode, getNotesUrl]);
 
   useEffect(() => {
-    loadNotes(1);
-  }, [loadNotes]);
+    setPosts([]);
+    setHasMore(false);
+    setPage(1);
+    fetchedInteractionIds.current.clear();
+    setLoading(true);
+    void loadNotes(1, feedMode);
+  }, [feedMode, loadNotes]);
 
   // Batch-fetch liked/saved status
   useEffect(() => {
@@ -130,12 +147,31 @@ export default function CommunityNotesPage() {
     const user = await requireAuth();
     if (!user) return;
     setLoadingMore(true);
-    await loadNotes(page + 1);
+    await loadNotes(page + 1, feedMode);
     setLoadingMore(false);
   };
 
+  const handleFeedModeChange = (nextValue: string) => {
+    const nextMode = nextValue as "for-you" | "following";
+    if (nextMode === "following" && !isLoggedIn) {
+      redirectToLogin();
+      return;
+    }
+    setFeedMode(nextMode);
+  };
+
   return (
-    <AppLayout headerTitle={t("pageTitle")}>
+    <AppLayout
+      headerTitle={t("pageTitle")}
+      headerRightAction={
+        <FeedFilterSelect
+          value={feedMode}
+          options={filterOptions}
+          onChange={handleFeedModeChange}
+          modalTitle={tExplore("filter")}
+        />
+      }
+    >
       {/* Create Note Box */}
       <div className="px-2.5 sm:px-3 mt-4 mb-3">
         <button

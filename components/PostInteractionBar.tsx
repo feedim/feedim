@@ -666,7 +666,7 @@ export default function PostInteractionBar({
             liked ? "bg-error/10 text-error" : "bg-bg-secondary text-text-primary hover:text-error"
           )}
         >
-          <Heart className={cn("h-[17px] w-[17px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
+          <Heart className={cn("h-[18px] w-[18px] transition-transform", liked && "fill-current", likeAnimating && "scale-125")} />
           <span>{formatCount(displayLikeCount, locale)}</span>
         </button>
 
@@ -680,7 +680,7 @@ export default function PostInteractionBar({
           aria-label={t('tooltip.comment')}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
-          <MessageCircle className="h-[17px] w-[17px]" />
+          <MessageCircle className="h-[18px] w-[18px]" />
           <span>{formatCount(liveCommentCount, locale)}</span>
         </button>
 
@@ -695,7 +695,7 @@ export default function PostInteractionBar({
             saved ? "bg-accent-main/10 text-accent-main" : "bg-bg-secondary text-text-primary hover:text-accent-main"
           )}
         >
-          <Bookmark className={cn("h-[17px] w-[17px]", saved && "fill-current")} />
+          <Bookmark className={cn("h-[18px] w-[18px]", saved && "fill-current")} />
           <span>{formatCount(displaySaveCount, locale)}</span>
         </button>
 
@@ -709,7 +709,7 @@ export default function PostInteractionBar({
           aria-label={t('tooltip.share')}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.82rem] font-semibold bg-bg-secondary text-text-primary hover:text-accent-main transition"
         >
-          <ShareIcon className="h-[17px] w-[17px]" />
+          <ShareIcon className="h-[18px] w-[18px]" />
           <span>{formatCount(shareCount, locale)}</span>
         </button>
         </div>

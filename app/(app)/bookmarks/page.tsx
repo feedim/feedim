@@ -4,14 +4,14 @@ import { useSearchParams } from "next/navigation";
 
 import { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Check, LayoutGrid, BookOpen, PenLine, Clapperboard, Film } from "lucide-react";
+import { LayoutGrid, BookOpen, PenLine, Clapperboard, Film } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import PostCard from "@/components/PostCard";
 import PostCardSkeleton from "@/components/PostCardSkeleton";
 import EmptyState from "@/components/EmptyState";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
-import Modal from "@/components/modals/Modal";
+import FeedFilterSelect from "@/components/FeedFilterSelect";
 import { FEED_PAGE_SIZE } from "@/lib/constants";
 import { useAuthModal } from "@/components/AuthModal";
 import { useUser } from "@/components/UserContext";
@@ -23,7 +23,6 @@ export default function BookmarksPage() {
   useSearchParams();
   const t = useTranslations();
   const [filter, setFilter] = useState<BookmarkFilter>("all");
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -147,7 +146,6 @@ export default function BookmarksPage() {
 
   const handleFilterChange = (f: BookmarkFilter) => {
     setFilter(f);
-    setFilterModalOpen(false);
     setPosts([]);
     setPage(1);
     setHasMore(false);
@@ -155,20 +153,19 @@ export default function BookmarksPage() {
     loadBookmarks(1, f);
   };
 
-  const currentFilterLabel = filterOptions.find(o => o.id === filter)?.label || t("bookmarks.all");
-
-  const filterButton = (
-    <button
-      onClick={() => setFilterModalOpen(true)}
-      className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full bg-bg-secondary hover:bg-bg-elevated transition"
-    >
-      {currentFilterLabel}
-      <ChevronDown className="h-3.5 w-3.5" />
-    </button>
-  );
-
   return (
-    <AppLayout headerTitle={t("bookmarks.title")} hideRightSidebar headerRightAction={filterButton}>
+    <AppLayout
+      headerTitle={t("bookmarks.title")}
+      hideRightSidebar
+      headerRightAction={
+        <FeedFilterSelect
+          value={filter}
+          options={filterOptions}
+          onChange={(next) => handleFilterChange(next as BookmarkFilter)}
+          modalTitle={t("bookmarks.filterTitle")}
+        />
+      }
+    >
       <div className="sm:px-3">
         {loading && posts.length === 0 ? (
           <PostCardSkeleton count={5} />
@@ -198,29 +195,6 @@ export default function BookmarksPage() {
           />
         )}
       </div>
-
-      <Modal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title={t("bookmarks.filterTitle")} size="sm">
-        <div className="p-2 space-y-1">
-          {filterOptions.map(opt => {
-            const Icon = opt.icon;
-            return (
-              <button
-                key={opt.id}
-                onClick={() => handleFilterChange(opt.id)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-[0.88rem] font-medium transition hover:bg-bg-tertiary ${
-                  filter === opt.id ? "text-accent-main" : "text-text-primary"
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Icon className="h-[18px] w-[18px]" />
-                  {opt.label}
-                </span>
-                {filter === opt.id && <Check className="h-4.5 w-4.5 text-accent-main" />}
-              </button>
-            );
-          })}
-        </div>
-      </Modal>
     </AppLayout>
   );
 }

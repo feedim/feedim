@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, Suspense, lazy, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import MomentCard from "@/components/MomentCard";
 import BackButton from "@/components/BackButton";
@@ -14,6 +15,7 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import { smartBack } from "@/lib/smartBack";
 import { Volume2, VolumeX } from "lucide-react";
 import MomentAdCard from "@/components/MomentAdCard";
+import FeedFilterSelect from "@/components/FeedFilterSelect";
 import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
 import { readPostInteraction, subscribePostInteractions, writePostInteraction } from "@/lib/postInteractionStore";
 
@@ -89,6 +91,9 @@ interface InteractionResponse {
   interactions?: Record<string, InteractionStatus>;
 }
 
+const AD_DISMISS_DELAY_MS = 400;
+type FeedMode = "for-you" | "following";
+
 type IdleWindow = Window & {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
@@ -141,6 +146,9 @@ function MomentsContent() {
   const { isLoggedIn, user: ctxUser } = useUser();
   const locale = useLocale();
   const t = useTranslations("moments");
+  const tExplore = useTranslations("explore");
+  const tFeed = useTranslations("feed");
+  const tModals = useTranslations("modals");
   const tErrors = useTranslations("errors");
   const tTooltip = useTranslations("tooltip");
   const momentsCacheScope = `${locale}:${ctxUser?.id || "guest"}:pi2`;
@@ -148,10 +156,14 @@ function MomentsContent() {
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [feedMode, setFeedMode] = useState<FeedMode>("for-you");
   const [activeDisplayIndex, setActiveDisplayIndex] = useState(0);
   const [settledIndex, setSettledIndex] = useState(0);
   const pendingActiveRef = useRef<number | null>(null);
   const scrollSettledRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const scrollIdleTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const suppressIntersectionUntilRef = useRef(0);
+  const [scrollIdleTick, setScrollIdleTick] = useState(0);
   const [likedSet, setLikedSet] = useState<Set<number>>(new Set());
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [globalMuted, setGlobalMuted] = useState(true);
@@ -159,10 +171,14 @@ function MomentsContent() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const perfHintsRef = useRef<MomentsPerfHints>(getMomentsPerfHints());
   const adDismissTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const filterOptions = [
+    { id: "for-you", label: tFeed("forYou") },
+    { id: "following", label: tModals("followings") },
+  ];
 
-  const getMomentsUrl = useCallback((excludeIds?: number[]) => (
-    withCacheScope(`/api/posts/moments?limit=10${excludeIds?.length ? `&exclude=${excludeIds.join(",")}` : ""}&locale=${locale}&_t=${Date.now()}`, momentsCacheScope)
-  ), [locale, momentsCacheScope]);
+  const getMomentsUrl = useCallback((excludeIds?: number[], mode: FeedMode = feedMode) => (
+    withCacheScope(`/api/posts/moments?limit=10${excludeIds?.length ? `&exclude=${excludeIds.join(",")}` : ""}&locale=${locale}&tab=${mode}&_t=${Date.now()}`, momentsCacheScope)
+  ), [feedMode, locale, momentsCacheScope]);
 
   // Idle detection — "Are you still watching?" after 15 min of no interaction
   const [idlePaused, setIdlePaused] = useState(false);
@@ -335,9 +351,9 @@ function MomentsContent() {
     return () => document.documentElement.removeAttribute("data-moments-active");
   }, []);
 
-  const loadMoments = useCallback(async (excludeIds?: number[]) => {
+  const loadMoments = useCallback(async (excludeIds?: number[], mode: FeedMode = feedMode) => {
     try {
-      const url = getMomentsUrl(excludeIds);
+      const url = getMomentsUrl(excludeIds, mode);
       const data = await fetchWithCache(url, { ttlSeconds: 0, forceRefresh: true }) as {
         moments?: Moment[];
         hasMore?: boolean;
@@ -346,7 +362,7 @@ function MomentsContent() {
     } catch {
       return { moments: [], hasMore: false };
     }
-  }, [getMomentsUrl]);
+  }, [feedMode, getMomentsUrl]);
 
   const seedMomentInteractions = useCallback((items: Moment[]) => {
     const likedIds = items.filter((item) => item.viewer_liked === true).map((item) => item.id);
@@ -418,7 +434,7 @@ function MomentsContent() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const data = await loadMoments();
+      const data = await loadMoments(undefined, feedMode);
       let items = data.moments;
 
       if (startSlug) {
@@ -445,7 +461,7 @@ function MomentsContent() {
 
       hydrateInteractions(itemsWithOverrides);
     })();
-  }, [applyStoredInteractions, hydrateInteractions, loadMoments, startSlug]);
+  }, [applyStoredInteractions, feedMode, hydrateInteractions, loadMoments, startSlug]);
 
   // Preload first visible moment video for faster initial playback
   useEffect(() => {
@@ -493,6 +509,7 @@ function MomentsContent() {
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
+        if (Date.now() < suppressIntersectionUntilRef.current) return;
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const idx = Number(entry.target.getAttribute("data-index"));
@@ -515,6 +532,26 @@ function MomentsContent() {
     return () => {
       observerRef.current?.disconnect();
       clearTimeout(scrollSettledRef.current);
+      clearTimeout(scrollIdleTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      clearTimeout(scrollIdleTimeoutRef.current);
+      scrollIdleTimeoutRef.current = setTimeout(() => {
+        setScrollIdleTick((prev) => prev + 1);
+      }, 220);
+    };
+
+    handleScroll();
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      clearTimeout(scrollIdleTimeoutRef.current);
+      container.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -554,38 +591,44 @@ function MomentsContent() {
     clearTimeout(adDismissTimeoutRef.current);
     const item = displayItems[settledIndex];
     if (!item || item.type === "ad") return;
+    if (scrollIdleTick === 0) return;
 
-    let dismissCount = 0;
     const toAdd: number[] = [];
 
     for (let i = 0; i < settledIndex; i++) {
       const di = displayItems[i];
       if (di.type === "ad" && !di.dismissed && !dismissedAdKeys.has(di.adKey)) {
         toAdd.push(di.adKey);
-        dismissCount++;
       }
     }
     if (toAdd.length === 0) return;
 
     adDismissTimeoutRef.current = setTimeout(() => {
-      setDismissedAdKeys(prev => {
-        const next = new Set(prev);
-        toAdd.forEach(k => next.add(k));
-        return next;
+      const container = containerRef.current;
+      const anchoredDisplayIndex = settledIndex;
+      suppressIntersectionUntilRef.current = Date.now() + 320;
+
+      flushSync(() => {
+        setActiveDisplayIndex(anchoredDisplayIndex);
+        setSettledIndex(anchoredDisplayIndex);
+        setDismissedAdKeys(prev => {
+          const next = new Set(prev);
+          toAdd.forEach(k => next.add(k));
+          return next;
+        });
       });
 
-      if (dismissCount > 0 && containerRef.current) {
-        const container = containerRef.current;
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            container.scrollBy(0, -container.clientHeight * dismissCount);
-          });
-        });
-      }
-    }, 100);
+      if (!container) return;
+
+      requestAnimationFrame(() => {
+        const anchorEl = container.querySelector<HTMLElement>(`[data-index="${anchoredDisplayIndex}"]`);
+        if (!anchorEl) return;
+        container.scrollTop = anchorEl.offsetTop;
+      });
+    }, AD_DISMISS_DELAY_MS);
 
     return () => clearTimeout(adDismissTimeoutRef.current);
-  }, [settledIndex, displayItems, dismissedAdKeys]);
+  }, [scrollIdleTick, settledIndex, displayItems, dismissedAdKeys]);
 
   // Infinite loading — guests redirected to login on loadMore
   useEffect(() => {
@@ -602,7 +645,7 @@ function MomentsContent() {
           return;
         }
         setLoadingMore(true);
-        const data = await loadMoments(moments.map(m => m.id));
+        const data = await loadMoments(moments.map(m => m.id), feedMode);
         const newMoments = applyStoredInteractions(data.moments as Moment[]);
         setMoments(prev => {
           const existingIds = new Set(prev.map(m => m.id));
@@ -614,7 +657,28 @@ function MomentsContent() {
       };
       void run();
     }
-  }, [applyStoredInteractions, settledIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments]);
+  }, [applyStoredInteractions, settledIndex, displayItems, moments, hasMore, loadingMore, isLoggedIn, hydrateInteractions, loadMoments, feedMode]);
+
+  const handleFeedModeChange = useCallback((nextValue: string) => {
+    const nextMode = nextValue as FeedMode;
+    if (nextMode === "following" && !isLoggedIn) {
+      redirectToLogin();
+      return;
+    }
+    clearTimeout(adDismissTimeoutRef.current);
+    clearTimeout(scrollSettledRef.current);
+    clearTimeout(scrollIdleTimeoutRef.current);
+    pendingActiveRef.current = null;
+    setDismissedAdKeys(new Set());
+    setMoments([]);
+    setHasMore(false);
+    setLoadingMore(false);
+    setActiveDisplayIndex(0);
+    setSettledIndex(0);
+    setScrollIdleTick(0);
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+    setFeedMode(nextMode);
+  }, [isLoggedIn]);
 
   const isMomentLiked = useCallback((moment: Moment) => (
     likedSet.has(moment.id) || moment.viewer_liked === true
@@ -803,12 +867,19 @@ function MomentsContent() {
         {/* Top bar — back button + Moments title + mute toggle */}
         <div className="absolute top-0 left-0 right-0 z-[60] flex items-center px-4 pt-4 pb-2 pointer-events-none">
           <BackButton variant="overlay" />
-          <h1
-            className="flex-1 text-center text-white text-[1.1rem] font-bold"
-            style={{ textShadow: "0 1px 6px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.2)" }}
-          >
-            {t("title")}
-          </h1>
+          <div className="flex-1 flex justify-center">
+            <FeedFilterSelect
+              value={feedMode}
+              options={filterOptions}
+              onChange={handleFeedModeChange}
+              modalTitle={tExplore("filter")}
+              variant="overlay-title"
+              title={t("title")}
+              overlayShowSubtitle={false}
+              overlayUseActiveLabelAsTitle
+              overlayDefaultValue="for-you"
+            />
+          </div>
           <button
             onClick={handleToggleMute}
             className="w-10 h-10 rounded-full flex items-center justify-center pointer-events-auto active:scale-90 transition-transform"

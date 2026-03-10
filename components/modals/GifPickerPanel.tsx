@@ -74,7 +74,6 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
   const [gifs, setGifs] = useState<GiphyGif[]>([]);
   const [loading, setLoading] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const fetchGifs = useCallback(async (searchQuery: string) => {
     setLoading(true);
@@ -95,10 +94,6 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
   useEffect(() => {
     fetchGifs("");
   }, [fetchGifs]);
-
-  useEffect(() => {
-    setTimeout(() => searchRef.current?.focus(), 300);
-  }, []);
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
@@ -127,7 +122,6 @@ export default function GifPickerPanel({ onGifSelect, onClose }: GifPickerPanelP
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none z-10" />
           <input
-            ref={searchRef}
             type="text"
             value={query}
             onChange={(e) => handleSearchChange(e.target.value)}

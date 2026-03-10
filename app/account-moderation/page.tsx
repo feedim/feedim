@@ -11,6 +11,7 @@ import PublicFooter from "@/components/PublicFooter";
 import ModerationContent from "@/app/[slug]/moderation/ModerationContent";
 import NewTabLink from "@/components/NewTabLink";
 import { getTranslations, getLocale } from "next-intl/server";
+import { getPublicFooterLabels } from "@/lib/footerLabels";
 
 function getRemainingDeletionDays(updatedAt: string): number {
   return Math.max(0, 14 - Math.floor((Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24)));
@@ -67,7 +68,10 @@ export default async function AccountModerationPage() {
     }
   }
 
-  const t = await getTranslations("admin");
+  const [t, footerLabels] = await Promise.all([
+    getTranslations("admin"),
+    getPublicFooterLabels(),
+  ]);
   const locale = await getLocale();
 
   const isActive = profile.status === "active";
@@ -118,7 +122,7 @@ export default async function AccountModerationPage() {
             </div>
           </div>
         </div>
-        <PublicFooter variant="inline" />
+        <PublicFooter variant="inline" labels={footerLabels} />
       </div>
     );
   }
@@ -203,7 +207,7 @@ export default async function AccountModerationPage() {
         </div>
       </div>
 
-      <PublicFooter variant="inline" />
+      <PublicFooter variant="inline" labels={footerLabels} />
     </div>
   );
 }

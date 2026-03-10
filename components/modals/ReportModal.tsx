@@ -143,7 +143,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
           </div>
         ) : (
           <>
-            <p className="text-sm font-semibold text-text-primary mb-4">{t("whyReporting")}</p>
+            <p className="text-sm font-semibold text-text-primary/90 mb-4 ml-[3px]">{t("whyReporting")}</p>
             <div className="space-y-1.5">
               {reasonKeys.map(r => (
                 <button
@@ -151,13 +151,13 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
                   onClick={() => setSelectedReason(r.id)}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-[8px] transition text-left text-sm font-medium ${
                     selectedReason === r.id
-                      ? "bg-accent-main/10 text-accent-main"
+                      ? "bg-bg-secondary text-text-primary"
                       : "hover:bg-bg-tertiary text-text-primary"
                   }`}
                 >
                   {t(r.tKey)}
                   {selectedReason === r.id && (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20 6L9 17l-5-5" />
                     </svg>
                   )}

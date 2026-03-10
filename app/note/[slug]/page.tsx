@@ -180,14 +180,14 @@ export default async function NotePage({ params, searchParams }: PageProps) {
             isBoosted={boostInfo.isBoosted}
           />
 
-          <div className="flex items-center gap-2 mb-2.5">
+          <div className="flex items-center gap-2 mb-2">
             <Link href={`/u/${author?.username}`} className="shrink-0">
               <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
-                {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
+                {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
               </div>
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
                 {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
@@ -219,7 +219,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
               {tags.map((tag: { id: number; name: string; slug: string }) => (
                 <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                   title={`#${tag.name}`}
-                  className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
+                  className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
                   {formatDisplayTagLabel(tag.name)}
                 </Link>
               ))}

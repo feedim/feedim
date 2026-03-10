@@ -4,7 +4,6 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { useUser } from "@/components/UserContext";
-import { useTranslations } from "next-intl";
 
 type AlertType = "email_not_verified";
 
@@ -15,9 +14,14 @@ interface Alert {
   href: string;
 }
 
-export default function HeaderAlertBar() {
+interface HeaderAlertBarLabels {
+  emailNotVerified: string;
+  clickHere: string;
+  close: string;
+}
+
+export default function HeaderAlertBar({ labels }: { labels: HeaderAlertBarLabels }) {
   const { user } = useUser();
-  const t = useTranslations("auth");
   const router = useRouter();
   const pathname = usePathname();
   const [dismissed, setDismissed] = useState<Set<AlertType>>(new Set());
@@ -30,8 +34,8 @@ export default function HeaderAlertBar() {
   if (user && !user.emailVerified) {
     alerts.push({
       type: "email_not_verified",
-      message: t("emailNotVerified"),
-      cta: t("clickHere"),
+      message: labels.emailNotVerified,
+      cta: labels.clickHere,
       href: "/security",
     });
   }
@@ -80,7 +84,7 @@ export default function HeaderAlertBar() {
         <button
           onClick={() => setDismissed((prev) => new Set(prev).add(alert.type))}
           className="shrink-0 ml-2 p-0.5 rounded hover:bg-white/20 transition"
-          aria-label="Kapat"
+          aria-label={labels.close}
         >
           <X className="h-3.5 w-3.5" />
         </button>

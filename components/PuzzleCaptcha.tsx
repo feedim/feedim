@@ -50,8 +50,34 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
   const expireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRequestIdRef = useRef(0);
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const openRef = useRef(open);
 
   const maxSlide = renderedWidth - HANDLE_SIZE - TRACK_PAD * 2;
+
+  const clearPendingTimers = useCallback(() => {
+    if (expireTimerRef.current) {
+      clearTimeout(expireTimerRef.current);
+      expireTimerRef.current = null;
+    }
+    if (reloadTimerRef.current) {
+      clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = null;
+    }
+    if (verifyTimerRef.current) {
+      clearTimeout(verifyTimerRef.current);
+      verifyTimerRef.current = null;
+    }
+  }, []);
+
+  const invalidatePendingWork = useCallback(() => {
+    loadRequestIdRef.current += 1;
+    loadAbortRef.current?.abort();
+    loadAbortRef.current = null;
+    clearPendingTimers();
+  }, [clearPendingTimers]);
 
   // Observe actual track width
   useEffect(() => {
@@ -78,7 +104,6 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
     lockTimerRef.current = setInterval(() => {
       setLockCountdown((prev) => {
         if (prev <= 1) {
-          setStatus("loading");
           return 0;
         }
         return prev - 1;
@@ -89,90 +114,100 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
     };
   }, [lockCountdown]);
 
-  // When lock expires, auto-reload challenge
-  useEffect(() => {
-    if (lockCountdown === 0 && status === "loading" && open) {
-      loadChallenge();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lockCountdown, status, open]);
-
   const startLockout = useCallback((retryAfter: number) => {
+    invalidatePendingWork();
     setStatus("locked");
     setLockCountdown(retryAfter);
     setChallenge(null);
     setSliderX(0);
-    if (expireTimerRef.current) {
-      clearTimeout(expireTimerRef.current);
-      expireTimerRef.current = null;
-    }
-  }, []);
+    setAccuracy(null);
+  }, [invalidatePendingWork]);
 
   const loadChallenge = useCallback(async () => {
     // Don't reload during active interaction
-    if (isDraggingRef.current) return;
+    if (!openRef.current || isDraggingRef.current) return;
+
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
 
     setStatus("loading");
+    setChallenge(null);
     setSliderX(0);
     setAccuracy(null);
     trailRef.current = [];
-
-    if (expireTimerRef.current) {
-      clearTimeout(expireTimerRef.current);
-      expireTimerRef.current = null;
-    }
-    if (reloadTimerRef.current) {
-      clearTimeout(reloadTimerRef.current);
-      reloadTimerRef.current = null;
-    }
+    clearPendingTimers();
 
     try {
       const [res] = await Promise.all([
-        fetch("/api/captcha/puzzle"),
+        fetch("/api/captcha/puzzle", {
+          cache: "no-store",
+          signal: controller.signal,
+        }),
         new Promise((r) => setTimeout(r, 500)),
       ]);
 
+      if (requestId !== loadRequestIdRef.current || !openRef.current || isDraggingRef.current) return;
+
       if (res.status === 429) {
         const data = await res.json();
+        if (requestId !== loadRequestIdRef.current || !openRef.current) return;
         startLockout(data.retryAfter || 600);
         return;
       }
 
       if (!res.ok) throw new Error("fetch_failed");
       const data: ChallengeData = await res.json();
+      if (requestId !== loadRequestIdRef.current || !openRef.current || isDraggingRef.current) return;
       setChallenge(data);
       setStatus("ready");
 
       expireTimerRef.current = setTimeout(() => {
+        if (requestId !== loadRequestIdRef.current || !openRef.current || isDraggingRef.current) return;
         setStatus("fail");
       }, 120_000);
-    } catch {
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+      if (requestId !== loadRequestIdRef.current || !openRef.current) return;
       setStatus("fail");
     }
-  }, [startLockout]);
+  }, [clearPendingTimers, startLockout]);
 
   useEffect(() => {
+    if (open && status === "locked" && lockCountdown === 0) {
+      setStatus("loading");
+      void loadChallenge();
+    }
+  }, [lockCountdown, status, open, loadChallenge]);
+
+  useEffect(() => {
+    openRef.current = open;
+    invalidatePendingWork();
+
     if (open) {
-      loadChallenge();
-    } else {
+      isDraggingRef.current = false;
       setStatus("loading");
       setChallenge(null);
       setSliderX(0);
+      setAccuracy(null);
       setLockCountdown(0);
-      if (expireTimerRef.current) {
-        clearTimeout(expireTimerRef.current);
-        expireTimerRef.current = null;
-      }
-      if (reloadTimerRef.current) {
-        clearTimeout(reloadTimerRef.current);
-        reloadTimerRef.current = null;
-      }
+      trailRef.current = [];
+      void loadChallenge();
+    } else {
+      isDraggingRef.current = false;
+      setStatus("loading");
+      setChallenge(null);
+      setSliderX(0);
+      setAccuracy(null);
+      setLockCountdown(0);
+      trailRef.current = [];
     }
     return () => {
-      if (expireTimerRef.current) clearTimeout(expireTimerRef.current);
-      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+      invalidatePendingWork();
     };
-  }, [open, loadChallenge]);
+  }, [open, loadChallenge, invalidatePendingWork]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -210,10 +245,11 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
   );
 
   const submitVerification = useCallback(async () => {
-    if (!challenge) return;
+    if (!challenge || status === "verifying" || status === "success" || status === "locked") return;
     const duration = Date.now() - startTimeRef.current;
     const canvasRange = challenge.canvasWidth - challenge.pieceSize;
     const puzzleX = maxSlide > 0 ? (sliderX / maxSlide) * canvasRange : 0;
+    const activeChallengeToken = challenge.challengeToken;
     setStatus("verifying");
 
     try {
@@ -230,6 +266,8 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
 
       const data = await res.json();
 
+      if (!openRef.current || challenge?.challengeToken !== activeChallengeToken) return;
+
       if (res.status === 429 || data.error === "rate_limited") {
         startLockout(data.retryAfter || 600);
         return;
@@ -238,23 +276,28 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
       if (data.success && data.token) {
         setAccuracy(data.accuracy ?? 100);
         setStatus("success");
-        if (expireTimerRef.current) {
-          clearTimeout(expireTimerRef.current);
-          expireTimerRef.current = null;
-        }
-        setTimeout(() => {
+        clearPendingTimers();
+        verifyTimerRef.current = setTimeout(() => {
+          if (!openRef.current) return;
           onVerify(data.token);
           onClose();
         }, 1200);
       } else {
         setStatus("fail");
-        reloadTimerRef.current = setTimeout(() => { loadChallenge(); }, 800);
+        reloadTimerRef.current = setTimeout(() => {
+          if (!openRef.current || isDraggingRef.current) return;
+          void loadChallenge();
+        }, 800);
       }
     } catch {
+      if (!openRef.current) return;
       setStatus("fail");
-      reloadTimerRef.current = setTimeout(() => { loadChallenge(); }, 800);
+      reloadTimerRef.current = setTimeout(() => {
+        if (!openRef.current || isDraggingRef.current) return;
+        void loadChallenge();
+      }, 800);
     }
-  }, [challenge, sliderX, maxSlide, onVerify, onClose, loadChallenge, startLockout]);
+  }, [challenge, clearPendingTimers, sliderX, maxSlide, onVerify, onClose, loadChallenge, startLockout, status]);
 
   const handlePointerUp = useCallback(
     async (e: React.PointerEvent) => {
@@ -274,6 +317,14 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
     },
     [sliderX, submitVerification]
   );
+
+  const handlePointerCancel = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    trailRef.current = [];
+    setSliderX(0);
+    setStatus("ready");
+  }, []);
 
   // Keyboard navigation for accessibility
   const handleKeyDown = useCallback(
@@ -518,6 +569,8 @@ export default function PuzzleCaptcha({ open, onClose, onVerify }: PuzzleCaptcha
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              onLostPointerCapture={handlePointerCancel}
               onKeyDown={handleKeyDown}
               role="slider"
               aria-label={t("slideToVerify")}

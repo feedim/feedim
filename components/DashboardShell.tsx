@@ -8,6 +8,14 @@ import AmbientLight from "@/components/AmbientLight";
 import { UserProvider, type InitialUser } from "@/components/UserContext";
 import LocationPrompt from "@/components/LocationPrompt";
 import HeaderAlertBar from "@/components/HeaderAlertBar";
+import type { SidebarLabels } from "@/lib/sidebarLabels";
+import type { PublicFooterLabels } from "@/lib/footerLabels";
+
+interface HeaderAlertBarLabels {
+  emailNotVerified: string;
+  clickHere: string;
+  close: string;
+}
 
 interface DashboardShellContextValue {
   setMobileNavVisible: (visible: boolean) => void;
@@ -23,9 +31,15 @@ export function useDashboardShell() {
 
 export default function DashboardShell({
   initialUser,
+  headerAlertLabels,
+  sidebarLabels,
+  footerLabels,
   children,
 }: {
   initialUser: InitialUser | null;
+  headerAlertLabels: HeaderAlertBarLabels;
+  sidebarLabels: SidebarLabels;
+  footerLabels: PublicFooterLabels;
   children: React.ReactNode;
 }) {
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
@@ -120,9 +134,9 @@ export default function DashboardShell({
     <UserProvider initialUser={initialUser}>
       <DashboardShellContext.Provider value={{ setMobileNavVisible: setNav }}>
         <div id="dashboard-shell" className="min-h-screen text-text-primary">
-          <HeaderAlertBar />
+          <HeaderAlertBar labels={headerAlertLabels} />
           <AmbientLight />
-          <Sidebar />
+          <Sidebar labels={sidebarLabels} footerLabels={footerLabels} />
           <main className="md:ml-[240px] min-h-screen md:h-screen md:overflow-y-auto pb-20 md:pb-0">
             <div className="max-w-[1400px] mx-auto w-full">
               {children}

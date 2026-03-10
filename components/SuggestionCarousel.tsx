@@ -143,10 +143,10 @@ export default function SuggestionCarousel({ excludeUserId }: Props = {}) {
           </button>
         </div>
         <div className="flex gap-2.5 overflow-hidden px-3">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div
               key={i}
-              className="shrink-0 w-[130px] h-[180px] rounded-[14px] bg-bg-tertiary animate-pulse"
+              className="shrink-0 w-[122px] h-[180px] rounded-[14px] bg-bg-tertiary animate-pulse"
             />
           ))}
         </div>

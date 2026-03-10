@@ -6,6 +6,7 @@ import { FeedimIcon } from '@/components/FeedimLogo';
 import PublicFooter from '@/components/PublicFooter';
 import { useTranslations } from 'next-intl';
 import { logClientError } from '@/lib/runtimeLogger';
+import { createFooterLabels } from '@/lib/footerLabels';
 
 export default function Error({
   error,
@@ -16,6 +17,9 @@ export default function Error({
 }) {
   const t = useTranslations('errors');
   const tNav = useTranslations('nav');
+  const tFooter = useTranslations('footer');
+  const tCommon = useTranslations('common');
+  const footerLabels = createFooterLabels({ tFooter, tCommon });
 
   useEffect(() => {
     logClientError('Error boundary:', error);
@@ -52,7 +56,7 @@ export default function Error({
       </main>
 
       {/* Footer */}
-      <PublicFooter variant="inline" />
+      <PublicFooter variant="inline" labels={footerLabels} />
     </div>
   );
 }

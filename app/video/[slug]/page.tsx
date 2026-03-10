@@ -228,7 +228,7 @@ export default async function VideoPage({ params }: PageProps) {
                 <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">
                   @{author?.username}
                 </Link>
-              {author?.is_verified && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
+              {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
             </div>
             {author?.follower_count !== undefined && (
               <p className="text-[0.68rem] leading-none text-text-muted -mt-[1px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
@@ -255,7 +255,7 @@ export default async function VideoPage({ params }: PageProps) {
             {tags.map((tag: { id: number; name: string; slug: string }) => (
               <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                 title={`#${tag.name}`}
-                className="bg-bg-secondary text-text-primary text-[0.8rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
+                className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
                 {formatDisplayTagLabel(tag.name)}
               </Link>
             ))}

@@ -6,7 +6,6 @@ import VideoPlayer from "@/components/VideoPlayer";
 import AdOverlay from "@/components/AdOverlay";
 import { useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
-import { AD_POSTROLL_MIN, AD_POSTROLL_MAX } from "@/lib/constants";
 import { saveWatchProgress, getWatchProgress, removeWatchProgress } from "@/lib/watchProgress";
 import { addToWatchHistory, getWatchedSlugs } from "@/lib/watchHistory";
 import { useHydrated } from "@/lib/useHydrated";
@@ -35,12 +34,6 @@ interface VideoPlayerClientProps {
   soundUrl?: string;
 }
 
-/** Post-roll only: 4–10 dk arası videolarda reklam göster */
-function shouldShowPostRoll(duration?: number): boolean {
-  if (!duration) return false;
-  return duration >= AD_POSTROLL_MIN && duration <= AD_POSTROLL_MAX;
-}
-
 export default function VideoPlayerClient({
   src, hlsUrl, poster, slug, nextVideos,
   nextVideoSlug: legacyNextSlug, nextVideoTitle: legacyNextTitle, nextVideoThumbnail: legacyNextThumb,
@@ -58,6 +51,7 @@ export default function VideoPlayerClient({
   const [countdown, setCountdown] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const watchedRecorded = useRef(false);
+  const postRollShownRef = useRef(false);
 
   // Pick first unwatched video from the list for autoplay
   const nextVideo = useMemo(() => {
@@ -84,9 +78,9 @@ export default function VideoPlayerClient({
   const nextVideoThumbnail = nextVideo?.thumbnail;
   const nextVideoUrl = nextVideoSlug ? `${getPostUrl(nextVideoSlug, nextVideo?.contentType || "video")}?autoplay=1` : null;
 
-  // Post-roll ad state (mid-roll kaldırıldı — sadece 4-10 dk post-roll)
+  // Post-roll ad state — every video can show a post-roll once per page view
   const [postRollActive, setPostRollActive] = useState(false);
-  const showPostRoll = useMemo(() => shouldShowPostRoll(videoDuration), [videoDuration]);
+  const showPostRoll = true;
   const autoplay = useMemo(() => {
     if (!hydrated) return true;
     try {
@@ -104,6 +98,11 @@ export default function VideoPlayerClient({
     // Stop any sound previews when video page opens
     window.dispatchEvent(new Event("feedim:audio-claim"));
   }, []);
+
+  useEffect(() => {
+    postRollShownRef.current = false;
+    setPostRollActive(false);
+  }, [slug, src]);
 
   // Sync external sound audio with video playback
   useEffect(() => {
@@ -234,7 +233,8 @@ export default function VideoPlayerClient({
 
   const handleEnded = useCallback(() => {
     if (slug) removeWatchProgress(slug);
-    if (showPostRoll) {
+    if (showPostRoll && !postRollShownRef.current) {
+      postRollShownRef.current = true;
       setPostRollActive(true);
     } else {
       setEnded(true);

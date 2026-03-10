@@ -10,6 +10,7 @@ import PublicFooter from "@/components/PublicFooter";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import LazyAvatar from "@/components/LazyAvatar";
+import { createFooterLabels } from "@/lib/footerLabels";
 
 function LandingGoogleButton({
   label,
@@ -70,6 +71,8 @@ export default function LandingPage() {
   const supabase = createClient();
   const t = useTranslations("landing");
   const tc = useTranslations("common");
+  const tFooter = useTranslations("footer");
+  const footerLabels = createFooterLabels({ tFooter, tCommon: tc });
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   const [mounted, setMounted] = useState(false);
 
@@ -283,7 +286,7 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <PublicFooter variant="inline" />
+      <PublicFooter variant="inline" labels={footerLabels} />
     </div>
   );
 }

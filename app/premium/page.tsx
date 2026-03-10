@@ -11,6 +11,7 @@ import PublicFooter from "@/components/PublicFooter";
 import NewTabLink from "@/components/NewTabLink";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { createClient } from "@/lib/supabase/client";
+import { createFooterLabels } from "@/lib/footerLabels";
 
 const VerifiedHero = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-label="Premium">
@@ -128,6 +129,9 @@ export default function PremiumPage() {
   const router = useRouter();
   const t = useTranslations("premium");
   const locale = useLocale();
+  const tFooter = useTranslations("footer");
+  const tCommon = useTranslations("common");
+  const footerLabels = createFooterLabels({ tFooter, tCommon });
   const [userCurrentPlan, setUserCurrentPlan] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("pro");
@@ -397,7 +401,7 @@ export default function PremiumPage() {
         </div>
       </main>
 
-      <PublicFooter />
+      <PublicFooter labels={footerLabels} />
     </div>
   );
 }

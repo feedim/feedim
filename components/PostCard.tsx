@@ -296,7 +296,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           <div className="flex items-center justify-between relative z-[1] pointer-events-none select-none">
             <div className="flex items-center gap-1 min-w-0">
               <span className="text-[0.89rem] font-semibold truncate">@{author?.username || t('common.anonymous')}</span>
-              {(author?.is_verified || author?.role === "admin") && <VerifiedBadge variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
+              {(author?.is_verified || author?.role === "admin") && <VerifiedBadge className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
               {!isSelf && ((!ctxUser && !!authorUsername) || isFollowing === false) && (
                 <>
                   <span className="text-text-muted/40 text-xs">·</span>
@@ -312,11 +312,11 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
               {post.published_at && (
                 <>
                   <span className="text-text-muted/40 text-xs">·</span>
-                  <span className="text-[0.65rem] text-text-muted shrink-0">{formatRelativeDate(post.published_at, locale)}</span>
+                  <span className="text-[0.66rem] text-text-muted shrink-0">{formatRelativeDate(post.published_at, locale)}</span>
                 </>
               )}
               <span className="text-text-muted/40 text-xs">·</span>
-              <span className="text-[0.65rem] text-text-muted shrink-0">{post.content_type === "moment" ? t('contentTypes.moment') : post.content_type === "video" ? t('contentTypes.video') : post.content_type === "note" ? t('contentTypes.note') : t('contentTypes.post')}</span>
+              <span className="text-[0.66rem] text-text-muted shrink-0">{post.content_type === "moment" ? t('contentTypes.moment') : post.content_type === "video" ? t('contentTypes.video') : post.content_type === "note" ? t('contentTypes.note') : t('contentTypes.post')}</span>
               {(post.is_sponsored || (post.is_boosted && post.boost_status === 'active')) && (
                 <>
                   <span className="text-text-muted/40 text-xs">·</span>

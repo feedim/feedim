@@ -1,26 +1,24 @@
 "use client";
 
 import NewTabLink from "@/components/NewTabLink";
-import { useTranslations } from "next-intl";
+import { defaultPublicFooterLabels, type PublicFooterLabels } from "@/lib/footerLabels";
 
 interface PublicFooterProps {
   variant?: "default" | "compact" | "inline" | "minimal";
+  labels?: PublicFooterLabels;
 }
 
-export default function PublicFooter({ variant = "default" }: PublicFooterProps) {
-  const t = useTranslations("footer");
-  const tCommon = useTranslations("common");
+export default function PublicFooter({ variant = "default", labels = defaultPublicFooterLabels }: PublicFooterProps) {
   const year = new Date().getFullYear();
-  const goPremiumLabel = tCommon("goPremium");
 
   const links = [
-    { href: "/help", label: t("help"), short: t("help") },
-    { href: "/help/about", label: t("about"), short: t("about") },
-    { href: "/help/terms", label: t("termsLong"), short: t("terms") },
-    { href: "/help/privacy", label: t("privacy"), short: t("privacy") },
-    { href: "/help/community-guidelines", label: t("communityGuidelines"), short: t("communityGuidelines") },
-    { href: "/help/contact", label: t("contact"), short: t("contact") },
-    { href: "/help/disclaimer", label: t("disclaimer"), short: t("disclaimer") },
+    { href: "/help", label: labels.help, short: labels.help },
+    { href: "/help/about", label: labels.about, short: labels.about },
+    { href: "/help/terms", label: labels.termsLong, short: labels.terms },
+    { href: "/help/privacy", label: labels.privacy, short: labels.privacy },
+    { href: "/help/community-guidelines", label: labels.communityGuidelines, short: labels.communityGuidelines },
+    { href: "/help/contact", label: labels.contact, short: labels.contact },
+    { href: "/help/disclaimer", label: labels.disclaimer, short: labels.disclaimer },
   ];
 
   // Minimal — just copyright (error page)
@@ -33,18 +31,18 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
   }
 
   const paymentLogo = (
-    <img alt={t("paymentMethods")} src="/logo_band_white.svg" className="footer-logo" />
+    <img alt={labels.paymentMethods} src="/logo_band_white.svg" className="footer-logo" />
   );
 
   // Compact — sidebar footer
   if (variant === "compact") {
     const compactLinks = [
-      { href: "/help", label: t("help") },
-      { href: "/help/about", label: t("about") },
-      { href: "/help/terms", label: t("terms") },
-      { href: "/help/privacy", label: t("privacy") },
-      { href: "/help/community-guidelines", label: t("communityGuidelines") },
-      { href: "/help/contact", label: t("contact") },
+      { href: "/help", label: labels.help },
+      { href: "/help/about", label: labels.about },
+      { href: "/help/terms", label: labels.terms },
+      { href: "/help/privacy", label: labels.privacy },
+      { href: "/help/community-guidelines", label: labels.communityGuidelines },
+      { href: "/help/contact", label: labels.contact },
     ];
     return (
       <nav className="px-4 pb-3 pt-1 select-none">
@@ -52,9 +50,9 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
           {compactLinks.map((link) => (
             <NewTabLink key={link.href} href={link.href} className="hover:underline">{link.label}</NewTabLink>
           ))}
-          <NewTabLink href="/premium" className="hover:underline">{goPremiumLabel}</NewTabLink>
+          <NewTabLink href="/premium" className="hover:underline">{labels.goPremium}</NewTabLink>
         </div>
-        <p className="text-[0.6rem] text-text-muted/60 mt-1.5">&copy; {year} Feedim. {t("allRightsReserved")}</p>
+        <p className="text-[0.6rem] text-text-muted/60 mt-1.5">&copy; {year} Feedim. {labels.allRightsReserved}</p>
       </nav>
     );
   }
@@ -67,8 +65,8 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
           {links.map((link) => (
             <NewTabLink key={link.href + link.label} href={link.href} className="hover:underline">{link.label}</NewTabLink>
           ))}
-          <NewTabLink href="/premium" className="hover:underline">{goPremiumLabel}</NewTabLink>
-          <span>&copy; {year} Feedim. {t("allRightsReserved")}</span>
+          <NewTabLink href="/premium" className="hover:underline">{labels.goPremium}</NewTabLink>
+          <span>&copy; {year} Feedim. {labels.allRightsReserved}</span>
         </nav>
       </footer>
     );
@@ -83,11 +81,11 @@ export default function PublicFooter({ variant = "default" }: PublicFooterProps)
             {links.map((link) => (
               <NewTabLink key={link.href + link.label} href={link.href} className="text-text-muted hover:text-text-primary transition hover:underline">{link.label}</NewTabLink>
             ))}
-            <NewTabLink href="/premium" className="text-text-muted hover:text-text-primary transition hover:underline">{goPremiumLabel}</NewTabLink>
+            <NewTabLink href="/premium" className="text-text-muted hover:text-text-primary transition hover:underline">{labels.goPremium}</NewTabLink>
           </div>
           <div className="flex flex-col items-center sm:items-end gap-3 shrink-0">
             {paymentLogo}
-            <p className="text-xs text-text-muted/70">&copy; {year} Feedim. {t("allRightsReserved")}</p>
+            <p className="text-xs text-text-muted/70">&copy; {year} Feedim. {labels.allRightsReserved}</p>
           </div>
         </div>
       </div>

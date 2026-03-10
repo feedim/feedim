@@ -32,10 +32,21 @@ interface MomentItem {
 
 const EMPTY_MOMENTS: MomentItem[] = [];
 
-export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMoments }: { maxItems?: number; noBg?: boolean; initialMoments?: MomentItem[] }) {
+export default function MomentsCarousel({
+  maxItems = 4,
+  noBg = false,
+  initialMoments,
+  feedMode = "for-you",
+}: {
+  maxItems?: number;
+  noBg?: boolean;
+  initialMoments?: MomentItem[];
+  feedMode?: "for-you" | "following";
+}) {
   const t = useTranslations("moments");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const seededMoments = initialMoments ?? EMPTY_MOMENTS;
   const hasInitialMoments = seededMoments.length > 0;
   const [moments, setMoments] = useState<MomentItem[]>(seededMoments);
@@ -44,7 +55,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
 
   const loadMoments = useCallback(async () => {
     try {
-      const res = await fetch(`/api/posts/moments?limit=${maxItems}&locale=${locale}&_t=${mountTs.current}`);
+      const res = await fetch(`/api/posts/moments?limit=${maxItems}&locale=${locale}&tab=${feedMode}&_t=${mountTs.current}`);
       const data = await res.json() as { moments?: MomentItem[] };
       setMoments((data.moments || []).slice(0, maxItems));
     } catch {
@@ -52,11 +63,29 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
     } finally {
       setLoaded(true);
     }
-  }, [maxItems, locale]);
+  }, [feedMode, maxItems, locale]);
+
+  useEffect(() => {
+    mountTs.current = Date.now();
+    if (hasInitialMoments && feedMode === "for-you") {
+      setMoments(seededMoments);
+      setLoaded(true);
+      return;
+    }
+    setMoments(EMPTY_MOMENTS);
+    setLoaded(false);
+  }, [feedMode, hasInitialMoments, seededMoments]);
 
   useEffect(() => {
     if (!loaded) void loadMoments();
   }, [loaded, loadMoments]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    scroller.scrollTo({ left: 0, behavior: "auto" });
+  }, [loaded, moments.length]);
 
 
   const fmtDuration = (s: number) => {
@@ -70,9 +99,17 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">{t("title")}</span>
       </div>
-      <div className="flex gap-2.5 overflow-hidden" style={{ marginLeft: 10, paddingRight: 10 }}>
+      <div className="flex gap-2.5 overflow-hidden">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className={cn("shrink-0 w-[130px] h-[230px] rounded-[14px]", noBg ? "bg-bg-secondary" : "bg-bg-tertiary")} />
+          <div
+            key={i}
+            className={cn(
+              "shrink-0 w-[130px] h-[230px] rounded-[14px]",
+              i === 0 && "ml-[10px]",
+              i === 4 && "mr-[10px]",
+              noBg ? "bg-bg-secondary" : "bg-bg-tertiary"
+            )}
+          />
         ))}
       </div>
     </div>
@@ -89,17 +126,27 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
 
       {/* Horizontal scroll */}
       <div
-        className="flex justify-center gap-2.5 overflow-x-auto scrollbar-hide"
-        style={{ scrollSnapType: "x mandatory", marginLeft: 10, paddingRight: 10 }}
+        ref={scrollRef}
+        dir="ltr"
+        className="flex w-full items-stretch justify-start gap-2.5 overflow-x-auto overscroll-x-contain scrollbar-hide touch-pan-x"
+        style={{
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+          scrollPaddingLeft: "10px",
+          scrollPaddingRight: "10px",
+        }}
       >
-        {moments.map((m) => {
+        {moments.map((m, index) => {
           const author = m.profiles;
           const thumb = m.video_thumbnail || m.featured_image;
           return (
             <Link
               key={m.id}
               href={`/moments?s=${m.slug}`}
-              className="relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-bg-tertiary"
+              className={cn(
+                "relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-bg-tertiary",
+                index === 0 && "ml-[10px]"
+              )}
               style={{ scrollSnapAlign: "start" }}
             >
               {/* Thumbnail only (no autoplay for performance) */}
@@ -137,7 +184,7 @@ export default function MomentsCarousel({ maxItems = 4, noBg = false, initialMom
         {/* "See all" card */}
         <Link
           href="/moments"
-          className="flex flex-col items-center justify-center shrink-0 w-[100px] h-[230px] rounded-[14px] bg-bg-tertiary hover:bg-bg-tertiary/80 transition"
+          className="mr-[10px] flex flex-col items-center justify-center shrink-0 w-[100px] h-[230px] rounded-[14px] bg-bg-tertiary hover:bg-bg-tertiary/80 transition"
           style={{ scrollSnapAlign: "start" }}
         >
           <div className="w-12 h-12 rounded-full bg-bg-secondary flex items-center justify-center mb-2">

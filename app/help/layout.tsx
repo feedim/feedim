@@ -1,8 +1,11 @@
 import PublicHeader from "@/components/PublicHeader";
 import PublicFooter from "@/components/PublicFooter";
 import HelpLinksHandler from "@/components/HelpLinksHandler";
+import { getPublicFooterLabels } from "@/lib/footerLabels";
 
-export default function HelpLayout({ children }: { children: React.ReactNode }) {
+export default async function HelpLayout({ children }: { children: React.ReactNode }) {
+  const footerLabels = await getPublicFooterLabels();
+
   return (
     <div className="min-h-screen text-text-primary">
       <PublicHeader variant="back" />
@@ -10,7 +13,7 @@ export default function HelpLayout({ children }: { children: React.ReactNode }) 
         {children}
       </main>
       <HelpLinksHandler />
-      <PublicFooter />
+      <PublicFooter labels={footerLabels} />
     </div>
   );
 }

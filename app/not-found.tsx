@@ -5,10 +5,14 @@ import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useTranslations } from "next-intl";
 import { getHasNavigated } from "@/lib/smartBack";
+import { createFooterLabels } from "@/lib/footerLabels";
 
 export default function NotFound() {
   const t = useTranslations("errors");
   const tNav = useTranslations("nav");
+  const tFooter = useTranslations("footer");
+  const tCommon = useTranslations("common");
+  const footerLabels = createFooterLabels({ tFooter, tCommon });
 
   return (
     <div className="min-h-screen text-text-primary flex flex-col">
@@ -43,7 +47,7 @@ export default function NotFound() {
         </div>
       </main>
 
-      <PublicFooter />
+      <PublicFooter labels={footerLabels} />
     </div>
   );
 }
