@@ -53,23 +53,21 @@ export default function GuestJoinPrompt({
         className="pointer-events-auto relative border-t border-black/10 shadow-[0_-14px_34px_rgba(0,0,0,0.14)]"
         style={{ backgroundColor: "var(--accent-color)" }}
       >
-        <div className="mx-auto max-w-[1180px] px-4 pt-4 pb-[calc(16px+env(safe-area-inset-bottom))] sm:px-5">
-          <div className="mb-2.5 flex justify-end">
-            <button
-              type="button"
-              onClick={handleDismiss}
-              aria-label={closeLabel}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/10 text-white/90 transition hover:bg-black/15 hover:text-white"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
-          </div>
+        <div className="mx-auto max-w-[1180px] px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] sm:px-5">
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label={closeLabel}
+            className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center text-white/80 transition hover:text-white sm:right-3 sm:top-3 sm:h-8 sm:w-8"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
 
-          <div className="mx-auto max-w-[620px] text-center">
-            <p className="text-[1rem] font-extrabold leading-[1.2] text-white sm:text-[1.02rem]">{title}</p>
+          <div className="mx-auto max-w-[620px] px-10 text-center sm:px-0">
+            <p className="text-[17px] font-extrabold leading-[1.2] text-white sm:text-[1.08rem]">{title}</p>
             <p className="mt-1.5 text-[0.8rem] font-medium leading-[1.45] text-white/88 sm:text-[0.83rem]">{body}</p>
           </div>
 
