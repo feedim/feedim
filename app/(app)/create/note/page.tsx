@@ -220,28 +220,37 @@ function NoteWriteContent() {
 
       setImageUploading(true);
 
-      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      const {
+        compressImage,
+        fileToDataUrl,
+        getImageDimensions,
+        isAspectClose,
+        isSourceImageTooLarge,
+        MAX_SOURCE_IMAGE_SIZE_MB,
+      } = await import("@/lib/imageCompression");
       if (isSourceImageTooLarge(file)) {
         throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       }
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error(t("fileReadError")));
-        reader.readAsDataURL(compressed);
+      const dataUrl = await fileToDataUrl(compressed).catch(() => {
+        throw new Error(t("fileReadError"));
       });
 
       (document.activeElement as HTMLElement | null)?.blur();
 
       const nextCropAspect = await resolveNoteCropAspect(dataUrl).catch(() => 1);
+      const actualRatio = await getImageDimensions(dataUrl)
+        .then((dims) => dims.ratio)
+        .catch(() => nextCropAspect);
 
-      const croppedUrl = await new Promise<string>((resolve) => {
-        cropResolveRef.current = resolve;
-        setCropAspect(nextCropAspect);
-        setCropSrc(dataUrl);
-      });
+      const croppedUrl = isAspectClose(actualRatio, nextCropAspect, 0.12)
+        ? dataUrl
+        : await new Promise<string>((resolve) => {
+            cropResolveRef.current = resolve;
+            setCropAspect(nextCropAspect);
+            setCropSrc(dataUrl);
+          });
 
       if (!croppedUrl) {
         setImageUploading(false);

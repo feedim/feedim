@@ -6,6 +6,33 @@ export function isSourceImageTooLarge(file: File, maxSizeMB: number = MAX_SOURCE
   return file.size > maxSizeMB * 1024 * 1024;
 }
 
+export async function fileToDataUrl(file: File): Promise<string> {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("file-read-failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function getImageDimensions(src: string): Promise<{ width: number; height: number; ratio: number }> {
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const width = img.naturalWidth || img.width || 1;
+      const height = img.naturalHeight || img.height || 1;
+      resolve({ width, height, ratio: width / Math.max(height, 1) });
+    };
+    img.onerror = () => reject(new Error("image-load-failed"));
+    img.src = src;
+  });
+}
+
+export function isAspectClose(actualRatio: number, targetRatio: number, tolerance = 0.06): boolean {
+  const baseline = Math.max(targetRatio, 0.0001);
+  return Math.abs(actualRatio - targetRatio) / baseline <= tolerance;
+}
+
 async function fallbackCompressImage(file: File, options: {
   maxWidthOrHeight: number;
   quality: number;

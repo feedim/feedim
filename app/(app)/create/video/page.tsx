@@ -550,16 +550,27 @@ function VideoWriteContent() {
     if (!file) return;
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
-      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      const {
+        compressImage,
+        fileToDataUrl,
+        getImageDimensions,
+        isAspectClose,
+        isSourceImageTooLarge,
+        MAX_SOURCE_IMAGE_SIZE_MB,
+      } = await import("@/lib/imageCompression");
       if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       const compressed = await compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error(t("fileReadError")));
-        reader.readAsDataURL(compressed);
+      const dataUrl = await fileToDataUrl(compressed).catch(() => {
+        throw new Error(t("fileReadError"));
       });
-      setCropSrc(dataUrl);
+      const actualRatio = await getImageDimensions(dataUrl)
+        .then((dims) => dims.ratio)
+        .catch(() => 16 / 9);
+      if (isAspectClose(actualRatio, 16 / 9)) {
+        setThumbnail(dataUrl);
+      } else {
+        setCropSrc(dataUrl);
+      }
     } catch { feedimAlert("error", t("imageUploadFailedRetry")); }
     e.target.value = "";
   };
@@ -980,7 +991,7 @@ function VideoWriteContent() {
               {thumbnail ? (
                 <div>
                   <div className="relative rounded-xl overflow-hidden">
-                    <img src={thumbnail} alt={t("thumbnail")} className="w-full h-48 object-cover bg-bg-tertiary" />
+                    <img src={thumbnail} alt={t("thumbnail")} className="w-full h-48 object-contain bg-bg-tertiary" />
                     <button onClick={() => setThumbnail("")} className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
                       <X className="h-4 w-4" />
                     </button>

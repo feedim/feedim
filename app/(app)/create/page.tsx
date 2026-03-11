@@ -257,26 +257,34 @@ function WritePageContent() {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
 
       // Compress before storing (strip metadata, convert to JPEG, max 2MB)
-      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      const {
+        compressImage,
+        fileToDataUrl,
+        getImageDimensions,
+        isAspectClose,
+        isSourceImageTooLarge,
+        MAX_SOURCE_IMAGE_SIZE_MB,
+      } = await import("@/lib/imageCompression");
       if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error(t("fileReadError")));
-        reader.readAsDataURL(compressed);
+      const dataUrl = await fileToDataUrl(compressed).catch(() => {
+        throw new Error(t("fileReadError"));
       });
 
       // Dismiss mobile keyboard before opening crop modal
       (document.activeElement as HTMLElement)?.blur();
 
-      // Open crop modal and wait for result
-      const croppedUrl = await new Promise<string>((resolve) => {
-        cropResolveRef.current = resolve;
-        setCropAspect(16 / 9);
-        setCropSrc(dataUrl);
-      });
+      const actualRatio = await getImageDimensions(dataUrl)
+        .then((dims) => dims.ratio)
+        .catch(() => 16 / 9);
+      const croppedUrl = isAspectClose(actualRatio, 16 / 9)
+        ? dataUrl
+        : await new Promise<string>((resolve) => {
+            cropResolveRef.current = resolve;
+            setCropAspect(16 / 9);
+            setCropSrc(dataUrl);
+          });
 
       // Crop cancelled
       if (!croppedUrl) throw new Error("cancelled");
@@ -304,25 +312,34 @@ function WritePageContent() {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
 
       setImageUploading(true);
-      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      const {
+        compressImage,
+        fileToDataUrl,
+        getImageDimensions,
+        isAspectClose,
+        isSourceImageTooLarge,
+        MAX_SOURCE_IMAGE_SIZE_MB,
+      } = await import("@/lib/imageCompression");
       if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error(t("fileReadError")));
-        reader.readAsDataURL(compressed);
+      const dataUrl = await fileToDataUrl(compressed).catch(() => {
+        throw new Error(t("fileReadError"));
       });
 
       // Dismiss keyboard before crop modal
       (document.activeElement as HTMLElement)?.blur();
 
-      const croppedUrl = await new Promise<string>((resolve) => {
-        cropResolveRef.current = resolve;
-        setCropAspect(16 / 9);
-        setCropSrc(dataUrl);
-      });
+      const actualRatio = await getImageDimensions(dataUrl)
+        .then((dims) => dims.ratio)
+        .catch(() => 16 / 9);
+      const croppedUrl = isAspectClose(actualRatio, 16 / 9)
+        ? dataUrl
+        : await new Promise<string>((resolve) => {
+            cropResolveRef.current = resolve;
+            setCropAspect(16 / 9);
+            setCropSrc(dataUrl);
+          });
 
       // Crop cancelled
       if (!croppedUrl) {
@@ -362,24 +379,33 @@ function WritePageContent() {
     const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("image/"));
     if (!file) return;
     try {
-      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      const {
+        compressImage,
+        fileToDataUrl,
+        getImageDimensions,
+        isAspectClose,
+        isSourceImageTooLarge,
+        MAX_SOURCE_IMAGE_SIZE_MB,
+      } = await import("@/lib/imageCompression");
       if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
 
       setImageUploading(true);
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error(t("fileReadError")));
-        reader.readAsDataURL(compressed);
+      const dataUrl = await fileToDataUrl(compressed).catch(() => {
+        throw new Error(t("fileReadError"));
       });
 
-      const croppedUrl = await new Promise<string>((resolve) => {
-        cropResolveRef.current = resolve;
-        setCropAspect(16 / 9);
-        setCropSrc(dataUrl);
-      });
+      const actualRatio = await getImageDimensions(dataUrl)
+        .then((dims) => dims.ratio)
+        .catch(() => 16 / 9);
+      const croppedUrl = isAspectClose(actualRatio, 16 / 9)
+        ? dataUrl
+        : await new Promise<string>((resolve) => {
+            cropResolveRef.current = resolve;
+            setCropAspect(16 / 9);
+            setCropSrc(dataUrl);
+          });
 
       if (!croppedUrl) {
         setImageUploading(false);
@@ -820,7 +846,7 @@ function WritePageContent() {
                 {featuredImage ? (
                   <div>
                     <div className="relative rounded-xl overflow-hidden">
-                      <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-cover bg-bg-tertiary" />
+                      <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-contain bg-bg-tertiary" />
                       {imageUploading && (
                         <div className="absolute inset-0 bg-bg-secondary/80 animate-pulse" />
                       )}
