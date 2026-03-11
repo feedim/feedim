@@ -33,7 +33,7 @@ interface MomentItem {
 const EMPTY_MOMENTS: MomentItem[] = [];
 
 export default function MomentsCarousel({
-  maxItems = 4,
+  maxItems = 5,
   noBg = false,
   initialMoments,
   feedMode = "for-you",
@@ -100,13 +100,13 @@ export default function MomentsCarousel({
         <span className="text-[0.88rem] font-bold">{t("title")}</span>
       </div>
       <div className="flex gap-2.5 overflow-hidden">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: maxItems + 1 }).map((_, i) => (
           <div
             key={i}
             className={cn(
               "shrink-0 w-[130px] h-[230px] rounded-[14px]",
               i === 0 && "ml-[10px]",
-              i === 4 && "mr-[10px]",
+              i === maxItems && "mr-[10px]",
               noBg ? "bg-bg-secondary" : "bg-bg-tertiary"
             )}
           />

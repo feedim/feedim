@@ -36,7 +36,7 @@ function NoteContent({ text, href, onOpen }: { text: string; href: string; onOpe
 
   if (isServerPreview) {
     return (
-      <div className="relative z-[1] pointer-events-none text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line break-words [overflow-wrap:anywhere]">
+      <div className="relative z-[1] pointer-events-none text-[0.9rem] leading-[1.5] text-text-primary whitespace-pre-line break-words [overflow-wrap:anywhere]">
         <span dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(normalizedText) }} />
         <Link
           href={expandedHref}
@@ -54,7 +54,7 @@ function NoteContent({ text, href, onOpen }: { text: string; href: string; onOpe
         text={normalizedText}
         maxChars={NOTE_TRUNCATE_LENGTH}
         maxLines={NOTE_TRUNCATE_LINES}
-        className="text-[0.88rem] leading-[1.5] text-text-primary whitespace-pre-line"
+        className="text-[0.9rem] leading-[1.5] text-text-primary whitespace-pre-line"
         buttonClassName="relative z-[2] pointer-events-auto mt-0.5 inline-flex w-fit text-[0.82rem] font-bold text-text-muted hover:underline"
         htmlRenderer={renderMentionsAsHTML}
         onReadMore={onOpen}
@@ -348,7 +348,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
             <>
               <NoteContent text={post.excerpt || post.title} href={postHref} onOpen={() => router.push(noteExpandedHref)} />
               {post.featured_image && (
-                <div className="relative z-[1] pointer-events-none mt-2 w-full rounded-[18px] overflow-hidden">
+                <div className="relative z-[1] pointer-events-none mt-[3px] w-full rounded-[18px] overflow-hidden">
                   <img
                     data-src={post.featured_image}
                     alt={post.title}

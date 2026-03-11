@@ -703,13 +703,13 @@ function NoteWriteContent() {
                   </div>
                   {(featuredImagePreview || featuredImage || imageUploading) && (
                     <div className="mt-3">
-                      <div className="relative h-[320px] w-full overflow-hidden rounded-[18px]">
+                      <div className="relative w-full overflow-hidden rounded-[18px]">
                         {featuredImagePreview || featuredImage ? (
                           <>
                             <img
                               src={featuredImagePreview || featuredImage}
                               alt={tc("image")}
-                              className="block h-full w-full object-cover"
+                              className="block h-auto max-h-[560px] w-full"
                             />
                             {imageUploading && (
                               <div className="absolute inset-0 animate-pulse bg-bg-secondary/20" />

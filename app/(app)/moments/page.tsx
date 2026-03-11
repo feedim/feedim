@@ -865,7 +865,7 @@ function MomentsContent() {
         style={{ maxWidth: "min(62dvh, 480px)" }}
       >
         {/* Top bar — back button + Moments title + mute toggle */}
-        <div className="absolute top-0 left-0 right-0 z-[60] flex items-center px-4 pt-4 pb-2 pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 z-[60] flex items-center px-3.5 pt-4 pb-2 pointer-events-none">
           <BackButton variant="overlay" />
           <div className="flex-1 flex justify-center">
             <FeedFilterSelect

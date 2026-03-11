@@ -47,6 +47,7 @@ CATEGORIES:
 
 RULES:
 - @mention (etiketleme) normal sosyal davranış. Sadece @mention içermek veya ardışık @mention kullanmak spam DEĞİL. Küfür+@mention hariç, @mention'ları ignore et.
+- @mention + gülme ifadesi / klavye gürültüsü / anlamsız hece (asdf, sjdjd, şlfskfsd, haha, jsjs, sksks, xd) tek başına hakaret DEĞİL, ALLOW. "kes/sus" gibi hafif sosyal çıkışlar bu tip anlamsız devamla geliyorsa, açık küfür/tehdit yoksa ALLOW.
 - Bypass detection: s*x, s3x, ѕеx, zero-width vb. tüm obfuscation tespit et.
 - Tüm dillere aynı standart. Humor/ironi savunması geçersiz.
 - Yeni hesap (ad<7 gün, rc>3) → spam eşiğini düşür.
@@ -117,6 +118,11 @@ const TARGETED_PROFANITY: RegExp[] = [
   /\bsana\s+.{0,10}(sik|orospu|piç|ibne|gavat)/i,
 ];
 
+const HARMLESS_MENTION_BANTER: RegExp[] = [
+  /@\w+[\s,:;.!?'"()_-]*(kes|sus|yeter)?[\s,:;.!?'"()_-]*(?:as+d+f*|sjd+h*k*|sjs+j+|jsj+s+|kdk+d+|sks+k+|şl[fk]s+k*f*s*d*|slfskfsd+|haha+h*|hehe+h*|xd+|xd\s*xd+|lmao+|lol+|:d|🤣|😂|😅|😆|😭)+/iu,
+  /(?:as+d+f*|sjd+h*k*|sjs+j+|jsj+s+|kdk+d+|sks+k+|şl[fk]s+k*f*s*d*|slfskfsd+|haha+h*|hehe+h*|xd+|lmao+|lol+|:d|🤣|😂|😅|😆|😭)+[\s,:;.!?'"()_-]*@\w+/iu,
+];
+
 const SPAM_PATTERNS: Array<{ re: RegExp; reason: string }> = [
   { re: /https?:\/\//g, reason: 'multi-link' }, // checked with count
   { re: /(\b\d[\d.,]*\s?(?:tl|₺|usd|\$|euro?|€)\b).{0,60}(hemen|tıkla|kazan|kaydol|ücretsiz|bedava)/i, reason: 'Spam: money + call to action' },
@@ -171,6 +177,17 @@ function localSpamHeuristic(text: string): { hit: boolean; reason: string } | nu
   }
 
   return null;
+}
+
+function localHarmlessMentionHeuristic(text: string): boolean {
+  if (!/@\w+/u.test(text)) return false;
+
+  if (localExtremeHeuristic(text)) return false;
+  if (localProfanityHeuristic(text).hit) return false;
+  if (localSpamHeuristic(text)?.hit) return false;
+  if (localPoliticsHeuristic(text).hit) return false;
+
+  return HARMLESS_MENTION_BANTER.some((re) => re.test(text));
 }
 
 /** Profile spam/scam + personal data check (excludes platform redirects) */
@@ -372,6 +389,10 @@ export async function checkTextContent(
       reason: extreme.reason,
       confidence: 0.98,
     };
+  }
+
+  if (localHarmlessMentionHeuristic(combined)) {
+    return SAFE_RESULT;
   }
 
   // Profillerde: küfür, bahis, siyaset, spam/dolandırıcılık, cinsel içerik, kişisel veri flag'lenir

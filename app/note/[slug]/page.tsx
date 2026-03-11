@@ -183,7 +183,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
             text={noteText}
             maxChars={240}
             maxLines={8}
-            className="text-[1rem] leading-[1.55] text-text-primary whitespace-pre-line"
+            className="text-[1.02rem] leading-[1.55] text-text-primary whitespace-pre-line"
             buttonClassName="mt-0.5 inline-flex w-fit text-[0.84rem] font-bold text-text-muted hover:underline"
             collapseButtonClassName="mt-0.5 inline-flex w-fit text-[0.84rem] font-bold text-text-muted hover:underline"
             defaultExpanded={autoExpandFromCard}
