@@ -298,6 +298,7 @@
     "writeComment": "Write a comment...",
     "reply": "Reply",
     "replyingTo": "Replying to {username}",
+    "replyToUserLabel": "Replying to @{username}",
     "commentFailed": "To protect our community, we are limiting some features. Please try again later.",
     "commentUnderReview": "Your comment is under review",
     "sortNewest": "Newest",

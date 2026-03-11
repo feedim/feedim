@@ -9,6 +9,10 @@ import { safeError } from '@/lib/apiError';
 import { checkEmailVerified } from '@/lib/emailGate';
 import { getTranslations } from 'next-intl/server';
 
+const REPLY_META_REGEX = /^\[\[reply:([A-Za-z0-9._-]+)\]\]\s*/i;
+const LEGACY_REPLY_PREFIX_REGEX = /^@([A-Za-z0-9._-]+)(?:[\s,:-]+)([\s\S]*)$/;
+const COMMENT_MENTION_REGEX = /@([A-Za-z0-9._-]+)/g;
+
 function isValidGifUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -154,7 +158,9 @@ interface RankedComment extends CommentRow {
 type PublicCommentProfile = Omit<CommentProfile, "profile_score" | "spam_score">;
 
 interface CommentResponseRow extends Omit<CommentRow, "profiles"> {
+  content: string;
   profiles: PublicCommentProfile | null;
+  reply_to_username: string | null;
 }
 
 interface CommentThread extends CommentResponseRow {
@@ -185,6 +191,7 @@ interface CommentRequestBody {
   parent_id?: number | null;
   content_type?: string;
   gif_url?: string;
+  reply_to_username?: string | null;
 }
 
 function unwrapRelation<T>(value: RelationValue<T>): T | null {
@@ -196,6 +203,95 @@ function stripProfileScores(profile: CommentProfile | null): PublicCommentProfil
   if (!profile) return profile;
   const { profile_score, spam_score, ...rest } = profile;
   return rest;
+}
+
+function normalizeReplyUsername(username: string | null | undefined): string | null {
+  if (!username) return null;
+  const safe = username.trim().replace(/^@+/, "").replace(/[^A-Za-z0-9._-]/g, "");
+  return safe || null;
+}
+
+function decodeStoredCommentContent(content: string | null, parentId: number | null): { content: string; replyToUsername: string | null } {
+  const raw = content ?? "";
+  const metaMatch = raw.match(REPLY_META_REGEX);
+  if (metaMatch) {
+    return {
+      content: raw.replace(REPLY_META_REGEX, ""),
+      replyToUsername: normalizeReplyUsername(metaMatch[1]),
+    };
+  }
+
+  if (parentId !== null) {
+    const legacyMatch = raw.match(LEGACY_REPLY_PREFIX_REGEX);
+    if (legacyMatch) {
+      return {
+        content: legacyMatch[2] || "",
+        replyToUsername: normalizeReplyUsername(legacyMatch[1]),
+      };
+    }
+  }
+
+  return { content: raw, replyToUsername: null };
+}
+
+function encodeStoredCommentContent(content: string, replyToUsername: string | null): string {
+  const normalizedReplyUsername = normalizeReplyUsername(replyToUsername);
+  if (!normalizedReplyUsername) return content;
+  return `[[reply:${normalizedReplyUsername}]]${content ? ` ${content}` : ""}`;
+}
+
+function toCommentResponseRow(row: CommentRow): CommentResponseRow {
+  const profile = unwrapRelation(row.profiles);
+  const { content, replyToUsername } = decodeStoredCommentContent(row.content, row.parent_id);
+  return {
+    ...row,
+    content,
+    profiles: stripProfileScores(profile),
+    reply_to_username: replyToUsername,
+  };
+}
+
+function extractMentionUsernames(text: string): string[] {
+  if (!text) return [];
+  const result: string[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  COMMENT_MENTION_REGEX.lastIndex = 0;
+  while ((match = COMMENT_MENTION_REGEX.exec(text)) !== null) {
+    const username = match[1].toLowerCase();
+    if (seen.has(username)) continue;
+    seen.add(username);
+    result.push(username);
+  }
+  return result;
+}
+
+async function resolveLinkableMentionUsernames(
+  admin: ReturnType<typeof createAdminClient>,
+  comments: Array<CommentResponseRow | CommentThread>,
+  blockedIds: string[],
+): Promise<string[]> {
+  const usernames = new Set<string>();
+
+  for (const comment of comments) {
+    extractMentionUsernames(comment.content).forEach((username) => usernames.add(username));
+    if ("replies" in comment) {
+      comment.replies.forEach((reply) => {
+        extractMentionUsernames(reply.content).forEach((username) => usernames.add(username));
+      });
+    }
+  }
+
+  if (usernames.size === 0) return [];
+
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select("username, user_id, status")
+    .in("username", Array.from(usernames));
+
+  return (profiles || [])
+    .filter((profile) => profile.username && profile.status === "active" && !blockedIds.includes(profile.user_id))
+    .map((profile) => String(profile.username).toLowerCase());
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -284,10 +380,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         if (rProfile?.status && rProfile.status !== 'active') return false;
         if (r.is_nsfw && r.author_id !== user?.id) return false;
         return true;
-      }).map((r): CommentResponseRow => {
-        const profile = unwrapRelation(r.profiles);
-        return { ...r, profiles: stripProfileScores(profile) };
-      });
+      }).map((r): CommentResponseRow => toCommentResponseRow(r));
 
       const resultReplies = filteredReplies.slice(0, replyLimit);
       let userLikedIds: number[] = [];
@@ -301,10 +394,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         userLikedIds = likes.map((like) => like.comment_id);
       }
 
+      const linkableMentionUsernames = await resolveLinkableMentionUsernames(admin, resultReplies, blockedIds);
+
       return NextResponse.json({
         replies: resultReplies,
         hasMore: filteredReplies.length > replyLimit,
         userLikedIds,
+        linkableMentionUsernames,
       });
     }
 
@@ -439,12 +535,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const result: CommentThread[] = activeComments.map((c) => ({
-      ...c,
-      profiles: stripProfileScores(unwrapRelation(c.profiles)),
-      replies: (replyMap.get(c.id) || []).map((r): CommentResponseRow => ({
-        ...r,
-        profiles: stripProfileScores(unwrapRelation(r.profiles)),
-      })),
+      ...toCommentResponseRow(c),
+      replies: (replyMap.get(c.id) || []).map((r): CommentResponseRow => toCommentResponseRow(r)),
     }));
 
     // Include user's liked comment IDs so client can show liked state
@@ -495,10 +587,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             );
             if (targetComment?.parent_id && !targetHidden) {
               targetParentId = targetComment.parent_id;
-              const cleanTarget: CommentResponseRow = {
-                ...targetComment,
-                profiles: stripProfileScores(unwrapRelation(targetComment.profiles)),
-              };
+              const cleanTarget: CommentResponseRow = toCommentResponseRow(targetComment);
 
               // Check if parent is already in results
               const parentIdx = result.findIndex((c) => c.id === targetParentId);
@@ -519,8 +608,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
                 if (parentComment) {
                   result.unshift({
-                    ...parentComment,
-                    profiles: stripProfileScores(unwrapRelation(parentComment.profiles)),
+                    ...toCommentResponseRow(parentComment),
                     replies: [cleanTarget],
                   });
                 }
@@ -531,10 +619,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    const linkableMentionUsernames = await resolveLinkableMentionUsernames(admin, result, blockedIds);
+
     const response = NextResponse.json({
       comments: result,
       hasMore: needsRanking ? rankedTotalCount > offset + limit : comments.length > limit,
       userLikedIds,
+      linkableMentionUsernames,
       ...(targetParentId && { targetParentId }),
     });
     if (user) {
@@ -581,9 +672,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: emailCheck.error }, { status: 403 });
     }
 
-    const { content, parent_id, content_type, gif_url } = (await request.json()) as CommentRequestBody;
+    const { content, parent_id, content_type, gif_url, reply_to_username } = (await request.json()) as CommentRequestBody;
     const isGif = content_type === 'gif';
     const trimmedContent = typeof content === 'string' ? content.trim() : '';
+    const normalizedReplyUsername = normalizeReplyUsername(reply_to_username);
+    const storedContent = encodeStoredCommentContent(trimmedContent, parent_id ? normalizedReplyUsername : null);
 
     // Plan bazli yorum karakter limiti (max/business: 500, digerleri: 250)
     const maxCommentLength = COMMENT_CHAR_LIMITS[plan];
@@ -671,7 +764,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (isGif) {
       dupeQuery.eq('content_type', 'gif').eq('gif_url', gif_url);
     } else {
-      dupeQuery.eq('content', trimmedContent);
+      dupeQuery.eq('content', storedContent);
     }
 
     const { count: dupeCount } = await dupeQuery;
@@ -704,7 +797,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .insert({
         post_id: postId,
         author_id: user.id,
-        content: trimmedContent,
+        content: storedContent,
         content_type: isGif ? 'gif' : 'text',
         gif_url: isGif ? gif_url : null,
         parent_id: parent_id || null,
@@ -755,19 +848,40 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Create notification for post author (comment) or parent comment author (reply)
-    const tNotifComment = await getTranslations("notifications");
-    const notifContent = isGif ? tNotifComment("sentGif") : trimmedContent.slice(0, 80);
+    const replyNotificationTargetUsername = parent_id ? normalizedReplyUsername : null;
     if (parent_id) {
-      const { data: parentComment } = await admin
-        .from('comments')
-        .select('author_id')
-        .eq('id', parent_id)
-        .single();
-      if (parentComment) {
-        await createNotification({ admin, user_id: parentComment.author_id, actor_id: user.id, type: 'reply', object_type: 'comment', object_id: comment.id, content: notifContent });
+      let replyTargetUserId: string | null = null;
+
+      if (replyNotificationTargetUsername) {
+        const { data: replyTargetProfile } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("username", replyNotificationTargetUsername)
+          .maybeSingle();
+        replyTargetUserId = replyTargetProfile?.user_id || null;
+      }
+
+      if (!replyTargetUserId) {
+        const { data: parentComment } = await admin
+          .from('comments')
+          .select('author_id')
+          .eq('id', parent_id)
+          .single();
+        replyTargetUserId = parentComment?.author_id || null;
+      }
+
+      if (replyTargetUserId) {
+        await createNotification({
+          admin,
+          user_id: replyTargetUserId,
+          actor_id: user.id,
+          type: 'reply',
+          object_type: 'comment',
+          object_id: comment.id,
+        });
       }
     } else {
-      const notificationUserId = await resolvePostNotificationRecipient(admin, postId);
+      const notificationUserId = postCheck?.author_id || await resolvePostNotificationRecipient(admin, postId);
       if (notificationUserId) {
         await createNotification({
           admin,
@@ -776,7 +890,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           type: 'comment',
           object_type: 'comment',
           object_id: comment.id,
-          content: notifContent,
         });
       }
     }
@@ -810,8 +923,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({
       comment: {
-        ...comment,
-        profiles: stripProfileScores(unwrapRelation(comment.profiles)),
+        ...toCommentResponseRow(comment),
         replies: [],
       },
     }, { status: 201 });

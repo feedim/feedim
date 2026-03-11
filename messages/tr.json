@@ -298,6 +298,7 @@
     "writeComment": "Yorumunuzu yazın...",
     "reply": "Yanıtla",
     "replyingTo": "{username} kullanıcısına yanıt veriyorsunuz",
+    "replyToUserLabel": "@{username} kullanıcısına yanıt olarak",
     "commentFailed": "Topluluğumuzu korumak adına bazı özelliklerinizi sınırlıyoruz. Lütfen daha sonra tekrar deneyin.",
     "commentUnderReview": "Yorumunuz denetleniyor",
     "sortNewest": "En yeni",

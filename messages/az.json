@@ -298,6 +298,7 @@
     "writeComment": "Şərhinizi yazın...",
     "reply": "Cavabla",
     "replyingTo": "{username} istifadəçisinə cavab verirsiniz",
+    "replyToUserLabel": "@{username} istifadəçisinə cavab olaraq",
     "commentFailed": "İctimaiyyətimizi qorumaq üçün bəzi xüsusiyyətlərinizi məhdudlaşdırırıq. Zəhmət olmasa sonra yenidən cəhd edin.",
     "commentUnderReview": "Şərhiniz nəzərdən keçirilir",
     "sortNewest": "Ən yeni",

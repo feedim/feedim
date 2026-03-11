@@ -28,6 +28,7 @@ interface Comment {
   reply_count: number;
   created_at: string;
   is_nsfw?: boolean;
+  reply_to_username?: string | null;
   profiles?: {
     username: string;
     full_name?: string;
@@ -54,6 +55,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   const [emptyStateVerified, setEmptyStateVerified] = useState(initialCount === 0);
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
+  const [linkableMentionUsernames, setLinkableMentionUsernames] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [likedComments, setLikedComments] = useState<Set<number>>(new Set());
   const { requireAuth } = useAuthModal();
@@ -101,6 +103,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
           setComments(data.comments || []);
           setEmptyStateVerified((data.comments?.length || 0) > 0 || initialCount === 0 || mismatchRetryDoneRef.current);
           setLikedComments(new Set(data.userLikedIds || []));
+          setLinkableMentionUsernames(new Set((data.linkableMentionUsernames || []).map((username: string) => username.toLowerCase())));
         } else {
           setComments(prev => {
             const existingIds = new Set(prev.map(c => c.id));
@@ -110,6 +113,13 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
             setLikedComments(prev => {
               const next = new Set(prev);
               data.userLikedIds.forEach((id: number) => next.add(id));
+              return next;
+            });
+          }
+          if (data.linkableMentionUsernames?.length) {
+            setLinkableMentionUsernames(prev => {
+              const next = new Set(prev);
+              data.linkableMentionUsernames.forEach((username: string) => next.add(username.toLowerCase()));
               return next;
             });
           }
@@ -174,6 +184,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       content,
       author_id: ctxUser?.id || null,
       parent_id: parentId,
+      reply_to_username: replyTo?.name || null,
       like_count: 0,
       reply_count: 0,
       created_at: new Date().toISOString(),
@@ -201,7 +212,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 
     // Background API call
     try {
-      const reqInit = { method: "POST" as const, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, parent_id: parentId }) };
+      const reqInit = { method: "POST" as const, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, parent_id: parentId, reply_to_username: replyTo?.name || null }) };
       let res = await fetch(`/api/posts/${postId}/comments`, reqInit);
 
       // Retry once on 401 — session may need refresh after login redirect
@@ -329,8 +340,8 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       <form onSubmit={handleSubmit} className="mb-6">
         {replyTo && (
           <div className="flex items-center gap-2 text-xs text-text-muted mb-2">
-            <span className="font-semibold text-text-primary">@{replyTo.name}</span>
-            <button type="button" onClick={() => { setReplyTo(null); setNewComment(""); }} className="text-accent-main hover:underline">{tCommon("cancel")}</button>
+            <span className="font-semibold text-text-primary">{t("replyingTo", { username: `@${replyTo.name}` })}</span>
+            <button type="button" onClick={() => { setReplyTo(null); }} className="text-accent-main hover:underline">{tCommon("cancel")}</button>
           </div>
         )}
         <div className="flex gap-2">
@@ -430,8 +441,9 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
               }}
               likedComments={likedComments}
               onLike={handleLikeComment}
-              onReply={(id, name) => { setReplyTo({ id, name }); setNewComment(`@${name} `); setTimeout(() => commentRef.current?.focus(), 100); }}
+              onReply={(id, name) => { setReplyTo({ id, name }); setTimeout(() => commentRef.current?.focus(), 100); }}
               getAuthorName={getAuthorName}
+              renderMentionContent={(text) => renderMentionsAsHTML(text, 3, linkableMentionUsernames)}
             />
           ))}
         </div>
@@ -451,9 +463,10 @@ interface CommentItemProps {
   onLike: (id: number) => void;
   onReply?: (id: number, name: string) => void;
   getAuthorName: (comment: Comment) => string;
+  renderMentionContent: (text: string) => string;
 }
 
-const CommentItem = memo(function CommentItem({ comment, isReply = false, likedComments, onLike, onReply, getAuthorName }: CommentItemProps) {
+const CommentItem = memo(function CommentItem({ comment, isReply = false, likedComments, onLike, onReply, getAuthorName, renderMentionContent }: CommentItemProps) {
   const t = useTranslations("comments");
   const locale = useLocale();
   return (
@@ -467,7 +480,12 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
           <span className="text-text-muted/40 text-[0.66rem]">·</span>
           <span className="text-[0.66rem] text-text-muted">{formatRelativeDate(comment.created_at, locale)}</span>
         </div>
-        <p className="text-sm text-text-secondary mt-0.5 break-words" dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(comment.content) }} />
+        {comment.reply_to_username && (
+          <div className="text-[0.75rem] font-medium text-text-muted mt-0.5">
+            {t("replyToUserLabel", { username: comment.reply_to_username })}
+          </div>
+        )}
+        <p className="text-sm text-text-secondary mt-0.5 break-words" dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }} />
         {comment.is_nsfw && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold bg-accent-main/10 text-accent-main mt-0.5">
             <AlertTriangle className="h-3 w-3" /> {t("commentUnderReview")}
@@ -501,7 +519,7 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
               <CommentItem key={reply.id} comment={reply} isReply likedComments={likedComments} onLike={onLike} onReply={onReply ? (_, replyUsername) => {
                         // Reply-to-reply: keep parent_id as the root comment, mention the reply author
                         onReply(comment.id, replyUsername);
-                      } : undefined} getAuthorName={getAuthorName} />
+                      } : undefined} getAuthorName={getAuthorName} renderMentionContent={renderMentionContent} />
             ))}
           </div>
         )}

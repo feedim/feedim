@@ -36,6 +36,7 @@ interface Comment {
   like_count: number;
   reply_count: number;
   created_at: string;
+  reply_to_username?: string | null;
   profiles?: {
     username: string;
     full_name?: string;
@@ -53,6 +54,7 @@ interface CommentsResponse {
   hasMore?: boolean;
   userLikedIds?: number[];
   targetParentId?: number;
+  linkableMentionUsernames?: string[];
 }
 
 interface CommentMutationResponse {
@@ -66,6 +68,7 @@ interface CommentMutationResponse {
 interface RepliesResponse {
   replies?: Comment[];
   userLikedIds?: number[];
+  linkableMentionUsernames?: string[];
 }
 
 interface CommentsModalProps {
@@ -81,6 +84,7 @@ interface CommentsModalProps {
 export default function CommentsModal({ open, onClose, postId, commentCount: initialCount, postSlug, targetCommentId, allowComments = true }: CommentsModalProps) {
   const t = useTranslations("modals");
   const tc = useTranslations("common");
+  const tComments = useTranslations("comments");
   const locale = useLocale();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +99,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const currentSortRef = useRef<"smart" | "newest" | "popular">(sortBy);
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
+  const [linkableMentionUsernames, setLinkableMentionUsernames] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [likedComments, setLikedComments] = useState<Set<number>>(new Set());
   const [reportTarget, setReportTarget] = useState<number | null>(null);
@@ -133,6 +138,15 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const maxCommentLength = (ctxUser?.role === "admin" || ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business")
     ? VALIDATION.comment.maxPremium
     : VALIDATION.comment.max;
+
+  const mergeLinkableMentionUsernames = useCallback((usernames?: string[]) => {
+    if (!usernames) return;
+    setLinkableMentionUsernames((prev) => {
+      const next = new Set(prev);
+      usernames.forEach((username) => next.add(username.toLowerCase()));
+      return next;
+    });
+  }, []);
 
   const resizeTextarea = useCallback(() => {
     const textarea = inputRef.current;
@@ -318,6 +332,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
         if (pageNum === 1) {
           const nextComments = data.comments || [];
           setComments(nextComments);
+          setLinkableMentionUsernames(new Set((data.linkableMentionUsernames || []).map((username) => username.toLowerCase())));
           tabCacheRef.current[sort] = { comments: nextComments, hasMore: !!data.hasMore };
           setEmptyStateVerified(nextComments.length > 0 || knownCount === 0 || mismatchRetryDoneRef.current);
         } else {
@@ -337,6 +352,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             return next;
           });
         }
+        mergeLinkableMentionUsernames(data.linkableMentionUsernames);
         return { targetParentId: data.targetParentId };
       }
     } catch (err) {
@@ -358,6 +374,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       setTotalCount(startingCount);
       setEmptyStateVerified(startingCount === 0);
       setLikedComments(new Set());
+      setLinkableMentionUsernames(new Set());
       setCurrentUserId(viewerIdRef.current);
       tabCacheRef.current = {};
       void loadComments(1, currentSortRef.current, { target: targetCommentId }).then((res) => {
@@ -381,6 +398,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       tabCacheRef.current = {};
       setComments([]);
       setLikedComments(new Set());
+      setLinkableMentionUsernames(new Set());
       setLoading(true);
     }
   }, [loadComments, open, targetCommentId]);
@@ -481,6 +499,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
     const gifData = isGif ? pendingGif : null;
 
     const body: Record<string, unknown> = { parent_id: parentId };
+    if (replyTo?.name) body.reply_to_username = replyTo.name;
     if (isGif) {
       body.content_type = "gif";
       body.gif_url = gifData!.url;
@@ -497,6 +516,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       gif_url: isGif ? gifData!.url : undefined,
       author_id: currentUserId,
       parent_id: parentId,
+      reply_to_username: replyTo?.name || null,
       is_nsfw: false,
       like_count: 0,
       reply_count: 0,
@@ -709,6 +729,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
             return next;
           });
         }
+        mergeLinkableMentionUsernames(data.linkableMentionUsernames);
       }
     } catch {}
     setLoadingReplies(prev => { const next = new Set(prev); next.delete(commentId); return next; });
@@ -723,18 +744,18 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   };
 
   const renderMentionContent = useCallback((text: string) => {
-    return renderMentionsAsHTML(text);
-  }, []);
+    return renderMentionsAsHTML(text, 3, linkableMentionUsernames);
+  }, [linkableMentionUsernames]);
 
   const commentFormFooter = (
     <div className="relative z-[99998] px-3 py-[2px] pb-[env(safe-area-inset-bottom,8px)]">
       {/* Reply indicator */}
       {replyTo && (
         <div className="flex items-center gap-2 py-[11px] px-[2px] ml-[5px] w-full border-b border-bg-tertiary text-[0.85rem]">
-          <span className="font-semibold text-text-primary">@{replyTo.name}</span>
+          <span className="font-semibold text-text-primary">{tComments("replyingTo", { username: `@${replyTo.name}` })}</span>
           <button
             type="button"
-            onClick={() => { setReplyTo(null); setNewComment(""); }}
+            onClick={() => { setReplyTo(null); }}
             className="pl-[5px] text-[0.85rem] text-accent-main font-medium hover:underline"
           >
             {tc("cancel")}
@@ -922,7 +943,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 	                        openMenuId={openMenuId}
 	                        onToggleMenu={setOpenMenuId}
 	                        onLike={handleLikeComment}
-	                        onReply={(id, name) => { if (id < 0) return; setReplyTo({ id, name }); setNewComment(`@${name} `); setTimeout(() => inputRef.current?.focus(), 100); }}
+	                        onReply={(id, name) => { if (id < 0) return; setReplyTo({ id, name }); setTimeout(() => inputRef.current?.focus(), 100); }}
 	                        renderMentionContent={renderMentionContent}
 	                      />
 
@@ -957,7 +978,6 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 	                          onLike={handleLikeComment}
 	                          onReply={(_, replyUsername) => {
 	                            setReplyTo({ id: comment.id, name: replyUsername });
-	                            setNewComment(`@${replyUsername} `);
 	                            setTimeout(() => inputRef.current?.focus(), 100);
 	                          }}
 	                          renderMentionContent={renderMentionContent}
@@ -1239,6 +1259,7 @@ function CommentGifMedia({
 
 const CommentCard = memo(function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, onToggleMenu, onLike, onReply, renderMentionContent }: CommentCardProps) {
   const t = useTranslations("modals");
+  const tComments = useTranslations("comments");
   const tc = useTranslations("common");
   const tt = useTranslations("tooltip");
   const locale = useLocale();
@@ -1291,6 +1312,11 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
         {comment.is_nsfw && (
           <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-semibold bg-accent-main/10 text-accent-main">
             {t("commentUnderReview")}
+          </div>
+        )}
+        {comment.reply_to_username && !comment.is_nsfw && (
+          <div className="mt-[1px] text-[0.75rem] font-medium text-text-muted">
+            {tComments("replyToUserLabel", { username: comment.reply_to_username })}
           </div>
         )}
         {comment.content_type === "gif" && comment.gif_url ? (

@@ -194,6 +194,15 @@ function getGroupedText(
     );
   }
 
+  if (n.type === "comment" || n.type === "reply") {
+    return (
+      <>
+        {actorName && <><span className="font-semibold">{actorName}</span>{" "}</>}
+        <span className="text-text-muted">{getDefaultText(n.type, t)}</span>
+      </>
+    );
+  }
+
   return (
     <>
       {actorName && !isSystem && <><span className="font-semibold">{actorName}</span>{" "}</>}

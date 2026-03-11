@@ -43,6 +43,7 @@ function NoteWriteContent() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const tagAutocompleteRef = useRef<HTMLDivElement>(null);
   const cropResolveRef = useRef<((croppedUrl: string) => void) | null>(null);
   const imageUploadPromiseRef = useRef<Promise<string> | null>(null);
   const imageUploadRequestIdRef = useRef(0);
@@ -352,6 +353,17 @@ function NoteWriteContent() {
     const timer = setTimeout(() => searchTags(tagSearch), 300);
     return () => clearTimeout(timer);
   }, [tagSearch, searchTags]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!tagAutocompleteRef.current?.contains(event.target as Node)) {
+        setTagSuggestions([]);
+        setTagHighlight(-1);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
 
   const addTag = (tag: Tag) => {
     if (tags.length >= VALIDATION.postTags.max) return;
@@ -702,7 +714,7 @@ function NoteWriteContent() {
                     />
                   </div>
                   {(featuredImagePreview || featuredImage || imageUploading) && (
-                    <div className="mt-3">
+                    <div className="mt-0">
                       <div className="relative w-full overflow-hidden rounded-[18px]">
                         {featuredImagePreview || featuredImage ? (
                           <>
@@ -780,20 +792,28 @@ function NoteWriteContent() {
             <div>
               <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
               {tags.length < VALIDATION.postTags.max && (
-                <div className="relative">
+                <div ref={tagAutocompleteRef} className="relative">
                   <input
                     type="text"
                     value={tagSearch}
                     onChange={e => setTagSearch(e.target.value)}
                     onKeyDown={handleTagKeyDown}
+                    onFocus={() => {
+                      if (tagSearch.trim()) void searchTags(tagSearch);
+                    }}
                     placeholder={t("tagSearchPlaceholder")}
                     className="input-modern w-full pr-20"
                   />
                   {tagSuggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto">
+                    <div
+                      className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
                       {tagSuggestions.map((s, i) => (
                         <button
+                          type="button"
                           key={s.id}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => addTag(s)}
                           onMouseEnter={() => setTagHighlight(i)}
                           className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${
@@ -810,6 +830,8 @@ function NoteWriteContent() {
                   )}
                   {tagSearch.trim() && tagSuggestions.length === 0 && (
                     <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={createAndAddTag}
                       disabled={tagCreating}
                       className="absolute right-1.5 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"

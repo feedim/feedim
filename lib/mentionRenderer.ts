@@ -1,5 +1,4 @@
 const MENTION_REGEX = /@([A-Za-z0-9._-]+)/g;
-const URL_REGEX = /(https?:\/\/[^\s<>"']+)/g;
 
 function escapeHTML(text: string): string {
   return text
@@ -16,14 +15,22 @@ function escapeHTML(text: string): string {
  * Subsequent mentions of the same user stay as plain text.
  * All URLs are auto-linked with rel="nofollow noopener" and target="_blank".
  */
-export function renderMentionsAsHTML(text: string, max = 3): string {
+export function renderMentionsAsHTML(
+  text: string,
+  max = 3,
+  allowedUsernames?: Iterable<string>,
+): string {
   const escaped = escapeHTML(text);
   const seen = new Set<string>();
+  const allowed = allowedUsernames ? new Set(Array.from(allowedUsernames, (value) => value.toLowerCase())) : null;
 
   // First pass: convert @mentions
   let result = escaped.replace(MENTION_REGEX, (_match, username: string) => {
     const safe = username.replace(/[^A-Za-z0-9._-]/g, "");
     const lower = safe.toLowerCase();
+    if (allowed && !allowed.has(lower)) {
+      return `@${safe}`;
+    }
     if (!seen.has(lower) && seen.size < max) {
       seen.add(lower);
       return `<a href="/u/${safe}" class="text-accent-main hover:underline" data-mention-link>@${safe}</a>`;
