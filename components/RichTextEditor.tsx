@@ -820,7 +820,9 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     mentionTimerRef.current = setTimeout(async () => {
       try {
         const users = await onMentionSearch(query);
-        const filtered = users.filter(u => !alreadyMentioned.has(u.username.toLowerCase()));
+        const filtered = users
+          .filter(u => !alreadyMentioned.has(u.username.toLowerCase()))
+          .slice(0, 5);
         setMentionUsers(filtered.map(u => ({
           user_id: u.user_id,
           username: u.username,

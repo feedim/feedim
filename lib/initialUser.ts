@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
-import type { InitialUser } from "@/components/UserContext";
+import type { InitialUser } from "@/lib/userTypes";
 
 const INITIAL_USER_SELECT = [
   "username",

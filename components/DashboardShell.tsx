@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import AmbientLight from "@/components/AmbientLight";
-import { UserProvider, type InitialUser } from "@/components/UserContext";
+import { UserProvider } from "@/components/UserContext";
 import LocationPrompt from "@/components/LocationPrompt";
 import HeaderAlertBar from "@/components/HeaderAlertBar";
 import type { SidebarLabels } from "@/lib/sidebarLabels";
 import type { PublicFooterLabels } from "@/lib/footerLabels";
+import type { InitialUser } from "@/lib/userTypes";
 
 interface HeaderAlertBarLabels {
   emailNotVerified: string;

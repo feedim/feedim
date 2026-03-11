@@ -15,7 +15,7 @@ import {
   MOMENT_MAX_DURATION,
   MOMENT_MAX_SIZE_MB,
 } from "@/lib/constants";
-import { formatCount, formatDisplayTagLabel, getPostUrl } from "@/lib/utils";
+import { formatCount, formatDisplayTagLabel, getPostUrl, sanitizeTagInput } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import BlurImage from "@/components/BlurImage";
@@ -65,6 +65,7 @@ function MomentWriteContent() {
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const tagAutocompleteRef = useRef<HTMLDivElement>(null);
   const saveInFlightRef = useRef(false);
   const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
@@ -595,7 +596,11 @@ function MomentWriteContent() {
     try {
       const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setTagSuggestions((data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug)));
+      setTagSuggestions(
+        (data.tags || [])
+          .filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
+          .slice(0, 5)
+      );
       setTagHighlight(-1);
     } catch { setTagSuggestions([]); }
   }, [tags]);
@@ -604,6 +609,17 @@ function MomentWriteContent() {
     const timer = setTimeout(() => searchTagsFn(tagSearch), 300);
     return () => clearTimeout(timer);
   }, [tagSearch, searchTagsFn]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!tagAutocompleteRef.current?.contains(event.target as Node)) {
+        setTagSuggestions([]);
+        setTagHighlight(-1);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
 
   const addTag = (tag: Tag) => {
     if (tags.length >= VALIDATION.postTags.max) return;
@@ -615,10 +631,12 @@ function MomentWriteContent() {
   };
 
   const createAndAddTag = async () => {
-    const trimmed = tagSearch.trim().replace(/\s+/g, " ");
+    const trimmed = sanitizeTagInput(tagSearch).trim();
     if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
     if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min })); return; }
     if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max })); return; }
+    if (!VALIDATION.tagName.pattern.test(trimmed)) { feedimAlert("error", t("tagInvalidChars")); return; }
+    if (/^\d+$/.test(trimmed)) { feedimAlert("error", t("tagOnlyNumbers")); return; }
     setTagCreating(true);
     try {
       const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
@@ -631,6 +649,10 @@ function MomentWriteContent() {
   const removeTag = (tagId: number | string) => setTags(tags.filter(t => t.id !== tagId));
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && sanitizeTagInput(e.key) === "") {
+      e.preventDefault();
+      return;
+    }
     if (tagSuggestions.length > 0) {
       if (e.key === "ArrowDown") { e.preventDefault(); setTagHighlight(prev => prev < tagSuggestions.length - 1 ? prev + 1 : 0); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setTagHighlight(prev => prev > 0 ? prev - 1 : tagSuggestions.length - 1); }
@@ -1155,20 +1177,29 @@ function MomentWriteContent() {
             <div>
               <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
               {tags.length < VALIDATION.postTags.max && (
-                <div className="relative">
+                <div ref={tagAutocompleteRef} className="relative">
                   <input
                     type="text"
                     value={tagSearch}
-                    onChange={e => setTagSearch(e.target.value)}
+                    onChange={e => setTagSearch(sanitizeTagInput(e.target.value))}
                     onKeyDown={handleTagKeyDown}
+                    maxLength={30}
+                    onFocus={() => {
+                      if (tagSearch.trim()) void searchTagsFn(tagSearch);
+                    }}
                     placeholder={t("tagSearchPlaceholder")}
-                    className="input-modern w-full pr-20"
+                    className="input-modern w-full !pr-[110px]"
                   />
                   {tagSuggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto">
+                    <div
+                      className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
                       {tagSuggestions.map((s, i) => (
                         <button
+                          type="button"
                           key={s.id}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => addTag(s)}
                           onMouseEnter={() => setTagHighlight(i)}
                           className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${i === tagHighlight ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"}`}
@@ -1181,9 +1212,11 @@ function MomentWriteContent() {
                   )}
                   {tagSearch.trim() && tagSuggestions.length === 0 && (
                     <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-1.5 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                      className="absolute right-3 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                       {tagCreating ? (
                         <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>

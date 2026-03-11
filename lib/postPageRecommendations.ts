@@ -151,11 +151,6 @@ export async function getAuthorContent(authorId: string, currentPostId: number, 
     .single<RawAuthorProfile>();
 
   if (!authorProfile || authorProfile.status !== "active") return [];
-  const profileScore = authorProfile.profile_score || 0;
-  const followerCount = authorProfile.follower_count || 0;
-  const postCount = authorProfile.post_count || 0;
-  if (profileScore < 15 && !authorProfile.is_verified) return [];
-  if (followerCount < 1 && postCount < 3) return [];
 
   const { data: posts } = await admin
     .from("posts")
@@ -184,11 +179,27 @@ export async function getFeaturedContent(currentPostId: number, authorId: string
     .neq("id", currentPostId)
     .neq("author_id", authorId)
     .order("trending_score", { ascending: false })
-    .limit(10);
+    .limit(24);
 
-  const filtered = ((posts || []) as RawRecommendationRow[])
+  let filtered = ((posts || []) as RawRecommendationRow[])
     .filter(hasActiveAuthor)
     .map(withFlatProfile);
+
+  if (filtered.length === 0) {
+    const { data: latestPosts } = await admin
+      .from("posts")
+      .select(FEATURED_CONTENT_SELECT)
+      .eq("status", "published")
+      .or("is_nsfw.eq.false,is_nsfw.is.null")
+      .neq("id", currentPostId)
+      .neq("author_id", authorId)
+      .order("published_at", { ascending: false })
+      .limit(24);
+
+    filtered = ((latestPosts || []) as RawRecommendationRow[])
+      .filter(hasActiveAuthor)
+      .map(withFlatProfile);
+  }
 
   return rankRows(filtered, buildContext(locale, country), "discovery").slice(0, 3);
 }
@@ -296,6 +307,23 @@ export async function getNextVideos(currentPostId: number, authorId: string, loc
       const bWatched = viewedIds.has(b.id) ? 1 : 0;
       return aWatched - bWatched;
     });
+  }
+
+  if (final.length === 0) {
+    const fallbackQuery = typeFilter(admin
+      .from("posts")
+      .select(NEXT_VIDEO_SELECT))
+      .eq("status", "published")
+      .or("is_nsfw.eq.false,is_nsfw.is.null")
+      .neq("id", currentPostId)
+      .order("published_at", { ascending: false })
+      .limit(24);
+
+    const { data: fallbackVideos } = await fallbackQuery;
+    return ((fallbackVideos || []) as RawRecommendationRow[])
+      .filter(hasActiveAuthor)
+      .map(withFlatProfile)
+      .slice(0, 24) as VideoItem[];
   }
 
   return final as VideoItem[];

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
@@ -47,6 +47,8 @@ export default function MomentsCarousel({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const seededMoments = initialMoments ?? EMPTY_MOMENTS;
   const hasInitialMoments = seededMoments.length > 0;
   const [moments, setMoments] = useState<MomentItem[]>(seededMoments);
@@ -87,6 +89,39 @@ export default function MomentsCarousel({
     scroller.scrollTo({ left: 0, behavior: "auto" });
   }, [loaded, moments.length]);
 
+  const syncScrollButtons = useCallback(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scroller;
+    const maxScrollLeft = Math.max(0, scrollWidth - clientWidth);
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(maxScrollLeft - scrollLeft > 4);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    syncScrollButtons();
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const handleScroll = () => syncScrollButtons();
+    scroller.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      scroller.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [loaded, moments.length, syncScrollButtons]);
+
+  const scrollByCards = useCallback((direction: "left" | "right") => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const amount = 130 * 2 + 20;
+    scroller.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  }, []);
+
 
   const fmtDuration = (s: number) => {
     const m = Math.floor(s / 60);
@@ -122,76 +157,100 @@ export default function MomentsCarousel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <span className="text-[0.88rem] font-bold">{t("title")}</span>
+        {(canScrollLeft || canScrollRight) && (
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollByCards("left")}
+              aria-label={tCommon("previous")}
+              disabled={!canScrollLeft}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-bg-secondary text-text-primary transition hover:opacity-90 disabled:cursor-default disabled:opacity-35"
+            >
+              <ChevronLeft className="h-4.5 w-4.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByCards("right")}
+              aria-label={tCommon("next")}
+              disabled={!canScrollRight}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-bg-secondary text-text-primary transition hover:opacity-90 disabled:cursor-default disabled:opacity-35"
+            >
+              <ChevronRight className="h-4.5 w-4.5" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Horizontal scroll */}
-      <div
-        ref={scrollRef}
-        dir="ltr"
-        className="flex w-full items-stretch justify-start gap-2.5 overflow-x-auto overscroll-x-contain scrollbar-hide touch-pan-x"
-        style={{
-          scrollSnapType: "x mandatory",
-          WebkitOverflowScrolling: "touch",
-          scrollPaddingLeft: "10px",
-          scrollPaddingRight: "10px",
-        }}
-      >
-        {moments.map((m, index) => {
-          const author = m.profiles;
-          const thumb = m.video_thumbnail || m.featured_image;
-          return (
-            <Link
-              key={m.id}
-              href={`/moments?s=${m.slug}`}
-              className={cn(
-                "relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-bg-tertiary",
-                index === 0 && "ml-[10px]"
-              )}
-              style={{ scrollSnapAlign: "start" }}
-            >
-              {/* Thumbnail only (no autoplay for performance) */}
-              {thumb ? (
-                <BlurImage src={thumb} alt="" className="absolute inset-0 w-full h-full" blurhash={m.blurhash} />
-              ) : (
-                <div className="absolute inset-0 bg-bg-tertiary" />
-              )}
-
-              {/* Gradient overlay */}
-              <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
-
-              {/* Duration badge */}
-              {m.video_duration && m.video_duration > 0 && (
-                <div className="absolute top-2 right-2 bg-black/60 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
-                  {fmtDuration(m.video_duration)}
-                </div>
-              )}
-
-              {/* Author info — bottom */}
-              <div className="absolute bottom-2 left-2 right-2 z-10">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <LazyAvatar src={m.profiles?.avatar_url} alt={m.profiles?.username || ""} sizeClass="w-5 h-5" borderClass="" />
-                  <span className="text-[0.65rem] text-white font-medium truncate flex items-center gap-0.5">
-                    @{author?.username}
-                    {(author?.is_verified || author?.role === "admin") && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
-                  </span>
-                </div>
-                <p className="text-[0.6rem] text-white font-medium line-clamp-2" style={{ lineHeight: 1.35 }}>{m.title}</p>
-              </div>
-            </Link>
-          );
-        })}
-
-        {/* "See all" card */}
-        <Link
-          href="/moments"
-          className="mr-[10px] flex flex-col items-center justify-center shrink-0 w-[100px] h-[230px] rounded-[14px] bg-bg-tertiary hover:bg-bg-tertiary/80 transition"
-          style={{ scrollSnapAlign: "start" }}
+      <div className="relative">
+        {/* Horizontal scroll */}
+        <div
+          ref={scrollRef}
+          dir="ltr"
+          className="flex w-full items-stretch justify-start gap-2.5 overflow-x-auto overscroll-x-contain scrollbar-hide touch-pan-x"
+          style={{
+            scrollSnapType: "x mandatory",
+            WebkitOverflowScrolling: "touch",
+            scrollPaddingLeft: "10px",
+            scrollPaddingRight: "10px",
+          }}
         >
-          <div className="w-12 h-12 rounded-full bg-bg-secondary flex items-center justify-center mb-2">
-            <ChevronRight className="h-5 w-5 text-text-muted" />
-          </div>
-          <p className="text-[0.75rem] font-semibold text-text-muted">{tCommon("seeAll")}</p>
-        </Link>
+          {moments.map((m, index) => {
+            const author = m.profiles;
+            const thumb = m.video_thumbnail || m.featured_image;
+            return (
+              <Link
+                key={m.id}
+                href={`/moments?s=${m.slug}`}
+                className={cn(
+                  "relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-bg-tertiary",
+                  index === 0 && "ml-[10px]"
+                )}
+                style={{ scrollSnapAlign: "start" }}
+              >
+                {/* Thumbnail only (no autoplay for performance) */}
+                {thumb ? (
+                  <BlurImage src={thumb} alt="" className="absolute inset-0 w-full h-full" blurhash={m.blurhash} />
+                ) : (
+                  <div className="absolute inset-0 bg-bg-tertiary" />
+                )}
+
+                {/* Gradient overlay */}
+                <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
+
+                {/* Duration badge */}
+                {m.video_duration && m.video_duration > 0 && (
+                  <div className="absolute top-2 right-2 bg-black/60 text-white text-[0.6rem] font-medium px-1.5 py-0.5 rounded-md">
+                    {fmtDuration(m.video_duration)}
+                  </div>
+                )}
+
+                {/* Author info — bottom */}
+                <div className="absolute bottom-2 left-2 right-2 z-10">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <LazyAvatar src={m.profiles?.avatar_url} alt={m.profiles?.username || ""} sizeClass="w-5 h-5" borderClass="" />
+                    <span className="text-[0.65rem] text-white font-medium truncate flex items-center gap-0.5">
+                      @{author?.username}
+                      {(author?.is_verified || author?.role === "admin") && <VerifiedBadge size="sm" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
+                    </span>
+                  </div>
+                  <p className="text-[0.6rem] text-white font-medium line-clamp-2" style={{ lineHeight: 1.35 }}>{m.title}</p>
+                </div>
+              </Link>
+            );
+          })}
+
+          {/* "See all" card */}
+          <Link
+            href="/moments"
+            className="mr-[10px] flex flex-col items-center justify-center shrink-0 w-[100px] h-[230px] rounded-[14px] bg-bg-tertiary hover:bg-bg-tertiary/80 transition"
+            style={{ scrollSnapAlign: "start" }}
+          >
+            <div className="w-12 h-12 rounded-full bg-bg-secondary flex items-center justify-center mb-2">
+              <ChevronRight className="h-5 w-5 text-text-muted" />
+            </div>
+            <p className="text-[0.75rem] font-semibold text-text-muted">{tCommon("seeAll")}</p>
+          </Link>
+        </div>
       </div>
     </div>
   );

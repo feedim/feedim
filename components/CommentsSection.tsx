@@ -58,6 +58,7 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   const [linkableMentionUsernames, setLinkableMentionUsernames] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [likedComments, setLikedComments] = useState<Set<number>>(new Set());
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
   const { requireAuth } = useAuthModal();
   const { user: ctxUser } = useUser();
   const supabase = useMemo(() => createClient(), []);
@@ -65,11 +66,27 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
   const mismatchRetryDoneRef = useRef(false);
   const mention = useMention({ maxMentions: 3 });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const highlightTimeoutRef = useRef<number | null>(null);
 
   // Plan bazli yorum karakter limiti: max/business 500, digerleri 250
   const maxCommentLength = (ctxUser?.role === "admin" || ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business")
     ? VALIDATION.comment.maxPremium
     : VALIDATION.comment.max;
+
+  const focusCommentTarget = useCallback((commentId: number | null, attempt = 0) => {
+    if (!commentId || typeof window === "undefined") return;
+    const el = document.getElementById(`comment-${commentId}`);
+    if (!el) {
+      if (attempt < 8) window.setTimeout(() => focusCommentTarget(commentId, attempt + 1), 120);
+      return;
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedCommentId(commentId);
+    if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedCommentId((current) => (current === commentId ? null : current));
+    }, 1800);
+  }, []);
 
   const loadComments = useCallback(async (pageNum: number) => {
     setLoading(true);
@@ -166,6 +183,12 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
     setShowEmojiPicker(false);
     mention.clearMention();
   };
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,7 +363,12 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
       <form onSubmit={handleSubmit} className="mb-6">
         {replyTo && (
           <div className="flex items-center gap-2 text-xs text-text-muted mb-2">
-            <span className="font-semibold text-text-primary">{t("replyingTo", { username: `@${replyTo.name}` })}</span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="min-w-0 max-w-[170px] truncate font-semibold text-text-primary">
+                @{replyTo.name}
+              </span>
+              <span>{t("replyingToShort")}</span>
+            </div>
             <button type="button" onClick={() => { setReplyTo(null); }} className="text-accent-main hover:underline">{tCommon("cancel")}</button>
           </div>
         )}
@@ -439,9 +467,11 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
                 ...comment,
                 replies: comment.replies?.filter(r => !isBlockedContent(r.content || "", r.author_id, ctxUser?.id)),
               }}
+              highlightedCommentId={highlightedCommentId}
               likedComments={likedComments}
               onLike={handleLikeComment}
               onReply={(id, name) => { setReplyTo({ id, name }); setTimeout(() => commentRef.current?.focus(), 100); }}
+              onFocusTargetComment={focusCommentTarget}
               getAuthorName={getAuthorName}
               renderMentionContent={(text) => renderMentionsAsHTML(text, 3, linkableMentionUsernames)}
             />
@@ -459,18 +489,27 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
 interface CommentItemProps {
   comment: Comment;
   isReply?: boolean;
+  highlightedCommentId: number | null;
   likedComments: Set<number>;
   onLike: (id: number) => void;
   onReply?: (id: number, name: string) => void;
+  onFocusTargetComment: (id: number | null) => void;
   getAuthorName: (comment: Comment) => string;
   renderMentionContent: (text: string) => string;
 }
 
-const CommentItem = memo(function CommentItem({ comment, isReply = false, likedComments, onLike, onReply, getAuthorName, renderMentionContent }: CommentItemProps) {
+const CommentItem = memo(function CommentItem({ comment, isReply = false, highlightedCommentId, likedComments, onLike, onReply, onFocusTargetComment, getAuthorName, renderMentionContent }: CommentItemProps) {
   const t = useTranslations("comments");
   const locale = useLocale();
   return (
-    <div className={cn("flex gap-3", isReply && "ml-10 mt-3")}>
+    <div
+      id={`comment-${comment.id}`}
+      className={cn(
+        "flex gap-3 rounded-[14px] px-1 py-1 transition-colors duration-500",
+        highlightedCommentId === comment.id && "bg-accent-main/10",
+        isReply && "ml-10 mt-3 w-[calc(100%-7px)] mr-[7px]"
+      )}
+    >
       <Link href={`/u/${comment.profiles?.username || ''}`} className="shrink-0 mt-0.5">
         <LazyAvatar src={comment.profiles?.avatar_url} sizeClass="h-8 w-8" />
       </Link>
@@ -481,9 +520,14 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
           <span className="text-[0.66rem] text-text-muted">{formatRelativeDate(comment.created_at, locale)}</span>
         </div>
         {comment.reply_to_username && (
-          <div className="text-[0.75rem] font-medium text-text-muted mt-0.5">
-            {t("replyToUserLabel", { username: comment.reply_to_username })}
-          </div>
+          <button
+            type="button"
+            onClick={() => onFocusTargetComment(comment.parent_id)}
+            className="-mt-[2px] flex max-w-full items-center gap-1 text-left text-[0.75rem] font-medium text-text-muted transition hover:text-text-primary"
+          >
+            <span className="inline-block max-w-[170px] truncate align-bottom">@{comment.reply_to_username}</span>
+            <span>{t("replyingToShort")}</span>
+          </button>
         )}
         <p className="text-sm text-text-secondary mt-0.5 break-words" dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }} />
         {comment.is_nsfw && (
@@ -516,10 +560,10 @@ const CommentItem = memo(function CommentItem({ comment, isReply = false, likedC
         {!isReply && comment.replies && comment.replies.length > 0 && (
           <div className="mt-2">
             {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} isReply likedComments={likedComments} onLike={onLike} onReply={onReply ? (_, replyUsername) => {
+              <CommentItem key={reply.id} comment={reply} isReply highlightedCommentId={highlightedCommentId} likedComments={likedComments} onLike={onLike} onReply={onReply ? (_, replyUsername) => {
                         // Reply-to-reply: keep parent_id as the root comment, mention the reply author
                         onReply(comment.id, replyUsername);
-                      } : undefined} getAuthorName={getAuthorName} renderMentionContent={renderMentionContent} />
+                      } : undefined} onFocusTargetComment={onFocusTargetComment} getAuthorName={getAuthorName} renderMentionContent={renderMentionContent} />
             ))}
           </div>
         )}

@@ -77,9 +77,9 @@ export default memo(function EditableAvatar({
         <>
           {/* Image wrapper — skip blur when noBlur (upload areas show dark overlay instead) */}
           <div
-            className={`${sizeClass} rounded-full overflow-hidden border border-border-primary`}
+            className={`${sizeClass} rounded-full overflow-hidden ${imgLoaded ? "border border-border-primary" : ""}`}
             style={{
-              ...avatarBorderStyle,
+              ...(imgLoaded ? avatarBorderStyle : undefined),
               filter: noBlur ? "none" : imgLoaded ? "blur(0px)" : "blur(3px)",
               transition: !noBlur && imgLoaded ? "filter 200ms ease 80ms" : "none",
               transform: "translateZ(0)",
@@ -95,10 +95,10 @@ export default memo(function EditableAvatar({
           {/* Skeleton pulse — hide when noBlur */}
           {!noBlur && (
             <div
-              className={`absolute inset-0 rounded-full bg-bg-tertiary border border-border-primary ${
+              className={`absolute inset-0 rounded-full bg-bg-tertiary ${imgLoaded ? "border border-border-primary" : ""} ${
                 imgLoaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
               }`}
-              style={{ ...avatarBorderStyle, transition: "opacity 250ms ease" }}
+              style={{ ...(imgLoaded ? avatarBorderStyle : undefined), transition: "opacity 250ms ease" }}
             />
           )}
         </>

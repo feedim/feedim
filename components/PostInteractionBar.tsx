@@ -84,6 +84,7 @@ interface PostInteractionBarProps {
   visibility?: string;
   isModeration?: boolean;
   allowComments?: boolean;
+  initialTargetCommentId?: number | null;
   /** Feed/card mode — "full" = 4 buttons (like,comment,save,share), "no-like" = 3 buttons (comment,save,share) + "Oku" link */
   compact?: "full" | "no-like" | boolean;
 }
@@ -119,6 +120,7 @@ export default function PostInteractionBar({
   visibility,
   isModeration,
   allowComments = true,
+  initialTargetCommentId = null,
   compact,
 }: PostInteractionBarProps) {
   const { requireAuth } = useAuthModal();
@@ -135,8 +137,8 @@ export default function PostInteractionBar({
   const [shareCount, setShareCount] = useState(() => normalizeCount(initialShareCount));
   const [liveCommentCount, setLiveCommentCount] = useState(() => normalizeCount(commentCount));
   const [likeAnimating, setLikeAnimating] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [commentsMounted, setCommentsMounted] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(Boolean(initialTargetCommentId));
+  const [commentsMounted, setCommentsMounted] = useState(Boolean(initialTargetCommentId));
   const [likesOpen, setLikesOpen] = useState(false);
   const [likesMounted, setLikesMounted] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -150,7 +152,7 @@ export default function PostInteractionBar({
   const [avgDuration, setAvgDuration] = useState<number | null>(null);
   const [engagementRate, setEngagementRate] = useState<number | null>(null);
   const [likedByUsers, setLikedByUsers] = useState<LikedByUser[]>([]);
-  const [targetCommentId, setTargetCommentId] = useState<number | null>(null);
+  const [targetCommentId, setTargetCommentId] = useState<number | null>(initialTargetCommentId);
   const displayLikeCount = liked ? Math.max(likeCount, 1) : likeCount;
   const displaySaveCount = saved ? Math.max(saveCount, 1) : saveCount;
 
@@ -192,6 +194,13 @@ export default function PostInteractionBar({
       }
     }
   }, [searchParams, compact]);
+
+  useEffect(() => {
+    if (compact || !initialTargetCommentId || initialTargetCommentId <= 0) return;
+    setCommentsMounted(true);
+    setTargetCommentId(initialTargetCommentId);
+    setCommentsOpen(true);
+  }, [compact, initialTargetCommentId]);
 
   // Fetch stats for own post (avg reading time + engagement)
   useEffect(() => {
@@ -558,10 +567,10 @@ export default function PostInteractionBar({
           onClick={openStats}
           onPointerDown={preloadOwnerInteractionModals}
           onMouseEnter={preloadOwnerInteractionModals}
-          className="flex flex-col w-full mt-4 py-3 px-4 rounded-[11px] bg-bg-secondary hover:opacity-90 transition text-left"
+          className="flex flex-col w-full mt-3 py-3 px-4 rounded-[11px] bg-bg-secondary hover:opacity-90 transition text-left"
         >
           <span className="text-[0.88rem] font-bold">{t('interaction.stats')}</span>
-          <span className="flex items-center gap-1 text-[0.72rem] text-text-muted mt-0.5">
+          <span className="flex items-center gap-1 text-[0.72rem] text-text-muted mt-[3px]">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-primary"><path d="M21 21H6.2C5.08 21 4.52 21 4.09 20.782C3.72 20.59 3.41 20.284 3.22 19.908C3 19.48 3 18.92 3 17.8V3" /><path d="M7 15l4-6 4 4 6-8" /></svg>
             {avgDuration !== null
               ? `${t('interaction.avgDuration')} ${avgDuration > 60 ? `${Math.round(avgDuration / 60)}${t('interaction.min')}` : `${avgDuration}${t('interaction.sec')}`}`
@@ -617,7 +626,7 @@ export default function PostInteractionBar({
           onClick={openGift}
           onPointerDown={preloadCommonInteractionModals}
           onMouseEnter={preloadCommonInteractionModals}
-          className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
+          className="w-full flex items-center justify-center gap-2 py-3 mt-3 mb-[3px] rounded-xl text-[0.84rem] font-semibold bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition"
         >
           <Gift className="h-4 w-4" />
           <span>{t('interaction.sendGift')}</span>
@@ -626,7 +635,7 @@ export default function PostInteractionBar({
 
       {/* Interaction bar */}
       <div className={`bottom-0 ${likedByBottom ? "" : "mb-4"}`}>
-        <div className="flex items-center gap-2 py-3 select-none">
+        <div className="flex items-center gap-2 py-2 select-none">
         {/* Like */}
         <button
           onClick={handleLike}

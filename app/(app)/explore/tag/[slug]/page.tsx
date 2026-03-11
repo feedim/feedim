@@ -404,7 +404,7 @@ export default function TagPage() {
       <PostCardSkeleton count={5} />
     ) : items.length > 0 ? (
       <>
-        <div className="flex flex-col gap-[16px] mt-[10px]">
+        <div className="flex flex-col gap-[9px] mt-[10px]">
           {items.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id, currentUser?.id)).map(post => (
             <PostCard
               key={post.id}
@@ -488,7 +488,7 @@ export default function TagPage() {
             <PostCardSkeleton count={5} />
           )
         ) : searchResults && searchResults.length > 0 ? (
-          <div className="mt-1 flex flex-col gap-[16px] mt-[10px]">
+          <div className="mt-1 flex flex-col gap-[9px] mt-[10px]">
             {searchResults.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id, currentUser?.id)).map(post => <PostCard key={post.id} post={post} />)}
           </div>
         ) : searchResults ? (

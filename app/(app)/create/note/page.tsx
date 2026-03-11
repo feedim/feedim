@@ -10,7 +10,7 @@ import { emitNavigationStart } from "@/lib/navigationProgress";
 import { smartBack } from "@/lib/smartBack";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
-import { formatCount, formatDisplayTagLabel, getPostUrl } from "@/lib/utils";
+import { formatCount, formatDisplayTagLabel, getPostUrl, sanitizeTagInput } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
@@ -341,7 +341,9 @@ function NoteWriteContent() {
       const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       setTagSuggestions(
-        (data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
+        (data.tags || [])
+          .filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
+          .slice(0, 5)
       );
       setTagHighlight(-1);
     } catch {
@@ -375,7 +377,7 @@ function NoteWriteContent() {
   };
 
   const createAndAddTag = async () => {
-    const trimmed = tagSearch.trim().replace(/\s+/g, ' ');
+    const trimmed = sanitizeTagInput(tagSearch).trim();
     if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
     if (trimmed.length < VALIDATION.tagName.min) {
       feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
@@ -418,6 +420,10 @@ function NoteWriteContent() {
   };
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && sanitizeTagInput(e.key) === "") {
+      e.preventDefault();
+      return;
+    }
     if (tagSuggestions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -796,13 +802,14 @@ function NoteWriteContent() {
                   <input
                     type="text"
                     value={tagSearch}
-                    onChange={e => setTagSearch(e.target.value)}
+                    onChange={e => setTagSearch(sanitizeTagInput(e.target.value))}
                     onKeyDown={handleTagKeyDown}
+                    maxLength={30}
                     onFocus={() => {
                       if (tagSearch.trim()) void searchTags(tagSearch);
                     }}
                     placeholder={t("tagSearchPlaceholder")}
-                    className="input-modern w-full pr-20"
+                    className="input-modern w-full !pr-[110px]"
                   />
                   {tagSuggestions.length > 0 && (
                     <div
@@ -834,7 +841,7 @@ function NoteWriteContent() {
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-1.5 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                      className="absolute right-3 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                       {tagCreating ? (
                         <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
@@ -908,7 +915,7 @@ function NoteWriteContent() {
                 <button
                   disabled={isPublished}
                   onClick={() => setIsAiContent(!isAiContent)}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
                 >
                   <div>
                     <p className="text-sm font-semibold">{t("aiContent")}</p>

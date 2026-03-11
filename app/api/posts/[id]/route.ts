@@ -15,6 +15,7 @@ import { cleanupPostData, extractR2KeysFromContent } from '@/lib/postCleanup';
 import { deleteFromR2, r2KeyFromUrl } from '@/lib/r2';
 import sanitizeHtml from 'sanitize-html';
 import { getPostTagIds, syncPublishedTagCounts } from '@/lib/tagCounts';
+import { getAuthorContent, getFeaturedContent } from '@/lib/postPageRecommendations';
 
 export async function GET(
   request: NextRequest,
@@ -99,7 +100,16 @@ export async function GET(
       boost_code: boostRecord.boost_code,
     } : null;
 
-    return NextResponse.json({ post: { ...post, is_boosted, boost_stats, boost_status } });
+    // Fetch related content (author + featured) in parallel
+    const locale = request.headers.get("x-locale") || request.headers.get("accept-language")?.split(",")[0]?.split("-")[0] || "en";
+    const ipCountry = (request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry") || "").toUpperCase();
+    const [authorContent, featuredContent] = await Promise.all([
+      getAuthorContent(post.author_id, post.id, locale, ipCountry).catch(() => []),
+      getFeaturedContent(post.id, post.author_id, locale, ipCountry).catch(() => []),
+    ]);
+    const related = [...authorContent, ...featuredContent];
+
+    return NextResponse.json({ post: { ...post, is_boosted, boost_stats, boost_status }, related });
   } catch {
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }

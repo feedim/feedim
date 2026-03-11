@@ -10,7 +10,16 @@ type HotkeyTarget = HTMLElement | null;
 function isEditable(el: HTMLElement | null) {
   if (!el) return false;
   const tag = el.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+  const role = el.getAttribute("role");
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    el.isContentEditable ||
+    role === "textbox" ||
+    role === "searchbox" ||
+    role === "combobox"
+  );
 }
 
 function isModalOpen() {
@@ -55,6 +64,7 @@ export default function GlobalHotkeys() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
+      if (e.isComposing || e.key === "Process") return;
       // Cmd/Ctrl + / -> go to explore search and focus
       if ((e.metaKey || e.ctrlKey) && (e.key === "/" || e.code === "Slash")) {
         e.preventDefault();
@@ -74,6 +84,7 @@ export default function GlobalHotkeys() {
       if (isEditable(active)) return;
 
       const key = e.key.toLowerCase();
+      if (e.repeat) return;
       const isMoments = pathname.startsWith("/moments");
       const hasActiveMoment = !!document.querySelector('[data-moment-active="true"]');
       // Check for visible video player using vp-bar presence + visibility
@@ -138,7 +149,7 @@ export default function GlobalHotkeys() {
         if (el) { e.preventDefault(); el.click(); }
         return;
       }
-      if (key === "d") {
+      if (key === "l" || key === "d") {
         if (isMoments && hasActiveMoment) return;
         if (hasVideoPlayer) return;
         const el = findVisibleHotkey("like");

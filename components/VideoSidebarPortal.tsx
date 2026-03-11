@@ -24,7 +24,7 @@ export default function VideoSidebarPortal({ videos }: VideoSidebarPortalProps) 
     if (skeleton) skeleton.remove();
   }, []);
 
-  if (!container || videos.length === 0) return null;
+  if (!container) return null;
 
   return createPortal(
     <VideoSidebar videos={videos} title={t("nextVideos")} />,

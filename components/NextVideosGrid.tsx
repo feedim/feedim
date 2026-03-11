@@ -12,7 +12,7 @@ interface NextVideosGridProps {
 }
 
 export default function NextVideosGrid({ videos }: NextVideosGridProps) {
-  const t = useTranslations("post");
+  const t = useTranslations("video");
   const hydrated = useHydrated();
 
   const sorted = useMemo(() => {
@@ -25,16 +25,21 @@ export default function NextVideosGrid({ videos }: NextVideosGridProps) {
     });
   }, [videos, hydrated]);
 
-  if (sorted.length === 0) return null;
-
   return (
     <div className="xl:hidden mb-6 pt-3.5">
       <h3 className="text-[1.1rem] font-bold mb-4">{t("nextVideos")}</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
-        {sorted.map(video => (
-          <VideoGridCard key={video.id} video={video} />
-        ))}
-      </div>
+      {sorted.length === 0 ? (
+        <div className="rounded-[14px] bg-bg-secondary px-4 py-4">
+          <p className="text-[0.92rem] font-semibold text-text-primary">{t("emptyTitle")}</p>
+          <p className="mt-1 text-[0.8rem] leading-[1.45] text-text-muted">{t("emptyDescription")}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+          {sorted.map(video => (
+            <VideoGridCard key={video.id} video={video} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

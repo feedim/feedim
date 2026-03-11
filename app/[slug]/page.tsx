@@ -22,6 +22,7 @@ import PostViewTracker from "@/components/PostViewTracker";
 import VideoViewTracker from "@/components/VideoViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import { decodeId } from "@/lib/hashId";
 
 function getBadgeVariantServer(premiumPlan?: string | null): "default" | "max" {
   return premiumPlan === "max" || premiumPlan === "business" ? "max" : "default";
@@ -43,6 +44,7 @@ import { getShareablePostUrl } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ comment?: string | string[] }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -79,14 +81,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-export default async function PostPage({ params }: PageProps) {
+export default async function PostPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const commentParam = Array.isArray(resolvedSearchParams?.comment) ? resolvedSearchParams?.comment[0] : resolvedSearchParams?.comment;
+  const initialTargetCommentId = commentParam ? decodeId(commentParam) : null;
+  const commentQuery = commentParam ? `?comment=${encodeURIComponent(commentParam)}` : "";
   const post = await getCachedPost(slug);
   if (!post) notFound();
 
   // Redirect typed content to their canonical URLs
   if (post.content_type === "video" || post.content_type === "note" || post.content_type === "moment") {
-    redirect(getPostUrl(post.slug, post.content_type));
+    redirect(`${getPostUrl(post.slug, post.content_type)}${commentQuery}`);
   }
 
   const currentUserId = await getAuthUserId();
@@ -246,7 +252,7 @@ export default async function PostPage({ params }: PageProps) {
                 )}
               </div>
               {author?.follower_count !== undefined && (
-                <p className="text-[0.72rem] leading-none text-text-muted -mt-[1px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
+                <p className="text-[0.72rem] leading-none text-text-muted -mt-[0.5px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
               )}
             </div>
             <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
@@ -269,7 +275,7 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Tags */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+            <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
               {tags.map((tag: { id: number; name: string; slug: string }) => (
                 <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                   title={`#${tag.name}`}
@@ -305,6 +311,7 @@ export default async function PostPage({ params }: PageProps) {
             visibility={post.visibility || "public"}
             isModeration={!!post.is_nsfw || post.status === 'moderation'}
             allowComments={post.allow_comments !== false}
+            initialTargetCommentId={initialTargetCommentId}
           />
 
           {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
@@ -389,7 +396,7 @@ export default async function PostPage({ params }: PageProps) {
 
             {/* Tags */}
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+              <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
                 {tags.map((tag: { id: number; name: string; slug: string }) => (
                   <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                     title={`#${tag.name}`}
@@ -565,7 +572,7 @@ export default async function PostPage({ params }: PageProps) {
 
           {/* Tags — right after content, before interaction bar */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+            <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
               {tags.map((tag: { id: number; name: string; slug: string }) => (
                 <Link
                   key={tag.id}
@@ -613,6 +620,7 @@ export default async function PostPage({ params }: PageProps) {
             visibility={post.visibility || "public"}
             isModeration={!!post.is_nsfw || post.status === 'moderation'}
             allowComments={post.allow_comments !== false}
+            initialTargetCommentId={initialTargetCommentId}
           />
 
         </article>

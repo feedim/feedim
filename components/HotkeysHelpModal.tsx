@@ -72,7 +72,7 @@ export default function HotkeysHelpModal({ open, onClose }: HotkeysHelpModalProp
           title={t("interaction")}
           items={[
             ["c", t("comments")],
-            ["d", t("like")],
+            ["l / d", t("like")],
             ["b", t("save")],
             ["s", t("share")],
             ["e", t("editProfileShortcut")],

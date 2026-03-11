@@ -49,7 +49,7 @@ export default async function PublicHeader({ variant = "back", backLabel }: Publ
           <span className="w-px h-7 bg-border-primary" />
           <span className="text-lg font-bold">{t("nav.helpCenter")}</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {variant === "home" ? (
             !userInfo && (
               <Link href="/login" className="t-btn cancel text-sm h-10 px-5">

@@ -211,6 +211,23 @@ function normalizeReplyUsername(username: string | null | undefined): string | n
   return safe || null;
 }
 
+function moveCommentThreadToFront(threads: CommentThread[], commentId: number): CommentThread[] {
+  const index = threads.findIndex((thread) => thread.id === commentId);
+  if (index <= 0) return threads;
+  const next = [...threads];
+  const [target] = next.splice(index, 1);
+  next.unshift(target);
+  return next;
+}
+
+function ensureReplyFirst(thread: CommentThread, reply: CommentResponseRow): CommentThread {
+  const remainingReplies = thread.replies.filter((item) => item.id !== reply.id);
+  return {
+    ...thread,
+    replies: [reply, ...remainingReplies],
+  };
+}
+
 function decodeStoredCommentContent(content: string | null, parentId: number | null): { content: string; replyToUsername: string | null } {
   const raw = content ?? "";
   const metaMatch = raw.match(REPLY_META_REGEX);
@@ -534,7 +551,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const result: CommentThread[] = activeComments.map((c) => ({
+    let result: CommentThread[] = activeComments.map((c) => ({
       ...toCommentResponseRow(c),
       replies: (replyMap.get(c.id) || []).map((r): CommentResponseRow => toCommentResponseRow(r)),
     }));
@@ -564,12 +581,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const targetId = parseInt(targetParam);
       if (!isNaN(targetId)) {
         // Check if target is a top-level comment already in results
-        const isTopLevel = result.some((c) => c.id === targetId);
-        if (!isTopLevel) {
+        const topLevelIndex = result.findIndex((c) => c.id === targetId);
+        if (topLevelIndex >= 0) {
+          result = moveCommentThreadToFront(result, targetId);
+        } else {
           // Check if it's already in a loaded reply
           const parentWithReply = result.find((c) => c.replies.some((r) => r.id === targetId));
           if (parentWithReply) {
             targetParentId = parentWithReply.id;
+            const targetReply = parentWithReply.replies.find((reply) => reply.id === targetId) || null;
+            result = moveCommentThreadToFront(
+              result.map((thread) => thread.id === parentWithReply.id && targetReply ? ensureReplyFirst(thread, targetReply) : thread),
+              parentWithReply.id,
+            );
           } else {
             // Fetch the target comment to check if it's a reply
             const { data: rawTargetComment } = await admin
@@ -585,32 +609,40 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               blockedIds.includes(targetComment.author_id) ||
               (targetComment.is_nsfw && targetComment.author_id !== user?.id && !isStaffViewer)
             );
-            if (targetComment?.parent_id && !targetHidden) {
-              targetParentId = targetComment.parent_id;
+            if (targetComment && !targetHidden) {
               const cleanTarget: CommentResponseRow = toCommentResponseRow(targetComment);
 
-              // Check if parent is already in results
-              const parentIdx = result.findIndex((c) => c.id === targetParentId);
-              if (parentIdx >= 0) {
-                // Parent exists, add target reply if not already there
-                if (!result[parentIdx].replies.some((r) => r.id === targetId)) {
-                  result[parentIdx].replies.push(cleanTarget);
-                }
+              if (!targetComment.parent_id) {
+                result = [{ ...cleanTarget, replies: [] }, ...result.filter((thread) => thread.id !== targetId)];
               } else {
-                // Fetch parent comment and prepend to results
-                const { data: rawParentComment } = await admin
-                  .from('comments')
-                  .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)`)
-                  .eq('id', targetParentId)
-                  .eq('status', 'approved')
-                  .single();
-                const parentComment = rawParentComment as CommentRow | null;
+                targetParentId = targetComment.parent_id;
 
-                if (parentComment) {
-                  result.unshift({
-                    ...toCommentResponseRow(parentComment),
-                    replies: [cleanTarget],
-                  });
+                // Check if parent is already in results
+                const parentIdx = result.findIndex((c) => c.id === targetParentId);
+                if (parentIdx >= 0) {
+                  // Parent exists, add target reply if not already there
+                  const existingParent = result[parentIdx];
+                  const nextParent = ensureReplyFirst(existingParent, cleanTarget);
+                  result = moveCommentThreadToFront(
+                    result.map((thread, index) => (index === parentIdx ? nextParent : thread)),
+                    targetParentId,
+                  );
+                } else {
+                  // Fetch parent comment and prepend to results
+                  const { data: rawParentComment } = await admin
+                    .from('comments')
+                    .select(`id, content, content_type, gif_url, author_id, parent_id, like_count, reply_count, created_at, is_nsfw, profiles!comments_author_id_fkey(username, full_name, name, avatar_url, is_verified, premium_plan, role, status)`)
+                    .eq('id', targetParentId)
+                    .eq('status', 'approved')
+                    .single();
+                  const parentComment = rawParentComment as CommentRow | null;
+
+                  if (parentComment) {
+                    result = [{
+                      ...toCommentResponseRow(parentComment),
+                      replies: [cleanTarget],
+                    }, ...result.filter((thread) => thread.id !== parentComment.id)];
+                  }
                 }
               }
             }

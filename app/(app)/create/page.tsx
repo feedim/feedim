@@ -22,7 +22,7 @@ const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
 });
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
-import { formatCount, formatDisplayTagLabel } from "@/lib/utils";
+import { formatCount, formatDisplayTagLabel, sanitizeTagInput } from "@/lib/utils";
 
 import { useTranslations, useLocale } from "next-intl";
 import { useUser } from "@/components/UserContext";
@@ -61,6 +61,7 @@ function WritePageContent() {
   const editorRef = useRef<RichTextEditorHandle>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const tagAutocompleteRef = useRef<HTMLDivElement>(null);
   const coverUploadPromiseRef = useRef<Promise<string> | null>(null);
   const coverUploadRequestIdRef = useRef(0);
   const saveInFlightRef = useRef(false);
@@ -164,7 +165,9 @@ function WritePageContent() {
       const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       setTagSuggestions(
-        (data.tags || []).filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
+        (data.tags || [])
+          .filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
+          .slice(0, 5)
       );
       setTagHighlight(-1);
     } catch {
@@ -177,6 +180,17 @@ function WritePageContent() {
     return () => clearTimeout(timer);
   }, [tagSearch, searchTags]);
 
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!tagAutocompleteRef.current?.contains(event.target as Node)) {
+        setTagSuggestions([]);
+        setTagHighlight(-1);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
   const addTag = (tag: Tag) => {
     if (tags.length >= VALIDATION.postTags.max) return;
     if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
@@ -187,7 +201,7 @@ function WritePageContent() {
   };
 
   const createAndAddTag = async () => {
-    const trimmed = tagSearch.trim().replace(/\s+/g, ' ');
+    const trimmed = sanitizeTagInput(tagSearch).trim();
     if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
     if (trimmed.length < VALIDATION.tagName.min) {
       feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
@@ -231,6 +245,10 @@ function WritePageContent() {
 
   // Tag keyboard navigation (WordPress birebir)
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && sanitizeTagInput(e.key) === "") {
+      e.preventDefault();
+      return;
+    }
     if (tagSuggestions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -830,21 +848,30 @@ function WritePageContent() {
               <div>
                 <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
                 {tags.length < VALIDATION.postTags.max && (
-                  <div className="relative">
+                  <div ref={tagAutocompleteRef} className="relative">
                     <input
                       type="text"
                       value={tagSearch}
-                      onChange={e => setTagSearch(e.target.value)}
+                      onChange={e => setTagSearch(sanitizeTagInput(e.target.value))}
                       onKeyDown={handleTagKeyDown}
+                      maxLength={30}
+                      onFocus={() => {
+                        if (tagSearch.trim()) void searchTags(tagSearch);
+                      }}
                       placeholder={t("tagSearchPlaceholder")}
-                      className="input-modern w-full pr-20"
+                      className="input-modern w-full !pr-[110px]"
                     />
                     {/* Suggestions dropdown */}
                     {tagSuggestions.length > 0 && (
-                      <div className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto">
+                      <div
+                        className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto"
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
                         {tagSuggestions.map((s, i) => (
                           <button
+                            type="button"
                             key={s.id}
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => addTag(s)}
                             onMouseEnter={() => setTagHighlight(i)}
                             className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${
@@ -862,9 +889,11 @@ function WritePageContent() {
                     {/* Create new tag button */}
                     {tagSearch.trim() && tagSuggestions.length === 0 && (
                     <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={createAndAddTag}
                       disabled={tagCreating}
-                      className="absolute right-1.5 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
+                      className="absolute right-3 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
                     >
                         {tagCreating ? (
                           <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>

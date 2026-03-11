@@ -824,7 +824,7 @@ function ExploreContent() {
             {searchResults.posts.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-text-muted mb-2 px-3 sm:px-4">{t("contents")}</h3>
-                <div className="flex flex-col gap-[16px] mt-[10px]">
+                <div className="flex flex-col gap-[9px] mt-[10px]">
                 {searchResults.posts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map(post => <PostCard key={post.id} post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />)}
                 </div>
               </div>
@@ -835,7 +835,7 @@ function ExploreContent() {
 
       if (activeTab === "latest") {
         return (
-          <div className="mt-1 flex flex-col gap-[16px] mt-[10px]">
+          <div className="mt-1 flex flex-col gap-[9px] mt-[10px]">
             {searchResults.posts.length > 0 ? (
               searchResults.posts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map(post => <PostCard key={post.id} post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />)
             ) : (
@@ -884,7 +884,7 @@ function ExploreContent() {
       // video, notes, moments — API returns filtered by content_type
       if (activeTab === "video" || activeTab === "notes" || activeTab === "moments") {
         return (
-          <div className="mt-1 flex flex-col gap-[16px] mt-[10px]">
+          <div className="mt-1 flex flex-col gap-[9px] mt-[10px]">
             {searchResults.posts.length > 0 ? (
               searchResults.posts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map(post => <PostCard key={post.id} post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />)
             ) : (
@@ -918,7 +918,7 @@ function ExploreContent() {
           </div>
           {trendingPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[16px] mt-[10px]">
+              <div className="flex flex-col gap-[9px] mt-[10px]">
               {trendingPosts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />
@@ -942,7 +942,7 @@ function ExploreContent() {
             <PostCardSkeleton count={5} />
           ) : trendingPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[16px] mt-[10px]">
+              <div className="flex flex-col gap-[9px] mt-[10px]">
               {trendingPosts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />
@@ -965,7 +965,7 @@ function ExploreContent() {
             <PostCardSkeleton count={5} />
           ) : latestPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[16px] mt-[10px]">
+              <div className="flex flex-col gap-[9px] mt-[10px]">
               {latestPosts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />
@@ -1026,7 +1026,7 @@ function ExploreContent() {
             <PostCardSkeleton count={5} variant="video" />
           ) : videoPosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[16px] mt-[10px]">
+              <div className="flex flex-col gap-[9px] mt-[10px]">
               {videoPosts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />
@@ -1049,7 +1049,7 @@ function ExploreContent() {
             <PostCardSkeleton count={5} variant="note" />
           ) : notePosts.length > 0 ? (
             <>
-              <div className="flex flex-col gap-[16px] mt-[10px]">
+              <div className="flex flex-col gap-[9px] mt-[10px]">
               {notePosts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id)).map((post, index) => (
                 <div key={post.id}>
                   <PostCard post={post} initialLiked={interactions[post.id]?.liked} initialSaved={interactions[post.id]?.saved} />

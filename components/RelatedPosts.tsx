@@ -81,8 +81,7 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
 
   if (!hasAuthorContent && !hasFeatured) return null;
 
-  const items = hasAuthorContent ? posts : featuredPosts;
-  const renderableItems = items.flatMap<RenderablePostItem>((post) => {
+  const toRenderableItems = (items: PostItem[]) => items.flatMap<RenderablePostItem>((post) => {
       const title = typeof post.title === "string" ? post.title.trim() : "";
       const slug = typeof post.slug === "string" ? post.slug.trim() : "";
       if (!title || !slug) return [];
@@ -121,12 +120,18 @@ export default async function RelatedPosts({ posts, featuredPosts = [], authorUs
         profiles,
       }];
     });
+
+  const primaryRenderableItems = toRenderableItems(hasAuthorContent ? posts : featuredPosts);
+  const featuredRenderableItems = hasFeatured ? toRenderableItems(featuredPosts) : [];
+  const shouldFallbackToFeatured = hasAuthorContent && primaryRenderableItems.length === 0 && featuredRenderableItems.length > 0;
+  const renderableItems = primaryRenderableItems.length > 0 ? primaryRenderableItems : featuredRenderableItems;
+
   if (renderableItems.length === 0) return null;
 
   const postsWithViewerInteractions = await attachViewerPostInteractions(renderableItems, currentUserId);
-  const title = hasAuthorContent
-    ? t("moreFromAuthor", { username: authorUsername || "" })
-    : t("forYou");
+  const title = !hasAuthorContent || shouldFallbackToFeatured
+    ? t("forYou")
+    : t("moreFromAuthor", { username: authorUsername || "" });
 
   return (
     <section className="max-w-[565px] mx-auto">

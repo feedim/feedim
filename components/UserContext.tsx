@@ -1,23 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
-
-export interface InitialUser {
-  id: string;
-  username: string;
-  fullName: string;
-  avatarUrl: string | null;
-  accountType: string;
-  isPremium: boolean;
-  premiumPlan: string | null;
-  isVerified: boolean;
-  role: string;
-  status?: string;
-  copyrightEligible?: boolean;
-  accountPrivate?: boolean;
-  locale?: string;
-  emailVerified?: boolean;
-}
+import type { InitialUser } from "@/lib/userTypes";
 
 interface UserContextValue {
   user: InitialUser | null;

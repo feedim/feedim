@@ -348,7 +348,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
             <>
               <NoteContent text={post.excerpt || post.title} href={postHref} onOpen={() => router.push(noteExpandedHref)} />
               {post.featured_image && (
-                <div className="relative z-[1] pointer-events-none mt-[3px] w-full rounded-[18px] overflow-hidden">
+                <div className="relative z-[1] pointer-events-none mt-[10px] w-full rounded-[18px] overflow-hidden">
                   <img
                     data-src={post.featured_image}
                     alt={post.title}
@@ -408,7 +408,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMuted(m => !m); }}
                           aria-label={muted ? t('tooltip.unmute') : t('tooltip.mute')}
                           data-tooltip={muted ? t('tooltip.unmute') : t('tooltip.mute')}
-                          className="absolute bottom-2.5 left-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto"
+                          className="absolute bottom-3 left-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto"
                         >
                           {muted ? (
                             <>
@@ -453,7 +453,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                   {isVideo && hasThumbnail && !showCTA && (
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(postHref); }}
-                      className="absolute bottom-2.5 right-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto"
+                      className="absolute bottom-3 right-2.5 z-[4] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[0.7rem] font-medium pointer-events-auto"
                     >
                       <svg className="h-3.5 w-3.5" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                       <span>{t('post.watch')}</span>
@@ -473,19 +473,21 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
           )}
 
           {/* View count + visibility */}
-          <div className="relative z-[1] pointer-events-none flex items-center gap-1.5 mt-[4px] ml-[1px]">
-            {(post.view_count ?? 0) > 0 && (
-              <span className="text-[0.7rem] text-text-muted">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
-            )}
-            {post.visibility && (
-              <span className="text-[0.7rem] text-text-muted">
-                {(post.view_count ?? 0) > 0 ? "· " : ""}
-                {post.visibility === 'followers' ? t('post.visibilityFollowers') :
-                 post.visibility === 'only_me' ? t('post.visibilityOnlyMe') :
-                 t('post.visibilityPublic')}
-              </span>
-            )}
-          </div>
+          {((post.view_count ?? 0) > 0 || !!post.visibility) && (
+            <div className="relative z-[1] pointer-events-none flex items-center gap-1.5 mt-[4px] ml-[1px]">
+              {(post.view_count ?? 0) > 0 && (
+                <span className="text-[0.7rem] text-text-muted">{formatCount(post.view_count!, locale)} {t('common.views')}</span>
+              )}
+              {post.visibility && (
+                <span className="text-[0.7rem] text-text-muted">
+                  {(post.view_count ?? 0) > 0 ? "· " : ""}
+                  {post.visibility === 'followers' ? t('post.visibilityFollowers') :
+                   post.visibility === 'only_me' ? t('post.visibilityOnlyMe') :
+                   t('post.visibilityPublic')}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Copyright badge */}
           {!post.is_nsfw && (post.moderation_category === 'copyright' || post.moderation_category === 'kopya_icerik') && (

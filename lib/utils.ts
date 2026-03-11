@@ -149,6 +149,13 @@ export function formatTagName(name: string): string {
     .substring(0, 30);
 }
 
+export function sanitizeTagInput(value: string): string {
+  return value
+    .replace(/[^\p{L}0-9\s\-_.&+]/gu, "")
+    .replace(/\s+/g, " ")
+    .substring(0, 30);
+}
+
 export function formatDisplayTagLabel(name: string, maxChars = 30): string {
   const normalized = (name || "").trim();
   if (!normalized) return "#";

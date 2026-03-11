@@ -130,7 +130,7 @@ function getMomentsPerfHints(): MomentsPerfHints {
 export default function MomentsPage() {
   return (
     <Suspense fallback={
-      <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-black md:relative md:inset-auto md:z-auto md:h-screen" style={{ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" }}>
+      <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-transparent md:relative md:inset-auto md:z-auto md:h-screen" style={{ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" }}>
         <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     }>
@@ -842,7 +842,7 @@ function MomentsContent() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-black md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
+      <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-transparent md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
         <div className="w-full h-full bg-bg-tertiary/50 animate-pulse" style={{ maxWidth: "min(62dvh, 480px)" }} />
       </div>
     );
@@ -850,7 +850,7 @@ function MomentsContent() {
 
   if (moments.length === 0) {
     return (
-      <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black text-text-primary md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
+      <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-transparent text-text-primary md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
         <p className="text-lg font-semibold mb-2">{t("noMoments")}</p>
         <p className="text-sm text-text-muted">{t("createFirst")}</p>
       </div>
@@ -858,7 +858,7 @@ function MomentsContent() {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-black md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
+    <div className="fixed inset-0 z-[70] flex justify-center overflow-hidden bg-transparent md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
       {/* Centered Reels column */}
       <div
         className="relative w-full h-full"
@@ -896,7 +896,7 @@ function MomentsContent() {
         <div
           ref={containerRef}
           className="h-full snap-y snap-mandatory scrollbar-hide overscroll-contain overflow-y-auto touch-pan-y"
-          style={{ backgroundColor: "#000" }}
+          style={{ backgroundColor: "transparent" }}
         >
       {displayItems.map((item, displayIndex) => {
         // Dismissed ads — fully collapsed, removed from flow
@@ -911,7 +911,7 @@ function MomentsContent() {
           // Ad outside window — lightweight spacer
           if (!inWindow) {
             return (
-              <div key={`ad-${item.adKey}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start snap-always" style={{ ...viewportHeightStyle, backgroundColor: "#000" }} />
+              <div key={`ad-${item.adKey}`} ref={makeSlotRef(displayIndex)} data-index={displayIndex} className="snap-start snap-always" style={{ ...viewportHeightStyle, backgroundColor: "transparent" }} />
             );
           }
           return (
@@ -936,7 +936,7 @@ function MomentsContent() {
               data-index={displayIndex}
               data-slug={item.moment.slug}
               className="snap-start snap-always"
-              style={{ ...viewportHeightStyle, backgroundColor: "#000" }}
+              style={{ ...viewportHeightStyle, backgroundColor: "transparent" }}
             />
           );
         }
@@ -951,7 +951,7 @@ function MomentsContent() {
               className="snap-start snap-always"
               style={{
                 ...viewportHeightStyle,
-                backgroundColor: "#000",
+                backgroundColor: "transparent",
                 backgroundImage: item.moment.video_thumbnail ? `url(${item.moment.video_thumbnail})` : undefined,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
@@ -986,7 +986,7 @@ function MomentsContent() {
       })}
 
           {loadingMore && (
-            <div className="snap-start flex items-center justify-center bg-black" style={viewportHeightStyle}>
+            <div className="snap-start flex items-center justify-center bg-transparent" style={viewportHeightStyle}>
               <span className="loader" style={{ width: 24, height: 24, borderTopColor: "white" }} />
             </div>
           )}

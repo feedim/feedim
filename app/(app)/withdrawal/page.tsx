@@ -209,7 +209,7 @@ export default function WithdrawalPage() {
                 <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
                   <Lock className="h-7 w-7 text-accent-main" />
                 </div>
-                <h3 className="text-lg font-bold">
+                <h3 className="text-lg font-bold mb-[-4px]">
                   {!isProfessionalAccount
                     ? t("professionalRequired")
                     : isPrivateAccount

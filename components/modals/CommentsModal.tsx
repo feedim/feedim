@@ -106,6 +106,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showReplies, setShowReplies] = useState<Set<number>>(new Set());
   const [loadingReplies, setLoadingReplies] = useState<Set<number>>(new Set());
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
 
   // Animation + Emoji/GIF
   const [newCommentId, setNewCommentId] = useState<number | null>(null);
@@ -134,6 +135,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   const composerShellRef = useRef<HTMLDivElement>(null);
   const initialVvHeightRef = useRef(0);
   const composerRafIdRef = useRef(0);
+  const highlightTimeoutRef = useRef<number | null>(null);
 
   const maxCommentLength = (ctxUser?.role === "admin" || ctxUser?.premiumPlan === "max" || ctxUser?.premiumPlan === "business")
     ? VALIDATION.comment.maxPremium
@@ -166,6 +168,21 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
   useLayoutEffect(() => {
     resizeTextarea();
   }, [newComment, pendingGif, resizeTextarea]);
+
+  const focusCommentTarget = useCallback((commentId: number | null, attempt = 0) => {
+    if (!commentId || typeof window === "undefined") return;
+    const el = document.getElementById(`comment-${commentId}`);
+    if (!el) {
+      if (attempt < 12) window.setTimeout(() => focusCommentTarget(commentId, attempt + 1), 120);
+      return;
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedCommentId(commentId);
+    if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedCommentId((current) => (current === commentId ? null : current));
+    }, 1800);
+  }, []);
 
   useEffect(() => {
     initialCountRef.current = initialCount;
@@ -383,14 +400,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
           if (res?.targetParentId) {
             setShowReplies(prev => new Set([...prev, res.targetParentId!]));
           }
-          setTimeout(() => {
-            const el = document.getElementById(`comment-${targetCommentId}`);
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth", block: "center" });
-              el.classList.add("bg-accent-main/10");
-              setTimeout(() => el.classList.remove("bg-accent-main/10"), 2000);
-            }
-          }, 500);
+          window.setTimeout(() => focusCommentTarget(targetCommentId), 180);
         }
       });
     } else {
@@ -401,13 +411,19 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       setLinkableMentionUsernames(new Set());
       setLoading(true);
     }
-  }, [loadComments, open, targetCommentId]);
+  }, [focusCommentTarget, loadComments, open, targetCommentId]);
 
   useEffect(() => {
     if (replyTo && inputRef.current) {
       inputRef.current.focus();
     }
   }, [replyTo]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
+    };
+  }, []);
 
   const handleSortChange = (sort: "smart" | "newest" | "popular") => {
     if (sort === sortBy) return;
@@ -752,7 +768,12 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       {/* Reply indicator */}
       {replyTo && (
         <div className="flex items-center gap-2 py-[11px] px-[2px] ml-[5px] w-full border-b border-bg-tertiary text-[0.85rem]">
-          <span className="font-semibold text-text-primary">{tComments("replyingTo", { username: `@${replyTo.name}` })}</span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="min-w-0 max-w-[170px] truncate font-semibold text-text-primary">
+              @{replyTo.name}
+            </span>
+            <span className="text-text-muted">{tComments("replyingToShort")}</span>
+          </div>
           <button
             type="button"
             onClick={() => { setReplyTo(null); }}
@@ -938,12 +959,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                   {/* Comment card */}
 	                      <CommentCard
 	                        comment={comment}
+	                        highlighted={highlightedCommentId === comment.id}
 	                        likedComments={likedComments}
 	                        currentUserId={currentUserId}
 	                        openMenuId={openMenuId}
 	                        onToggleMenu={setOpenMenuId}
 	                        onLike={handleLikeComment}
 	                        onReply={(id, name) => { if (id < 0) return; setReplyTo({ id, name }); setTimeout(() => inputRef.current?.focus(), 100); }}
+	                        onFocusTargetComment={focusCommentTarget}
 	                        renderMentionContent={renderMentionContent}
 	                      />
 
@@ -971,6 +994,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 	                        <CommentCard
 	                          comment={reply}
 	                          isReply
+	                          highlighted={highlightedCommentId === reply.id}
 	                          likedComments={likedComments}
 	                          currentUserId={currentUserId}
 	                          openMenuId={openMenuId}
@@ -980,6 +1004,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 	                            setReplyTo({ id: comment.id, name: replyUsername });
 	                            setTimeout(() => inputRef.current?.focus(), 100);
 	                          }}
+	                          onFocusTargetComment={focusCommentTarget}
 	                          renderMentionContent={renderMentionContent}
 	                        />
                         </div>
@@ -1020,7 +1045,7 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
       const menuUsername = menuComment.profiles?.username || "anonim";
       return (
         <Modal open={true} onClose={() => setOpenMenuId(null)} hideHeader size="sm" zIndex="z-[99991]">
-          <div className="py-1 px-2 space-y-[3px]">
+          <div className="pt-1 pb-[4px] px-2 space-y-[3px]">
             {!menuComment.is_nsfw && (
               <>
                 <button
@@ -1166,12 +1191,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 interface CommentCardProps {
   comment: Comment;
   isReply?: boolean;
+  highlighted?: boolean;
   likedComments: Set<number>;
   currentUserId: string | null;
   openMenuId: number | null;
   onToggleMenu: (id: number | null) => void;
   onLike: (id: number) => void;
   onReply?: (id: number, name: string) => void;
+  onFocusTargetComment?: (id: number | null) => void;
   renderMentionContent: (text: string) => string;
 }
 
@@ -1257,7 +1284,7 @@ function CommentGifMedia({
   );
 }
 
-const CommentCard = memo(function CommentCard({ comment, isReply = false, likedComments, currentUserId, openMenuId, onToggleMenu, onLike, onReply, renderMentionContent }: CommentCardProps) {
+const CommentCard = memo(function CommentCard({ comment, isReply = false, highlighted = false, likedComments, currentUserId, openMenuId, onToggleMenu, onLike, onReply, onFocusTargetComment, renderMentionContent }: CommentCardProps) {
   const t = useTranslations("modals");
   const tComments = useTranslations("comments");
   const tc = useTranslations("common");
@@ -1269,8 +1296,9 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
   const isLong = (comment.content?.length || 0) > COMMENT_TRUNCATE_LENGTH || (comment.content?.split("\n").length || 0) > COMMENT_TRUNCATE_LINES;
   return (
     <div className={cn(
-      "flex flex-row w-full py-[6px] px-2 sm:px-[11px]",
-      isReply && "pl-[11px]"
+      "mx-[6px] flex flex-row rounded-[14px] px-0 py-[6px] transition-colors duration-500 sm:px-[4px]",
+      highlighted && "bg-accent-main/10",
+      isReply && "pl-[11px] mr-[7px]"
     )}>
       {/* Avatar */}
       <div className="shrink-0 mt-[9px]">
@@ -1315,9 +1343,14 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           </div>
         )}
         {comment.reply_to_username && !comment.is_nsfw && (
-          <div className="mt-[1px] text-[0.75rem] font-medium text-text-muted">
-            {tComments("replyToUserLabel", { username: comment.reply_to_username })}
-          </div>
+          <button
+            type="button"
+            onClick={() => onFocusTargetComment?.(comment.parent_id)}
+            className="-mt-[2px] flex max-w-full items-center gap-1 text-left text-[0.75rem] font-medium text-text-muted transition hover:text-text-primary"
+          >
+            <span className="inline-block max-w-[170px] truncate align-bottom">@{comment.reply_to_username}</span>
+            <span>{tComments("replyingToShort")}</span>
+          </button>
         )}
         {comment.content_type === "gif" && comment.gif_url ? (
           <CommentGifMedia src={comment.gif_url} alt="GIF" />
@@ -1325,7 +1358,7 @@ const CommentCard = memo(function CommentCard({ comment, isReply = false, likedC
           <>
             <div
               className={cn(
-                "w-full max-w-full text-[0.84rem] leading-[1.4] text-text-readable select-none break-words pr-[26px] mx-[1px]",
+                "w-full max-w-full text-[0.84rem] leading-[1.4] text-text-readable select-none break-words mx-[1px]",
                 !expanded && isLong && "line-clamp-6"
               )}
               dangerouslySetInnerHTML={{ __html: renderMentionContent(comment.content) }}

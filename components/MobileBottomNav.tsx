@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Search, Bell, User, BookOpen, Users, Film, Clapperboard, LayoutGrid } from "lucide-react";
+import { Home, Search, Bell, User, BookOpen, Users, Film, Clapperboard, LayoutGrid, Bookmark, BarChart3, Wallet, Settings, Sun, Moon, CloudMoon, Monitor, LogIn } from "lucide-react";
 import { useUser } from "@/components/UserContext";
 import { useNotificationCount } from "@/lib/useNotificationCount";
 import Modal from "@/components/modals/Modal";
@@ -11,6 +11,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { formatCount } from "@/lib/utils";
 import LazyAvatar from "@/components/LazyAvatar";
+import { useHydrated } from "@/lib/useHydrated";
 
 export default memo(function MobileBottomNav() {
   const pathname = usePathname();
@@ -20,6 +21,7 @@ export default memo(function MobileBottomNav() {
   const unreadCount = useNotificationCount(isLoggedIn, user?.id);
   const t = useTranslations();
   const locale = useLocale();
+  const hydrated = useHydrated();
 
   const notificationsLabel = t("nav.notifications");
 
@@ -37,14 +39,51 @@ export default memo(function MobileBottomNav() {
     { href: "/posts", icon: BookOpen, label: t("nav.posts") },
   ];
 
+  const quickAccessItems = [
+    { href: "/bookmarks", icon: Bookmark, label: t("nav.bookmarks") },
+    { href: "/analytics", icon: BarChart3, label: t("nav.analytics") },
+    { href: "/coins", icon: Wallet, label: t("nav.balance") },
+    { href: "/settings", icon: Settings, label: t("nav.settings") },
+  ];
+
   const publicPaths = ["/", "/explore", "/moments", "/video"];
-  const moreActive = ["/posts", "/notes", "/video", "/moments"].some(p => pathname === p || pathname.startsWith(p + "/"));
+  const morePaths = ["/posts", "/notes", "/video", "/moments", "/bookmarks", "/analytics", "/coins", "/settings"];
+  const moreActive = morePaths.some(p => pathname === p || pathname.startsWith(p + "/"));
+
+  const theme = useMemo(() => {
+    if (!hydrated) return "system";
+    try {
+      return localStorage.getItem("fdm-theme") || "dark";
+    } catch {
+      return "dark";
+    }
+  }, [hydrated]);
 
   const handleContentNav = (href: string) => {
     setMoreOpen(false);
     emitNavigationStart();
     router.push(href);
   };
+
+  const themeLabel = theme === "system"
+    ? t("theme.system")
+    : theme === "light"
+      ? t("theme.light")
+      : theme === "dark"
+        ? t("theme.dark")
+        : t("theme.dim");
+
+  const themeIcon = () => {
+    if (theme === "dark") return <Moon className="h-5 w-5 shrink-0" />;
+    if (theme === "dim") return <CloudMoon className="h-5 w-5 shrink-0" />;
+    if (theme === "light") return <Sun className="h-5 w-5 shrink-0" />;
+    return <Monitor className="h-5 w-5 shrink-0" />;
+  };
+
+  const itemClass = (active: boolean) =>
+    `w-full flex items-center justify-between px-3 py-3.5 rounded-[13px] transition text-left ${
+      active ? "bg-bg-secondary text-text-primary font-semibold" : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+    }`;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-primary bg-solid-primary border-t border-border-primary/30 md:hidden select-none">
@@ -111,6 +150,11 @@ export default memo(function MobileBottomNav() {
       {/* More modal */}
       <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title={t("common.more")} size="sm">
         <div className="py-2 px-2 space-y-[2px]">
+          <div className="px-3 pt-1 pb-1.5">
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-text-muted/75">
+              {t("common.contentTypesSection")}
+            </p>
+          </div>
           {contentItems.map(item => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -118,9 +162,7 @@ export default memo(function MobileBottomNav() {
               <button
                 key={item.href}
                 onClick={() => handleContentNav(item.href)}
-                className={`w-full flex items-center justify-between px-3 py-3.5 rounded-[13px] transition text-left ${
-                  active ? "bg-bg-secondary text-text-primary font-semibold" : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
-                }`}
+                className={itemClass(active)}
               >
                 <span className="text-[0.93rem] font-semibold">{item.label}</span>
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
@@ -131,6 +173,67 @@ export default memo(function MobileBottomNav() {
               </button>
             );
           })}
+
+          {isLoggedIn && (
+            <>
+              <div className="border-t border-border-primary/50 !my-1.5" />
+              <div className="px-3 pt-1 pb-1.5">
+                <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-text-muted/75">
+                  {t("common.quickAccessSection")}
+                </p>
+              </div>
+              {quickAccessItems.map(item => {
+                const Icon = item.icon;
+                const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => handleContentNav(item.href)}
+                    className={itemClass(active)}
+                  >
+                    <span className="text-[0.93rem] font-semibold">{item.label}</span>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                      active ? "bg-accent-main/15" : "bg-bg-tertiary"
+                    }`}>
+                      <Icon className={`h-[18px] w-[18px] ${active ? "text-accent-main" : "text-text-muted"}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          <div className="border-t border-border-primary/50 !my-1.5" />
+          <div className="px-3 pt-1 pb-1.5">
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-text-muted/75">
+              {t("common.appearanceSection")}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setMoreOpen(false);
+              setTimeout(() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("fdm-open-darkmode"));
+                }
+              }, 160);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] transition text-left text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+          >
+            {themeIcon()}
+            <span className="text-[0.93rem] font-medium capitalize">{themeLabel}</span>
+          </button>
+
+          {!isLoggedIn && (
+            <Link
+              href="/login"
+              onClick={() => setMoreOpen(false)}
+              className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] transition text-left text-accent-main hover:bg-accent-main/10 font-semibold"
+            >
+              <LogIn className="h-5 w-5 shrink-0" />
+              <span className="text-[0.93rem]">{t("common.login")}</span>
+            </Link>
+          )}
         </div>
       </Modal>
     </nav>

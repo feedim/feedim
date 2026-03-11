@@ -6,7 +6,7 @@ const bone = "bg-bg-secondary rounded-[5px] animate-pulse";
 
 function ActionBarSkeleton() {
   return (
-    <div className="flex items-center gap-2 py-3 select-none">
+    <div className="flex items-center gap-2 py-2 select-none">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="flex-1 h-[46px] rounded-xl bg-bg-secondary animate-pulse" />
       ))}
@@ -96,7 +96,7 @@ export function NoteDetailSkeleton() {
           <div className={`h-[12px] w-[72%] ${bone}`} />
         </div>
         <div className={`h-[10px] w-[84px] ${bone} mt-4`} />
-        <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+        <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
           <div className="h-8 w-24 rounded-full bg-bg-secondary animate-pulse" />
           <div className="h-8 w-20 rounded-full bg-bg-secondary animate-pulse" />
         </div>
@@ -129,7 +129,7 @@ export function PostDetailSkeleton() {
         <div className={`h-[10px] w-[74px] ${bone}`} />
         <div className={`h-[10px] w-[62px] ${bone}`} />
       </div>
-      <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+      <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
         <div className="h-8 w-24 rounded-full bg-bg-secondary animate-pulse" />
         <div className="h-8 w-20 rounded-full bg-bg-secondary animate-pulse" />
       </div>

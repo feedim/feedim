@@ -238,8 +238,6 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
       if (!video) return;
 
       const key = e.key.toLowerCase();
-      // Prevent Tab from moving focus out of the player to description
-      if (key === "tab") { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (key === " " || key === "k") {
         e.preventDefault(); e.stopImmediatePropagation();
         togglePlayPause();
@@ -288,7 +286,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
   return (
     <div
       ref={cardRef}
-      className="relative w-full bg-black md:h-screen"
+      className="relative w-full bg-transparent md:h-screen"
       data-moment-active={isActive ? "true" : undefined}
       style={{ ...viewportHeightStyle, contentVisibility: isActive ? "visible" : "auto", containIntrinsicSize: `${h} 100vw` }}
     >

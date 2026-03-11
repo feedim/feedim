@@ -54,9 +54,9 @@ export default function GuestJoinPrompt({
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[75] px-0">
       <div
         className="pointer-events-auto relative border-t border-black/10 shadow-[0_-14px_34px_rgba(0,0,0,0.14)]"
-        style={{ backgroundColor: "var(--accent-color)" }}
+        style={{ backgroundColor: "#ff2500" }}
       >
-        <div className="mx-auto max-w-[1180px] px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] sm:px-5">
+        <div className="mx-auto max-w-[1180px] px-4 pt-4 pb-[calc(18px+env(safe-area-inset-bottom))] sm:px-5">
           <button
             type="button"
             onClick={handleDismiss}
@@ -75,7 +75,7 @@ export default function GuestJoinPrompt({
           </div>
 
           <div className="mx-auto mt-3 flex w-full max-w-[420px] flex-col items-center justify-center gap-2.5 sm:max-w-none sm:flex-row">
-            <Link href="/register" className="t-btn accept !w-full sm:!w-auto !px-6 !bg-white !text-[var(--accent-color)] hover:opacity-90">
+            <Link href="/register" className="t-btn accept !w-full sm:!w-auto !px-6 !bg-white hover:opacity-90" style={{ color: "#ff2500" }}>
               {signupLabel}
             </Link>
             <Link href="/login" className="t-btn cancel !w-full sm:!w-auto !px-6 !bg-white/10 !text-white hover:opacity-90">

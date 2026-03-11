@@ -21,6 +21,7 @@ import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 import GuestJoinPrompt from "@/components/GuestJoinPrompt";
+import { decodeId } from "@/lib/hashId";
 
 import { getTranslations, getLocale } from "next-intl/server";
 import { getCachedPost } from "@/lib/postQueries";
@@ -38,6 +39,7 @@ function getBadgeVariant(premiumPlan?: string | null): "default" | "max" {
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ comment?: string | string[] }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -71,8 +73,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-export default async function VideoPage({ params }: PageProps) {
+export default async function VideoPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const commentParam = Array.isArray(resolvedSearchParams?.comment) ? resolvedSearchParams?.comment[0] : resolvedSearchParams?.comment;
+  const initialTargetCommentId = commentParam ? decodeId(commentParam) : null;
   const post = await getCachedPost(slug);
   if (!post) notFound();
 
@@ -211,7 +216,7 @@ export default async function VideoPage({ params }: PageProps) {
               {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
             </div>
             {author?.follower_count !== undefined && (
-              <p className="text-[0.68rem] leading-none text-text-muted -mt-[1px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
+              <p className="text-[0.68rem] leading-none text-text-muted -mt-[0.5px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
             )}
           </div>
           <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
@@ -231,7 +236,7 @@ export default async function VideoPage({ params }: PageProps) {
         )}
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+          <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
             {tags.map((tag: { id: number; name: string; slug: string }) => (
               <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                 title={`#${tag.name}`}
@@ -277,6 +282,7 @@ export default async function VideoPage({ params }: PageProps) {
           visibility={post.visibility || "public"}
           isModeration={!!post.is_nsfw || post.status === 'moderation'}
           allowComments={post.allow_comments !== false}
+          initialTargetCommentId={initialTargetCommentId}
         />
 
         <NextVideosGrid videos={nextVideos} />

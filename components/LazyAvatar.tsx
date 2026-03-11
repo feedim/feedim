@@ -54,9 +54,9 @@ export default memo(function LazyAvatar({
   return (
     <div className={`relative ${sizeClass} ${className}`}>
       <div
-        className={`w-full h-full rounded-full overflow-hidden ${borderClass}`}
+        className={`w-full h-full rounded-full overflow-hidden ${loaded ? borderClass : ""}`}
         style={{
-          ...avatarBorderStyle,
+          ...(loaded ? avatarBorderStyle : undefined),
           filter: loaded ? "blur(0px)" : "blur(3px)",
           transition: loaded ? "filter 200ms ease 80ms" : "none",
           transform: "translateZ(0)",
@@ -72,10 +72,10 @@ export default memo(function LazyAvatar({
         />
       </div>
       <div
-        className={`absolute inset-0 rounded-full bg-bg-tertiary ${borderClass} ${
+        className={`absolute inset-0 rounded-full bg-bg-tertiary ${loaded ? borderClass : ""} ${
           loaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
         }`}
-        style={{ ...avatarBorderStyle, transition: "opacity 250ms ease" }}
+        style={{ ...(loaded ? avatarBorderStyle : undefined), transition: "opacity 250ms ease" }}
       />
     </div>
   );

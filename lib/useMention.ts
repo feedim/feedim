@@ -56,7 +56,9 @@ export function useMention({ maxMentions = 3, limitMessage }: UseMentionOptions 
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&mention=1`);
       const data = await res.json();
       const excludeSet = new Set(excludeUsernames.map(u => u.toLowerCase()));
-      const filtered = (data.users || []).filter((u: MentionUser) => !excludeSet.has(u.username.toLowerCase()));
+      const filtered = (data.users || [])
+        .filter((u: MentionUser) => !excludeSet.has(u.username.toLowerCase()))
+        .slice(0, 5);
       setMentionUsers(filtered);
       setMentionIndex(0);
     } catch {

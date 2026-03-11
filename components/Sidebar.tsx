@@ -38,6 +38,7 @@ export default memo(function Sidebar({ labels, footerLabels }: { labels: Sidebar
   const [themeVersion, setThemeVersion] = useState(0);
   const [darkModeOpen, setDarkModeOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [pendingCreateIntent, setPendingCreateIntent] = useState(false);
   const unreadCount = useNotificationCount(isLoggedIn, user?.id);
   const [contentExpanded, setContentExpanded] = useState(() =>
     contentPaths.some(p => pathname === p || pathname.startsWith(p + "/"))
@@ -50,15 +51,16 @@ export default memo(function Sidebar({ labels, footerLabels }: { labels: Sidebar
       return "dark";
     }
   }, [hydrated, themeVersion]);
-  const pendingCreateIntent = useMemo(() => {
-    if (!hydrated) return false;
-    try {
-      return sessionStorage.getItem("fdm-open-create-modal") === "1";
-    } catch {
-      return false;
-    }
-  }, [createModalOpen, hydrated]);
   const createModalVisible = createModalOpen || pendingCreateIntent;
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      setPendingCreateIntent(sessionStorage.getItem("fdm-open-create-modal") === "1");
+    } catch {
+      setPendingCreateIntent(false);
+    }
+  }, [hydrated, pathname, createModalOpen]);
 
   useEffect(() => {
     const handler = () => setDarkModeOpen(true);
@@ -269,6 +271,7 @@ export default memo(function Sidebar({ labels, footerLabels }: { labels: Sidebar
           try {
             sessionStorage.removeItem("fdm-open-create-modal");
           } catch {}
+          setPendingCreateIntent(false);
           setCreateModalOpen(false);
         }} />
       </Suspense>

@@ -1,21 +1,15 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { smartBack } from "@/lib/smartBack";
-import {
-  Menu, Home, Search,
-  Bell, Bookmark, BarChart3, Wallet, Settings, User,
-  Sun, Moon, CloudMoon, Monitor, LogIn, Plus
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import { useUser } from "@/components/UserContext";
-import Modal from "@/components/modals/Modal";
 import CreateMenuModal from "@/components/modals/CreateMenuModal";
 import { useTranslations } from "next-intl";
-import { useHydrated } from "@/lib/useHydrated";
 
 interface ColumnHeaderProps {
   rightAction?: React.ReactNode;
@@ -25,13 +19,25 @@ interface ColumnHeaderProps {
 }
 
 export default memo(function ColumnHeader({ rightAction, onBack, customTitle, scrollable }: ColumnHeaderProps = {}) {
-  const { user, isLoggedIn } = useUser();
+  const { isLoggedIn } = useUser();
   const pathname = usePathname();
   const router = useRouter();
-  const hydrated = useHydrated();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const t = useTranslations();
+
+  useEffect(() => {
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 1279px)").matches &&
+        sessionStorage.getItem("fdm-open-create-modal") === "1"
+      ) {
+        setCreateModalOpen(true);
+      } else {
+        setCreateModalOpen(false);
+      }
+    } catch {}
+  }, [pathname]);
 
   const pageTitles: Record<string, string> = {
     "/": t("nav.home"),
@@ -50,47 +56,10 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
     "/create/video": t("nav.video"),
   };
 
-  const mobileTopItems = [
-    { href: "/dashboard", icon: Home, label: t("nav.home") },
-    { href: "/explore", icon: Search, label: t("nav.explore") },
-  ];
-
-  const mobileAuthNavItems = [
-    { href: "/notifications", icon: Bell, label: t("nav.notifications") },
-    { href: "/bookmarks", icon: Bookmark, label: t("nav.bookmarks") },
-    { href: "/analytics", icon: BarChart3, label: t("nav.analytics") },
-    { href: "/coins", icon: Wallet, label: t("nav.balance") },
-    { href: "/settings", icon: Settings, label: t("nav.settings") },
-    { href: "/profile", icon: User, label: t("nav.profile") },
-  ];
-
-  const theme = useMemo(() => {
-    if (!hydrated) return "system";
-    try {
-      return localStorage.getItem("fdm-theme") || "dark";
-    } catch {
-      return "dark";
-    }
-  }, [hydrated]);
-
   const isHome = pathname === "/" || pathname === "/dashboard" || pathname === "/notifications";
   const pageTitle = customTitle || pageTitles[pathname] || (pathname.startsWith("/u/") ? t("nav.profile") : null);
 
   const handleBack = onBack || (() => smartBack(router));
-
-  const themeIcon = () => {
-    if (theme === "dark") return <Moon className="h-5 w-5" />;
-    if (theme === "dim") return <CloudMoon className="h-5 w-5" />;
-    if (theme === "light") return <Sun className="h-5 w-5" />;
-    return <Monitor className="h-5 w-5" />;
-  };
-
-  const themeLabel = theme === "system" ? t("theme.system") : theme === "light" ? t("theme.light") : theme === "dark" ? t("theme.dark") : t("theme.dim");
-
-  const navItemClass = (active: boolean) =>
-    `flex items-center gap-3 px-3 py-3 rounded-[10px] transition-all text-[0.93rem] font-medium ${
-      active ? "bg-bg-secondary text-text-primary font-semibold" : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
-    }`;
 
   return (
     <>
@@ -123,81 +92,16 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
           <div id="header-right-slot" />
           {rightAction ? (
             <>{rightAction}</>
-          ) : isHome && !customTitle ? (
-            <button
-              onClick={() => setMobileNavOpen(true)}
-              className="i-btn !w-9 !h-9 text-text-muted md:!hidden"
-              aria-label={t("nav.menu")}
-            >
-              <Menu className="h-6 w-6" />
-            </button>
           ) : null}
         </div>
       </nav>
     </header>
-
-    {/* Mobile navigation modal */}
-    <Modal open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} title={t("nav.menu")} size="sm" hideHeader>
-      <div className="pt-[3px] pb-2 px-2 space-y-[5px]">
-        {mobileTopItems.map(item => {
-          const Icon = item.icon;
-          const active = pathname === item.href;
-          return (
-            <Link key={item.href} href={item.href} onClick={() => setMobileNavOpen(false)} className={navItemClass(active)}>
-              <Icon className="h-5 w-5 shrink-0" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-
-        {/* Auth items */}
-        {isLoggedIn && (
-          <>
-            <div className="border-t border-border-primary !my-1.5" />
-            {mobileAuthNavItems.map(item => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
-              return (
-                <Link key={item.href} href={item.href} onClick={() => setMobileNavOpen(false)} className={navItemClass(active)}>
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </>
-        )}
-
-        {/* Bottom: Theme */}
-        <div className="border-t border-border-primary !my-1.5" />
-        <button
-          onClick={() => {
-            setMobileNavOpen(false);
-            setTimeout(() => {
-              if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-darkmode"));
-            }, 200);
-          }}
-          className="flex items-center gap-3 w-full px-3 py-3 rounded-[10px] text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-all text-[0.93rem] font-medium"
-        >
-          {themeIcon()}
-          <span className="capitalize">{themeLabel}</span>
-        </button>
-        {/* Login button for non-authenticated users */}
-        {!isLoggedIn && (
-          <>
-            <div className="border-t border-border-primary !my-1.5" />
-            <Link
-              href="/login"
-              onClick={() => setMobileNavOpen(false)}
-              className="flex items-center gap-3 px-3 py-3 rounded-[10px] transition text-[0.93rem] font-semibold text-accent-main hover:bg-accent-main/10"
-            >
-              <LogIn className="h-5 w-5 shrink-0" />
-              <span>{t("common.login")}</span>
-            </Link>
-          </>
-        )}
-      </div>
-    </Modal>
-    <CreateMenuModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+    <CreateMenuModal open={createModalOpen} onClose={() => {
+      try {
+        sessionStorage.removeItem("fdm-open-create-modal");
+      } catch {}
+      setCreateModalOpen(false);
+    }} />
     </>
   );
 })

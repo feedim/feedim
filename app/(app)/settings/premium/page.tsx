@@ -321,7 +321,7 @@ export default function PremiumSettingsPage() {
           <div className="px-4 py-8">
             <div className="text-center mb-6">
               <div className="flex justify-center mb-4">
-                <VerifiedBadge size="lg" className="!h-[33px] !w-[33px] !min-w-[33px]" />
+                <VerifiedBadge size="lg" className="!h-[36px] !w-[36px] !min-w-[36px]" />
               </div>
               <h2 className="text-[1.2rem] font-bold mb-2">{t("noSubscription")}</h2>
             </div>

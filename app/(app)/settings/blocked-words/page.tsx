@@ -94,7 +94,7 @@ export default function BlockedWordsPage() {
 
   return (
     <AppLayout headerTitle={t("blockedWords")} hideRightSidebar>
-      <div className="py-4 px-4">
+      <div className="py-2 px-4">
         <p className="text-sm text-text-muted mb-4">
           {t("blockedWordsPageDesc")}
         </p>

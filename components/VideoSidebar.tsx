@@ -67,8 +67,8 @@ export function VideoSidebarSkeleton({ count = 4, title, compact }: { count?: nu
 }
 
 export default function VideoSidebar({ videos, title, compact }: VideoSidebarProps) {
-  const t = useTranslations();
-  if (videos.length === 0) return null;
+  const t = useTranslations("video");
+  const tCommon = useTranslations("common");
 
   // Sort: unwatched first, watched at bottom
   const watched = getWatchedSlugs();
@@ -83,6 +83,12 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
       {title && (
         <h3 className="text-[1.1rem] font-bold mb-3">{title}</h3>
       )}
+      {sorted.length === 0 ? (
+        <div className="rounded-[14px] bg-bg-secondary px-4 py-4">
+          <p className="text-[0.9rem] font-semibold text-text-primary">{t("emptyTitle")}</p>
+          <p className="mt-1 text-[0.78rem] leading-[1.45] text-text-muted">{t("emptyDescription")}</p>
+        </div>
+      ) : (
       <div className="space-y-1.5">
         {sorted.map(video => {
           return (
@@ -124,7 +130,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
                   )}
                 </p>
                 <p className="text-[0.65rem] text-text-muted">
-                  {video.view_count ? `${formatCount(video.view_count)} ${t('common.views')}` : ""}
+                  {video.view_count ? `${formatCount(video.view_count)} ${tCommon("views")}` : ""}
                   {video.visibility && (
                     <span>{video.view_count ? " · " : ""}{video.visibility === 'followers' ? t('post.visibilityFollowers') : video.visibility === 'only_me' ? t('post.visibilityOnlyMe') : t('post.visibilityPublic')}</span>
                   )}
@@ -135,6 +141,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
           );
         })}
       </div>
+      )}
     </div>
   );
 }

@@ -188,7 +188,7 @@ export default function CommunityNotesPage() {
         <PostCardSkeleton count={5} variant="note" />
       ) : posts.length > 0 ? (
         <>
-          <div className="flex flex-col gap-[16px] mt-[10px]">
+          <div className="flex flex-col gap-[9px] mt-[10px]">
             {posts.filter(post => !isBlockedContent(`${post.title || ""} ${post.excerpt || ""}`, post.profiles?.user_id, ctxUser?.id)).map((post) => (
               <div key={post.id}>
                 <PostCard

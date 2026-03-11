@@ -13,6 +13,7 @@ import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } fr
 import PostViewTracker from "@/components/PostViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import { decodeId } from "@/lib/hashId";
 import { headers } from "next/headers";
 
 function getBadgeVariantServer(premiumPlan?: string | null): "default" | "max" {
@@ -33,10 +34,11 @@ import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPage
 import { buildContentMetadata } from "@/lib/socialMetadata";
 import { getShareablePostUrl } from "@/lib/utils";
 import AdBanner from "@/components/AdBanner";
+import NoteFeaturedImage from "@/components/NoteFeaturedImage";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ expand?: string | string[] }>;
+  searchParams?: Promise<{ expand?: string | string[]; comment?: string | string[] }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -73,6 +75,8 @@ export default async function NotePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const expandParam = resolvedSearchParams?.expand;
+  const commentParam = Array.isArray(resolvedSearchParams?.comment) ? resolvedSearchParams?.comment[0] : resolvedSearchParams?.comment;
+  const initialTargetCommentId = commentParam ? decodeId(commentParam) : null;
   const autoExpandFromCard = Array.isArray(expandParam) ? expandParam.includes("1") : expandParam === "1";
   const post = await getCachedPost(slug);
   if (!post) notFound();
@@ -191,15 +195,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
           />
 
           {post.featured_image && (
-            <div className="mt-[10px] w-full rounded-[20px] overflow-hidden">
-              <img
-                src={post.featured_image}
-                alt={post.title}
-                className="block h-auto max-h-[640px] w-full"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
+            <NoteFeaturedImage src={post.featured_image} alt={post.title} />
           )}
 
           {(post.view_count || 0) > 0 && (
@@ -207,7 +203,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
           )}
 
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-[7px] mb-[6px]">
+            <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
               {tags.map((tag: { id: number; name: string; slug: string }) => (
                 <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
                   title={`#${tag.name}`}
@@ -251,6 +247,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
             visibility={post.visibility || "public"}
             isModeration={!!post.is_nsfw || post.status === 'moderation'}
             allowComments={post.allow_comments !== false}
+            initialTargetCommentId={initialTargetCommentId}
           />
         </div>
 

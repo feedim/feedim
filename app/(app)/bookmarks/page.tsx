@@ -171,7 +171,7 @@ export default function BookmarksPage() {
           <PostCardSkeleton count={5} />
         ) : posts.length > 0 ? (
           <>
-            <div className="flex flex-col gap-[16px] mt-[10px]">
+            <div className="flex flex-col gap-[9px] mt-[10px]">
             {posts.map((post: any) => (
               <PostCard key={post.id} post={post} initialSaved={true} />
             ))}
