@@ -21,6 +21,7 @@ function getBadgeVariantServer(premiumPlan?: string | null): "default" | "max" {
 import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import ExpandableMentionText from "@/components/ExpandableMentionText";
+import GuestJoinPrompt from "@/components/GuestJoinPrompt";
 
 import { getTranslations, getLocale } from "next-intl/server";
 import { getAlternateLanguages } from "@/lib/seo";
@@ -190,11 +191,11 @@ export default async function NotePage({ params, searchParams }: PageProps) {
           />
 
           {post.featured_image && (
-            <div className="mt-[10px] rounded-[20px] overflow-hidden border border-border-primary bg-bg-tertiary">
+            <div className="mt-[10px] flex min-h-[240px] items-center justify-center rounded-[20px] overflow-hidden border border-border-primary bg-bg-tertiary">
               <img
                 src={post.featured_image}
                 alt={post.title}
-                className="w-full h-auto max-h-[580px] object-cover bg-bg-tertiary"
+                className="block max-h-[640px] w-full bg-bg-tertiary object-contain"
                 loading="lazy"
                 decoding="async"
               />
@@ -215,6 +216,16 @@ export default async function NotePage({ params, searchParams }: PageProps) {
                 </Link>
               ))}
             </div>
+          )}
+
+          {!currentUserId && (
+            <GuestJoinPrompt
+              title={tCommon("guestJoinTitle")}
+              body={tCommon("guestJoinBody")}
+              signupLabel={tCommon("signup")}
+              loginLabel={tCommon("login")}
+              closeLabel={tCommon("close")}
+            />
           )}
 
           <PostInteractionBar

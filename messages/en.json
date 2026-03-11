@@ -62,7 +62,9 @@
     "previous": "Previous",
     "image": "Image",
     "info": "Info",
-    "goToNotification": "Go to notification"
+    "goToNotification": "Go to notification",
+    "guestJoinTitle": "Join Türkiye's social media platform too.",
+    "guestJoinBody": "Share your content, discover new people and build your own community with Feedim."
   },
   "nav": {
     "home": "Home",

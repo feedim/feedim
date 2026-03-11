@@ -19,6 +19,7 @@ import VerifiedBadge from "@/components/VerifiedBadge";
 import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
+import GuestJoinPrompt from "@/components/GuestJoinPrompt";
 
 import { getTranslations, getLocale } from "next-intl/server";
 import { getCachedPost } from "@/lib/postQueries";
@@ -233,6 +234,16 @@ export default async function MomentPage({ params }: PageProps) {
                 </Link>
               ))}
             </div>
+        )}
+
+        {!currentUserId && (
+          <GuestJoinPrompt
+            title={tCommon("guestJoinTitle")}
+            body={tCommon("guestJoinBody")}
+            signupLabel={tCommon("signup")}
+            loginLabel={tCommon("login")}
+            closeLabel={tCommon("close")}
+          />
         )}
 
         <PostInteractionBar

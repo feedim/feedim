@@ -62,7 +62,9 @@
     "previous": "Əvvəlki",
     "image": "Şəkil",
     "info": "Məlumat",
-    "goToNotification": "Bildirişə keç"
+    "goToNotification": "Bildirişə keç",
+    "guestJoinTitle": "Türkiyənin sosial mediasına sən də qatıl.",
+    "guestJoinBody": "Məzmununu paylaş, yeni insanları kəşf et və öz icmanı Feedim ilə qur."
   },
   "nav": {
     "home": "Ana Səhifə",

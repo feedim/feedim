@@ -348,12 +348,12 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
             <>
               <NoteContent text={post.excerpt || post.title} href={postHref} onOpen={() => router.push(noteExpandedHref)} />
               {post.featured_image && (
-                <div className="relative z-[1] pointer-events-none mt-2 rounded-[18px] overflow-hidden border border-border-primary bg-bg-tertiary">
+                <div className="relative z-[1] pointer-events-none mt-2 flex min-h-[180px] items-center justify-center rounded-[18px] overflow-hidden border border-border-primary bg-bg-tertiary">
                   <img
                     data-src={post.featured_image}
                     alt={post.title}
                     decoding="async"
-                    className="lazyload w-full aspect-[4/5] object-cover bg-bg-tertiary"
+                    className="lazyload block max-h-[420px] w-full bg-bg-tertiary object-contain"
                   />
                 </div>
               )}

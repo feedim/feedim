@@ -62,7 +62,9 @@
     "previous": "Önceki",
     "image": "Görsel",
     "info": "Bilgi",
-    "goToNotification": "Bildirime git"
+    "goToNotification": "Bildirime git",
+    "guestJoinTitle": "Türkiye'nin sosyal medyasına sen de katıl.",
+    "guestJoinBody": "İçeriklerini paylaş, yeni insanlar keşfet ve kendi topluluğunu Feedim ile oluştur."
   },
   "nav": {
     "home": "Ana Sayfa",

@@ -58,6 +58,7 @@ function NoteWriteContent() {
   const [featuredImage, setFeaturedImage] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropAspect, setCropAspect] = useState(1);
 
   // Step 2
   const [tags, setTags] = useState<Tag[]>([]);
@@ -199,6 +200,20 @@ function NoteWriteContent() {
     if (!imageUploading) imageInputRef.current?.click();
   };
 
+  const resolveNoteCropAspect = async (dataUrl: string) => {
+    const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => reject(new Error("image-load-failed"));
+      img.src = dataUrl;
+    });
+
+    const ratio = dimensions.width / Math.max(dimensions.height, 1);
+    if (ratio >= 1.2) return 1.91;
+    if (ratio <= 0.9) return 4 / 5;
+    return 1;
+  };
+
   const uploadSingleNoteImage = async (file: File) => {
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
@@ -218,8 +233,11 @@ function NoteWriteContent() {
 
       (document.activeElement as HTMLElement | null)?.blur();
 
+      const nextCropAspect = await resolveNoteCropAspect(dataUrl).catch(() => 1);
+
       const croppedUrl = await new Promise<string>((resolve) => {
         cropResolveRef.current = resolve;
+        setCropAspect(nextCropAspect);
         setCropSrc(dataUrl);
       });
 
@@ -634,62 +652,28 @@ function NoteWriteContent() {
                       style={mention.mentionDropdownTop != null ? { top: mention.mentionDropdownTop } : { top: 36 }}
                     />
                   </div>
-                  {featuredImage && (
+                  {(featuredImage || imageUploading) && (
                     <div className="mt-3">
-                      <div className="relative rounded-[18px] overflow-hidden border border-border-primary bg-bg-tertiary">
-                        <img
-                          src={featuredImage}
-                          alt={t("image")}
-                          className="w-full aspect-[4/5] object-cover bg-bg-tertiary"
-                        />
-                        {imageUploading && (
-                          <div className="absolute inset-0 bg-bg-secondary/70 animate-pulse" />
+                      <div className="relative flex min-h-[220px] items-center justify-center rounded-[18px] overflow-hidden border border-border-primary bg-bg-tertiary">
+                        {featuredImage && !imageUploading ? (
+                          <>
+                            <img
+                              src={featuredImage}
+                              alt={tc("image")}
+                              className="block max-h-[560px] w-full bg-bg-tertiary object-contain"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setFeaturedImage("")}
+                              className="absolute top-2 right-2 flex items-center justify-center h-8 w-8 rounded-full bg-black/55 text-white transition hover:bg-black/70"
+                              aria-label={tc("delete")}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <div className="h-[320px] w-full animate-pulse bg-bg-secondary" />
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setFeaturedImage("")}
-                          className="absolute top-2 right-2 flex items-center justify-center h-8 w-8 rounded-full bg-black/55 text-white transition hover:bg-black/70"
-                          aria-label={tc("remove")}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-3 mt-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!featuredImage || imageUploading) return;
-                            (document.activeElement as HTMLElement | null)?.blur();
-                            setImageUploading(true);
-                            try {
-                              const croppedUrl = await new Promise<string>((resolve) => {
-                                cropResolveRef.current = resolve;
-                                setCropSrc(featuredImage);
-                              });
-                              if (!croppedUrl) return;
-                              const blob = await fetch(croppedUrl).then((r) => r.blob());
-                              const uploadFile = new File([blob], `note-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
-                              const formData = new FormData();
-                              formData.append("file", uploadFile);
-                              formData.append("fileName", uploadFile.name);
-                              const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
-                              const uploadData = await uploadRes.json();
-                              if (uploadRes.ok && uploadData.url) setFeaturedImage(uploadData.url);
-                            } finally {
-                              setImageUploading(false);
-                            }
-                          }}
-                          className="text-sm text-accent-main hover:text-accent-main/80 font-medium py-1 transition"
-                        >
-                          {t("editCover")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={openFilePicker}
-                          className="text-sm text-text-muted hover:text-text-primary font-medium py-1 transition"
-                        >
-                          {t("changeCover")}
-                        </button>
                       </div>
                     </div>
                   )}
@@ -701,7 +685,7 @@ function NoteWriteContent() {
                       className={`flex items-center justify-center h-7 w-7 rounded-full transition ${featuredImage ? "text-accent-main" : "text-text-muted/50 hover:text-text-primary"} disabled:opacity-50`}
                       aria-label={t("addImage")}
                     >
-                      {imageUploading ? <span className="loader" style={{ width: 14, height: 14 }} /> : <ImagePlus className="h-[18px] w-[18px]" />}
+                      <ImagePlus className="h-[18px] w-[18px]" />
                     </button>
                     <button
                       type="button"
@@ -882,7 +866,7 @@ function NoteWriteContent() {
           cropResolveRef.current = null;
         }}
         imageSrc={cropSrc || ""}
-        aspectRatio={4 / 5}
+        aspectRatio={cropAspect}
         onCrop={(croppedUrl) => {
           if (cropResolveRef.current) {
             cropResolveRef.current(croppedUrl);
