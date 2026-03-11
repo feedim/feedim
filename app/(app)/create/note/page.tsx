@@ -217,11 +217,13 @@ function NoteWriteContent() {
   const uploadSingleNoteImage = async (file: File) => {
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
-      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
 
       setImageUploading(true);
 
-      const { compressImage } = await import("@/lib/imageCompression");
+      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) {
+        throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
+      }
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
       const dataUrl = await new Promise<string>((resolve, reject) => {

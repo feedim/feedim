@@ -255,10 +255,10 @@ function WritePageContent() {
     setImageUploading(true);
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
-      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
 
       // Compress before storing (strip metadata, convert to JPEG, max 2MB)
-      const { compressImage } = await import("@/lib/imageCompression");
+      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -302,10 +302,10 @@ function WritePageContent() {
     if (!file) return;
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
-      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
 
       setImageUploading(true);
-      const { compressImage } = await import("@/lib/imageCompression");
+      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -362,10 +362,10 @@ function WritePageContent() {
     const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("image/"));
     if (!file) return;
     try {
-      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
+      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
 
       setImageUploading(true);
-      const { compressImage } = await import("@/lib/imageCompression");
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
 
       const dataUrl = await new Promise<string>((resolve, reject) => {

@@ -1029,7 +1029,7 @@
     "tagCreateFailed": "Etiket yaradıla bilmədi",
     "tagCreateFailedRetry": "Etiket yaradıla bilmədi, zəhmət olmasa sonra yenidən cəhd edin",
     "invalidFile": "Yanlış fayl",
-    "fileTooLarge": "Fayl çox böyükdür (maks 5MB)",
+    "fileTooLarge": "Fayl çox böyükdür (maks 20MB)",
     "fileReadError": "Fayl oxuna bilmədi",
     "imageUploadFailed": "Şəkil yüklənə bilmədi",
     "imageUploadFailedRetry": "Şəkil yüklənə bilmədi, zəhmət olmasa sonra yenidən cəhd edin",

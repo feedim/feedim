@@ -1029,7 +1029,7 @@
     "tagCreateFailed": "Etiket oluşturulamadı",
     "tagCreateFailedRetry": "Etiket oluşturulamadı, lütfen daha sonra tekrar deneyin",
     "invalidFile": "Geçersiz dosya",
-    "fileTooLarge": "Dosya çok büyük (maks 5MB)",
+    "fileTooLarge": "Dosya çok büyük (maks 20MB)",
     "fileReadError": "Dosya okunamadı",
     "imageUploadFailed": "Görsel yüklenemedi",
     "imageUploadFailedRetry": "Görsel yüklenemedi, lütfen daha sonra tekrar deneyin",

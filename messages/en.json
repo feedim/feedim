@@ -1029,7 +1029,7 @@
     "tagCreateFailed": "Could not create tag",
     "tagCreateFailedRetry": "Could not create tag, please try again later",
     "invalidFile": "Invalid file",
-    "fileTooLarge": "File too large (max 5MB)",
+    "fileTooLarge": "File too large (max 20MB)",
     "fileReadError": "Could not read file",
     "imageUploadFailed": "Could not upload image",
     "imageUploadFailedRetry": "Could not upload image, please try again later",

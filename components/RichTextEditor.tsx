@@ -1339,7 +1339,6 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
   // Insert image from file — with image-wrapper and caption (WordPress birebir)
   const insertImage = useCallback(async (file: File) => {
     if (!onImageUpload) return;
-    if (file.size > 5 * 1024 * 1024) return;
     if (!file.type.startsWith("image/")) return;
     // Insert skeleton placeholder at cursor position
     const placeholderId = `img-placeholder-${Date.now()}`;
@@ -1347,7 +1346,8 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     insertBlockAtCursor(skeletonHtml);
     try {
       // Compress image before upload (strip metadata, convert to JPEG, max 2MB)
-      const { compressImage } = await import("@/lib/imageCompression");
+      const { compressImage, isSourceImageTooLarge } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) throw new Error("file-too-large");
       const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
       const url = await onImageUpload(compressed);
       // Replace skeleton with actual image — keep skeleton visible until image loads
@@ -1390,7 +1390,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       }
       if (err instanceof Error && err.message === "cancelled") return;
       const { feedimAlert } = await import("@/components/FeedimAlert");
-      feedimAlert("error", t("imageUploadFailed"));
+      feedimAlert("error", err instanceof Error && err.message === "file-too-large" ? t("fileTooLarge") : t("imageUploadFailed"));
     }
   }, [onImageUpload, insertBlockAtCursor, appendBlockAtEnd, onChange]);
 

@@ -216,8 +216,8 @@ export default function ThumbnailPickerModal({
     if (!file) return;
     try {
       if (!file.type.startsWith("image/")) return;
-      if (file.size > 5 * 1024 * 1024) return;
-      const { compressImage } = await import("@/lib/imageCompression");
+      const { compressImage, isSourceImageTooLarge } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) return;
       const compressed = await compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();

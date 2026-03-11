@@ -645,8 +645,8 @@ function MomentWriteContent() {
     if (!file) return;
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
-      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
-      const { compressImage } = await import("@/lib/imageCompression");
+      const { compressImage, isSourceImageTooLarge, MAX_SOURCE_IMAGE_SIZE_MB } = await import("@/lib/imageCompression");
+      if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
       const compressed = await compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
