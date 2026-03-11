@@ -44,6 +44,8 @@ function NoteWriteContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cropResolveRef = useRef<((croppedUrl: string) => void) | null>(null);
+  const imageUploadPromiseRef = useRef<Promise<string> | null>(null);
+  const imageUploadRequestIdRef = useRef(0);
   const saveInFlightRef = useRef(false);
 
   // Step: 1=content, 2=tags/settings
@@ -56,6 +58,7 @@ function NoteWriteContent() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [extractingTags, setExtractingTags] = useState(false);
   const [featuredImage, setFeaturedImage] = useState("");
+  const [featuredImagePreview, setFeaturedImagePreview] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropAspect, setCropAspect] = useState(1);
@@ -131,6 +134,7 @@ function NoteWriteContent() {
         setDraftId(data.post.id);
         setIsPublished(data.post.status === 'published');
         setFeaturedImage(data.post.featured_image || "");
+        setFeaturedImagePreview(data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsAiContent(data.post.is_ai_content === true);
         setVisibility(data.post.visibility || "public");
@@ -215,6 +219,7 @@ function NoteWriteContent() {
   };
 
   const uploadSingleNoteImage = async (file: File) => {
+    const requestId = ++imageUploadRequestIdRef.current;
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
 
@@ -257,21 +262,44 @@ function NoteWriteContent() {
         return;
       }
 
+      if (requestId !== imageUploadRequestIdRef.current) {
+        return;
+      }
+
+      setFeaturedImagePreview(croppedUrl);
+
       const blob = await fetch(croppedUrl).then((r) => r.blob());
       const uploadFile = new File([blob], `note-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
       const formData = new FormData();
       formData.append("file", uploadFile);
       formData.append("fileName", uploadFile.name);
-      const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+      const uploadPromise = (async () => {
+        const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+        return uploadData.url as string;
+      })();
 
-      setFeaturedImage(uploadData.url);
+      imageUploadPromiseRef.current = uploadPromise;
+      const uploadedUrl = await uploadPromise;
+      if (requestId !== imageUploadRequestIdRef.current) {
+        return;
+      }
+
+      setFeaturedImage(uploadedUrl);
+      setFeaturedImagePreview(uploadedUrl);
     } catch (err) {
       if (err instanceof Error && err.message === "cancelled") return;
+      if (requestId === imageUploadRequestIdRef.current) {
+        setFeaturedImage("");
+        setFeaturedImagePreview("");
+      }
       feedimAlert("error", t("imageUploadFailedRetry"));
     } finally {
-      setImageUploading(false);
+      if (requestId === imageUploadRequestIdRef.current) {
+        imageUploadPromiseRef.current = null;
+        setImageUploading(false);
+      }
     }
   };
 
@@ -441,6 +469,16 @@ function NoteWriteContent() {
     }
 
     try {
+      let finalFeaturedImage = featuredImage;
+      if (imageUploadPromiseRef.current) {
+        try {
+          finalFeaturedImage = await imageUploadPromiseRef.current;
+        } catch {
+          feedimAlert("error", t("imageUploadFailedRetry"));
+          return;
+        }
+      }
+
       const autoTitle = finalText.replace(/<[^>]*>/g, "").slice(0, 50);
       const content = `<p>${finalText.replace(/\n/g, "<br>")}</p>`;
 
@@ -452,7 +490,7 @@ function NoteWriteContent() {
           content,
           content_type: "note",
           status,
-          featured_image: featuredImage || null,
+          featured_image: finalFeaturedImage || null,
           tags: finalTags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           allow_comments: allowComments,
           is_ai_content: isAiContent,
@@ -663,19 +701,28 @@ function NoteWriteContent() {
                       style={mention.mentionDropdownTop != null ? { top: mention.mentionDropdownTop } : { top: 36 }}
                     />
                   </div>
-                  {(featuredImage || imageUploading) && (
+                  {(featuredImagePreview || featuredImage || imageUploading) && (
                     <div className="mt-3">
-                      <div className="relative flex min-h-[220px] items-center justify-center">
-                        {featuredImage && !imageUploading ? (
+                      <div className="relative h-[320px] w-full overflow-hidden rounded-[18px]">
+                        {featuredImagePreview || featuredImage ? (
                           <>
                             <img
-                              src={featuredImage}
+                              src={featuredImagePreview || featuredImage}
                               alt={tc("image")}
-                              className="block max-h-[560px] w-full rounded-[18px] object-contain"
+                              className="block h-full w-full object-cover"
                             />
+                            {imageUploading && (
+                              <div className="absolute inset-0 animate-pulse bg-bg-secondary/20" />
+                            )}
                             <button
                               type="button"
-                              onClick={() => setFeaturedImage("")}
+                              onClick={() => {
+                                imageUploadRequestIdRef.current += 1;
+                                imageUploadPromiseRef.current = null;
+                                setImageUploading(false);
+                                setFeaturedImage("");
+                                setFeaturedImagePreview("");
+                              }}
                               className="absolute top-2 right-2 flex items-center justify-center h-8 w-8 rounded-full bg-black/55 text-white transition hover:bg-black/70"
                               aria-label={tc("delete")}
                             >
