@@ -191,11 +191,11 @@ export default async function NotePage({ params, searchParams }: PageProps) {
           />
 
           {post.featured_image && (
-            <div className="mt-[10px] flex min-h-[240px] items-center justify-center rounded-[20px] overflow-hidden border border-border-primary bg-bg-tertiary">
+            <div className="mt-[10px] w-full rounded-[20px] overflow-hidden">
               <img
                 src={post.featured_image}
                 alt={post.title}
-                className="block max-h-[640px] w-full bg-bg-tertiary object-contain"
+                className="block h-auto max-h-[640px] w-full"
                 loading="lazy"
                 decoding="async"
               />

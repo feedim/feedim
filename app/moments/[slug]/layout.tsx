@@ -22,7 +22,7 @@ export default async function PostLayout({ children }: { children: React.ReactNo
         <Sidebar labels={sidebarLabels} footerLabels={footerLabels} />
         <main className="md:ml-[240px] min-h-screen pb-16 md:pb-0">
           <div className="flex">
-            <div className="flex-1 min-w-0 max-w-[650px] mx-auto min-h-screen">
+            <div className="flex-1 min-w-0 max-w-[550px] 2xl:max-w-[650px] mx-auto min-h-screen">
               <ColumnHeader />
               {children}
             </div>

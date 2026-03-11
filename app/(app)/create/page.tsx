@@ -61,6 +61,8 @@ function WritePageContent() {
   const editorRef = useRef<RichTextEditorHandle>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const coverUploadPromiseRef = useRef<Promise<string> | null>(null);
+  const coverUploadRequestIdRef = useRef(0);
   const saveInFlightRef = useRef(false);
   // Step: 1=title+content, 2=tags/image/settings
   const [step, setStep] = useState(1);
@@ -79,6 +81,7 @@ function WritePageContent() {
   const [tagHighlight, setTagHighlight] = useState(-1);
   const [tagCreating, setTagCreating] = useState(false);
   const [featuredImage, setFeaturedImage] = useState("");
+  const [featuredImagePreview, setFeaturedImagePreview] = useState("");
   const [coverDragging, setCoverDragging] = useState(false);
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
@@ -129,6 +132,7 @@ function WritePageContent() {
         setContent(data.post.content || "");
         setDraftId(data.post.id);
         setFeaturedImage(data.post.featured_image || "");
+        setFeaturedImagePreview(data.post.featured_image || "");
         setVisibility(data.post.visibility || "public");
         setAllowComments(data.post.allow_comments !== false);
         setIsForKids(data.post.is_for_kids === true);
@@ -308,6 +312,7 @@ function WritePageContent() {
   const handleCoverImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const requestId = ++coverUploadRequestIdRef.current;
     try {
       if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
 
@@ -347,21 +352,38 @@ function WritePageContent() {
         return;
       }
 
+      if (requestId !== coverUploadRequestIdRef.current) return;
+      setFeaturedImagePreview(croppedUrl);
+
       // Upload cropped image to R2
       const blob = await fetch(croppedUrl).then(r => r.blob());
       const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', uploadFile);
       formData.append('fileName', uploadFile.name);
-      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+      const uploadPromise = (async () => {
+        const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+        return uploadData.url as string;
+      })();
+      coverUploadPromiseRef.current = uploadPromise;
+      const uploadedUrl = await uploadPromise;
 
-      setFeaturedImage(uploadData.url);
-      setImageUploading(false);
+      if (requestId !== coverUploadRequestIdRef.current) return;
+      setFeaturedImage(uploadedUrl);
+      setFeaturedImagePreview(uploadedUrl);
     } catch {
-      setImageUploading(false);
+      if (requestId === coverUploadRequestIdRef.current) {
+        setFeaturedImage("");
+        setFeaturedImagePreview("");
+      }
       feedimAlert("error", t("imageUploadFailedRetry"));
+    } finally {
+      if (requestId === coverUploadRequestIdRef.current) {
+        coverUploadPromiseRef.current = null;
+        setImageUploading(false);
+      }
     }
     e.target.value = "";
   };
@@ -378,6 +400,7 @@ function WritePageContent() {
     setCoverDragging(false);
     const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("image/"));
     if (!file) return;
+    const requestId = ++coverUploadRequestIdRef.current;
     try {
       const {
         compressImage,
@@ -412,21 +435,38 @@ function WritePageContent() {
         return;
       }
 
+      if (requestId !== coverUploadRequestIdRef.current) return;
+      setFeaturedImagePreview(croppedUrl);
+
       // Upload cropped image to R2
       const blob = await fetch(croppedUrl).then(r => r.blob());
       const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', uploadFile);
       formData.append('fileName', uploadFile.name);
-      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+      const uploadPromise = (async () => {
+        const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+        return uploadData.url as string;
+      })();
+      coverUploadPromiseRef.current = uploadPromise;
+      const uploadedUrl = await uploadPromise;
 
-      setFeaturedImage(uploadData.url);
-      setImageUploading(false);
+      if (requestId !== coverUploadRequestIdRef.current) return;
+      setFeaturedImage(uploadedUrl);
+      setFeaturedImagePreview(uploadedUrl);
     } catch {
-      setImageUploading(false);
+      if (requestId === coverUploadRequestIdRef.current) {
+        setFeaturedImage("");
+        setFeaturedImagePreview("");
+      }
       feedimAlert("error", t("imageUploadFailedRetry"));
+    } finally {
+      if (requestId === coverUploadRequestIdRef.current) {
+        coverUploadPromiseRef.current = null;
+        setImageUploading(false);
+      }
     }
   };
 
@@ -509,6 +549,16 @@ function WritePageContent() {
     }
 
     try {
+      let finalFeaturedImage = featuredImage;
+      if (coverUploadPromiseRef.current) {
+        try {
+          finalFeaturedImage = await coverUploadPromiseRef.current;
+        } catch {
+          feedimAlert("error", t("imageUploadFailedRetry"));
+          return;
+        }
+      }
+
       const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
       const method = draftId ? "PUT" : "POST";
       let cleanedContent = editorRef.current?.cleanContentForSave() || content;
@@ -529,7 +579,7 @@ function WritePageContent() {
           content: cleanedContent,
           status,
           tags: finalTags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
-          featured_image: featuredImage || null,
+          featured_image: finalFeaturedImage || null,
           allow_comments: allowComments,
           is_for_kids: isForKids,
           is_ai_content: isAiContent,
@@ -603,6 +653,7 @@ function WritePageContent() {
         const url = imgMatch[1];
         if (!url.toLowerCase().endsWith('.gif')) {
           setFeaturedImage(url);
+          setFeaturedImagePreview(url);
           break;
         }
       }
@@ -843,15 +894,21 @@ function WritePageContent() {
               {/* Cover Image with drag & drop */}
               <div>
                 <label className="block text-sm font-semibold mb-2">{t("coverImage")}</label>
-                {featuredImage ? (
+                {(featuredImagePreview || featuredImage) ? (
                   <div>
-                    <div className="relative rounded-xl overflow-hidden">
-                      <img src={featuredImage} alt={t("coverImage")} className="w-full h-48 object-contain bg-bg-tertiary" />
+                    <div className="relative flex min-h-[220px] items-center justify-center rounded-xl overflow-hidden">
+                      <img src={featuredImagePreview || featuredImage} alt={t("coverImage")} className="block h-auto max-h-[520px] w-auto max-w-full object-contain" />
                       {imageUploading && (
                         <div className="absolute inset-0 bg-bg-secondary/80 animate-pulse" />
                       )}
                       <button
-                        onClick={() => setFeaturedImage("")}
+                        onClick={() => {
+                          coverUploadRequestIdRef.current += 1;
+                          coverUploadPromiseRef.current = null;
+                          setImageUploading(false);
+                          setFeaturedImage("");
+                          setFeaturedImagePreview("");
+                        }}
                         className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
                       >
                         <X className="h-4 w-4" />
