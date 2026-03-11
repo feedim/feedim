@@ -123,6 +123,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
   const { user: ctxUser } = useUser();
   const { requireAuth } = useAuthModal();
   const [isDeleted, setIsDeleted] = useState(false);
+  const [noteImageLoaded, setNoteImageLoaded] = useState(false);
   const authorUsername = author?.username;
   const resolvedInitialLiked = initialLiked ?? post.viewer_liked ?? false;
   const resolvedInitialSaved = initialSaved ?? post.viewer_saved ?? false;
@@ -161,6 +162,10 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
       .then(d => setFollowStatus(authorUsername, d.profile?.is_following === true))
       .catch(() => deleteFollowStatus(authorUsername));
   }, [authorUsername, ctxUser?.id, isSelf]);
+
+  useEffect(() => {
+    setNoteImageLoaded(false);
+  }, [post.featured_image]);
 
   const handleFollow = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -348,12 +353,16 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
             <>
               <NoteContent text={post.excerpt || post.title} href={postHref} onOpen={() => router.push(noteExpandedHref)} />
               {post.featured_image && (
-                <div className="relative z-[1] pointer-events-none mt-[10px] w-full rounded-[18px] overflow-hidden">
+                <div
+                  className={`relative z-[1] pointer-events-none mt-[10px] w-full rounded-[18px] overflow-hidden ${noteImageLoaded ? "border border-border-primary" : ""}`}
+                  style={noteImageLoaded ? { borderWidth: "0.9px" } : undefined}
+                >
                   <img
                     data-src={post.featured_image}
                     alt={post.title}
                     decoding="async"
                     className="lazyload block h-auto max-h-[420px] w-full"
+                    onLoad={() => setNoteImageLoaded(true)}
                   />
                 </div>
               )}
@@ -375,7 +384,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
               {/* Thumbnail */}
               <div
                 ref={thumbRef}
-                className="mt-2 rounded-[12px] sm:rounded-[21px] overflow-hidden bg-bg-tertiary cursor-pointer relative z-[1] border border-border-primary"
+                className="mt-2 rounded-[12px] sm:rounded-[21px] overflow-hidden bg-bg-tertiary cursor-pointer relative z-[1]"
                 onClick={() => router.push(postHref)}
               >
                 <div className={`relative w-full ${isVideo ? "min-h-[180px] sm:min-h-[160px] aspect-[3/4] sm:aspect-video" : "min-h-[120px] sm:min-h-[140px] aspect-[4/3] sm:aspect-[3/2]"}`}>
@@ -385,6 +394,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                       alt={post.title}
                       className="w-full h-full"
                       blurhash={post.blurhash}
+                      borderOnLoad
                     />
                   ) : (
                     <NoImage className="w-full h-full" iconSize={28} />

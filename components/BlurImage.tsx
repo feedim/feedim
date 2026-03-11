@@ -11,6 +11,7 @@ interface BlurImageProps {
   width?: number;
   height?: number;
   loading?: "lazy" | "eager";
+  borderOnLoad?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ export default function BlurImage({
   width = 32,
   height = 32,
   loading = "lazy",
+  borderOnLoad = true,
 }: BlurImageProps) {
   const [loaded, setLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -72,7 +74,10 @@ export default function BlurImage({
   const isEager = loading === "eager";
 
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div
+      className={`relative overflow-hidden ${className} ${borderOnLoad && loaded ? "border border-border-primary" : ""}`}
+      style={borderOnLoad && loaded ? { borderWidth: "0.9px" } : undefined}
+    >
       {/* Blurhash canvas or skeleton placeholder */}
       {blurhash ? (
         <canvas

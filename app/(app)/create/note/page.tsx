@@ -60,6 +60,7 @@ function NoteWriteContent() {
   const [extractingTags, setExtractingTags] = useState(false);
   const [featuredImage, setFeaturedImage] = useState("");
   const [featuredImagePreview, setFeaturedImagePreview] = useState("");
+  const [featuredImageLoaded, setFeaturedImageLoaded] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropAspect, setCropAspect] = useState(1);
@@ -115,6 +116,10 @@ function NoteWriteContent() {
       });
     }
   }, [loadingDraft]);
+
+  useEffect(() => {
+    setFeaturedImageLoaded(false);
+  }, [featuredImagePreview, featuredImage]);
 
   // Load edit mode post
   useEffect(() => {
@@ -721,13 +726,17 @@ function NoteWriteContent() {
                   </div>
                   {(featuredImagePreview || featuredImage || imageUploading) && (
                     <div className="mt-0">
-                      <div className="relative w-full overflow-hidden rounded-[18px]">
+                      <div
+                        className={`relative w-full overflow-hidden rounded-[18px] ${featuredImageLoaded ? "border border-border-primary" : ""}`}
+                        style={featuredImageLoaded ? { borderWidth: "0.9px" } : undefined}
+                      >
                         {featuredImagePreview || featuredImage ? (
                           <>
                             <img
                               src={featuredImagePreview || featuredImage}
                               alt={tc("image")}
                               className="block h-auto max-h-[560px] w-full"
+                              onLoad={() => setFeaturedImageLoaded(true)}
                             />
                             {imageUploading && (
                               <div className="absolute inset-0 animate-pulse bg-bg-secondary/20" />
@@ -740,6 +749,7 @@ function NoteWriteContent() {
                                 setImageUploading(false);
                                 setFeaturedImage("");
                                 setFeaturedImagePreview("");
+                                setFeaturedImageLoaded(false);
                               }}
                               className="absolute top-2 right-2 flex items-center justify-center h-8 w-8 rounded-full bg-black/55 text-white transition hover:bg-black/70"
                               aria-label={tc("delete")}

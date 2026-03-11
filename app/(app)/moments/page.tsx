@@ -805,9 +805,8 @@ function MomentsContent() {
   }, [ctxUser?.id, isMomentSaved, moments, requireAuth, savedSet, tErrors]);
 
   const handleComment = useCallback((moment: Moment) => {
-    if (!requireAuth()) return;
     setCommentModal({ postId: moment.id, count: moment.comment_count || 0, slug: moment.slug });
-  }, [requireAuth]);
+  }, []);
 
   const handleLikesOpen = useCallback((momentId: number) => {
     setLikesModalPostId(momentId);
