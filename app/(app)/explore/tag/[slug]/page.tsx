@@ -16,6 +16,7 @@ import { isBlockedContent } from "@/lib/blockedWords";
 import LoadMoreTrigger from "@/components/LoadMoreTrigger";
 import FollowButton from "@/components/FollowButton";
 import { fetchWithCache, readCache, withCacheScope } from "@/lib/fetchWithCache";
+import GuestJoinPrompt from "@/components/GuestJoinPrompt";
 
 interface TagPost {
   id: number;
@@ -54,6 +55,7 @@ export default function TagPage() {
   useSearchParams();
   const { slug } = useParams<{ slug: string }>();
   const t = useTranslations("explore");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
 
   const [tagInfo, setTagInfo] = useState<{ id: number; name: string; slug: string; post_count: number } | null>(null);
@@ -536,6 +538,16 @@ export default function TagPage() {
         <div className="mt-1">
           {renderPostList(getCurrentPosts())}
         </div>
+      )}
+      {!isLoggedIn && (
+        <GuestJoinPrompt
+          title={tCommon("guestJoinTitle")}
+          body={tCommon("guestJoinBody")}
+          signupLabel={tCommon("signup")}
+          loginLabel={tCommon("login")}
+          closeLabel={tCommon("close")}
+          storageKey="tag-page"
+        />
       )}
     </AppLayout>
   );

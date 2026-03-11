@@ -243,6 +243,7 @@ export default async function MomentPage({ params }: PageProps) {
             signupLabel={tCommon("signup")}
             loginLabel={tCommon("login")}
             closeLabel={tCommon("close")}
+            storageKey="moment-detail"
           />
         )}
 

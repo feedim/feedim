@@ -225,6 +225,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
               signupLabel={tCommon("signup")}
               loginLabel={tCommon("login")}
               closeLabel={tCommon("close")}
+              storageKey="note-detail"
             />
           )}
 

@@ -13,6 +13,7 @@ interface GuestJoinPromptProps {
   signupLabel: string;
   loginLabel: string;
   closeLabel: string;
+  storageKey?: string;
 }
 
 export default function GuestJoinPrompt({
@@ -21,27 +22,29 @@ export default function GuestJoinPrompt({
   signupLabel,
   loginLabel,
   closeLabel,
+  storageKey = "default",
 }: GuestJoinPromptProps) {
   const hydrated = useHydrated();
   const [visible, setVisible] = useState(false);
+  const dismissKey = `${DISMISS_KEY}:${storageKey}`;
 
   useEffect(() => {
     if (!hydrated) return;
     try {
-      const lastDismissed = Number(localStorage.getItem(DISMISS_KEY) || "0");
+      const lastDismissed = Number(localStorage.getItem(dismissKey) || "0");
       if (lastDismissed > 0 && Date.now() - lastDismissed < DISMISS_TTL_MS) {
         setVisible(false);
         return;
       }
-      if (lastDismissed > 0) localStorage.removeItem(DISMISS_KEY);
+      if (lastDismissed > 0) localStorage.removeItem(dismissKey);
     } catch {}
     setVisible(true);
-  }, [hydrated]);
+  }, [dismissKey, hydrated]);
 
   const handleDismiss = () => {
     setVisible(false);
     try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      localStorage.setItem(dismissKey, String(Date.now()));
     } catch {}
   };
 
@@ -67,7 +70,7 @@ export default function GuestJoinPrompt({
           </button>
 
           <div className="mx-auto max-w-[620px] px-10 text-center sm:px-0">
-            <p className="text-[17px] font-extrabold leading-[1.2] text-white sm:text-[1.08rem]">{title}</p>
+            <p className="text-[18px] font-extrabold leading-[1.2] text-white sm:text-[1.12rem]">{title}</p>
             <p className="mt-1.5 text-[0.8rem] font-medium leading-[1.45] text-white/88 sm:text-[0.83rem]">{body}</p>
           </div>
 

@@ -586,6 +586,7 @@ export default async function PostPage({ params }: PageProps) {
               signupLabel={tCommon("signup")}
               loginLabel={tCommon("login")}
               closeLabel={tCommon("close")}
+              storageKey="post-detail"
             />
           )}
 

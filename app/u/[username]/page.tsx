@@ -6,6 +6,7 @@ import ProfileView from "@/components/ProfileView";
 import { getTranslations, getLocale } from "next-intl/server";
 import { getAlternateLanguages } from "@/lib/seo";
 import { getAnyProfileByUsername, getCachedLatestUsernameRedirect, getCachedPublicProfileByUsername } from "@/lib/profileQueries";
+import GuestJoinPrompt from "@/components/GuestJoinPrompt";
 
 const OG_LOCALES: Record<string, string> = { tr: "tr_TR", en: "en_US", az: "az_AZ" };
 
@@ -87,6 +88,7 @@ export default async function ProfilePage({ params }: PageProps) {
   }
 
   const userId = await getAuthUserId();
+  const tCommon = await getTranslations("common");
   const admin = createAdminClient();
 
   const isOwn = userId === profile.user_id;
@@ -175,6 +177,16 @@ export default async function ProfilePage({ params }: PageProps) {
       <ProfileView
         profile={{ ...profile, is_following: isFollowing, is_own: isOwn, follows_me: !!followsMeResult.data, has_follow_request: hasFollowRequest, follow_request_count: followRequestCount, is_blocked: isBlocked, is_blocked_by: isBlockedBy, mutual_followers: mutualFollowers }}
       />
+      {!userId && (
+        <GuestJoinPrompt
+          title={tCommon("guestJoinTitle")}
+          body={tCommon("guestJoinBody")}
+          signupLabel={tCommon("signup")}
+          loginLabel={tCommon("login")}
+          closeLabel={tCommon("close")}
+          storageKey="profile-page"
+        />
+      )}
     </>
   );
 }
