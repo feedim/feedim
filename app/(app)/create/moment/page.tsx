@@ -65,6 +65,7 @@ function MomentWriteContent() {
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const saveInFlightRef = useRef(false);
   const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   const [step, setStep] = useState(1);
@@ -659,6 +660,11 @@ function MomentWriteContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSavingAs(status);
+    let shouldReleaseLock = true;
+
     if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
     if (status === "published" && uploading) { feedimAlert("error", t("videoStillUploading")); return; }
 
@@ -684,7 +690,6 @@ function MomentWriteContent() {
       finalTitle = title.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
     }
 
-    setSavingAs(status);
     try {
       let thumbUrl = thumbnail;
       let thumbBlurhash: string | null = null;
@@ -737,13 +742,19 @@ function MomentWriteContent() {
 
       const data = await res.json();
       if (res.ok) {
+        shouldReleaseLock = false;
         setHasUnsavedChanges(false);
         if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(getPostUrl(data.post.slug, "moment")); }
         else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/"); }
       } else {
         feedimAlert("error", data.error || t("genericErrorRetry"));
       }
-    } catch { feedimAlert("error", t("genericErrorRetry")); } finally { setSavingAs(null); }
+    } catch { feedimAlert("error", t("genericErrorRetry")); } finally {
+      if (shouldReleaseLock) {
+        saveInFlightRef.current = false;
+        setSavingAs(null);
+      }
+    }
   };
 
   const goToStep2 = async () => {

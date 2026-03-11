@@ -64,6 +64,7 @@ function VideoWriteContent() {
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const saveInFlightRef = useRef(false);
   const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   const [step, setStep] = useState(1);
@@ -564,6 +565,11 @@ function VideoWriteContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSavingAs(status);
+    let shouldReleaseLock = true;
+
     if (!title.trim()) { feedimAlert("error", t("titleRequired")); return; }
     if (title.trim().length < 3) { feedimAlert("error", t("titleMinLength")); return; }
     if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
@@ -591,7 +597,6 @@ function VideoWriteContent() {
       finalDescription = description.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
     }
 
-    setSavingAs(status);
     try {
       // Upload thumbnail image if it's a data URL
       let thumbUrl = thumbnail;
@@ -648,13 +653,19 @@ function VideoWriteContent() {
 
       const data = await res.json();
       if (res.ok) {
+        shouldReleaseLock = false;
         setHasUnsavedChanges(false);
         if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(getPostUrl(data.post.slug, "video")); }
         else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/"); }
       } else {
         feedimAlert("error", data.error || t("genericErrorRetry"));
       }
-    } catch { feedimAlert("error", t("genericErrorRetry")); } finally { setSavingAs(null); }
+    } catch { feedimAlert("error", t("genericErrorRetry")); } finally {
+      if (shouldReleaseLock) {
+        saveInFlightRef.current = false;
+        setSavingAs(null);
+      }
+    }
   };
 
   const goToStep2 = async () => {

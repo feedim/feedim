@@ -44,6 +44,7 @@ function NoteWriteContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cropResolveRef = useRef<((croppedUrl: string) => void) | null>(null);
+  const saveInFlightRef = useRef(false);
 
   // Step: 1=content, 2=tags/settings
   const [step, setStep] = useState(1);
@@ -373,6 +374,11 @@ function NoteWriteContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSavingAs(status);
+    let shouldReleaseLock = true;
+
     const trimmed = noteText.trim();
     if (!trimmed) {
       feedimAlert("error", t("noteContentEmpty"));
@@ -405,7 +411,6 @@ function NoteWriteContent() {
       finalText = trimmed.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
     }
 
-    setSavingAs(status);
     try {
       const autoTitle = finalText.replace(/<[^>]*>/g, "").slice(0, 50);
       const content = `<p>${finalText.replace(/\n/g, "<br>")}</p>`;
@@ -436,6 +441,7 @@ function NoteWriteContent() {
 
       const data = await res.json();
       if (res.ok) {
+        shouldReleaseLock = false;
         if (status === "published" && data.post?.slug) {
           emitNavigationStart();
           router.push(getPostUrl(data.post.slug, "note"));
@@ -451,7 +457,10 @@ function NoteWriteContent() {
     } catch {
       feedimAlert("error", t("genericErrorRetry"));
     } finally {
-      setSavingAs(null);
+      if (shouldReleaseLock) {
+        saveInFlightRef.current = false;
+        setSavingAs(null);
+      }
     }
   };
 

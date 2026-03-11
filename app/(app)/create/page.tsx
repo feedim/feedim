@@ -61,6 +61,7 @@ function WritePageContent() {
   const editorRef = useRef<RichTextEditorHandle>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const saveInFlightRef = useRef(false);
   // Step: 1=title+content, 2=tags/image/settings
   const [step, setStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -412,6 +413,11 @@ function WritePageContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSavingAs(status);
+    let shouldReleaseLock = true;
+
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle) {
@@ -476,7 +482,6 @@ function WritePageContent() {
       setTags(finalTags);
     }
 
-    setSavingAs(status);
     try {
       const endpoint = draftId ? `/api/posts/${draftId}` : "/api/posts";
       const method = draftId ? "PUT" : "POST";
@@ -512,6 +517,7 @@ function WritePageContent() {
 
       const data = await res.json();
       if (res.ok) {
+        shouldReleaseLock = false;
         if (status === "published" && data.post?.slug) {
           emitNavigationStart();
           router.push(`/${data.post.slug}`);
@@ -527,7 +533,10 @@ function WritePageContent() {
     } catch {
       feedimAlert("error", t("genericErrorRetry"));
     } finally {
-      setSavingAs(null);
+      if (shouldReleaseLock) {
+        saveInFlightRef.current = false;
+        setSavingAs(null);
+      }
     }
   };
 

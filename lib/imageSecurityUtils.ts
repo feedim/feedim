@@ -64,16 +64,19 @@ export async function stripMetadataAndOptimize(
 ): Promise<{ buffer: Buffer; mimeType: string }> {
   let pipeline = sharp(buffer).rotate(); // Apply EXIF rotation + strip all metadata
 
-  // Embed Feedim file ID in EXIF (JPEG/WebP/TIFF support EXIF via withMetadata)
+  // Embed Feedim file ID in EXIF when supported. If EXIF merge fails,
+  // keep the upload path alive and continue without custom metadata.
   if (feedimFileId && (mimeType === "image/jpeg" || mimeType === "image/webp")) {
-    pipeline = pipeline.withMetadata({
-      exif: {
+    try {
+      pipeline = pipeline.withExifMerge({
         IFD0: {
           Software: "Feedim",
           ImageDescription: `fdm:${feedimFileId}`,
         },
-      },
-    });
+      });
+    } catch {
+      // Non-fatal: uploads must still succeed even if custom EXIF cannot be written.
+    }
   }
 
   switch (mimeType) {
