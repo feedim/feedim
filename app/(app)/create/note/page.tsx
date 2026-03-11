@@ -656,13 +656,13 @@ function NoteWriteContent() {
                   </div>
                   {(featuredImage || imageUploading) && (
                     <div className="mt-3">
-                      <div className="relative flex min-h-[220px] items-center justify-center rounded-[18px] overflow-hidden border border-border-primary bg-bg-tertiary">
+                      <div className="relative flex min-h-[220px] items-center justify-center">
                         {featuredImage && !imageUploading ? (
                           <>
                             <img
                               src={featuredImage}
                               alt={tc("image")}
-                              className="block max-h-[560px] w-full bg-bg-tertiary object-contain"
+                              className="block max-h-[560px] w-full rounded-[18px] object-contain"
                             />
                             <button
                               type="button"
@@ -674,7 +674,7 @@ function NoteWriteContent() {
                             </button>
                           </>
                         ) : (
-                          <div className="h-[320px] w-full animate-pulse bg-bg-secondary" />
+                          <div className="h-[320px] w-full animate-pulse rounded-[18px] bg-bg-secondary" />
                         )}
                       </div>
                     </div>
