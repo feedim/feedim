@@ -532,9 +532,9 @@ export default async function PostPage({ params }: PageProps) {
               "[&_li]:mb-1.5 [&_li]:leading-[1.7]",
               // Table (responsive: overflow-x-auto on container, table min-width)
               "overflow-x-auto",
-              "[&_table]:w-full [&_table]:my-5 [&_table]:border-collapse [&_table]:text-[0.88rem] [&_table]:border [&_table]:border-border-primary [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:min-w-[320px]",
-              "[&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2.5 [&_th]:border [&_th]:border-border-primary [&_th]:bg-bg-secondary",
-              "[&_td]:px-3 [&_td]:py-2.5 [&_td]:border [&_td]:border-border-primary",
+              "[&_table]:w-full [&_table]:my-5 [&_table]:table-fixed [&_table]:border-collapse [&_table]:text-[0.88rem] [&_table]:border [&_table]:border-border-primary [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:min-w-[320px]",
+              "[&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2.5 [&_th]:border [&_th]:border-border-primary [&_th]:bg-bg-secondary [&_th]:whitespace-normal [&_th]:break-words [&_th]:[overflow-wrap:anywhere]",
+              "[&_td]:px-3 [&_td]:py-2.5 [&_td]:border [&_td]:border-border-primary [&_td]:whitespace-normal [&_td]:break-words [&_td]:[overflow-wrap:anywhere]",
               // Code
               "[&_code]:text-[0.85em] [&_code]:bg-bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:font-mono",
               "[&_pre]:my-5 [&_pre]:bg-bg-secondary [&_pre]:rounded-[15px] [&_pre]:px-5 [&_pre]:py-4 [&_pre]:overflow-x-auto [&_pre]:text-[0.85rem] [&_pre]:leading-[1.6]",

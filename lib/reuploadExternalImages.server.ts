@@ -1,5 +1,6 @@
 import { uploadToR2 } from '@/lib/r2';
 import crypto from 'crypto';
+import sharp from 'sharp';
 
 const OWN_HOSTS = ['cdn.feedim.com', 'imgspcdn.feedim.com'];
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -38,6 +39,12 @@ async function fetchAndUpload(src: string): Promise<string | null> {
     if (arrayBuf.byteLength > MAX_SIZE) return null;
 
     const buffer = Buffer.from(arrayBuf);
+    try {
+      const metadata = await sharp(buffer, { animated: true }).metadata();
+      if ((metadata.width && metadata.width < 96) || (metadata.height && metadata.height < 96)) {
+        return null;
+      }
+    } catch {}
     const hash = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     const ext = fileType.split('/')[1] === 'jpeg' ? 'jpg' : fileType.split('/')[1];
     const key = `posts/reupload-${hash}.${ext}`;

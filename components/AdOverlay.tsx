@@ -24,6 +24,10 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
   const t = useTranslations("ad");
   const { user } = useUser();
   const hydrated = useHydrated();
+  const isLocalDev = hydrated && (() => {
+    const host = window.location.hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+  })();
   const debugAds = hydrated && (() => { try { return localStorage.getItem("feedim-debug-ads") === "1"; } catch { return false; } })();
   const skipAds = !debugAds && (user?.role === "admin" || (!!user?.premiumPlan && ['pro', 'max', 'business'].includes(user.premiumPlan)));
   const provider = getProviderForSlot("overlay");
@@ -39,8 +43,9 @@ export default function AdOverlay({ active, onSkip, mode, className = "" }: AdOv
   const pausedAtRef = useRef<number | null>(null);
   const areaEnabled = useMemo(() => {
     if (!hydrated) return true;
+    if (isLocalDev) return false;
     return document.documentElement.dataset.adsVideo !== "0";
-  }, [hydrated]);
+  }, [hydrated, isLocalDev]);
 
   // Premium users or area disabled: skip immediately (no overlay)
   useEffect(() => {

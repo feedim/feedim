@@ -990,6 +990,7 @@ img, svg {
 
 .feedim-editor-content table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin: 16px 0;
   font-size: 0.95rem;
@@ -1004,9 +1005,13 @@ img, svg {
   border: 1px solid var(--border-primary);
   padding: 10px 14px;
   text-align: left;
-  min-width: 80px;
+  min-width: 64px;
   vertical-align: top;
   line-height: 1.5;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .feedim-editor-content table th {
@@ -1032,6 +1037,20 @@ img, svg {
   position: relative;
   margin: 16px 0;
   line-height: 0;
+}
+[data-post-content] table {
+  width: 100%;
+  min-width: 320px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+[data-post-content] th,
+[data-post-content] td {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  vertical-align: top;
 }
 [data-post-content] .image-wrapper img {
   width: 100%;

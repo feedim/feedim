@@ -87,37 +87,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: tErrors("tagNameRequired") }, { status: 400 });
     }
 
-    const trimmedName = name.trim().replace(/\s+/g, ' ').substring(0, VALIDATION.tagName.max);
-
-    if (trimmedName.length < VALIDATION.tagName.min) {
-      return NextResponse.json({ error: tErrors("tagMinLength", { min: VALIDATION.tagName.min }) }, { status: 400 });
-    }
-
-    // Only allowed characters (letters, numbers, spaces, hyphens, dots, &, #, +)
-    if (!VALIDATION.tagName.pattern.test(trimmedName)) {
-      return NextResponse.json({ error: tErrors("tagNameInvalidChars") }, { status: 400 });
+    const normalizedInput = name.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+    if (!normalizedInput) {
+      return NextResponse.json({ error: tErrors("tagNameRequired") }, { status: 400 });
     }
 
     // No HTML tags
-    if (/<[^>]+>/.test(trimmedName)) {
+    if (/<[^>]+>/.test(normalizedInput)) {
       return NextResponse.json({ error: tErrors("tagNameNoHtml") }, { status: 400 });
     }
 
     // No URLs
-    if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedName)) {
+    if (/^(https?:\/\/|www\.)\S+$/i.test(normalizedInput)) {
       return NextResponse.json({ error: tErrors("tagNameNoUrl") }, { status: 400 });
     }
 
-    // No only numbers
-    if (/^\d+$/.test(trimmedName)) {
-      return NextResponse.json({ error: tErrors("tagNameOnlyNumbers") }, { status: 400 });
-    }
-
-    // Sanitize: Turkish chars → ASCII, only a-z0-9, max 30 chars
-    const sanitizedName = formatTagName(trimmedName);
+    // Sanitize first so create flow is tolerant to pasted hashtags / punctuation.
+    const sanitizedName = formatTagName(normalizedInput);
 
     if (!sanitizedName || sanitizedName.length < VALIDATION.tagName.min) {
       return NextResponse.json({ error: tErrors("invalidTagName") }, { status: 400 });
+    }
+
+    // No only numbers
+    if (/^\d+$/.test(sanitizedName)) {
+      return NextResponse.json({ error: tErrors("tagNameOnlyNumbers") }, { status: 400 });
     }
 
     // Name and slug are now identical (social media style)

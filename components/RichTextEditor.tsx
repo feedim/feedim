@@ -133,6 +133,37 @@ function safariInsertParagraph() {
   sel.addRange(innerRange);
 }
 
+async function shouldKeepPastedExternalImage(img: HTMLImageElement): Promise<boolean> {
+  const signature = `${img.getAttribute("src") || ""} ${img.alt || ""}`.toLowerCase();
+  if (/(avatar|profile|profil|logo|icon|share|facebook|twitter|whatsapp|google haberler|abone|subscribe|yorum|comment)/i.test(signature)) {
+    return false;
+  }
+
+  const hasTinyStyle = (() => {
+    const style = img.getAttribute("style") || "";
+    const widthMatch = style.match(/width\s*:\s*(\d+)px/i);
+    const heightMatch = style.match(/height\s*:\s*(\d+)px/i);
+    const width = widthMatch ? parseInt(widthMatch[1], 10) : 0;
+    const height = heightMatch ? parseInt(heightMatch[1], 10) : 0;
+    return (width > 0 && width < 96) || (height > 0 && height < 96);
+  })();
+  if (hasTinyStyle) return false;
+
+  if (!img.complete || img.naturalWidth === 0) {
+    await new Promise<void>(resolve => {
+      const done = () => resolve();
+      img.addEventListener("load", done, { once: true });
+      img.addEventListener("error", done, { once: true });
+      window.setTimeout(done, 700);
+    });
+  }
+
+  const rect = img.getBoundingClientRect();
+  if ((img.naturalWidth > 0 && img.naturalWidth < 96) || (img.naturalHeight > 0 && img.naturalHeight < 96)) return false;
+  if ((rect.width > 0 && rect.width < 48) || (rect.height > 0 && rect.height < 48)) return false;
+  return true;
+}
+
 const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor({ value, onChange, onImageUpload, onBackspaceAtStart, onEmojiClick, onGifClick, onMentionSearch, onCropImage, onSave, onPublish, placeholder }, ref) {
   const t = useTranslations("editor");
   const tc = useTranslations("common");
@@ -462,6 +493,43 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     historyTimeoutRef.current = setTimeout(() => addToHistory(), 500);
   }, [addToHistory]);
 
+  const placeCaretWithoutScroll = useCallback((target: Element | null) => {
+    if (!editorRef.current || !target) return;
+    editorRef.current.focus({ preventScroll: true });
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    range.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, []);
+
+  const getInsertedCaretTarget = useCallback((nodes: Node[]) => {
+    const elements = nodes.filter((node): node is Element => node.nodeType === Node.ELEMENT_NODE);
+    for (let i = elements.length - 1; i >= 0; i--) {
+      const el = elements[i];
+      if (el.tagName === "P") return el;
+    }
+    return elements[elements.length - 1] || null;
+  }, []);
+
+  const stripBlobImagesFromEditor = useCallback(() => {
+    if (!editorRef.current) return false;
+    let removed = false;
+    editorRef.current.querySelectorAll('img[src^="blob:"]').forEach((img) => {
+      const wrapper = img.closest(".image-wrapper");
+      if (wrapper) {
+        const next = wrapper.nextElementSibling;
+        wrapper.remove();
+        if (next?.tagName === "P" && !next.textContent?.trim()) next.remove();
+      } else {
+        img.remove();
+      }
+      removed = true;
+    });
+    return removed;
+  }, []);
+
   // Blok-seviye içerik (GIF/image) her zaman editörün en altına DOM ile eklenir
   const appendBlockAtEnd = useCallback((html: string) => {
     if (!editorRef.current) return;
@@ -473,6 +541,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     // HTML'i parse et ve DOM'a ekle
     const temp = document.createElement("div");
     temp.innerHTML = html;
+    const insertedNodes = Array.from(temp.childNodes);
     const fragment = document.createDocumentFragment();
     while (temp.firstChild) fragment.appendChild(temp.firstChild);
     if (insertPoint) {
@@ -480,22 +549,12 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     } else {
       editorRef.current.appendChild(fragment);
     }
-    // Yeni eklenen paragrafın sonuna cursor'u taşı ve scroll yap
-    const newLast = editorRef.current.lastElementChild;
-    if (newLast) {
-      newLast.scrollIntoView({ behavior: "smooth", block: "center" });
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.setStart(newLast, 0);
-      range.collapse(true);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    }
+    placeCaretWithoutScroll(getInsertedCaretTarget(insertedNodes));
     setEditorEmpty(false);
     isInternalUpdate.current = true;
     onChange(editorRef.current.innerHTML);
     scheduleHistory();
-  }, [addToHistory, onChange, scheduleHistory]);
+  }, [addToHistory, getInsertedCaretTarget, onChange, placeCaretWithoutScroll, scheduleHistory]);
 
   // Insert block-level content at saved cursor position, or fall back to end
   const insertBlockAtCursor = useCallback((html: string) => {
@@ -504,6 +563,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
 
     const temp = document.createElement("div");
     temp.innerHTML = html;
+    const insertedNodes = Array.from(temp.childNodes);
     const fragment = document.createDocumentFragment();
     while (temp.firstChild) fragment.appendChild(temp.firstChild);
 
@@ -528,23 +588,12 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
       else editorRef.current.appendChild(fragment);
     }
 
-    // Move cursor to the new paragraph after the inserted block
-    const allBlocks = editorRef.current.querySelectorAll("p, h2, h3, blockquote");
-    const lastBlock = allBlocks[allBlocks.length - 1] || editorRef.current.lastElementChild;
-    if (lastBlock) {
-      lastBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.setStart(lastBlock, 0);
-      range.collapse(true);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    }
+    placeCaretWithoutScroll(getInsertedCaretTarget(insertedNodes));
     setEditorEmpty(false);
     isInternalUpdate.current = true;
     onChange(editorRef.current.innerHTML);
     scheduleHistory();
-  }, [addToHistory, onChange, scheduleHistory]);
+  }, [addToHistory, getInsertedCaretTarget, onChange, placeCaretWithoutScroll, scheduleHistory]);
 
   // Cleanup history timeout on unmount
   useEffect(() => {
@@ -636,6 +685,20 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
   const ensureEditorIntegrity = useCallback(() => {
     if (!editorRef.current) return;
     const el = editorRef.current;
+
+    // Editörde geçici blob URL'ler kalmasın; prod ortamında net::ERR_FILE_NOT_FOUND
+    // gürültüsü ve bozuk görsel davranışı yaratabiliyorlar.
+    el.querySelectorAll('img[src^="blob:"]').forEach((img) => {
+      const wrapper = img.closest(".image-wrapper");
+      if (wrapper) {
+        const next = wrapper.nextElementSibling;
+        wrapper.remove();
+        if (next?.tagName === "P" && !next.textContent?.trim()) next.remove();
+      } else {
+        img.remove();
+      }
+    });
+
     const text = el.textContent || "";
     const hasImg = !!el.querySelector("img");
 
@@ -802,6 +865,40 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     setSelectedMedia(false);
   }, []);
 
+  const isEmptySpacerParagraph = useCallback((node: Element | null): node is HTMLParagraphElement => {
+    if (!node || node.tagName !== "P") return false;
+    const text = (node.textContent || "").replace(/\u00A0/g, " ").trim();
+    return !text && !node.querySelector("img, table, blockquote, ul, ol, pre, hr");
+  }, []);
+
+  const shouldCarryTrailingSpacer = useCallback((block: Element) => {
+    return (
+      block.classList.contains("image-wrapper")
+      || block.classList.contains("embed-wrapper")
+      || ["TABLE", "BLOCKQUOTE", "UL", "OL", "PRE", "HR"].includes(block.tagName)
+    );
+  }, []);
+
+  const getBlockGroups = useCallback(() => {
+    if (!editorRef.current) return [] as { primary: HTMLElement; nodes: HTMLElement[] }[];
+    const children = Array.from(editorRef.current.children) as HTMLElement[];
+    const groups: { primary: HTMLElement; nodes: HTMLElement[] }[] = [];
+
+    for (let i = 0; i < children.length; i++) {
+      const current = children[i];
+      if (groups.some(group => group.nodes.includes(current))) continue;
+
+      const nodes = [current];
+      const next = children[i + 1];
+      if (shouldCarryTrailingSpacer(current) && isEmptySpacerParagraph(next)) {
+        nodes.push(next as HTMLElement);
+      }
+      groups.push({ primary: current, nodes });
+    }
+
+    return groups;
+  }, [isEmptySpacerParagraph, shouldCarryTrailingSpacer]);
+
   // --- Evrensel blok işlemleri (tüm elementler için) ---
   // Editor'ün doğrudan çocuğu olan bloğu bul (seçili medya VEYA cursor pozisyonu)
   const getCurrentBlock = useCallback((): HTMLElement | null => {
@@ -819,7 +916,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     let node: Node | null = sel.anchorNode;
     // Editor'ün doğrudan çocuğuna kadar yukarı çık
     while (node && node !== editorRef.current) {
-      if (node.parentNode === editorRef.current) return node as HTMLElement;
+      if (node.parentNode === editorRef.current && node.nodeType === Node.ELEMENT_NODE) return node as HTMLElement;
       node = node.parentNode;
     }
     return null;
@@ -851,6 +948,28 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
 
   // Blok taşıma sonrası cursor'u bloğun içine geri koy
   const refocusBlock = useCallback((block: HTMLElement) => {
+    if (block.classList.contains("image-wrapper") || block.classList.contains("embed-wrapper")) {
+      block.classList.add("selected");
+      setSelectedMedia(true);
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+
+    const table = block.tagName === "TABLE" ? block : block.querySelector("table");
+    if (table) {
+      const firstEditable = table.querySelector("tbody td, tbody th, thead th, td, th");
+      if (firstEditable) {
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(firstEditable);
+        range.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        setSelectedMedia(false);
+        return;
+      }
+    }
+
     const sel = window.getSelection();
     if (!sel) return;
     const range = document.createRange();
@@ -858,31 +977,48 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     range.collapse(false);
     sel.removeAllRanges();
     sel.addRange(range);
+    setSelectedMedia(false);
   }, []);
 
-  const handleBlockMoveUp = useCallback(() => {
+  const moveBlockGroup = useCallback((direction: "up" | "down") => {
+    if (!editorRef.current) return;
     const block = getCurrentBlock();
-    if (!block || !editorRef.current) return;
-    const prev = block.previousElementSibling;
-    if (!prev) return;
+    if (!block) return;
+
+    const groups = getBlockGroups();
+    const currentIndex = groups.findIndex(group => group.primary === block || group.nodes.includes(block));
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= groups.length) return;
+
+    const currentGroup = groups[currentIndex];
+    const targetGroup = groups[targetIndex];
     addToHistory();
-    block.parentElement?.insertBefore(block, prev);
-    refocusBlock(block);
+
+    const fragment = document.createDocumentFragment();
+    currentGroup.nodes.forEach(node => fragment.appendChild(node));
+
+    if (direction === "up") {
+      targetGroup.primary.parentElement?.insertBefore(fragment, targetGroup.primary);
+    } else {
+      const afterTarget = targetGroup.nodes[targetGroup.nodes.length - 1].nextSibling;
+      targetGroup.primary.parentElement?.insertBefore(fragment, afterTarget);
+    }
+
+    refocusBlock(currentGroup.primary);
     isInternalUpdate.current = true;
     onChange(editorRef.current.innerHTML);
-  }, [getCurrentBlock, addToHistory, onChange, refocusBlock]);
+    scheduleHistory();
+  }, [getCurrentBlock, getBlockGroups, addToHistory, refocusBlock, onChange, scheduleHistory]);
+
+  const handleBlockMoveUp = useCallback(() => {
+    moveBlockGroup("up");
+  }, [moveBlockGroup]);
 
   const handleBlockMoveDown = useCallback(() => {
-    const block = getCurrentBlock();
-    if (!block || !editorRef.current) return;
-    const next = block.nextElementSibling;
-    if (!next) return;
-    addToHistory();
-    block.parentElement?.insertBefore(block, next.nextElementSibling);
-    refocusBlock(block);
-    isInternalUpdate.current = true;
-    onChange(editorRef.current.innerHTML);
-  }, [getCurrentBlock, addToHistory, onChange, refocusBlock]);
+    moveBlockGroup("down");
+  }, [moveBlockGroup]);
 
   // Editor click handler — WordPress birebir image/embed selection
   const handleEditorClick = useCallback((e: React.MouseEvent) => {
@@ -1335,6 +1471,9 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
           addToHistory();
           safariInsertHTML(clean);
           ensureEditorIntegrity();
+          if (stripBlobImagesFromEditor()) {
+            ensureEditorIntegrity();
+          }
           isInternalUpdate.current = true;
           onChange(editorRef.current!.innerHTML);
           scheduleHistory();
@@ -1373,6 +1512,11 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
 
               const uploadOne = async (img: Element) => {
                 const src = img.getAttribute("src") || "";
+                const keep = await shouldKeepPastedExternalImage(img as HTMLImageElement);
+                if (!keep) {
+                  if (img.isConnected) img.remove();
+                  return;
+                }
                 (img as HTMLElement).style.opacity = "0.5";
                 let retries = 0;
                 while (retries <= MAX_RETRIES) {
@@ -1444,7 +1588,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(fun
     // 3. Fallback: düz metin
     const text = e.clipboardData.getData("text/plain");
     safariInsertText(text);
-  }, [onImageUpload, insertImage, addToHistory, onChange, scheduleHistory, ensureEditorIntegrity]);
+  }, [onImageUpload, insertImage, addToHistory, onChange, scheduleHistory, ensureEditorIntegrity, stripBlobImagesFromEditor]);
 
   // Seçim yokken cursor'daki kelimeyi seç (zengin editör standardı)
   const selectWordUnderCursor = useCallback(() => {
@@ -2107,17 +2251,6 @@ function cleanContentForSave(html: string): string {
     });
   });
 
-  // Remove empty paragraphs at end
-  const children = Array.from(div.children);
-  for (let i = children.length - 1; i >= 0; i--) {
-    const child = children[i];
-    if (child.tagName === "P" && (!child.textContent?.trim()) && !child.querySelector("img")) {
-      child.remove();
-    } else {
-      break;
-    }
-  }
-
   // Tablo temizliği — limitleri uygula, bozuk yapıları düzelt, boşları sil
   div.querySelectorAll("table").forEach(table => {
     // thead yoksa oluştur (bozuk yapıştırma)
@@ -2214,17 +2347,7 @@ function cleanContentForSave(html: string): string {
     if (!list.querySelector("li")) list.remove();
   });
 
-  // Ardışık boş paragrafları tek bir boş paragrafa düşür
-  const allChildren = Array.from(div.children);
-  let emptyCount = 0;
-  for (const child of allChildren) {
-    if (child.tagName === "P" && !child.textContent?.trim() && !child.querySelector("img")) {
-      emptyCount++;
-      if (emptyCount > 1) child.remove();
-    } else {
-      emptyCount = 0;
-    }
-  }
+  normalizeTopLevelSpacing(div);
 
   // Sonuç gerçekten boşsa (metin yok, görsel yok) → boş string döndür
   const finalText = (div.textContent || "").trim();
@@ -2232,6 +2355,79 @@ function cleanContentForSave(html: string): string {
   if (!finalText && !finalHasImg) return "";
 
   return div.innerHTML;
+}
+
+function normalizeTopLevelSpacing(root: HTMLDivElement): void {
+  const children = Array.from(root.children);
+  const emptyRuns: HTMLElement[][] = [];
+  let currentRun: HTMLElement[] = [];
+
+  for (const child of children) {
+    if (isEmptyParagraph(child)) {
+      currentRun.push(child as HTMLElement);
+      continue;
+    }
+
+    if (currentRun.length) {
+      emptyRuns.push(currentRun);
+      currentRun = [];
+    }
+  }
+
+  if (currentRun.length) {
+    emptyRuns.push(currentRun);
+  }
+
+  for (const run of emptyRuns) {
+    const prev = getPrevNonEmptySibling(run[0]);
+    const next = getNextNonEmptySibling(run[run.length - 1]);
+
+    // Baştaki/sondaki sahte boşlukları tamamen sil.
+    if (!prev || !next) {
+      run.forEach(node => node.remove());
+      continue;
+    }
+
+    // Görsel, tablo, quote, heading, liste gibi blokların etrafında
+    // ekstra boş paragraf bırakmayalım; CSS boşluğu zaten veriyor.
+    if (isStructuredBlock(prev) || isStructuredBlock(next)) {
+      run.forEach(node => node.remove());
+      continue;
+    }
+
+    // Gerçek metin blokları arasında da en fazla 3 boş paragraf bırak.
+    run.slice(3).forEach(node => node.remove());
+  }
+}
+
+function isEmptyParagraph(node: Element | null): boolean {
+  if (!node || node.tagName !== "P") return false;
+  if (node.querySelector("img, figure, table, blockquote, ul, ol, hr, pre")) return false;
+  const text = (node.textContent || "").replace(/\u00A0/g, " ").trim();
+  return !text;
+}
+
+function isStructuredBlock(node: Element | null): boolean {
+  if (!node) return false;
+  return ["FIGURE", "TABLE", "BLOCKQUOTE", "HR", "UL", "OL", "PRE", "H2", "H3", "H4"].includes(node.tagName);
+}
+
+function getPrevNonEmptySibling(node: Element): Element | null {
+  let current = node.previousElementSibling;
+  while (current) {
+    if (!isEmptyParagraph(current)) return current;
+    current = current.previousElementSibling;
+  }
+  return null;
+}
+
+function getNextNonEmptySibling(node: Element): Element | null {
+  let current = node.nextElementSibling;
+  while (current) {
+    if (!isEmptyParagraph(current)) return current;
+    current = current.nextElementSibling;
+  }
+  return null;
 }
 
 // --- Content validation (WordPress birebir) ---

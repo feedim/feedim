@@ -24,6 +24,65 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   img: new Set(["src", "alt"]),
 };
 
+const JUNK_LINK_HREF_PATTERNS = [
+  /facebook\.com\/sharer/i,
+  /twitter\.com\/intent\/tweet/i,
+  /api\.whatsapp\.com\/send/i,
+  /linkedin\.com\/share/i,
+  /telegram\.(me|org)\/share/i,
+  /reddit\.com\/submit/i,
+  /pinterest\./i,
+  /#comments?$/i,
+  /\/author\//i,
+  /\/authors?\//i,
+];
+
+const JUNK_LINK_TEXT_PATTERNS = [
+  /share on/i,
+  /facebook/i,
+  /twitter/i,
+  /whatsapp/i,
+  /google haberler/i,
+  /abone ol/i,
+  /subscribe/i,
+  /yorumlar?/i,
+  /comments?/i,
+  /paylaş/i,
+  /follow/i,
+  /takip et/i,
+];
+
+const JUNK_IMAGE_PATTERNS = [
+  /avatar/i,
+  /profile/i,
+  /profil/i,
+  /logo/i,
+  /icon/i,
+  /share/i,
+  /facebook/i,
+  /twitter/i,
+  /whatsapp/i,
+  /google haberler/i,
+  /abone/i,
+  /subscribe/i,
+  /comment/i,
+  /yorum/i,
+  /author/i,
+  /yazar/i,
+];
+
+const SECTION_CUTOFF_PATTERNS = [
+  /ilgili\s+içerikler/i,
+  /bir\s+yanıt\s+yazın/i,
+  /yorum\s+yapabilmek/i,
+  /sosyal\s+medya/i,
+  /you\s+may\s+also\s+like/i,
+  /related\s+posts?/i,
+  /related\s+content/i,
+  /leave\s+a\s+reply/i,
+  /follow\s+us/i,
+];
+
 export function sanitizePastedHTML(html: string, captionPlaceholder?: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const body = doc.body;
@@ -48,6 +107,12 @@ export function sanitizePastedHTML(html: string, captionPlaceholder?: string): s
 
   // 3. İzin verilmeyen etiketleri unwrap et (içeriği koru)
   unwrapDisallowedTags(body);
+
+  // 3b. Site chrome'u, sosyal paylaşım linkleri ve küçük avatar/ikon görselleri temizle
+  pruneLikelyPastedChrome(body);
+
+  // 3c. Makale dışı bölümleri kes
+  trimAfterJunkSectionMarkers(body);
 
   // 4. Tüm class, style, id, data-* niteliklerini kaldır; sadece izin verilen nitelikler kalsın
   cleanAttributes(body);
@@ -95,6 +160,9 @@ export function sanitizePastedHTML(html: string, captionPlaceholder?: string): s
   // 8b. <figure> → editör image-wrapper formatına dönüştür
   convertFiguresToImageWrappers(body, captionPlaceholder);
 
+  // 8c. Tek başına gelen düz <img> bloklarını editör görsel bloğuna çevir
+  convertStandaloneImagesToImageWrappers(body, captionPlaceholder);
+
   // 9. Boş blok elementleri kaldır (yalnızca <br> içerenler hariç)
   body.querySelectorAll("p, h2, h3, li, blockquote, figcaption").forEach(el => {
     if (!el.textContent?.trim() && !el.querySelector("br, img")) {
@@ -107,6 +175,9 @@ export function sanitizePastedHTML(html: string, captionPlaceholder?: string): s
 
   // 11. Doğrudan text node'ları <p> ile sar
   wrapOrphanTextNodes(body);
+
+  // 11b. Geçersiz blok iç içeliklerini düzelt (ör: p > h2, p > div)
+  normalizeInvalidBlockNesting(body);
 
   // 12. Ardışık boş paragrafları birleştir (2+ → tek)
   collapseEmptyParagraphs(body);
@@ -203,6 +274,132 @@ function enforceBlockRules(root: Element): void {
   });
 }
 
+function pruneLikelyPastedChrome(root: Element): void {
+  root.querySelectorAll("img").forEach(img => {
+    if (isLikelyJunkImage(img)) img.remove();
+  });
+
+  root.querySelectorAll("a").forEach(a => {
+    if (isLikelyJunkLink(a)) a.remove();
+  });
+
+  root.querySelectorAll("p, div, li").forEach(el => {
+    if (isLikelyChromeBlock(el)) el.remove();
+  });
+
+  removeThinLinkClusters(root);
+}
+
+function isLikelyJunkLink(a: Element): boolean {
+  const href = (a.getAttribute("href") || "").trim();
+  const text = (a.textContent || "").replace(/\s+/g, " ").trim();
+  return JUNK_LINK_HREF_PATTERNS.some(pattern => pattern.test(href))
+    || JUNK_LINK_TEXT_PATTERNS.some(pattern => pattern.test(text));
+}
+
+function isLikelyJunkImage(img: Element): boolean {
+  const src = img.getAttribute("src") || "";
+  const alt = img.getAttribute("alt") || "";
+  const title = img.getAttribute("title") || "";
+  const signature = `${src} ${alt} ${title}`;
+  if (JUNK_IMAGE_PATTERNS.some(pattern => pattern.test(signature))) return true;
+  return isExplicitlyTinyImage(img);
+}
+
+function isExplicitlyTinyImage(img: Element): boolean {
+  const width = parseInt(img.getAttribute("width") || "0", 10);
+  const height = parseInt(img.getAttribute("height") || "0", 10);
+  const style = img.getAttribute("style") || "";
+  const styleWidth = extractStylePx(style, "width");
+  const styleHeight = extractStylePx(style, "height");
+  const candidates = [width, height, styleWidth, styleHeight].filter(v => Number.isFinite(v) && v > 0);
+  return candidates.some(v => v > 0 && v < 96);
+}
+
+function extractStylePx(style: string, prop: string): number {
+  const match = style.match(new RegExp(`${prop}\\s*:\\s*(\\d+)px`, "i"));
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+function isLikelyChromeBlock(el: Element): boolean {
+  if (el.querySelector("table, ul, ol, blockquote, h2, h3, figure")) return false;
+  const links = el.querySelectorAll("a").length;
+  const images = el.querySelectorAll("img").length;
+  if (!links && !images) return false;
+
+  const inlineOnly = Array.from(el.childNodes).every(node => {
+    if (node.nodeType === Node.TEXT_NODE) return !node.textContent?.trim();
+    if (node.nodeType !== Node.ELEMENT_NODE) return true;
+    return ["A", "IMG", "BR", "EM", "STRONG", "SPAN"].includes((node as Element).tagName);
+  });
+
+  const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+  const hasSentenceLikeText = text.length >= 120 || /[.!?…:;]/.test(text);
+
+  return inlineOnly && !hasSentenceLikeText && (links + images >= 2);
+}
+
+function trimAfterJunkSectionMarkers(root: Element): void {
+  const children = Array.from(root.children);
+  for (const child of children) {
+    const text = (child.textContent || "").replace(/\u00A0/g, " ").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    if (!SECTION_CUTOFF_PATTERNS.some(pattern => pattern.test(text))) continue;
+
+    let current: Element | null = child;
+    while (current) {
+      const nextSibling: Element | null = current.nextElementSibling;
+      current.remove();
+      current = nextSibling;
+    }
+    break;
+  }
+}
+
+function removeThinLinkClusters(root: Element): void {
+  const children = Array.from(root.children);
+  let substantiveSeen = false;
+
+  for (const child of children) {
+    if (isSubstantiveContentBlock(child)) {
+      substantiveSeen = true;
+      continue;
+    }
+
+    if (isThinLinkCluster(child, substantiveSeen)) {
+      child.remove();
+    }
+  }
+}
+
+function isThinLinkCluster(el: Element, substantiveSeen: boolean): boolean {
+  if (!["P", "DIV", "UL", "OL"].includes(el.tagName)) return false;
+  const text = (el.textContent || "").replace(/\u00A0/g, " ").replace(/\s+/g, " ").trim();
+  const links = el.querySelectorAll("a").length;
+  const images = el.querySelectorAll("img").length;
+
+  if (!links && !images) return false;
+  if (/kaynak:/i.test(text)) return false;
+  if (SECTION_CUTOFF_PATTERNS.some(pattern => pattern.test(text))) return true;
+
+  const onlyInlineish = Array.from(el.children).every(child =>
+    ["A", "IMG", "EM", "STRONG", "SPAN", "BR", "LI"].includes(child.tagName)
+  );
+
+  if (!onlyInlineish) return false;
+
+  // Baştaki kategori/meta linkleri veya sondaki footer navigasyonunu temizle.
+  if (!substantiveSeen && text.length <= 48) return true;
+  if (substantiveSeen && text.length <= 64 && (links >= 2 || images >= 1)) return true;
+  return false;
+}
+
+function isSubstantiveContentBlock(el: Element): boolean {
+  if (["FIGURE", "TABLE", "BLOCKQUOTE", "PRE"].includes(el.tagName)) return true;
+  const text = (el.textContent || "").replace(/\u00A0/g, " ").replace(/\s+/g, " ").trim();
+  return text.length >= 120;
+}
+
 function unwrapDisallowedTags(root: Element): void {
   // Bottom-up: en derin elemanlardan başla
   const all = Array.from(root.querySelectorAll("*"));
@@ -293,6 +490,39 @@ function wrapOrphanTextNodes(root: Element): void {
   flushGroup();
 }
 
+function normalizeInvalidBlockNesting(root: Element): void {
+  const paragraphs = Array.from(root.querySelectorAll("p"));
+  const blockTags = new Set(["H2", "H3", "H4", "DIV", "FIGURE", "TABLE", "BLOCKQUOTE", "UL", "OL", "PRE", "HR"]);
+
+  paragraphs.forEach(paragraph => {
+    const hasInvalidBlockChild = Array.from(paragraph.children).some(child => blockTags.has(child.tagName));
+    if (!hasInvalidBlockChild) return;
+
+    const fragment = document.createDocumentFragment();
+    let buffer = document.createElement("p");
+
+    const flushBuffer = () => {
+      const text = (buffer.textContent || "").replace(/\u00A0/g, " ").trim();
+      if (text || buffer.querySelector("img, br, a, strong, em, u, code, mark, sub, sup")) {
+        fragment.appendChild(buffer);
+      }
+      buffer = document.createElement("p");
+    };
+
+    Array.from(paragraph.childNodes).forEach(node => {
+      if (node.nodeType === Node.ELEMENT_NODE && blockTags.has((node as Element).tagName)) {
+        flushBuffer();
+        fragment.appendChild(node);
+        return;
+      }
+      buffer.appendChild(node);
+    });
+
+    flushBuffer();
+    paragraph.replaceWith(fragment);
+  });
+}
+
 function collapseEmptyParagraphs(root: Element): void {
   const children = Array.from(root.children);
   let emptyCount = 0;
@@ -342,4 +572,53 @@ function convertFiguresToImageWrappers(root: Element, captionPlaceholder?: strin
     figure.replaceWith(wrapper);
     wrapper.after(p);
   });
+}
+
+function convertStandaloneImagesToImageWrappers(root: Element, captionPlaceholder?: string): void {
+  const images = Array.from(root.querySelectorAll("img"));
+
+  images.forEach(img => {
+    if (img.closest("figure, .image-wrapper, figcaption, a")) return;
+
+    const parent = img.parentElement;
+    if (!parent) return;
+
+    const shouldWrapWholeParagraph = parent.tagName === "P" && isImageOnlyParagraph(parent, img);
+    const shouldWrapDirectChild = parent === root;
+    if (!shouldWrapWholeParagraph && !shouldWrapDirectChild) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "image-wrapper";
+    wrapper.setAttribute("contenteditable", "false");
+    wrapper.appendChild(img.cloneNode(true));
+
+    const caption = document.createElement("div");
+    caption.className = "image-caption";
+    caption.setAttribute("contenteditable", "true");
+    caption.setAttribute("data-placeholder", captionPlaceholder || "Add a caption...");
+    wrapper.appendChild(caption);
+
+    const spacer = document.createElement("p");
+    spacer.innerHTML = "<br>";
+
+    if (shouldWrapWholeParagraph) {
+      parent.replaceWith(wrapper);
+      wrapper.after(spacer);
+    } else {
+      img.replaceWith(wrapper);
+      wrapper.after(spacer);
+    }
+  });
+}
+
+function isImageOnlyParagraph(paragraph: Element, img: Element): boolean {
+  const clone = paragraph.cloneNode(true) as Element;
+  clone.querySelectorAll("br").forEach(br => br.remove());
+  const cloneImages = clone.querySelectorAll("img");
+  if (cloneImages.length !== 1) return false;
+  cloneImages[0].remove();
+  clone.querySelectorAll("a").forEach(link => {
+    if (!link.textContent?.trim()) link.remove();
+  });
+  return !(clone.textContent || "").replace(/\u00A0/g, " ").trim();
 }

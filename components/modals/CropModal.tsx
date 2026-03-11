@@ -71,7 +71,7 @@ export default function CropModal({
     }
   }, [open, imageSrc]);
 
-  // Convert external URLs to blob URLs to avoid tainted canvas SecurityError
+  // Convert external URLs to a same-origin proxy URL so canvas stays readable
   useEffect(() => {
     if (!open || !imageSrc) { setSafeSrc(""); return; }
     // data: and blob: URLs are already same-origin safe
@@ -79,23 +79,13 @@ export default function CropModal({
       setSafeSrc(imageSrc);
       return;
     }
-    // External/CDN URLs: fetch as blob
-    let cancelled = false;
-    let objectUrl = "";
-    fetch(imageSrc)
-      .then(r => r.blob())
-      .then(blob => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setSafeSrc(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setSafeSrc(imageSrc);
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    try {
+      const proxied = `/api/image-proxy?url=${encodeURIComponent(imageSrc)}`;
+      setSafeSrc(proxied);
+    } catch {
+      setSafeSrc(imageSrc);
+    }
+    return;
   }, [open, imageSrc]);
 
   const handleImgLoad = useCallback(() => {

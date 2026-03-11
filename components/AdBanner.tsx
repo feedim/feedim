@@ -43,8 +43,14 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
 
   const provider = getProviderForSlot(slot);
   const slotId = getAdSlotId(slot);
+  const isLocalDev = useMemo(() => {
+    if (!hydrated) return false;
+    const host = window.location.hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+  }, [hydrated]);
   const adsEnabled = useMemo(() => {
     if (!hydrated) return false;
+    if (isLocalDev) return false;
     const ds = document.documentElement.dataset;
     const globalEnabled = ds.adsEnabled === "1";
     if (!globalEnabled) return false;
@@ -53,7 +59,7 @@ export default function AdBanner({ slot, className = "" }: AdBannerProps) {
     if (slot === "overlay" && ds.adsVideo !== "1") return false;
     if ((slot === "post-bottom" || slot === "post-detail" || slot === "post-top") && ds.adsPostDetail !== "1") return false;
     return true;
-  }, [hydrated, slot]);
+  }, [hydrated, slot, isLocalDev]);
 
   // AdSense renderer — push ad when element is visible
   const pushedRef = useRef(false);
