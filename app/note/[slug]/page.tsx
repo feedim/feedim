@@ -189,6 +189,18 @@ export default async function NotePage({ params, searchParams }: PageProps) {
             showCollapseButton
           />
 
+          {post.featured_image && (
+            <div className="mt-[10px] rounded-[20px] overflow-hidden border border-border-primary bg-bg-tertiary">
+              <img
+                src={post.featured_image}
+                alt={post.title}
+                className="w-full h-auto max-h-[580px] object-cover bg-bg-tertiary"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          )}
+
           {(post.view_count || 0) > 0 && (
             <p className="text-[0.75rem] text-text-muted mt-[4px]">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}

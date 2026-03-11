@@ -2,9 +2,10 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, ChevronDown, Smile } from "lucide-react";
+import { X, Plus, ChevronDown, Smile, ImagePlus } from "lucide-react";
 import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
 import PostMetaFields from "@/components/PostMetaFields";
+import CropModal from "@/components/modals/CropModal";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { smartBack } from "@/lib/smartBack";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -41,6 +42,8 @@ function NoteWriteContent() {
   const tc = useTranslations("common");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cropResolveRef = useRef<((croppedUrl: string) => void) | null>(null);
 
   // Step: 1=content, 2=tags/settings
   const [step, setStep] = useState(1);
@@ -51,6 +54,9 @@ function NoteWriteContent() {
   const [noteText, setNoteText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [extractingTags, setExtractingTags] = useState(false);
+  const [featuredImage, setFeaturedImage] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   // Step 2
   const [tags, setTags] = useState<Tag[]>([]);
@@ -122,6 +128,7 @@ function NoteWriteContent() {
         setNoteText(plainText);
         setDraftId(data.post.id);
         setIsPublished(data.post.status === 'published');
+        setFeaturedImage(data.post.featured_image || "");
         setAllowComments(data.post.allow_comments !== false);
         setIsAiContent(data.post.is_ai_content === true);
         setVisibility(data.post.visibility || "public");
@@ -185,6 +192,73 @@ function NoteWriteContent() {
       }, 0);
     }
     setShowEmojiPicker(false);
+  };
+
+  const openFilePicker = () => {
+    if (!imageUploading) imageInputRef.current?.click();
+  };
+
+  const uploadSingleNoteImage = async (file: File) => {
+    try {
+      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
+      if (file.size > 5 * 1024 * 1024) throw new Error(t("fileTooLarge"));
+
+      setImageUploading(true);
+
+      const { compressImage } = await import("@/lib/imageCompression");
+      const compressed = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 2048 });
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error(t("fileReadError")));
+        reader.readAsDataURL(compressed);
+      });
+
+      (document.activeElement as HTMLElement | null)?.blur();
+
+      const croppedUrl = await new Promise<string>((resolve) => {
+        cropResolveRef.current = resolve;
+        setCropSrc(dataUrl);
+      });
+
+      if (!croppedUrl) {
+        setImageUploading(false);
+        return;
+      }
+
+      const blob = await fetch(croppedUrl).then((r) => r.blob());
+      const uploadFile = new File([blob], `note-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("fileName", uploadFile.name);
+      const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
+
+      setFeaturedImage(uploadData.url);
+    } catch (err) {
+      if (err instanceof Error && err.message === "cancelled") return;
+      feedimAlert("error", t("imageUploadFailedRetry"));
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadSingleNoteImage(file);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const handleTextareaPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItem = items.find((item) => item.kind === "file" && item.type.startsWith("image/"));
+    if (!imageItem) return;
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    await uploadSingleNoteImage(file);
   };
 
   const handleMentionKeyDown = (e: React.KeyboardEvent) => {
@@ -344,6 +418,7 @@ function NoteWriteContent() {
           content,
           content_type: "note",
           status,
+          featured_image: featuredImage || null,
           tags: finalTags.map(t => typeof t.id === "number" ? t.id : (t.slug || t.name)),
           allow_comments: allowComments,
           is_ai_content: isAiContent,
@@ -527,6 +602,7 @@ function NoteWriteContent() {
                       value={noteText}
                       onChange={(e) => handleNoteChange(e.target.value)}
                       onKeyDown={handleMentionKeyDown}
+                      onPaste={handleTextareaPaste}
                       placeholder={t("whatsOnYourMind")}
                       className="w-full bg-transparent text-[1.06rem] leading-[1.55] text-text-primary placeholder:text-[1.06rem] placeholder:leading-[1.55] placeholder:text-text-muted/50 resize-none min-h-0 overflow-hidden"
                       style={{ border: "none", outline: "none", boxShadow: "none", padding: 0, borderRadius: 0, height: "auto", fontSize: "1.06rem" }}
@@ -549,7 +625,75 @@ function NoteWriteContent() {
                       style={mention.mentionDropdownTop != null ? { top: mention.mentionDropdownTop } : { top: 36 }}
                     />
                   </div>
+                  {featuredImage && (
+                    <div className="mt-3">
+                      <div className="relative rounded-[18px] overflow-hidden border border-border-primary bg-bg-tertiary">
+                        <img
+                          src={featuredImage}
+                          alt={t("image")}
+                          className="w-full aspect-[4/5] object-cover bg-bg-tertiary"
+                        />
+                        {imageUploading && (
+                          <div className="absolute inset-0 bg-bg-secondary/70 animate-pulse" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setFeaturedImage("")}
+                          className="absolute top-2 right-2 flex items-center justify-center h-8 w-8 rounded-full bg-black/55 text-white transition hover:bg-black/70"
+                          aria-label={tc("remove")}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!featuredImage || imageUploading) return;
+                            (document.activeElement as HTMLElement | null)?.blur();
+                            setImageUploading(true);
+                            try {
+                              const croppedUrl = await new Promise<string>((resolve) => {
+                                cropResolveRef.current = resolve;
+                                setCropSrc(featuredImage);
+                              });
+                              if (!croppedUrl) return;
+                              const blob = await fetch(croppedUrl).then((r) => r.blob());
+                              const uploadFile = new File([blob], `note-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+                              const formData = new FormData();
+                              formData.append("file", uploadFile);
+                              formData.append("fileName", uploadFile.name);
+                              const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
+                              const uploadData = await uploadRes.json();
+                              if (uploadRes.ok && uploadData.url) setFeaturedImage(uploadData.url);
+                            } finally {
+                              setImageUploading(false);
+                            }
+                          }}
+                          className="text-sm text-accent-main hover:text-accent-main/80 font-medium py-1 transition"
+                        >
+                          {t("editCover")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openFilePicker}
+                          className="text-sm text-text-muted hover:text-text-primary font-medium py-1 transition"
+                        >
+                          {t("changeCover")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center justify-end mt-1">
+                    <button
+                      type="button"
+                      onClick={openFilePicker}
+                      disabled={imageUploading}
+                      className={`flex items-center justify-center h-7 w-7 rounded-full transition ${featuredImage ? "text-accent-main" : "text-text-muted/50 hover:text-text-primary"} disabled:opacity-50`}
+                      aria-label={t("addImage")}
+                    >
+                      {imageUploading ? <span className="loader" style={{ width: 14, height: 14 }} /> : <ImagePlus className="h-[18px] w-[18px]" />}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -560,6 +704,13 @@ function NoteWriteContent() {
                   </div>
                 </div>
               </div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFile}
+                className="hidden"
+              />
 
               {showEmojiPicker && (
                 <EmojiPickerPanel
@@ -713,6 +864,24 @@ function NoteWriteContent() {
           </div>
         )}
       </div>
+
+      <CropModal
+        open={!!cropSrc}
+        onClose={() => {
+          setCropSrc(null);
+          if (cropResolveRef.current) cropResolveRef.current("");
+          cropResolveRef.current = null;
+        }}
+        imageSrc={cropSrc || ""}
+        aspectRatio={4 / 5}
+        onCrop={(croppedUrl) => {
+          if (cropResolveRef.current) {
+            cropResolveRef.current(croppedUrl);
+            cropResolveRef.current = null;
+          }
+          setCropSrc(null);
+        }}
+      />
     </AppLayout>
   );
 }
