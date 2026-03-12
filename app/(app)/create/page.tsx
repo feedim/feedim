@@ -1,11 +1,21 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, Upload, Smile, ChevronDown } from "lucide-react";
-import PostMetaFields from "@/components/PostMetaFields";
+import { X, Upload, Smile, ChevronDown } from "lucide-react";
+import CreateHeaderActions from "@/components/create/CreateHeaderActions";
+import { fetchCreateDraftPost } from "@/components/create/api";
+import { confirmDeleteDraft } from "@/components/create/deleteDraft";
+import { redirectAfterCreateSave } from "@/components/create/navigation";
+import CreateTagInput from "@/components/create/CreateTagInput";
+import { uploadGeneratedImageDataUrl } from "@/components/create/imageUpload";
+import CreateSettingsSection from "@/components/create/CreateSettingsSection";
+import CreateSettingsToggle from "@/components/create/CreateSettingsToggle";
+import { extractHashtagsToTags } from "@/components/create/hashtags";
+import useCreateSaveState from "@/components/create/useCreateSaveState";
+import { useCreateTagManager } from "@/components/create/useCreateTagManager";
+import type { CreateTag as Tag } from "@/components/create/types";
 import { createClient } from "@/lib/supabase/client";
-import { emitNavigationStart } from "@/lib/navigationProgress";
 import { smartBack } from "@/lib/smartBack";
 import dynamic from "next/dynamic";
 import type { RichTextEditorHandle } from "@/components/RichTextEditor";
@@ -20,25 +30,28 @@ const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
     </div>
   ),
 });
+const EmojiPickerPanel = dynamic(
+  () => import("@/components/modals/EmojiPickerPanel"),
+  { ssr: false },
+);
+const GifPickerPanel = dynamic(
+  () => import("@/components/modals/GifPickerPanel"),
+  { ssr: false },
+);
+const CropModal = dynamic(() => import("@/components/modals/CropModal"), {
+  ssr: false,
+});
+const PostMetaFields = dynamic(() => import("@/components/PostMetaFields"), {
+  ssr: false,
+  loading: () => <div className="h-24 rounded-[14px] bg-bg-secondary animate-pulse" />,
+});
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
-import { formatCount, formatDisplayTagLabel, sanitizeTagInput } from "@/lib/utils";
 
 import { useTranslations, useLocale } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
-import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
-import GifPickerPanel from "@/components/modals/GifPickerPanel";
-import CropModal from "@/components/modals/CropModal";
 import { openFilePicker } from "@/lib/openFilePicker";
-
-interface Tag {
-  id: number | string;
-  name: string;
-  slug: string;
-  post_count?: number;
-  virtual?: boolean;
-}
 
 export default function WritePage() {
   return (
@@ -61,10 +74,8 @@ function WritePageContent() {
   const editorRef = useRef<RichTextEditorHandle>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const tagAutocompleteRef = useRef<HTMLDivElement>(null);
   const coverUploadPromiseRef = useRef<Promise<string> | null>(null);
   const coverUploadRequestIdRef = useRef(0);
-  const saveInFlightRef = useRef(false);
   // Step: 1=title+content, 2=tags/image/settings
   const [step, setStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -76,11 +87,6 @@ function WritePageContent() {
   const [content, setContent] = useState("");
 
   // Step 2
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [tagSearch, setTagSearch] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
-  const [tagHighlight, setTagHighlight] = useState(-1);
-  const [tagCreating, setTagCreating] = useState(false);
   const [featuredImage, setFeaturedImage] = useState("");
   const [featuredImagePreview, setFeaturedImagePreview] = useState("");
   const [featuredImageLoaded, setFeaturedImageLoaded] = useState(false);
@@ -109,7 +115,7 @@ function WritePageContent() {
   const [settingsExpanded, setSettingsExpanded] = useState(true);
 
   // State
-  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
+  const { savingAs, startSaving, finishSaving } = useCreateSaveState();
   const [deleting, setDeleting] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
@@ -117,6 +123,30 @@ function WritePageContent() {
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropAspect, setCropAspect] = useState(16 / 9);
+
+  const {
+    tagAutocompleteRef,
+    tags,
+    setTags,
+    tagSearch,
+    tagSuggestions,
+    tagHighlight,
+    tagCreating,
+    addTag,
+    createAndAddTag,
+    removeTag,
+    handleTagKeyDown,
+    handleTagSearchChange,
+    handleTagFocus,
+    setTagHighlight,
+  } = useCreateTagManager({
+    tagMinLength: (min) => t("tagMinLength", { min }),
+    tagMaxLength: (max) => t("tagMaxLength", { max }),
+    tagInvalidChars: t("tagInvalidChars"),
+    tagOnlyNumbers: t("tagOnlyNumbers"),
+    tagCreateFailed: t("tagCreateFailed"),
+    tagCreateFailedRetry: t("tagCreateFailedRetry"),
+  });
   const cropResolveRef = useRef<((url: string) => void) | null>(null);
 
   // Load edit mode post
@@ -131,150 +161,29 @@ function WritePageContent() {
   const loadDraft = async (slug: string) => {
     setLoadingDraft(true);
     try {
-      const res = await fetch(`/api/posts/${slug}`);
-      const data = await res.json();
-      if (res.ok && data.post) {
-        setTitle(data.post.title || "");
-        setContent(data.post.content || "");
-        setDraftId(data.post.id);
-        setFeaturedImage(data.post.featured_image || "");
-        setFeaturedImagePreview(data.post.featured_image || "");
-        setVisibility(data.post.visibility || "public");
-        setAllowComments(data.post.allow_comments !== false);
-        setIsForKids(data.post.is_for_kids === true);
-        setIsAiContent(data.post.is_ai_content === true);
-        setCopyrightProtected(data.post.copyright_protected === true);
-        setIsPublished(data.post.status === 'published');
-        if (data.post.meta_title) setMetaTitle(data.post.meta_title);
-        if (data.post.meta_description) setMetaDescription(data.post.meta_description);
-        if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
-        const postTags = (data.post.post_tags || [])
-          .map((pt: { tags: Tag }) => pt.tags)
-          .filter(Boolean);
-        setTags(postTags);
-      }
+      const post = await fetchCreateDraftPost(slug);
+      setTitle(post.title || "");
+      setContent(post.content || "");
+      setDraftId(post.id);
+      setFeaturedImage(post.featured_image || "");
+      setFeaturedImagePreview(post.featured_image || "");
+      setVisibility(post.visibility || "public");
+      setAllowComments(post.allow_comments !== false);
+      setIsForKids(post.is_for_kids === true);
+      setIsAiContent(post.is_ai_content === true);
+      setCopyrightProtected(post.copyright_protected === true);
+      setIsPublished(post.status === "published");
+      if (post.meta_title) setMetaTitle(post.meta_title);
+      if (post.meta_description) setMetaDescription(post.meta_description);
+      if (post.meta_keywords) setMetaKeywords(post.meta_keywords);
+      const postTags = (post.post_tags || [])
+        .map((pt: { tags: Tag }) => pt.tags)
+        .filter(Boolean);
+      setTags(postTags);
     } catch {
       feedimAlert("error", t("draftLoadError"));
     } finally {
       setLoadingDraft(false);
-    }
-  };
-
-  const searchTags = useCallback(async (q: string) => {
-    if (q.trim().length < 1) {
-      setTagSuggestions([]);
-      setTagHighlight(-1);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      setTagSuggestions(
-        (data.tags || [])
-          .filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
-          .slice(0, 5)
-      );
-      setTagHighlight(-1);
-    } catch {
-      setTagSuggestions([]);
-    }
-  }, [tags]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => searchTags(tagSearch), 300);
-    return () => clearTimeout(timer);
-  }, [tagSearch, searchTags]);
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!tagAutocompleteRef.current?.contains(event.target as Node)) {
-        setTagSuggestions([]);
-        setTagHighlight(-1);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
-
-  const addTag = (tag: Tag) => {
-    if (tags.length >= VALIDATION.postTags.max) return;
-    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
-    setTags([...tags, tag]);
-    setTagSearch("");
-    setTagSuggestions([]);
-    setTagHighlight(-1);
-  };
-
-  const createAndAddTag = async () => {
-    const trimmed = sanitizeTagInput(tagSearch).trim();
-    if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
-    if (trimmed.length < VALIDATION.tagName.min) {
-      feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
-      return;
-    }
-    if (trimmed.length > VALIDATION.tagName.max) {
-      feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max }));
-      return;
-    }
-    if (!VALIDATION.tagName.pattern.test(trimmed)) {
-      feedimAlert("error", t("tagInvalidChars"));
-      return;
-    }
-    if (/^\d+$/.test(trimmed)) {
-      feedimAlert("error", t("tagOnlyNumbers"));
-      return;
-    }
-    setTagCreating(true);
-    try {
-      const res = await fetch("/api/tags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json();
-      if (res.ok && data.tag) {
-        addTag(data.tag);
-      } else {
-        feedimAlert("error", data.error || t("tagCreateFailed"));
-      }
-    } catch {
-      feedimAlert("error", t("tagCreateFailedRetry"));
-    } finally {
-      setTagCreating(false);
-    }
-  };
-
-  const removeTag = (tagId: number | string) => {
-    setTags(tags.filter(t => t.id !== tagId));
-  };
-
-  // Tag keyboard navigation (WordPress birebir)
-  const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && sanitizeTagInput(e.key) === "") {
-      e.preventDefault();
-      return;
-    }
-    if (tagSuggestions.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setTagHighlight(prev => (prev < tagSuggestions.length - 1 ? prev + 1 : 0));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setTagHighlight(prev => (prev > 0 ? prev - 1 : tagSuggestions.length - 1));
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        if (tagHighlight >= 0 && tagHighlight < tagSuggestions.length) {
-          addTag(tagSuggestions[tagHighlight]);
-        } else if (tagSearch.trim()) {
-          createAndAddTag();
-        }
-      } else if (e.key === "Escape") {
-        setTagSuggestions([]);
-        setTagHighlight(-1);
-      }
-    } else if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      if (tagSearch.trim()) createAndAddTag();
     }
   };
 
@@ -317,15 +226,7 @@ function WritePageContent() {
       if (!croppedUrl) throw new Error("cancelled");
 
       // Upload cropped image to R2 immediately (data: URLs are stripped by sanitizer)
-      const blob = await fetch(croppedUrl).then(r => r.blob());
-      const uploadFile = new File([blob], `inline-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('fileName', uploadFile.name);
-      const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
-
+      const uploadData = await uploadGeneratedImageDataUrl(croppedUrl, "inline");
       return uploadData.url;
     } finally {
       setImageUploading(false);
@@ -379,16 +280,9 @@ function WritePageContent() {
       setFeaturedImagePreview(croppedUrl);
 
       // Upload cropped image to R2
-      const blob = await fetch(croppedUrl).then(r => r.blob());
-      const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('fileName', uploadFile.name);
       const uploadPromise = (async () => {
-        const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
-        return uploadData.url as string;
+        const uploadData = await uploadGeneratedImageDataUrl(croppedUrl, "cover");
+        return uploadData.url;
       })();
       coverUploadPromiseRef.current = uploadPromise;
       const uploadedUrl = await uploadPromise;
@@ -462,16 +356,9 @@ function WritePageContent() {
       setFeaturedImagePreview(croppedUrl);
 
       // Upload cropped image to R2
-      const blob = await fetch(croppedUrl).then(r => r.blob());
-      const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('fileName', uploadFile.name);
       const uploadPromise = (async () => {
-        const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
-        return uploadData.url as string;
+        const uploadData = await uploadGeneratedImageDataUrl(croppedUrl, "cover");
+        return uploadData.url;
       })();
       coverUploadPromiseRef.current = uploadPromise;
       const uploadedUrl = await uploadPromise;
@@ -502,9 +389,7 @@ function WritePageContent() {
   };
 
   const savePost = async (status: "draft" | "published") => {
-    if (saveInFlightRef.current) return;
-    saveInFlightRef.current = true;
-    setSavingAs(status);
+    if (!startSaving(status)) return;
     let shouldReleaseLock = true;
 
     const trimmedTitle = title.trim();
@@ -547,28 +432,14 @@ function WritePageContent() {
       }
     }
 
-    // Extract #hashtags from title before saving
-    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
     let finalTitle = title;
-    let finalTags = [...tags];
-    const htMatches = [...title.matchAll(hashtagRegex)];
-    if (htMatches.length > 0) {
-      const existingNames = new Set(finalTags.map(tg => tg.name.toLowerCase()));
-      for (const match of htMatches) {
-        const name = match[1];
-        if (name.length < VALIDATION.tagName.min) continue;
-        if (/^\d+$/.test(name)) continue;
-        if (existingNames.has(name.toLowerCase()) || finalTags.some(tg => tg.name.toLowerCase() === name.toLowerCase())) continue;
-        if (finalTags.length >= VALIDATION.postTags.max) break;
-        try {
-          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-          const data = await res.json();
-          if (res.ok && data.tag) { finalTags.push(data.tag); existingNames.add(name.toLowerCase()); }
-        } catch { /* skip */ }
-      }
-      finalTitle = title.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
+    let finalTags = tags;
+    const hashtagResult = await extractHashtagsToTags(title, tags);
+    if (hashtagResult.foundHashtags) {
+      finalTitle = hashtagResult.cleanedText;
+      finalTags = hashtagResult.tags;
       setTitle(finalTitle);
-      setTags(finalTags);
+      if (hashtagResult.tagsChanged) setTags(finalTags);
     }
 
     try {
@@ -617,25 +488,19 @@ function WritePageContent() {
       const data = await res.json();
       if (res.ok) {
         shouldReleaseLock = false;
-        if (status === "published" && data.post?.slug) {
-          emitNavigationStart();
-          router.push(`/${data.post.slug}`);
-        } else {
-          sessionStorage.setItem("fdm-open-create-modal", "1");
-          sessionStorage.setItem("fdm-create-view", "drafts");
-          emitNavigationStart();
-          router.push("/");
-        }
+        redirectAfterCreateSave({
+          router,
+          status,
+          slug: data.post?.slug,
+          contentType: "post",
+        });
       } else {
         feedimAlert("error", data.error || t("genericErrorRetry"));
       }
     } catch {
       feedimAlert("error", t("genericErrorRetry"));
     } finally {
-      if (shouldReleaseLock) {
-        saveInFlightRef.current = false;
-        setSavingAs(null);
-      }
+      finishSaving(!shouldReleaseLock);
     }
   };
 
@@ -649,15 +514,12 @@ function WritePageContent() {
     });
     if (!croppedUrl) return "";
     // Upload cropped image to R2
-    const blob = await fetch(croppedUrl).then(r => r.blob());
-    const uploadFile = new File([blob], `crop-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('fileName', uploadFile.name);
-    const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-    const uploadData = await uploadRes.json();
-    if (uploadRes.ok && uploadData.url) return uploadData.url;
-    return "";
+    try {
+      const uploadData = await uploadGeneratedImageDataUrl(croppedUrl, "crop");
+      return uploadData.url;
+    } catch {
+      return "";
+    }
   };
 
   // Auto-detect featured image from first content image when entering step 2
@@ -693,24 +555,10 @@ function WritePageContent() {
       }
     }
 
-    // Extract #hashtags from title and auto-add as tags
-    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
-    const matches = [...title.matchAll(hashtagRegex)];
-    if (matches.length > 0) {
-      const existingNames = new Set(tags.map(t => t.name.toLowerCase()));
-      const newTags: Tag[] = [];
-      for (const match of matches) {
-        const name = match[1];
-        if (existingNames.has(name.toLowerCase()) || newTags.some(t => t.name.toLowerCase() === name.toLowerCase())) continue;
-        if (tags.length + newTags.length >= VALIDATION.postTags.max) break;
-        try {
-          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-          const data = await res.json();
-          if (res.ok && data.tag) newTags.push(data.tag);
-        } catch { /* skip */ }
-      }
-      if (newTags.length > 0) setTags(prev => [...prev, ...newTags]);
-      setTitle(title.replace(hashtagRegex, "").replace(/  +/g, " ").trim());
+    const hashtagResult = await extractHashtagsToTags(title, tags);
+    if (hashtagResult.foundHashtags) {
+      setTitle(hashtagResult.cleanedText);
+      if (hashtagResult.tagsChanged) setTags(hashtagResult.tags);
     }
 
     setStep(2);
@@ -718,67 +566,39 @@ function WritePageContent() {
 
   const canGoNextRaw = title.trim().length > 0 && content.trim().length > 0;
 
+  const handleDeletePost = () => {
+    confirmDeleteDraft({
+      draftId,
+      deleting,
+      setDeleting,
+      confirmText: t("deleteConfirmContent"),
+      successText: t("deleted"),
+      failedText: t("deleteFailed"),
+      onDeleted: () => router.push("/dashboard"),
+    });
+  };
+
   const headerRight = (
-    <div className="flex items-center gap-2">
-      {step === 1 ? (
-        <button
-          onClick={goToStep2}
-          disabled={!canGoNextRaw}
-          className="t-btn accept !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-        >
-          {t("nextStep")}
-        </button>
-      ) : (
-        <>
-          {!isPublished ? (
-            <button
-              onClick={() => savePost("draft")}
-              disabled={savingAs !== null || !title.trim()}
-              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-            >
-              {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (!draftId || deleting) return;
-                feedimAlert("question", t("deleteConfirmContent"), {
-                  showYesNo: true,
-                  onYes: async () => {
-                    setDeleting(true);
-                    try {
-                      const res = await fetch(`/api/posts/${draftId}`, { method: "DELETE" });
-                      if (res.ok) {
-                        feedimAlert("success", t("deleted"));
-                        router.push("/dashboard");
-                      } else {
-                        feedimAlert("error", t("deleteFailed"));
-                      }
-                    } catch {
-                      feedimAlert("error", t("deleteFailed"));
-                    } finally {
-                      setDeleting(false);
-                    }
-                  },
-                });
-              }}
-              disabled={deleting || savingAs !== null}
-              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] !text-error disabled:opacity-40"
-            >
-              {deleting ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("deleteBtn")}
-            </button>
-          )}
-          <button
-            onClick={() => savePost("published")}
-            disabled={savingAs !== null || !title.trim() || !content.trim()}
-            className="t-btn accept relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-            aria-label={isPublished ? t("updateBtn") : t("publishBtn")}
-          >
-            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : isPublished ? t("updateBtn") : t("publishBtn")}
-          </button>
-        </>
-      )}
-    </div>
+    <CreateHeaderActions
+      step={step}
+      isPublished={isPublished}
+      nextLabel={t("nextStep")}
+      onNext={goToStep2}
+      nextDisabled={!canGoNextRaw}
+      saveLabel={t("save")}
+      onSaveDraft={() => savePost("draft")}
+      saveDisabled={savingAs !== null || !title.trim()}
+      saveLoading={savingAs === "draft"}
+      deleteLabel={t("deleteBtn")}
+      onDelete={handleDeletePost}
+      deleteDisabled={deleting || savingAs !== null}
+      deleteLoading={deleting}
+      publishLabel={t("publishBtn")}
+      updateLabel={t("updateBtn")}
+      onPublish={() => savePost("published")}
+      publishDisabled={savingAs !== null || !title.trim() || !content.trim()}
+      publishLoading={savingAs === "published"}
+    />
   );
 
   return (
@@ -851,78 +671,28 @@ function WritePageContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tags */}
               <div>
-                <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
-                {tags.length < VALIDATION.postTags.max && (
-                  <div ref={tagAutocompleteRef} className="relative">
-                    <input
-                      type="text"
-                      value={tagSearch}
-                      onChange={e => setTagSearch(sanitizeTagInput(e.target.value))}
-                      onKeyDown={handleTagKeyDown}
-                      maxLength={30}
-                      onFocus={() => {
-                        if (tagSearch.trim()) void searchTags(tagSearch);
-                      }}
-                      placeholder={t("tagSearchPlaceholder")}
-                      className="input-modern w-full !pr-[110px]"
-                    />
-                    {/* Suggestions dropdown */}
-                    {tagSuggestions.length > 0 && (
-                      <div
-                        className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto"
-                        onMouseDown={(e) => e.preventDefault()}
-                      >
-                        {tagSuggestions.map((s, i) => (
-                          <button
-                            type="button"
-                            key={s.id}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => addTag(s)}
-                            onMouseEnter={() => setTagHighlight(i)}
-                            className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${
-                              i === tagHighlight ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"
-                            }`}
-                          >
-                            <span className="text-accent-main">#</span><span className="font-semibold truncate">{s.name}</span>
-                            {s.post_count !== undefined && (
-                              <span className="ml-auto text-[0.7rem] text-text-muted font-medium shrink-0 pl-2">{formatCount(s.post_count || 0)} {t("postsCount")}</span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {/* Create new tag button */}
-                    {tagSearch.trim() && tagSuggestions.length === 0 && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={createAndAddTag}
-                      disabled={tagCreating}
-                      className="absolute right-3 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
-                    >
-                        {tagCreating ? (
-                          <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
-                        ) : (
-                          <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {tags.map(tag => (
-                      <span key={tag.id} className="flex items-center gap-1.5 bg-accent-main/10 text-accent-main text-sm font-medium px-3 py-1.5 rounded-full">
-                        <span title={`#${tag.name}`}>{formatDisplayTagLabel(tag.name)}</span>
-                        <button onClick={() => removeTag(tag.id)} className="hover:text-error transition">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-text-muted mt-1.5 text-right font-semibold mr-2">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
-
+                <CreateTagInput
+                  label={t("tagsLabel")}
+                  tags={tags}
+                  maxTags={VALIDATION.postTags.max}
+                  tagSearch={tagSearch}
+                  tagSuggestions={tagSuggestions}
+                  tagHighlight={tagHighlight}
+                  tagCreating={tagCreating}
+                  placeholder={t("tagSearchPlaceholder")}
+                  createLabel={t("createTag")}
+                  postsCountLabel={t("postsCount")}
+                  tagUnitLabel={t("tagUnit")}
+                  autocompleteRef={tagAutocompleteRef}
+                  locale={locale}
+                  onTagSearchChange={handleTagSearchChange}
+                  onTagKeyDown={handleTagKeyDown}
+                  onTagFocus={handleTagFocus}
+                  onTagHighlight={setTagHighlight}
+                  onAddTag={addTag}
+                  onCreateTag={createAndAddTag}
+                  onRemoveTag={removeTag}
+                />
               </div>
 
               {/* Cover Image with drag & drop */}
@@ -970,14 +740,8 @@ function WritePageContent() {
                               setCropSrc(featuredImage);
                             });
                             if (!croppedUrl) { setImageUploading(false); return; }
-                            const blob = await fetch(croppedUrl).then(r => r.blob());
-                            const uploadFile = new File([blob], `cover-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-                            const formData = new FormData();
-                            formData.append('file', uploadFile);
-                            formData.append('fileName', uploadFile.name);
-                            const uploadRes = await fetch('/api/upload/image', { method: 'POST', body: formData });
-                            const uploadData = await uploadRes.json();
-                            if (uploadRes.ok && uploadData.url) setFeaturedImage(uploadData.url);
+                            const uploadData = await uploadGeneratedImageDataUrl(croppedUrl, "cover");
+                            setFeaturedImage(uploadData.url);
                           } catch {} finally { setImageUploading(false); }
                         }}
                         className="text-sm text-accent-main hover:text-accent-main/80 font-medium py-1.5 transition"
@@ -1059,88 +823,62 @@ function WritePageContent() {
             </div>
 
             {/* Settings */}
-            <div>
-              <div className="cursor-pointer select-none" onClick={() => setSettingsExpanded(!settingsExpanded)}>
-                <div className="flex items-center justify-between w-full text-left">
-                  <span className="block text-sm font-semibold">{t("settingsLabel")}</span>
-                  <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${settingsExpanded ? "rotate-180" : ""}`} />
-                </div>
-                {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("publishedFieldLocked")}</p>}
-                <p className="text-[0.7rem] text-text-muted/60 leading-relaxed mt-1.5">{t("settingsDesc")}</p>
-              </div>
-              {settingsExpanded && <div className="space-y-1 mt-3">
-                <button
+            <CreateSettingsSection
+              label={t("settingsLabel")}
+              description={t("settingsDesc")}
+              expanded={settingsExpanded}
+              onToggle={() => setSettingsExpanded(!settingsExpanded)}
+              lockedMessage={isPublished ? t("publishedFieldLocked") : undefined}
+            >
+                <CreateSettingsToggle
+                  label={t("allowComments")}
+                  description={t("allowCommentsDesc")}
+                  checked={allowComments}
                   disabled={isPublished}
-                  onClick={() => setAllowComments(!allowComments)}
-                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("allowComments")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
-                <button
+                  onToggle={() => setAllowComments(!allowComments)}
+                />
+                <CreateSettingsToggle
+                  label={t("forKids")}
+                  description={t("forKidsDesc")}
+                  checked={isForKids}
                   disabled={isPublished}
-                  onClick={() => setIsForKids(!isForKids)}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("forKids")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("forKidsDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${isForKids ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isForKids ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  onToggle={() => setIsForKids(!isForKids)}
+                  paddingClassName="px-2 py-3"
+                />
                 <div>
-                <button
+                <CreateSettingsToggle
+                  label={t("aiContent")}
+                  description={t("aiContentDesc")}
+                  checked={isAiContent}
                   disabled={isPublished}
-                  onClick={() => setIsAiContent(!isAiContent)}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("aiContent")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  onToggle={() => setIsAiContent(!isAiContent)}
+                  paddingClassName="px-2 py-3"
+                />
                 <p className="pt-0.5 pb-0 text-[0.7rem] text-text-muted leading-snug">
                   {t("aiContentWarning")}{" "}
                   <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
                 </p>
                 </div>
                 <div>
-                <button
+                <CreateSettingsToggle
+                  label={t("copyrightProtection")}
+                  description={isPublished && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}
+                  checked={copyrightProtected}
                   disabled={isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected)}
-                  onClick={() => {
+                  disabledClassName="opacity-50 cursor-not-allowed"
+                  onToggle={() => {
                     if (!user?.copyrightEligible) return;
                     if (isPublished) return;
-                    if (content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length < 50) return;
+                    if (content.replace(/<[^>]*>/g, " ").trim().split(/\s+/).filter(Boolean).length < 50) return;
                     setCopyrightProtected(!copyrightProtected);
                   }}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div>
-                      <p className="text-sm font-semibold">{t("copyrightProtection")}</p>
-                      <p className="text-xs text-text-muted mt-0.5">{isPublished && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}</p>
-                    </div>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  paddingClassName="px-2 py-3"
+                />
                 {!user?.copyrightEligible && (
                   <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
-              </div>}
-            </div>
+            </CreateSettingsSection>
 
             <PostMetaFields
               metaTitle={metaTitle} setMetaTitle={setMetaTitle}

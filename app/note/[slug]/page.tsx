@@ -7,19 +7,13 @@ import { getAuthUserId } from "@/lib/auth";
 import PostInteractionBar from "@/components/PostInteractionBar";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import RelatedPosts from "@/components/RelatedPosts";
-import Link from "next/link";
 
-import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
+import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import PostViewTracker from "@/components/PostViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
-import VerifiedBadge from "@/components/VerifiedBadge";
 import { decodeId } from "@/lib/hashId";
 import { headers } from "next/headers";
 
-function getBadgeVariantServer(premiumPlan?: string | null): "default" | "max" {
-  return premiumPlan === "max" || premiumPlan === "business" ? "max" : "default";
-}
-import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import ExpandableMentionText from "@/components/ExpandableMentionText";
 import GuestJoinPrompt from "@/components/GuestJoinPrompt";
@@ -27,7 +21,6 @@ import GuestJoinPrompt from "@/components/GuestJoinPrompt";
 import { getTranslations, getLocale } from "next-intl/server";
 import { getAlternateLanguages } from "@/lib/seo";
 import { getCachedPost } from "@/lib/postQueries";
-import LazyAvatar from "@/components/LazyAvatar";
 import { stripHtmlToText } from "@/lib/htmlToText";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPageRecommendations";
@@ -35,6 +28,8 @@ import { buildContentMetadata } from "@/lib/socialMetadata";
 import { getShareablePostUrl } from "@/lib/utils";
 import AdBanner from "@/components/AdBanner";
 import NoteFeaturedImage from "@/components/NoteFeaturedImage";
+import DetailAuthorRow from "@/components/detail/DetailAuthorRow";
+import DetailTagList from "@/components/detail/DetailTagList";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -164,24 +159,29 @@ export default async function NotePage({ params, searchParams }: PageProps) {
             isBoosted={boostInfo.isBoosted}
           />
 
-          <div className="flex items-center gap-2 mb-2">
-            <Link href={`/u/${author?.username}`} className="shrink-0">
-              <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
-            </Link>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
-                {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
-              </div>
+          <DetailAuthorRow
+            authorUsername={author?.username}
+            authorUserId={author?.user_id}
+            authorName={authorName}
+            avatarUrl={author?.avatar_url}
+            isVerified={author?.is_verified}
+            premiumPlan={author?.premium_plan}
+            role={author?.role}
+            initialFollowing={interactions.followingAuthor}
+            initialRequested={interactions.requestedAuthor}
+            initialFollowsMe={interactions.authorFollowsMe}
+            followStateResolved
+            compactFollow
+            className="flex items-center gap-2 mb-2"
+            secondaryLine={
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
-                {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
-                {post.visibility && (
-                  <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
-                )}
+                {post.published_at ? <span>{formatRelativeDate(post.published_at)}</span> : null}
+                {post.visibility ? (
+                  <span>{post.visibility === "followers" ? t("visibilityFollowers") : post.visibility === "only_me" ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+                ) : null}
               </div>
-            </div>
-            <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved compact />
-          </div>
+            }
+          />
 
           <ExpandableMentionText
             text={noteText}
@@ -202,17 +202,7 @@ export default async function NotePage({ params, searchParams }: PageProps) {
             <p className="text-[0.75rem] text-text-muted mt-[4px]">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
           )}
 
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  title={`#${tag.name}`}
-                  className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
-                  {formatDisplayTagLabel(tag.name)}
-                </Link>
-              ))}
-            </div>
-          )}
+          <DetailTagList tags={tags} />
 
           {!currentUserId && (
             <GuestJoinPrompt

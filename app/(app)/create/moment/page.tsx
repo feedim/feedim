@@ -1,40 +1,68 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { smartBack } from "@/lib/smartBack";
-import { X, Plus, Upload, Film, Music, Clapperboard, Scissors, ChevronDown, Smile } from "lucide-react";
-import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
-import PostMetaFields from "@/components/PostMetaFields";
+import { X, Upload, Film, Music, Clapperboard, Scissors, ChevronDown, Smile } from "lucide-react";
+import CreateHeaderActions from "@/components/create/CreateHeaderActions";
+import { fetchCreateDraftPost } from "@/components/create/api";
+import { confirmDeleteDraft } from "@/components/create/deleteDraft";
+import { uploadGeneratedImageDataUrl } from "@/components/create/imageUpload";
+import {
+  generateVideoThumbnail,
+  loadVideoMetadata,
+} from "@/components/create/videoMedia";
+import useManagedVideoMedia from "@/components/create/useManagedVideoMedia";
+import { redirectAfterCreateSave } from "@/components/create/navigation";
+import CreateTagInput from "@/components/create/CreateTagInput";
+import CreateSettingsSection from "@/components/create/CreateSettingsSection";
+import CreateSettingsToggle from "@/components/create/CreateSettingsToggle";
+import { extractHashtagsToTags } from "@/components/create/hashtags";
+import useBeforeUnloadGuard from "@/components/create/useBeforeUnloadGuard";
+import useCreateSaveState from "@/components/create/useCreateSaveState";
+import { useCreateTagManager } from "@/components/create/useCreateTagManager";
+import type { CreateTag as Tag } from "@/components/create/types";
 import VideoEditorPreview from "@/components/VideoEditorPreview";
 import { createClient } from "@/lib/supabase/client";
-import { emitNavigationStart } from "@/lib/navigationProgress";
 import { feedimAlert } from "@/components/FeedimAlert";
 import {
   VALIDATION,
   MOMENT_MAX_DURATION,
   MOMENT_MAX_SIZE_MB,
 } from "@/lib/constants";
-import { formatCount, formatDisplayTagLabel, getPostUrl, sanitizeTagInput } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import BlurImage from "@/components/BlurImage";
 import AppLayout from "@/components/AppLayout";
-import CropModal from "@/components/modals/CropModal";
-import SoundPickerModal, { type SoundItem } from "@/components/modals/SoundPickerModal";
-import VideoTrimModal from "@/components/modals/VideoTrimModal";
-import ThumbnailPickerModal from "@/components/modals/ThumbnailPickerModal";
+import type { SoundItem } from "@/components/modals/SoundPickerModal";
 import { useMention } from "@/lib/useMention";
 import MentionDropdown from "@/components/MentionDropdown";
 import { openFilePicker } from "@/lib/openFilePicker";
 
-interface Tag {
-  id: number | string;
-  name: string;
-  slug: string;
-  post_count?: number;
-  virtual?: boolean;
-}
+const EmojiPickerPanel = dynamic(
+  () => import("@/components/modals/EmojiPickerPanel"),
+  { ssr: false },
+);
+const CropModal = dynamic(() => import("@/components/modals/CropModal"), {
+  ssr: false,
+});
+const SoundPickerModal = dynamic(
+  () => import("@/components/modals/SoundPickerModal"),
+  { ssr: false },
+);
+const VideoTrimModal = dynamic(
+  () => import("@/components/modals/VideoTrimModal"),
+  { ssr: false },
+);
+const ThumbnailPickerModal = dynamic(
+  () => import("@/components/modals/ThumbnailPickerModal"),
+  { ssr: false },
+);
+const PostMetaFields = dynamic(() => import("@/components/PostMetaFields"), {
+  ssr: false,
+  loading: () => <div className="h-24 rounded-[14px] bg-bg-secondary animate-pulse" />,
+});
 
 export default function MomentWritePage() {
   return (
@@ -65,8 +93,6 @@ function MomentWriteContent() {
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const tagAutocompleteRef = useRef<HTMLDivElement>(null);
-  const saveInFlightRef = useRef(false);
   const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   const [step, setStep] = useState(1);
@@ -81,16 +107,10 @@ function MomentWriteContent() {
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const uploadAbortRef = useRef<AbortController | null>(null);
 
   // Content (Step 2)
   const [title, setTitle] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [tagSearch, setTagSearch] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
-  const [tagHighlight, setTagHighlight] = useState(-1);
-  const [tagCreating, setTagCreating] = useState(false);
   const [thumbnail, setThumbnail] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
@@ -120,10 +140,34 @@ function MomentWriteContent() {
   const [settingsExpanded, setSettingsExpanded] = useState(true);
 
   // State
-  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
+  const { savingAs, startSaving, finishSaving } = useCreateSaveState();
   const [deleting, setDeleting] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
+
+  const {
+    tagAutocompleteRef,
+    tags,
+    setTags,
+    tagSearch,
+    tagSuggestions,
+    tagHighlight,
+    tagCreating,
+    addTag,
+    createAndAddTag,
+    removeTag,
+    handleTagKeyDown,
+    handleTagSearchChange,
+    handleTagFocus,
+    setTagHighlight,
+  } = useCreateTagManager({
+    tagMinLength: (min) => t("tagMinLength", { min }),
+    tagMaxLength: (max) => t("tagMaxLength", { max }),
+    tagInvalidChars: t("tagInvalidChars"),
+    tagOnlyNumbers: t("tagOnlyNumbers"),
+    tagCreateFailed: t("tagCreateFailed"),
+    tagCreateFailedRetry: t("tagCreateFailedRetry"),
+  });
 
   const handleEmojiSelect = (emoji: string) => {
     const textarea = titleRef.current;
@@ -159,13 +203,7 @@ function MomentWriteContent() {
     }
   }, [step, loadingDraft]);
 
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges && (title.trim() || videoUrl)) e.preventDefault();
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges, title, videoUrl]);
+  useBeforeUnloadGuard(hasUnsavedChanges && Boolean(title.trim() || videoUrl));
 
   // Load edit mode
   useEffect(() => {
@@ -180,36 +218,32 @@ function MomentWriteContent() {
   const loadDraft = async (slug: string) => {
     setLoadingDraft(true);
     try {
-      const res = await fetch(`/api/posts/${slug}`);
-      const data = await res.json();
-      if (res.ok && data.post) {
-        setTitle(data.post.title || "");
-        setDraftId(data.post.id);
-        setIsPublished(data.post.status === 'published');
-        setVideoUrl(data.post.video_url || "");
-        setVideoDuration(data.post.video_duration || 0);
-        setThumbnail(data.post.video_thumbnail || data.post.featured_image || "");
-        setAllowComments(data.post.allow_comments !== false);
-        setIsAiContent(data.post.is_ai_content === true);
-        setVisibility(data.post.visibility || "public");
-        setCopyrightProtected(data.post.copyright_protected === true);
-        if (data.post.meta_title) setMetaTitle(data.post.meta_title);
-        if (data.post.meta_description) setMetaDescription(data.post.meta_description);
-        if (data.post.meta_keywords) setMetaKeywords(data.post.meta_keywords);
-        const postTags = (data.post.post_tags || [])
-          .map((pt: { tags: Tag }) => pt.tags)
-          .filter(Boolean);
-        setTags(postTags);
-        // Sound
-        const sound = data.post.sounds || (Array.isArray(data.post.sounds) ? data.post.sounds[0] : null);
-        if (sound) {
-          if (sound.is_original) {
-            setUseOriginalSound(true);
-            setSelectedSound(null);
-          } else {
-            setSelectedSound(sound);
-            setUseOriginalSound(false);
-          }
+      const post = await fetchCreateDraftPost(slug);
+      setTitle(post.title || "");
+      setDraftId(post.id);
+      setIsPublished(post.status === "published");
+      setVideoUrl(post.video_url || "");
+      setVideoDuration(post.video_duration || 0);
+      setThumbnail(post.video_thumbnail || post.featured_image || "");
+      setAllowComments(post.allow_comments !== false);
+      setIsAiContent(post.is_ai_content === true);
+      setVisibility(post.visibility || "public");
+      setCopyrightProtected(post.copyright_protected === true);
+      if (post.meta_title) setMetaTitle(post.meta_title);
+      if (post.meta_description) setMetaDescription(post.meta_description);
+      if (post.meta_keywords) setMetaKeywords(post.meta_keywords);
+      const postTags = (post.post_tags || [])
+        .map((pt: { tags: Tag }) => pt.tags)
+        .filter(Boolean);
+      setTags(postTags);
+      const sound = post.sounds || (Array.isArray(post.sounds) ? post.sounds[0] : null);
+      if (sound) {
+        if (sound.is_original) {
+          setUseOriginalSound(true);
+          setSelectedSound(null);
+        } else {
+          setSelectedSound(sound);
+          setUseOriginalSound(false);
         }
       }
     } catch {
@@ -316,411 +350,83 @@ function MomentWriteContent() {
     };
   }, [selectedSound, videoPreviewUrl, videoUrl]);
 
-  // Validate video duration & orientation
   const validateVideo = (file: File): Promise<{ duration: number; isVertical: boolean }> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.muted = true;
-      video.playsInline = true;
-      const url = URL.createObjectURL(file);
-      let settled = false;
-
-      const finish = (dur: number, w: number, h: number) => {
-        if (settled) return;
-        settled = true;
-        URL.revokeObjectURL(url);
-        if (dur && isFinite(dur) && dur > MOMENT_MAX_DURATION) {
-          reject(new Error(t("momentMaxDuration", { seconds: MOMENT_MAX_DURATION })));
-        } else {
-          const isVertical = h >= w;
-          resolve({ duration: dur && isFinite(dur) ? Math.round(dur) : 0, isVertical });
-        }
+    return loadVideoMetadata(file).then(({ duration, width, height }) => {
+      if (duration > MOMENT_MAX_DURATION) {
+        throw new Error(t("momentMaxDuration", { seconds: MOMENT_MAX_DURATION }));
+      }
+      return {
+        duration,
+        isVertical: height >= width,
       };
-
-      const fallback = () => {
-        if (settled) return;
-        settled = true;
-        URL.revokeObjectURL(url);
-        resolve({ duration: 0, isVertical: true });
-      };
-
-      video.onloadedmetadata = () => finish(video.duration, video.videoWidth, video.videoHeight);
-      video.onloadeddata = () => { if (!settled) finish(video.duration, video.videoWidth, video.videoHeight); };
-      video.oncanplay = () => { if (!settled) finish(video.duration, video.videoWidth, video.videoHeight); };
-      video.onerror = () => fallback();
-      setTimeout(() => { if (!settled) finish(0, 0, 0); }, 20000);
-
-      video.src = url;
-      video.load();
     });
   };
 
-  // Auto-generate thumbnail from first frame
   const generateThumbnail = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement("video");
-      video.preload = "auto";
-      video.muted = true;
-      video.playsInline = true;
-      video.setAttribute("playsinline", "");
-      video.setAttribute("webkit-playsinline", "");
-      const url = URL.createObjectURL(file);
-      let settled = false;
-
-      const cleanup = () => { URL.revokeObjectURL(url); };
-
-      const tryCapture = () => {
-        if (settled) return;
-        settled = true;
-        try {
-          const w = video.videoWidth || 640;
-          const h = video.videoHeight || 360;
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) { cleanup(); reject(new Error("Canvas failed")); return; }
-          ctx.drawImage(video, 0, 0, w, h);
-          const pixel = ctx.getImageData(0, 0, 1, 1).data;
-          if (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0 && pixel[3] === 0) {
-            cleanup(); reject(new Error("Blank frame"));
-            return;
-          }
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-          cleanup();
-          resolve(dataUrl);
-        } catch {
-          cleanup();
-          reject(new Error(t("thumbnailCreateFailed")));
-        }
-      };
-
-      const onFrameReady = () => {
-        if (video.duration > 1 && video.currentTime < 0.5) {
-          video.currentTime = 1;
-        } else {
-          tryCapture();
-        }
-      };
-      video.onloadeddata = onFrameReady;
-      video.oncanplay = () => { if (!settled) onFrameReady(); };
-      video.onseeked = () => tryCapture();
-      video.onerror = () => { if (!settled) { settled = true; cleanup(); reject(new Error(t("videoFileReadError"))); } };
-      setTimeout(() => { if (!settled) { settled = true; cleanup(); reject(new Error("Timeout")); } }, 20000);
-
-      video.src = url;
-      video.load();
+    return generateVideoThumbnail(file, {
+      thumbnailCreateFailed: t("thumbnailCreateFailed"),
+      videoFileReadError: t("videoFileReadError"),
     });
   };
 
-  const handleVideoSelect = async (file: File) => {
-    if (!file.type.startsWith("video/")) {
-      feedimAlert("error", t("videoUnsupportedFormat"));
-      return;
-    }
-    if (file.size > MOMENT_MAX_SIZE_MB * 1024 * 1024) {
-      feedimAlert("error", t("videoMaxSize", { size: MOMENT_MAX_SIZE_MB }));
-      return;
-    }
-
-    let result: { duration: number; isVertical: boolean };
-    try {
-      result = await validateVideo(file);
-    } catch (err) {
-      feedimAlert("error", (err as Error).message);
-      return;
-    }
-
-    if (!result.isVertical && result.duration > 0) {
-      feedimAlert("error", t("momentVerticalRequired"));
-      return;
-    }
-
-    setVideoFile(file);
-    setVideoDuration(result.duration);
-    setVideoPreviewUrl(URL.createObjectURL(file));
-    // Start upload state immediately — overlay shows from the start, video stays muted & disabled
-    setUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const thumb = await generateThumbnail(file);
-      setThumbnail(thumb);
-    } catch { /* user can add manually */ }
-
-    // Extract video frame hashes for copyright check (non-blocking)
-    import("@/lib/videoFrameHash")
-      .then(({ extractVideoFrameHashes }) => extractVideoFrameHashes(file))
-      .then(hashes => setFrameHashes(hashes.map(fh => ({ frameIndex: fh.frameIndex, hash: fh.hash }))))
-      .catch(() => { /* frame hash extraction failed, continue without */ });
-
-    // Extract NSFW frame samples for server-side scanning (non-blocking)
-    import("@/lib/videoFrameHash")
-      .then(({ extractVideoFrameSamples }) => extractVideoFrameSamples(file))
-      .then(async (blobs) => {
-        const urls: string[] = [];
-        for (const blob of blobs) {
-          try {
-            const fd = new FormData();
-            fd.append('file', new File([blob], `nsfw-sample-${Date.now()}.jpg`, { type: 'image/jpeg' }));
-            fd.append('fileName', `nsfw-sample-${Date.now()}.jpg`);
-            const res = await fetch('/api/upload/image', { method: 'POST', body: fd });
-            const data = await res.json();
-            if (res.ok && data.url) urls.push(data.url);
-          } catch { /* skip frame */ }
-        }
-        setNsfwFrameUrls(urls);
-      })
-      .catch(() => { /* frame sampling failed, continue without */ });
-
-    // Extract audio fingerprint for copyright check (non-blocking)
-    import("@/lib/audioFingerprint")
-      .then(({ extractAudioFingerprint }) => extractAudioFingerprint(file))
-      .then(hashes => setAudioHashes(hashes.map(ah => ({ chunkIndex: ah.chunkIndex, hash: ah.hash }))))
-      .catch(() => { /* audio fingerprint extraction failed, continue without */ });
-
-    // Optimize MP4 for instant playback (defragment fMP4 or move moov atom)
-    let uploadFile = file;
-    try {
-      const { optimizeVideo } = await import("@/lib/videoOptimize");
-      uploadFile = await optimizeVideo(file);
-    } catch { /* optimization failed, upload original */ }
-
-    uploadVideo(uploadFile);
-  };
-
-  const uploadVideo = async (file: File) => {
-    const abort = new AbortController();
-    uploadAbortRef.current = abort;
-    setUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const initRes = await fetch("/api/upload/video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type || "video/mp4",
-          fileSize: file.size,
-        }),
-        signal: abort.signal,
-      });
-      const initData = await initRes.json();
-      if (!initRes.ok) throw new Error(initData.error || t("uploadInitFailed"));
-
-      const { uploadUrl, publicUrl } = initData;
-
-      await new Promise<void>((resolve, reject) => {
-        const ct = file.type || "video/mp4";
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl);
-        xhr.setRequestHeader("Content-Type", ct);
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setUploadProgress(Math.round((e.loaded / e.total) * 95));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(t("uploadFailed", { status: xhr.status })));
-        };
-
-        xhr.onerror = () => reject(new Error(t("videoUploadFailed")));
-        xhr.onabort = () => reject(new DOMException(t("uploadCancelled"), "AbortError"));
-
-        abort.signal.addEventListener("abort", () => xhr.abort());
-        xhr.send(file);
-      });
-
-      setVideoUrl(publicUrl);
-      setUploadProgress(100);
-    } catch (err) {
-      if ((err as Error).name === "AbortError") return;
-      feedimAlert("error", (err as Error).message || t("videoUploadFailed"));
-      setVideoFile(null);
-      setVideoPreviewUrl("");
-      setVideoDuration(0);
-    } finally {
-      uploadAbortRef.current = null;
-      setUploading(false);
-    }
-  };
-
-  const handleVideoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleVideoSelect(file);
-    e.target.value = "";
-  };
-
-  const handleVideoDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith("video/"));
-    if (file) handleVideoSelect(file);
-  };
-
-  const removeVideo = () => {
-    if (uploadAbortRef.current) uploadAbortRef.current.abort();
-    setVideoFile(null);
-    setVideoUrl("");
-    setVideoPreviewUrl("");
-    setVideoDuration(0);
-    setUploadProgress(0);
-    setUploading(false);
-    setThumbnail("");
-  };
-
-  // Trim handler — only updates preview, re-upload happens at step transition
-  const handleTrim = async (trimmedFile: File, newDuration: number) => {
-    setVideoFile(trimmedFile);
-    setVideoDuration(newDuration);
-    const newUrl = URL.createObjectURL(trimmedFile);
-    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
-    setVideoPreviewUrl(newUrl);
-    setPreviewPaused(false); // ensure auto-play after trim
-
-    // Regenerate thumbnail from trimmed file
-    try {
-      const thumb = await generateThumbnail(trimmedFile);
-      setThumbnail(thumb);
-    } catch { /* keep existing */ }
-
-    setVideoUrl(""); // re-upload will happen at goToStep2
-  };
-
-  const searchTagsFn = useCallback(async (q: string) => {
-    if (q.trim().length < 1) { setTagSuggestions([]); setTagHighlight(-1); return; }
-    try {
-      const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      setTagSuggestions(
-        (data.tags || [])
-          .filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
-          .slice(0, 5)
-      );
-      setTagHighlight(-1);
-    } catch { setTagSuggestions([]); }
-  }, [tags]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => searchTagsFn(tagSearch), 300);
-    return () => clearTimeout(timer);
-  }, [tagSearch, searchTagsFn]);
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!tagAutocompleteRef.current?.contains(event.target as Node)) {
-        setTagSuggestions([]);
-        setTagHighlight(-1);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
-
-  const addTag = (tag: Tag) => {
-    if (tags.length >= VALIDATION.postTags.max) return;
-    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
-    setTags([...tags, tag]);
-    setTagSearch("");
-    setTagSuggestions([]);
-    setTagHighlight(-1);
-  };
-
-  const createAndAddTag = async () => {
-    const trimmed = sanitizeTagInput(tagSearch).trim();
-    if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
-    if (trimmed.length < VALIDATION.tagName.min) { feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min })); return; }
-    if (trimmed.length > VALIDATION.tagName.max) { feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max })); return; }
-    if (!VALIDATION.tagName.pattern.test(trimmed)) { feedimAlert("error", t("tagInvalidChars")); return; }
-    if (/^\d+$/.test(trimmed)) { feedimAlert("error", t("tagOnlyNumbers")); return; }
-    setTagCreating(true);
-    try {
-      const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
-      const data = await res.json();
-      if (res.ok && data.tag) addTag(data.tag);
-      else feedimAlert("error", data.error || t("tagCreateFailed"));
-    } catch { feedimAlert("error", t("tagCreateFailed")); } finally { setTagCreating(false); }
-  };
-
-  const removeTag = (tagId: number | string) => setTags(tags.filter(t => t.id !== tagId));
-
-  const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && sanitizeTagInput(e.key) === "") {
-      e.preventDefault();
-      return;
-    }
-    if (tagSuggestions.length > 0) {
-      if (e.key === "ArrowDown") { e.preventDefault(); setTagHighlight(prev => prev < tagSuggestions.length - 1 ? prev + 1 : 0); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); setTagHighlight(prev => prev > 0 ? prev - 1 : tagSuggestions.length - 1); }
-      else if (e.key === "Enter") { e.preventDefault(); if (tagHighlight >= 0) addTag(tagSuggestions[tagHighlight]); else if (tagSearch.trim()) createAndAddTag(); }
-      else if (e.key === "Escape") { setTagSuggestions([]); setTagHighlight(-1); }
-    } else if (e.key === "Enter" || e.key === ",") { e.preventDefault(); if (tagSearch.trim()) createAndAddTag(); }
-  };
-
-  // Thumbnail upload
-  const handleThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      if (!file.type.startsWith("image/")) throw new Error(t("invalidFile"));
-      const {
-        compressImage,
-        fileToDataUrl,
-        getImageDimensions,
-        isAspectClose,
-        isSourceImageTooLarge,
-        MAX_SOURCE_IMAGE_SIZE_MB,
-      } = await import("@/lib/imageCompression");
-      if (isSourceImageTooLarge(file)) throw new Error(t("fileTooLarge", { size: MAX_SOURCE_IMAGE_SIZE_MB }));
-      const compressed = await compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
-      const dataUrl = await fileToDataUrl(compressed).catch(() => {
-        throw new Error(t("fileReadError"));
-      });
-      const actualRatio = await getImageDimensions(dataUrl)
-        .then((dims) => dims.ratio)
-        .catch(() => 9 / 16);
-      if (isAspectClose(actualRatio, 9 / 16)) {
-        setThumbnail(dataUrl);
-      } else {
-        setCropSrc(dataUrl);
-      }
-    } catch { feedimAlert("error", t("imageUploadFailed")); }
-    e.target.value = "";
-  };
+  const {
+    handleVideoSelect,
+    handleVideoInput,
+    handleVideoDrop,
+    removeVideo,
+    handleTrim,
+    handleThumbUpload,
+    uploadVideo,
+  } = useManagedVideoMedia({
+    maxSizeMb: MOMENT_MAX_SIZE_MB,
+    targetRatio: 9 / 16,
+    currentPreviewUrl: videoPreviewUrl,
+    unsupportedFormatMessage: t("videoUnsupportedFormat"),
+    fileTooLargeMessage: t("videoMaxSize", { size: MOMENT_MAX_SIZE_MB }),
+    invalidFileMessage: t("invalidFile"),
+    fileReadErrorMessage: t("fileReadError"),
+    imageUploadFailedMessage: t("imageUploadFailed"),
+    uploadErrorFallback: t("videoUploadFailed"),
+    uploadMessages: {
+      uploadInitFailed: t("uploadInitFailed"),
+      uploadFailed: (status) => t("uploadFailed", { status }),
+      videoUploadFailed: t("videoUploadFailed"),
+      uploadCancelled: t("uploadCancelled"),
+    },
+    reportError: (message) => feedimAlert("error", message),
+    validateSelection: validateVideo,
+    getDuration: (result) => result.duration,
+    getValidationError: (result) =>
+      !result.isVertical && result.duration > 0 ? t("momentVerticalRequired") : null,
+    generateThumbnail,
+    setVideoFile,
+    setVideoUrl,
+    setVideoDuration,
+    setVideoPreviewUrl,
+    setUploading,
+    setUploadProgress,
+    setThumbnail,
+    setPreviewPaused,
+    setCropSrc,
+    setFrameHashes,
+    setAudioHashes,
+    setNsfwFrameUrls,
+    progressMap: (fraction) => Math.round(fraction * 95),
+  });
 
   const savePost = async (status: "draft" | "published") => {
-    if (saveInFlightRef.current) return;
-    saveInFlightRef.current = true;
-    setSavingAs(status);
+    if (!startSaving(status)) return;
     let shouldReleaseLock = true;
 
     if (status === "published" && !videoUrl) { feedimAlert("error", t("videoNotUploaded")); return; }
     if (status === "published" && uploading) { feedimAlert("error", t("videoStillUploading")); return; }
 
-    // Extract #hashtags from title before saving
-    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
     let finalTitle = title;
-    let finalTags = [...tags];
-    const htMatches = [...title.matchAll(hashtagRegex)];
-    if (htMatches.length > 0) {
-      const existingNames = new Set(finalTags.map(tg => tg.name.toLowerCase()));
-      for (const match of htMatches) {
-        const name = match[1];
-        if (name.length < VALIDATION.tagName.min) continue;
-        if (/^\d+$/.test(name)) continue;
-        if (existingNames.has(name.toLowerCase()) || finalTags.some(tg => tg.name.toLowerCase() === name.toLowerCase())) continue;
-        if (finalTags.length >= VALIDATION.postTags.max) break;
-        try {
-          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-          const data = await res.json();
-          if (res.ok && data.tag) { finalTags.push(data.tag); existingNames.add(name.toLowerCase()); }
-        } catch { /* skip */ }
-      }
-      finalTitle = title.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
+    let finalTags = tags;
+    const hashtagResult = await extractHashtagsToTags(title, tags);
+    if (hashtagResult.foundHashtags) {
+      finalTitle = hashtagResult.cleanedText;
+      finalTags = hashtagResult.tags;
     }
 
     try {
@@ -728,18 +434,9 @@ function MomentWriteContent() {
       let thumbBlurhash: string | null = null;
       if (thumbnail && thumbnail.startsWith("data:")) {
         try {
-          const res = await fetch(thumbnail);
-          const blob = await res.blob();
-          const formData = new FormData();
-          const thumbFile = new File([blob], `thumb-${Date.now()}.jpg`, { type: "image/jpeg" });
-          formData.append("file", thumbFile);
-          formData.append("fileName", thumbFile.name);
-          const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
-          const uploadData = await uploadRes.json();
-          if (uploadRes.ok && uploadData.url) {
-            thumbUrl = uploadData.url;
-            thumbBlurhash = uploadData.blurhash || null;
-          }
+          const uploadData = await uploadGeneratedImageDataUrl(thumbnail, "thumb");
+          thumbUrl = uploadData.url;
+          thumbBlurhash = uploadData.blurhash;
         } catch { /* use data url as fallback */ }
       }
 
@@ -777,16 +474,17 @@ function MomentWriteContent() {
       if (res.ok) {
         shouldReleaseLock = false;
         setHasUnsavedChanges(false);
-        if (status === "published" && data.post?.slug) { emitNavigationStart(); router.push(getPostUrl(data.post.slug, "moment")); }
-        else { sessionStorage.setItem("fdm-open-create-modal", "1"); sessionStorage.setItem("fdm-create-view", "drafts"); emitNavigationStart(); router.push("/"); }
+        redirectAfterCreateSave({
+          router,
+          status,
+          slug: data.post?.slug,
+          contentType: "moment",
+        });
       } else {
         feedimAlert("error", data.error || t("genericErrorRetry"));
       }
     } catch { feedimAlert("error", t("genericErrorRetry")); } finally {
-      if (shouldReleaseLock) {
-        saveInFlightRef.current = false;
-        setSavingAs(null);
-      }
+      finishSaving(!shouldReleaseLock);
     }
   };
 
@@ -801,24 +499,10 @@ function MomentWriteContent() {
       })();
     }
 
-    // Extract #hashtags from title and auto-add as tags
-    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
-    const matches = [...title.matchAll(hashtagRegex)];
-    if (matches.length > 0) {
-      const existingNames = new Set(tags.map(t => t.name.toLowerCase()));
-      const newTags: Tag[] = [];
-      for (const match of matches) {
-        const name = match[1];
-        if (existingNames.has(name.toLowerCase()) || newTags.some(t => t.name.toLowerCase() === name.toLowerCase())) continue;
-        if (tags.length + newTags.length >= VALIDATION.postTags.max) break;
-        try {
-          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-          const data = await res.json();
-          if (res.ok && data.tag) newTags.push(data.tag);
-        } catch { /* skip */ }
-      }
-      if (newTags.length > 0) setTags(prev => [...prev, ...newTags]);
-      setTitle(title.replace(hashtagRegex, "").replace(/  +/g, " ").trim());
+    const hashtagResult = await extractHashtagsToTags(title, tags);
+    if (hashtagResult.foundHashtags) {
+      if (hashtagResult.tagsChanged) setTags(hashtagResult.tags);
+      setTitle(hashtagResult.cleanedText);
     }
 
     setStep(2);
@@ -837,60 +521,39 @@ function MomentWriteContent() {
 
   const canGoNext = !!videoFile || !!videoUrl;
 
+  const handleDeletePost = () => {
+    confirmDeleteDraft({
+      draftId,
+      deleting,
+      setDeleting,
+      confirmText: t("deleteConfirmContent"),
+      successText: t("deleted"),
+      failedText: t("deleteFailed"),
+      onDeleted: () => router.push("/dashboard"),
+    });
+  };
+
   const headerRight = (
-    <div className="flex items-center gap-2">
-      {step === 1 ? (
-        <button
-          onClick={goToStep2}
-          disabled={!canGoNext || uploading}
-          className="t-btn accept !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-        >
-          {t("nextStep")}
-        </button>
-      ) : (
-        <>
-          {!isPublished ? (
-            <button
-              onClick={() => savePost("draft")}
-              disabled={savingAs !== null}
-              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-            >
-              {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (!draftId || deleting) return;
-                feedimAlert("question", t("deleteConfirmContent"), {
-                  showYesNo: true,
-                  onYes: async () => {
-                    setDeleting(true);
-                    try {
-                      const res = await fetch(`/api/posts/${draftId}`, { method: "DELETE" });
-                      if (res.ok) { feedimAlert("success", t("deleted")); router.push("/dashboard"); }
-                      else feedimAlert("error", t("deleteFailed"));
-                    } catch { feedimAlert("error", t("deleteFailed")); }
-                    finally { setDeleting(false); }
-                  },
-                });
-              }}
-              disabled={deleting || savingAs !== null}
-              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] !text-error disabled:opacity-40"
-            >
-              {deleting ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("deleteBtn")}
-            </button>
-          )}
-          <button
-            onClick={() => savePost("published")}
-            disabled={savingAs !== null || !videoUrl || uploading}
-            className="t-btn accept relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-            aria-label={isPublished ? t("updateBtn") : t("publishBtn")}
-          >
-            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : isPublished ? t("updateBtn") : t("publishBtn")}
-          </button>
-        </>
-      )}
-    </div>
+    <CreateHeaderActions
+      step={step}
+      isPublished={isPublished}
+      nextLabel={t("nextStep")}
+      onNext={goToStep2}
+      nextDisabled={!canGoNext || uploading}
+      saveLabel={t("save")}
+      onSaveDraft={() => savePost("draft")}
+      saveDisabled={savingAs !== null}
+      saveLoading={savingAs === "draft"}
+      deleteLabel={t("deleteBtn")}
+      onDelete={handleDeletePost}
+      deleteDisabled={deleting || savingAs !== null}
+      deleteLoading={deleting}
+      publishLabel={t("publishBtn")}
+      updateLabel={t("updateBtn")}
+      onPublish={() => savePost("published")}
+      publishDisabled={savingAs !== null || !videoUrl || uploading}
+      publishLoading={savingAs === "published"}
+    />
   );
 
   return (
@@ -1175,69 +838,27 @@ function MomentWriteContent() {
 
             {/* Tags */}
             <div>
-              <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
-              {tags.length < VALIDATION.postTags.max && (
-                <div ref={tagAutocompleteRef} className="relative">
-                  <input
-                    type="text"
-                    value={tagSearch}
-                    onChange={e => setTagSearch(sanitizeTagInput(e.target.value))}
-                    onKeyDown={handleTagKeyDown}
-                    maxLength={30}
-                    onFocus={() => {
-                      if (tagSearch.trim()) void searchTagsFn(tagSearch);
-                    }}
-                    placeholder={t("tagSearchPlaceholder")}
-                    className="input-modern w-full !pr-[110px]"
-                  />
-                  {tagSuggestions.length > 0 && (
-                    <div
-                      className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto"
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {tagSuggestions.map((s, i) => (
-                        <button
-                          type="button"
-                          key={s.id}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => addTag(s)}
-                          onMouseEnter={() => setTagHighlight(i)}
-                          className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${i === tagHighlight ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"}`}
-                        >
-                          <span className="text-accent-main">#</span><span className="font-semibold truncate">{s.name}</span>
-                          {s.post_count !== undefined && <span className="ml-auto text-[0.7rem] text-text-muted font-medium shrink-0 pl-2">{formatCount(s.post_count || 0)} {t("postsCount")}</span>}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {tagSearch.trim() && tagSuggestions.length === 0 && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={createAndAddTag}
-                      disabled={tagCreating}
-                      className="absolute right-3 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
-                    >
-                      {tagCreating ? (
-                        <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
-                      ) : (
-                        <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
-                      )}
-                    </button>
-                  )}
-                </div>
-              )}
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {tags.map(tag => (
-                    <span key={tag.id} className="flex items-center gap-1.5 bg-accent-main/10 text-accent-main text-sm font-medium px-3 py-1.5 rounded-full">
-                      <span title={`#${tag.name}`}>{formatDisplayTagLabel(tag.name)}</span>
-                      <button onClick={() => removeTag(tag.id)} className="hover:text-error transition"><X className="h-3 w-3" /></button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-text-muted mt-1.5 text-right font-semibold mr-2">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
+              <CreateTagInput
+                label={t("tagsLabel")}
+                tags={tags}
+                maxTags={VALIDATION.postTags.max}
+                tagSearch={tagSearch}
+                tagSuggestions={tagSuggestions}
+                tagHighlight={tagHighlight}
+                tagCreating={tagCreating}
+                placeholder={t("tagSearchPlaceholder")}
+                createLabel={t("createTag")}
+                postsCountLabel={t("postsCount")}
+                tagUnitLabel={t("tagUnit")}
+                autocompleteRef={tagAutocompleteRef}
+                onTagSearchChange={handleTagSearchChange}
+                onTagKeyDown={handleTagKeyDown}
+                onTagFocus={handleTagFocus}
+                onTagHighlight={setTagHighlight}
+                onAddTag={addTag}
+                onCreateTag={createAndAddTag}
+                onRemoveTag={removeTag}
+              />
             </div>
 
             {/* Visibility */}
@@ -1260,72 +881,53 @@ function MomentWriteContent() {
             </div>
 
             {/* Settings */}
-            <div>
-              <div className="cursor-pointer select-none" onClick={() => setSettingsExpanded(!settingsExpanded)}>
-                <div className="flex items-center justify-between w-full text-left">
-                  <span className="block text-sm font-semibold">{t("settingsLabel")}</span>
-                  <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${settingsExpanded ? "rotate-180" : ""}`} />
-                </div>
-                {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("publishedFieldLocked")}</p>}
-                <p className="text-[0.7rem] text-text-muted/60 leading-relaxed mt-1.5">{t("settingsDesc")}</p>
-              </div>
-              {settingsExpanded && <div className="space-y-1 mt-3">
-                <button
+            <CreateSettingsSection
+              label={t("settingsLabel")}
+              description={t("settingsDesc")}
+              expanded={settingsExpanded}
+              onToggle={() => setSettingsExpanded(!settingsExpanded)}
+              lockedMessage={isPublished ? t("publishedFieldLocked") : undefined}
+            >
+                <CreateSettingsToggle
+                  label={t("allowComments")}
+                  description={t("allowCommentsDescViewers")}
+                  checked={allowComments}
                   disabled={isPublished}
-                  onClick={() => setAllowComments(!allowComments)}
-                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("allowComments")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDescViewers")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  onToggle={() => setAllowComments(!allowComments)}
+                />
                 <div>
-                <button
+                <CreateSettingsToggle
+                  label={t("aiContent")}
+                  description={t("aiContentDesc")}
+                  checked={isAiContent}
                   disabled={isPublished}
-                  onClick={() => setIsAiContent(!isAiContent)}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("aiContent")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  onToggle={() => setIsAiContent(!isAiContent)}
+                  paddingClassName="px-2 py-3"
+                />
                 <p className="pt-0.5 pb-0 text-[0.7rem] text-text-muted leading-snug">
                   {t("aiContentWarning")}{" "}
                   <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
                 </p>
                 </div>
                 <div>
-                <button
+                <CreateSettingsToggle
+                  label={t("copyrightProtection")}
+                  description={isPublished && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}
+                  checked={copyrightProtected}
                   disabled={isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected)}
-                  onClick={() => {
+                  disabledClassName="opacity-50 cursor-not-allowed"
+                  onToggle={() => {
                     if (!user?.copyrightEligible) return;
                     if (isPublished) return;
                     setCopyrightProtected(!copyrightProtected);
                   }}
-                  className={`w-full flex items-center justify-between px-2 py-3 rounded-lg transition text-left ${isPublished || !user?.copyrightEligible || (isPublished && copyrightProtected) ? "opacity-50 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("copyrightProtection")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{isPublished && copyrightProtected ? t("copyrightCannotDisable") : !user?.copyrightEligible ? t("copyrightAutoEnable") : t("copyrightDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${copyrightProtected ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${copyrightProtected ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  paddingClassName="px-2 py-3"
+                />
                 {!user?.copyrightEligible && (
                   <a href="/help/copyright" target="_blank" rel="noopener noreferrer" className="block px-4 pb-2 text-xs text-accent-main hover:underline">{t("copyrightLearnMore")} &rarr;</a>
                 )}
                 </div>
-              </div>}
-            </div>
+            </CreateSettingsSection>
 
             <PostMetaFields
               metaTitle={metaTitle} setMetaTitle={setMetaTitle}

@@ -7,17 +7,14 @@ import { getAuthUserId } from "@/lib/auth";
 import PostInteractionBar from "@/components/PostInteractionBar";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import AdBanner from "@/components/AdBanner";
-import Link from "next/link";
 
-import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
+import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import VideoPlayerClient from "@/components/VideoPlayerClient";
 import VideoSidebarPortal from "@/components/VideoSidebarPortal";
 import VideoDescription from "@/components/VideoDescription";
 import NextVideosGrid from "@/components/NextVideosGrid";
 import VideoViewTracker from "@/components/VideoViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
-import VerifiedBadge from "@/components/VerifiedBadge";
-import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 import GuestJoinPrompt from "@/components/GuestJoinPrompt";
@@ -27,15 +24,13 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { getCachedPost } from "@/lib/postQueries";
 import { stripHtmlToText } from "@/lib/htmlToText";
 import { headers } from "next/headers";
-import LazyAvatar from "@/components/LazyAvatar";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
 import { getCachedNextVideos } from "@/lib/postPageRecommendations";
 import { buildContentMetadata } from "@/lib/socialMetadata";
 import { getShareablePostUrl } from "@/lib/utils";
-
-function getBadgeVariant(premiumPlan?: string | null): "default" | "max" {
-  return premiumPlan === "max" || premiumPlan === "business" ? "max" : "default";
-}
+import DetailAuthorRow from "@/components/detail/DetailAuthorRow";
+import DetailTagList from "@/components/detail/DetailTagList";
+import DetailCopyrightNotice from "@/components/detail/DetailCopyrightNotice";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -204,48 +199,33 @@ export default async function VideoPage({ params, searchParams }: PageProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 mb-[5px]">
-          <Link href={`/u/${author?.username}`} className="shrink-0">
-            <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
-          </Link>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">
-                  @{author?.username}
-                </Link>
-              {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariant(author?.premium_plan)} role={author?.role} />}
-            </div>
-            {author?.follower_count !== undefined && (
+        <DetailAuthorRow
+          authorUsername={author?.username}
+          authorUserId={author?.user_id}
+          authorName={authorName}
+          avatarUrl={author?.avatar_url}
+          isVerified={author?.is_verified}
+          premiumPlan={author?.premium_plan}
+          role={author?.role}
+          initialFollowing={interactions.followingAuthor}
+          initialRequested={interactions.requestedAuthor}
+          initialFollowsMe={interactions.authorFollowsMe}
+          followStateResolved
+          className="flex items-center gap-2.5 mb-[5px]"
+          secondaryLine={
+            author?.follower_count !== undefined ? (
               <p className="text-[0.68rem] leading-none text-text-muted -mt-[0.5px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
-            )}
-          </div>
-          <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
-        </div>
+            ) : null
+          }
+        />
 
         {plainDescription && (
           <VideoDescription text={plainDescription} />
         )}
 
-        {post.copyright_protected && (
-          <div className="flex items-center gap-1 mt-2 mb-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-            <span className="text-xs text-text-muted">{t("copyrightProtected")}</span>
-            <span className="text-text-muted/40 mx-0.5">·</span>
-            <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">{t("moreInfo")}</Link>
-          </div>
-        )}
+        {post.copyright_protected ? <DetailCopyrightNotice label={t("copyrightProtected")} moreInfoLabel={t("moreInfo")} /> : null}
 
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
-            {tags.map((tag: { id: number; name: string; slug: string }) => (
-              <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                title={`#${tag.name}`}
-                className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
-                {formatDisplayTagLabel(tag.name)}
-              </Link>
-            ))}
-          </div>
-        )}
+        <DetailTagList tags={tags} />
 
         {!currentUserId && (
           <GuestJoinPrompt

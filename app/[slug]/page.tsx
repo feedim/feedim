@@ -8,39 +8,29 @@ import PostInteractionBar from "@/components/PostInteractionBar";
 import PostHeaderActions from "@/components/PostHeaderActions";
 import RelatedPosts from "@/components/RelatedPosts";
 import AdBanner from "@/components/AdBanner";
-import Link from "next/link";
 
-import { formatDisplayTagLabel, formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
+import { formatRelativeDate, formatCount, getPostUrl } from "@/lib/utils";
 import PostStats from "@/components/PostStats";
 import sanitizeHtml from "sanitize-html";
 import PostContentClient from "@/components/PostContentClient";
-import VideoPlayerClient from "@/components/VideoPlayerClient";
-import VideoSidebarPortal from "@/components/VideoSidebarPortal";
-import VideoDescription from "@/components/VideoDescription";
-import NextVideosGrid from "@/components/NextVideosGrid";
 import PostViewTracker from "@/components/PostViewTracker";
-import VideoViewTracker from "@/components/VideoViewTracker";
 import RemovedPostTemplate from "@/components/RemovedPostTemplate";
-import VerifiedBadge from "@/components/VerifiedBadge";
 import { decodeId } from "@/lib/hashId";
-
-function getBadgeVariantServer(premiumPlan?: string | null): "default" | "max" {
-  return premiumPlan === "max" || premiumPlan === "business" ? "max" : "default";
-}
-import PostFollowButton from "@/components/PostFollowButton";
 import HeaderTitle from "@/components/HeaderTitle";
 import AmbientLight from "@/components/AmbientLight";
 import GuestJoinPrompt from "@/components/GuestJoinPrompt";
 
 import { getTranslations, getLocale } from "next-intl/server";
 import { getCachedPost } from "@/lib/postQueries";
-import { getCachedAuthorContent, getCachedFeaturedContent, getCachedNextVideos } from "@/lib/postPageRecommendations";
-import { renderMentionsAsHTML, renderMentionsInHTML } from "@/lib/mentionRenderer";
+import { getCachedAuthorContent, getCachedFeaturedContent } from "@/lib/postPageRecommendations";
+import { renderMentionsInHTML } from "@/lib/mentionRenderer";
 import { headers } from "next/headers";
 import { getDetailPageAccessContext } from "@/lib/postPageAccess";
-import LazyAvatar from "@/components/LazyAvatar";
 import { buildContentMetadata } from "@/lib/socialMetadata";
 import { getShareablePostUrl } from "@/lib/utils";
+import DetailAuthorRow from "@/components/detail/DetailAuthorRow";
+import DetailTagList from "@/components/detail/DetailTagList";
+import DetailCopyrightNotice from "@/components/detail/DetailCopyrightNotice";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -105,21 +95,16 @@ export default async function PostPage({ params, searchParams }: PageProps) {
   }
   const isStaff = access.isStaff;
 
-  const isVideo = post.content_type === "video" || post.content_type === "moment";
-  const isNote = post.content_type === "note";
   const hdrs = await headers();
   const locale = hdrs.get("x-locale") || "en";
   const ipCountry = (hdrs.get("x-vercel-ip-country") || hdrs.get("cf-ipcountry") || "").toUpperCase();
   const tPromise = getTranslations("post");
   const tCommonPromise = getTranslations("common");
-  const tCTPromise = getTranslations("contentTypes");
-  const [authorContent, nextVideos, featuredContent, t, tCommon, tCT] = await Promise.all([
+  const [authorContent, featuredContent, t, tCommon] = await Promise.all([
     getCachedAuthorContent(post.author_id, post.id, locale, ipCountry),
-    isVideo ? getCachedNextVideos(post.id, post.author_id, locale, ipCountry, post.content_type === "moment" ? ["video", "moment"] : ["video"], currentUserId) : Promise.resolve([]),
     getCachedFeaturedContent(post.id, post.author_id, locale, ipCountry),
     tPromise,
     tCommonPromise,
-    tCTPromise,
   ]);
   const { interactions, boostInfo } = viewerState;
 
@@ -135,18 +120,7 @@ export default async function PostPage({ params, searchParams }: PageProps) {
     allowedSchemesByTag: { img: ['http', 'https', 'data'] },
   });
 
-  const jsonLd = post.content_type === "video" ? {
-    "@context": "https://schema.org",
-    "@type": "VideoObject",
-    name: post.title,
-    description: post.excerpt || "",
-    thumbnailUrl: post.video_thumbnail || post.featured_image || undefined,
-    contentUrl: post.video_url,
-    duration: post.video_duration ? `PT${Math.floor(post.video_duration / 60)}M${post.video_duration % 60}S` : undefined,
-    uploadDate: post.published_at,
-    author: { "@type": "Person", name: authorName, url: `${baseUrl}/u/${author?.username}` },
-    publisher: { "@type": "Organization", name: "Feedim", url: baseUrl, logo: { "@type": "ImageObject", url: `${baseUrl}/favicon.png` } },
-  } : {
+  const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
@@ -160,294 +134,6 @@ export default async function PostPage({ params, searchParams }: PageProps) {
     mainEntityOfPage: { "@type": "WebPage", "@id": `${baseUrl}/${encodeURIComponent(post.slug)}` },
   };
 
-  // ─── Video post: YouTube-like layout ───
-  if (isVideo) {
-    const nextVideoInfos = nextVideos.map(v => ({
-      slug: v.slug,
-      title: v.title,
-      thumbnail: v.video_thumbnail || v.featured_image || undefined,
-      contentType: v.content_type || "video",
-    }));
-    const plainDescription = sanitizedContent ? sanitizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') : '';
-    let videoOrigin: string | null = null;
-    if (post.video_url) {
-      try { videoOrigin = new URL(post.video_url).origin; } catch {}
-    }
-
-    return (
-      <div suppressHydrationWarning>
-        {/* Preload video for faster playback start */}
-        {post.video_url && (
-          <>
-            {videoOrigin && <link rel="preconnect" href={videoOrigin} crossOrigin="anonymous" />}
-            {videoOrigin && <link rel="dns-prefetch" href={videoOrigin} />}
-          </>
-        )}
-        <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }} />
-        <AmbientLight imageSrc={post.video_thumbnail || post.featured_image || undefined} videoMode />
-        <HeaderTitle title={post.content_type === "moment" ? tCT("moment") : tCT("video")} />
-        <VideoViewTracker postId={post.id} />
-
-        {/* NSFW moderation badge */}
-        {post.is_nsfw && (isOwnPost || isStaff) && (
-          <div className="mx-3 sm:mx-4 mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-xs font-semibold rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            {t("moderationBanner")}
-          </div>
-        )}
-        <PostHeaderActions
-          postId={post.id} postUrl={`/${post.slug}`} postTitle={post.title}
-          authorUsername={author?.username} authorUserId={author?.user_id} authorName={authorName}
-          authorRole={author?.role} isOwnPost={isOwnPost} postSlug={post.slug} portalToHeader
-          isVideo contentType={post.content_type}
-          visibility={post.visibility || "public"}
-          isBoosted={boostInfo.isBoosted}
-        />
-
-        {/* Portal: inject VideoSidebar into the existing right sidebar */}
-        <VideoSidebarPortal videos={nextVideos} />
-
-        <article className="px-3 sm:px-4" style={{ overflowX: "hidden" }}>
-          {/* Video Player — edge-to-edge */}
-          {post.video_url && (
-            <div className="mb-3 -mx-3 sm:-mx-4 sm:mx-0">
-              <VideoPlayerClient
-                src={post.video_url}
-                hlsUrl={post.hls_url || undefined}
-                poster={post.video_thumbnail || post.featured_image || undefined}
-                slug={post.slug}
-                nextVideos={nextVideoInfos}
-                videoDuration={post.video_duration || undefined}
-              />
-            </div>
-          )}
-
-          {/* Title */}
-          <h1 className="text-[1.2rem] sm:text-[1.3rem] font-bold leading-[1.5] mb-1">{post.title}</h1>
-
-          {/* Stats row */}
-          <div className="flex items-center gap-3 text-[0.78rem] text-text-muted mb-3">
-            <span>{t("viewCount", { count: formatCount(post.view_count || 0) })}</span>
-            {post.published_at && (
-              <>
-                <span className="text-text-muted/40">·</span>
-                <span>{formatRelativeDate(post.published_at)}</span>
-              </>
-            )}
-          </div>
-
-          {/* Channel row — YouTube style */}
-          <div className="flex items-center gap-3">
-            <Link href={`/u/${author?.username}`} className="shrink-0">
-              <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
-            </Link>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">
-                  @{author?.username}
-                </Link>
-                {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
-                {post.visibility && (
-                  <span className="text-[0.7rem] text-text-muted">{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
-                )}
-              </div>
-              {author?.follower_count !== undefined && (
-                <p className="text-[0.72rem] leading-none text-text-muted -mt-[0.5px]">{t("followers", { count: formatCount(author.follower_count) })}</p>
-              )}
-            </div>
-            <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
-          </div>
-
-          {/* Description — above interaction bar */}
-          {plainDescription && (
-            <VideoDescription text={plainDescription} />
-          )}
-
-          {/* Copyright protection badge */}
-          {post.copyright_protected && (
-            <div className="flex items-center gap-1 mt-2 mb-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-              <span className="text-xs text-text-muted">{t("copyrightProtected")}</span>
-              <span className="text-text-muted/40 mx-0.5">·</span>
-              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">{t("moreInfo")}</Link>
-            </div>
-          )}
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                  title={`#${tag.name}`}
-                  className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
-                  {formatDisplayTagLabel(tag.name)}
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Interaction bar */}
-          <PostInteractionBar
-            postId={post.id}
-            initialLiked={interactions.liked}
-            initialSaved={interactions.saved}
-            likeCount={post.like_count || 0}
-            commentCount={post.comment_count || 0}
-            saveCount={post.save_count || 0}
-            shareCount={post.share_count || 0}
-            viewCount={post.view_count || 0}
-            hideStats
-            isOwnPost={isOwnPost}
-            postUrl={`/${post.slug}`}
-            postTitle={post.title}
-            postSlug={post.slug}
-            authorUsername={author?.username}
-            likedByBottom
-            isVideo
-            contentType={post.content_type}
-            isBoosted={boostInfo.isBoosted}
-            boostStats={boostInfo.boostStats}
-            boostStatus={boostInfo.boostStatus}
-            visibility={post.visibility || "public"}
-            isModeration={!!post.is_nsfw || post.status === 'moderation'}
-            allowComments={post.allow_comments !== false}
-            initialTargetCommentId={initialTargetCommentId}
-          />
-
-          {/* Next videos — mobile/tablet (below content, hidden on xl where sidebar shows) */}
-          <NextVideosGrid videos={nextVideos} />
-
-          {/* Bottom padding for mobile nav bar */}
-          <div className="h-8 md:h-0" />
-        </article>
-      </div>
-    );
-  }
-
-  // ─── Note layout (minimal, Twitter-style) ───
-  if (isNote) {
-    const noteText = sanitizedContent.replace(/<[^>]+>/g, '').trim();
-    return (
-      <div suppressHydrationWarning style={{ overflowX: "hidden" }}>
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
-        />
-        <HeaderTitle title={t("note")} />
-        <PostViewTracker postId={post.id} />
-
-        {/* NSFW moderation badge */}
-        {post.is_nsfw && (isOwnPost || isStaff) && (
-          <div className="mx-4 sm:mx-5 mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-xs font-semibold rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            {t("moderationBanner")}
-          </div>
-        )}
-
-        <article>
-          <div className="px-4 sm:px-4 py-3 md:py-5">
-            <PostHeaderActions
-              postId={post.id}
-              postUrl={`/${post.slug}`}
-              postTitle={post.title}
-              authorUsername={author?.username}
-              authorUserId={author?.user_id}
-              authorName={authorName}
-              authorRole={author?.role}
-              isOwnPost={isOwnPost}
-              postSlug={post.slug}
-              portalToHeader
-              contentType={post.content_type}
-              visibility={post.visibility || "public"}
-              isBoosted={boostInfo.isBoosted}
-            />
-
-            {/* Author */}
-            <div className="flex items-center gap-2 mb-1">
-              <Link href={`/u/${author?.username}`} className="shrink-0">
-                <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
-              </Link>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
-                  {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
-                </div>
-                <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
-                  {post.published_at && <span>{formatRelativeDate(post.published_at)}</span>}
-                  {post.visibility && (
-                    <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
-                  )}
-                </div>
-              </div>
-              <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
-            </div>
-
-            {/* Note content — large font, plain text */}
-            <p
-              className="text-[1rem] leading-[1.55] text-text-primary whitespace-pre-line"
-              dangerouslySetInnerHTML={{ __html: renderMentionsAsHTML(noteText) }}
-            />
-
-            {/* View count — below content */}
-            {(post.view_count || 0) > 0 && (
-              <p className="text-[0.75rem] text-text-muted mt-[4px]">{t("viewCount", { count: formatCount(post.view_count || 0) })}</p>
-            )}
-
-            {/* Tags */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
-                {tags.map((tag: { id: number; name: string; slug: string }) => (
-                  <Link key={tag.id} href={`/explore/tag/${tag.slug}`}
-                    title={`#${tag.name}`}
-                    className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary">
-                    {formatDisplayTagLabel(tag.name)}
-                  </Link>
-                ))}
-              </div>
-            )}
-
-            {/* Interaction bar */}
-            <PostInteractionBar
-              postId={post.id}
-              initialLiked={interactions.liked}
-              initialSaved={interactions.saved}
-              likeCount={post.like_count || 0}
-              commentCount={post.comment_count || 0}
-              saveCount={post.save_count || 0}
-              shareCount={post.share_count || 0}
-              viewCount={post.view_count || 0}
-              hideStats
-              isOwnPost={isOwnPost}
-              postUrl={`/${post.slug}`}
-              postTitle={post.title}
-              postSlug={post.slug}
-              authorUsername={author?.username}
-              likedByBottom
-              contentType={post.content_type}
-              isBoosted={boostInfo.isBoosted}
-              boostStats={boostInfo.boostStats}
-              boostStatus={boostInfo.boostStatus}
-              visibility={post.visibility || "public"}
-              isModeration={!!post.is_nsfw || post.status === 'moderation'}
-              allowComments={post.allow_comments !== false}
-            />
-          </div>
-
-          <RelatedPosts
-            posts={authorContent}
-            featuredPosts={featuredContent}
-            authorUsername={author?.username}
-          />
-
-          <AdBanner slot="post-bottom" className="mt-4 mb-2" />
-
-        </article>
-      </div>
-    );
-  }
-
-  // ─── Regular post layout (unchanged) ───
   return (
     <div suppressHydrationWarning style={{ overflowX: "hidden" }}>
       <script
@@ -495,26 +181,28 @@ export default async function PostPage({ params, searchParams }: PageProps) {
           <h1 className="text-[1.44rem] font-bold leading-[1.36] mb-5">{post.title}</h1>
 
           {/* Author — PostHead */}
-          <div className="flex items-center gap-2 mb-3">
-            <Link href={`/u/${author?.username}`} className="shrink-0">
-              <LazyAvatar src={author?.avatar_url} alt={authorName} sizeClass="h-10 w-10" />
-            </Link>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <Link href={`/u/${author?.username}`} className="font-semibold text-[0.88rem] hover:underline truncate">@{author?.username}</Link>
-                {author?.is_verified && <VerifiedBadge size="sm" className="h-[13px] w-[13px] min-w-[13px]" variant={getBadgeVariantServer(author?.premium_plan)} role={author?.role} />}
-              </div>
+          <DetailAuthorRow
+            authorUsername={author?.username}
+            authorUserId={author?.user_id}
+            authorName={authorName}
+            avatarUrl={author?.avatar_url}
+            isVerified={author?.is_verified}
+            premiumPlan={author?.premium_plan}
+            role={author?.role}
+            initialFollowing={interactions.followingAuthor}
+            initialRequested={interactions.requestedAuthor}
+            initialFollowsMe={interactions.authorFollowsMe}
+            followStateResolved
+            className="flex items-center gap-2 mb-3"
+            secondaryLine={
               <div className="flex items-center gap-2.5 text-[0.65rem] text-text-muted">
-                {post.published_at && (
-                  <span>{formatRelativeDate(post.published_at)}</span>
-                )}
-                {post.visibility && (
-                  <span>{post.visibility === 'followers' ? t("visibilityFollowers") : post.visibility === 'only_me' ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
-                )}
+                {post.published_at ? <span>{formatRelativeDate(post.published_at)}</span> : null}
+                {post.visibility ? (
+                  <span>{post.visibility === "followers" ? t("visibilityFollowers") : post.visibility === "only_me" ? t("visibilityOnlyMe") : t("visibilityPublic")}</span>
+                ) : null}
               </div>
-            </div>
-            <PostFollowButton authorUsername={author?.username || ""} authorUserId={author?.user_id || ""} initialFollowing={interactions.followingAuthor} initialRequested={interactions.requestedAuthor} initialFollowsMe={interactions.authorFollowsMe} followStateResolved />
-          </div>
+            }
+          />
 
           {/* Featured Image + Content (for regular posts) */}
           <PostContentClient
@@ -561,30 +249,10 @@ export default async function PostPage({ params, searchParams }: PageProps) {
           />
 
           {/* Copyright protection badge */}
-          {post.copyright_protected && (
-            <div className="flex items-center gap-1 mt-2 mb-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-              <span className="text-xs text-text-muted">{t("copyrightProtected")}</span>
-              <span className="text-text-muted/40 mx-0.5">·</span>
-              <Link href="/help/copyright" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:underline">{t("moreInfo")}</Link>
-            </div>
-          )}
+          {post.copyright_protected ? <DetailCopyrightNotice label={t("copyrightProtected")} moreInfoLabel={t("moreInfo")} /> : null}
 
           {/* Tags — right after content, before interaction bar */}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-[9px] mb-[6px]">
-              {tags.map((tag: { id: number; name: string; slug: string }) => (
-                <Link
-                  key={tag.id}
-                  href={`/explore/tag/${tag.slug}`}
-                  title={`#${tag.name}`}
-                  className="bg-bg-secondary text-text-primary text-[0.78rem] font-bold px-4 py-1 rounded-full transition hover:bg-bg-tertiary"
-                >
-                  {formatDisplayTagLabel(tag.name)}
-                </Link>
-              ))}
-            </div>
-          )}
+          <DetailTagList tags={tags} />
 
           {!currentUserId && (
             <GuestJoinPrompt

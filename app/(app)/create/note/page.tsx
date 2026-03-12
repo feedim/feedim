@@ -1,16 +1,24 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Plus, ChevronDown, Smile, ImagePlus } from "lucide-react";
-import EmojiPickerPanel from "@/components/modals/EmojiPickerPanel";
-import PostMetaFields from "@/components/PostMetaFields";
-import CropModal from "@/components/modals/CropModal";
-import { emitNavigationStart } from "@/lib/navigationProgress";
+import dynamic from "next/dynamic";
+import { X, ChevronDown, Smile, ImagePlus } from "lucide-react";
+import CreateHeaderActions from "@/components/create/CreateHeaderActions";
+import { fetchCreateDraftPost } from "@/components/create/api";
+import { confirmDeleteDraft } from "@/components/create/deleteDraft";
+import { uploadGeneratedImageDataUrl } from "@/components/create/imageUpload";
+import { redirectAfterCreateSave } from "@/components/create/navigation";
+import CreateTagInput from "@/components/create/CreateTagInput";
+import CreateSettingsSection from "@/components/create/CreateSettingsSection";
+import CreateSettingsToggle from "@/components/create/CreateSettingsToggle";
+import { extractHashtagsToTags, stripHashtags } from "@/components/create/hashtags";
+import useCreateSaveState from "@/components/create/useCreateSaveState";
+import { useCreateTagManager } from "@/components/create/useCreateTagManager";
+import type { CreateTag as Tag } from "@/components/create/types";
 import { smartBack } from "@/lib/smartBack";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { VALIDATION } from "@/lib/constants";
-import { formatCount, formatDisplayTagLabel, getPostUrl, sanitizeTagInput } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/components/UserContext";
 import AppLayout from "@/components/AppLayout";
@@ -18,13 +26,17 @@ import { useMention } from "@/lib/useMention";
 import MentionDropdown from "@/components/MentionDropdown";
 import LazyAvatar from "@/components/LazyAvatar";
 
-interface Tag {
-  id: number | string;
-  name: string;
-  slug: string;
-  post_count?: number;
-  virtual?: boolean;
-}
+const EmojiPickerPanel = dynamic(
+  () => import("@/components/modals/EmojiPickerPanel"),
+  { ssr: false },
+);
+const CropModal = dynamic(() => import("@/components/modals/CropModal"), {
+  ssr: false,
+});
+const PostMetaFields = dynamic(() => import("@/components/PostMetaFields"), {
+  ssr: false,
+  loading: () => <div className="h-24 rounded-[14px] bg-bg-secondary animate-pulse" />,
+});
 
 export default function NoteWritePage() {
   return (
@@ -43,11 +55,9 @@ function NoteWriteContent() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const tagAutocompleteRef = useRef<HTMLDivElement>(null);
   const cropResolveRef = useRef<((croppedUrl: string) => void) | null>(null);
   const imageUploadPromiseRef = useRef<Promise<string> | null>(null);
   const imageUploadRequestIdRef = useRef(0);
-  const saveInFlightRef = useRef(false);
 
   // Step: 1=content, 2=tags/settings
   const [step, setStep] = useState(1);
@@ -66,11 +76,6 @@ function NoteWriteContent() {
   const [cropAspect, setCropAspect] = useState(1);
 
   // Step 2
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [tagSearch, setTagSearch] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
-  const [tagHighlight, setTagHighlight] = useState(-1);
-  const [tagCreating, setTagCreating] = useState(false);
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
   const [isAiContent, setIsAiContent] = useState(false);
@@ -84,9 +89,33 @@ function NoteWriteContent() {
   const mention = useMention({ maxMentions: 3, limitMessage: tc("mentionLimit") });
 
   // State
-  const [savingAs, setSavingAs] = useState<"draft" | "published" | null>(null);
+  const { savingAs, startSaving, finishSaving } = useCreateSaveState();
   const [deleting, setDeleting] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
+
+  const {
+    tagAutocompleteRef,
+    tags,
+    setTags,
+    tagSearch,
+    tagSuggestions,
+    tagHighlight,
+    tagCreating,
+    addTag,
+    createAndAddTag,
+    removeTag,
+    handleTagKeyDown,
+    handleTagSearchChange,
+    handleTagFocus,
+    setTagHighlight,
+  } = useCreateTagManager({
+    tagMinLength: (min) => t("tagMinLength", { min }),
+    tagMaxLength: (max) => t("tagMaxLength", { max }),
+    tagInvalidChars: t("tagInvalidChars"),
+    tagOnlyNumbers: t("tagOnlyNumbers"),
+    tagCreateFailed: t("tagCreateFailed"),
+    tagCreateFailedRetry: t("tagCreateFailedRetry"),
+  });
 
   const MAX_CHARS = VALIDATION.noteContent.max;
   const remaining = MAX_CHARS - noteText.length;
@@ -132,26 +161,23 @@ function NoteWriteContent() {
   const loadDraft = async (slug: string) => {
     setLoadingDraft(true);
     try {
-      const res = await fetch(`/api/posts/${slug}`);
-      const data = await res.json();
-      if (res.ok && data.post) {
-        const plainText = (data.post.content || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").trim();
-        setNoteText(plainText);
-        setDraftId(data.post.id);
-        setIsPublished(data.post.status === 'published');
-        setFeaturedImage(data.post.featured_image || "");
-        setFeaturedImagePreview(data.post.featured_image || "");
-        setAllowComments(data.post.allow_comments !== false);
-        setIsAiContent(data.post.is_ai_content === true);
-        setVisibility(data.post.visibility || "public");
-        setMetaTitle(data.post.meta_title || "");
-        setMetaDescription(data.post.meta_description || "");
-        setMetaKeywords(data.post.meta_keywords || "");
-        const postTags = (data.post.post_tags || [])
-          .map((pt: { tags: Tag }) => pt.tags)
-          .filter(Boolean);
-        setTags(postTags);
-      }
+      const post = await fetchCreateDraftPost(slug);
+      const plainText = (post.content || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").trim();
+      setNoteText(plainText);
+      setDraftId(post.id);
+      setIsPublished(post.status === "published");
+      setFeaturedImage(post.featured_image || "");
+      setFeaturedImagePreview(post.featured_image || "");
+      setAllowComments(post.allow_comments !== false);
+      setIsAiContent(post.is_ai_content === true);
+      setVisibility(post.visibility || "public");
+      setMetaTitle(post.meta_title || "");
+      setMetaDescription(post.meta_description || "");
+      setMetaKeywords(post.meta_keywords || "");
+      const postTags = (post.post_tags || [])
+        .map((pt: { tags: Tag }) => pt.tags)
+        .filter(Boolean);
+      setTags(postTags);
     } catch {
       feedimAlert("error", t("draftLoadError"));
     } finally {
@@ -274,16 +300,9 @@ function NoteWriteContent() {
 
       setFeaturedImagePreview(croppedUrl);
 
-      const blob = await fetch(croppedUrl).then((r) => r.blob());
-      const uploadFile = new File([blob], `note-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
-      const formData = new FormData();
-      formData.append("file", uploadFile);
-      formData.append("fileName", uploadFile.name);
       const uploadPromise = (async () => {
-        const uploadRes = await fetch("/api/upload/image", { method: "POST", body: formData });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || t("imageUploadFailed"));
-        return uploadData.url as string;
+        const uploadData = await uploadGeneratedImageDataUrl(croppedUrl, "note");
+        return uploadData.url;
       })();
 
       imageUploadPromiseRef.current = uploadPromise;
@@ -336,127 +355,8 @@ function NoteWriteContent() {
     }
   };
 
-  const searchTags = useCallback(async (q: string) => {
-    if (q.trim().length < 1) {
-      setTagSuggestions([]);
-      setTagHighlight(-1);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/tags?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      setTagSuggestions(
-        (data.tags || [])
-          .filter((t: Tag) => !tags.some(existing => existing.id === t.id || existing.slug === t.slug))
-          .slice(0, 5)
-      );
-      setTagHighlight(-1);
-    } catch {
-      setTagSuggestions([]);
-    }
-  }, [tags]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => searchTags(tagSearch), 300);
-    return () => clearTimeout(timer);
-  }, [tagSearch, searchTags]);
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!tagAutocompleteRef.current?.contains(event.target as Node)) {
-        setTagSuggestions([]);
-        setTagHighlight(-1);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
-
-  const addTag = (tag: Tag) => {
-    if (tags.length >= VALIDATION.postTags.max) return;
-    if (tags.some(t => t.id === tag.id || t.slug === tag.slug || t.name === tag.name)) return;
-    setTags([...tags, tag]);
-    setTagSearch("");
-    setTagSuggestions([]);
-    setTagHighlight(-1);
-  };
-
-  const createAndAddTag = async () => {
-    const trimmed = sanitizeTagInput(tagSearch).trim();
-    if (!trimmed || tags.length >= VALIDATION.postTags.max || tagCreating) return;
-    if (trimmed.length < VALIDATION.tagName.min) {
-      feedimAlert("error", t("tagMinLength", { min: VALIDATION.tagName.min }));
-      return;
-    }
-    if (trimmed.length > VALIDATION.tagName.max) {
-      feedimAlert("error", t("tagMaxLength", { max: VALIDATION.tagName.max }));
-      return;
-    }
-    if (!VALIDATION.tagName.pattern.test(trimmed)) {
-      feedimAlert("error", t("tagInvalidChars"));
-      return;
-    }
-    if (/^\d+$/.test(trimmed)) {
-      feedimAlert("error", t("tagOnlyNumbers"));
-      return;
-    }
-    setTagCreating(true);
-    try {
-      const res = await fetch("/api/tags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json();
-      if (res.ok && data.tag) {
-        addTag(data.tag);
-      } else {
-        feedimAlert("error", data.error || t("tagCreateFailed"));
-      }
-    } catch {
-      feedimAlert("error", t("tagCreateFailedRetry"));
-    } finally {
-      setTagCreating(false);
-    }
-  };
-
-  const removeTag = (tagId: number | string) => {
-    setTags(tags.filter(t => t.id !== tagId));
-  };
-
-  const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && sanitizeTagInput(e.key) === "") {
-      e.preventDefault();
-      return;
-    }
-    if (tagSuggestions.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setTagHighlight(prev => (prev < tagSuggestions.length - 1 ? prev + 1 : 0));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setTagHighlight(prev => (prev > 0 ? prev - 1 : tagSuggestions.length - 1));
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        if (tagHighlight >= 0 && tagHighlight < tagSuggestions.length) {
-          addTag(tagSuggestions[tagHighlight]);
-        } else if (tagSearch.trim()) {
-          createAndAddTag();
-        }
-      } else if (e.key === "Escape") {
-        setTagSuggestions([]);
-        setTagHighlight(-1);
-      }
-    } else if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      if (tagSearch.trim()) createAndAddTag();
-    }
-  };
-
   const savePost = async (status: "draft" | "published") => {
-    if (saveInFlightRef.current) return;
-    saveInFlightRef.current = true;
-    setSavingAs(status);
+    if (!startSaving(status)) return;
     let shouldReleaseLock = true;
 
     const trimmed = noteText.trim();
@@ -469,26 +369,12 @@ function NoteWriteContent() {
       return;
     }
 
-    // Extract #hashtags from note text before saving
-    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
     let finalText = trimmed;
-    let finalTags = [...tags];
-    const htMatches = [...trimmed.matchAll(hashtagRegex)];
-    if (htMatches.length > 0) {
-      const existingNames = new Set(finalTags.map(tg => tg.name.toLowerCase()));
-      for (const match of htMatches) {
-        const name = match[1];
-        if (name.length < VALIDATION.tagName.min) continue;
-        if (/^\d+$/.test(name)) continue;
-        if (existingNames.has(name.toLowerCase()) || finalTags.some(tg => tg.name.toLowerCase() === name.toLowerCase())) continue;
-        if (finalTags.length >= VALIDATION.postTags.max) break;
-        try {
-          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-          const data = await res.json();
-          if (res.ok && data.tag) { finalTags.push(data.tag); existingNames.add(name.toLowerCase()); }
-        } catch { /* skip */ }
-      }
-      finalText = trimmed.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
+    let finalTags = tags;
+    const hashtagResult = await extractHashtagsToTags(trimmed, tags);
+    if (hashtagResult.foundHashtags) {
+      finalText = hashtagResult.cleanedText;
+      finalTags = hashtagResult.tags;
     }
 
     try {
@@ -532,65 +418,37 @@ function NoteWriteContent() {
       const data = await res.json();
       if (res.ok) {
         shouldReleaseLock = false;
-        if (status === "published" && data.post?.slug) {
-          emitNavigationStart();
-          router.push(getPostUrl(data.post.slug, "note"));
-        } else {
-          sessionStorage.setItem("fdm-open-create-modal", "1");
-          sessionStorage.setItem("fdm-create-view", "drafts");
-          emitNavigationStart();
-          router.push("/");
-        }
+        redirectAfterCreateSave({
+          router,
+          status,
+          slug: data.post?.slug,
+          contentType: "note",
+        });
       } else {
         feedimAlert("error", data.error || t("genericErrorRetry"));
       }
     } catch {
       feedimAlert("error", t("genericErrorRetry"));
     } finally {
-      if (shouldReleaseLock) {
-        saveInFlightRef.current = false;
-        setSavingAs(null);
-      }
+      finishSaving(!shouldReleaseLock);
     }
   };
 
   const goToStep2 = async () => {
     if (!noteText.trim()) return;
 
-    // Extract #hashtags from content and auto-add as tags
-    const hashtagRegex = /#([A-Za-z0-9\u00C0-\u024F\u0400-\u04FF\u0600-\u06FFğüşıöçĞÜŞİÖÇəƏ_]+)/g;
-    const matches = [...noteText.matchAll(hashtagRegex)];
-    if (matches.length > 0) {
-      setExtractingTags(true);
-      let cleaned = noteText;
-      const existingNames = new Set(tags.map(t => t.name.toLowerCase()));
-      const newTags: Tag[] = [];
-
-      for (const match of matches) {
-        const name = match[1];
-        if (name.length < VALIDATION.tagName.min || /^\d+$/.test(name)) continue;
-        if (existingNames.has(name.toLowerCase()) || newTags.some(t => t.name.toLowerCase() === name.toLowerCase())) continue;
-        if (tags.length + newTags.length >= VALIDATION.postTags.max) break;
-        try {
-          const res = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-          const data = await res.json();
-          if (res.ok && data.tag) newTags.push(data.tag);
-        } catch { /* skip */ }
-      }
-
-      if (newTags.length > 0) {
-        setTags(prev => [...prev, ...newTags]);
-      }
-
-      // Remove hashtags from content (trim leftover whitespace)
-      cleaned = cleaned.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
-      if (cleaned) setNoteText(cleaned);
-      setExtractingTags(false);
+    const hasPotentialHashtag = noteText.includes("#");
+    if (hasPotentialHashtag) setExtractingTags(true);
+    const hashtagResult = await extractHashtagsToTags(noteText, tags);
+    if (hashtagResult.foundHashtags) {
+      if (hashtagResult.tagsChanged) setTags(hashtagResult.tags);
+      if (hashtagResult.cleanedText) setNoteText(hashtagResult.cleanedText);
     }
+    if (hasPotentialHashtag) setExtractingTags(false);
 
     // Don't proceed if content is empty after extraction
-    const finalText = noteText.replace(hashtagRegex, "").replace(/  +/g, " ").trim();
-    if (!finalText && matches.length > 0) {
+    const finalText = stripHashtags(noteText);
+    if (!finalText && hashtagResult.foundHashtags) {
       feedimAlert("error", t("noteContentEmpty"));
       return;
     }
@@ -600,66 +458,45 @@ function NoteWriteContent() {
 
   const canGoNext = noteText.trim().length > 0 && remaining >= 0;
 
+  const handleDeletePost = () => {
+    confirmDeleteDraft({
+      draftId,
+      deleting,
+      setDeleting,
+      confirmText: t("deleteConfirmContent"),
+      successText: t("deleted"),
+      failedText: t("deleteFailed"),
+      onDeleted: () => router.push("/dashboard"),
+    });
+  };
+
   const headerRight = (
-    <div className="flex items-center gap-2">
-      {/* Character counter in header */}
-      {step === 1 && (
+    <CreateHeaderActions
+      step={step}
+      isPublished={isPublished}
+      stepOnePrefix={step === 1 ? (
         <span className={`text-xs font-semibold mr-[5px] ${remaining <= 0 ? "text-error" : "text-text-muted"}`}>
           {noteText.length}/{MAX_CHARS}
         </span>
-      )}
-      {step === 1 ? (
-        <button
-          onClick={goToStep2}
-          disabled={!canGoNext || extractingTags}
-          className="t-btn accept !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-        >
-          {extractingTags ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("nextStep")}
-        </button>
-      ) : (
-        <>
-          {!isPublished ? (
-            <button
-              onClick={() => savePost("draft")}
-              disabled={savingAs !== null || !noteText.trim()}
-              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-            >
-              {savingAs === "draft" ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("save")}
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (!draftId || deleting) return;
-                feedimAlert("question", t("deleteConfirmContent"), {
-                  showYesNo: true,
-                  onYes: async () => {
-                    setDeleting(true);
-                    try {
-                      const res = await fetch(`/api/posts/${draftId}`, { method: "DELETE" });
-                      if (res.ok) { feedimAlert("success", t("deleted")); router.push("/dashboard"); }
-                      else feedimAlert("error", t("deleteFailed"));
-                    } catch { feedimAlert("error", t("deleteFailed")); }
-                    finally { setDeleting(false); }
-                  },
-                });
-              }}
-              disabled={deleting || savingAs !== null}
-              className="t-btn cancel relative !h-10 !px-5 !text-[0.82rem] !text-error disabled:opacity-40"
-            >
-              {deleting ? <span className="loader" style={{ width: 16, height: 16 }} /> : t("deleteBtn")}
-            </button>
-          )}
-          <button
-            onClick={() => savePost("published")}
-            disabled={savingAs !== null || !noteText.trim() || remaining < 0}
-            className="t-btn accept relative !h-10 !px-5 !text-[0.82rem] disabled:opacity-40"
-            aria-label={isPublished ? t("updateBtn") : t("shareBtn")}
-          >
-            {savingAs === "published" ? <span className="loader" style={{ width: 16, height: 16 }} /> : isPublished ? t("updateBtn") : t("shareBtn")}
-          </button>
-        </>
-      )}
-    </div>
+      ) : null}
+      nextLabel={t("nextStep")}
+      onNext={goToStep2}
+      nextDisabled={!canGoNext || extractingTags}
+      nextLoading={extractingTags}
+      saveLabel={t("save")}
+      onSaveDraft={() => savePost("draft")}
+      saveDisabled={savingAs !== null || !noteText.trim()}
+      saveLoading={savingAs === "draft"}
+      deleteLabel={t("deleteBtn")}
+      onDelete={handleDeletePost}
+      deleteDisabled={deleting || savingAs !== null}
+      deleteLoading={deleting}
+      publishLabel={t("shareBtn")}
+      updateLabel={t("updateBtn")}
+      onPublish={() => savePost("published")}
+      publishDisabled={savingAs !== null || !noteText.trim() || remaining < 0}
+      publishLoading={savingAs === "published"}
+    />
   );
 
   return (
@@ -806,76 +643,27 @@ function NoteWriteContent() {
           <div className="space-y-6 px-[9px] sm:px-3 pt-4 pb-8">
             {/* Tags */}
             <div>
-              <label className="block text-sm font-semibold mb-2">{t("tagsLabel")}</label>
-              {tags.length < VALIDATION.postTags.max && (
-                <div ref={tagAutocompleteRef} className="relative">
-                  <input
-                    type="text"
-                    value={tagSearch}
-                    onChange={e => setTagSearch(sanitizeTagInput(e.target.value))}
-                    onKeyDown={handleTagKeyDown}
-                    maxLength={30}
-                    onFocus={() => {
-                      if (tagSearch.trim()) void searchTags(tagSearch);
-                    }}
-                    placeholder={t("tagSearchPlaceholder")}
-                    className="input-modern w-full !pr-[110px]"
-                  />
-                  {tagSuggestions.length > 0 && (
-                    <div
-                      className="absolute left-0 right-0 top-full mt-1.5 mb-[7px] bg-bg-secondary border border-border-primary rounded-[13px] z-10 max-h-48 overflow-y-auto"
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {tagSuggestions.map((s, i) => (
-                        <button
-                          type="button"
-                          key={s.id}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => addTag(s)}
-                          onMouseEnter={() => setTagHighlight(i)}
-                          className={`w-full text-left px-4 py-3.5 text-[0.88rem] transition flex items-center border-b border-border-primary/40 last:border-b-0 ${
-                            i === tagHighlight ? "bg-accent-main/10 text-accent-main" : "text-text-primary hover:bg-bg-tertiary"
-                          }`}
-                        >
-                          <span className="text-accent-main">#</span><span className="font-semibold truncate">{s.name}</span>
-                          {s.post_count !== undefined && (
-                            <span className="ml-auto text-[0.7rem] text-text-muted font-medium shrink-0 pl-2">{formatCount(s.post_count || 0)} {t("postsCount")}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {tagSearch.trim() && tagSuggestions.length === 0 && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={createAndAddTag}
-                      disabled={tagCreating}
-                      className="absolute right-3 inset-y-0 my-auto flex items-center gap-1 text-xs font-semibold text-accent-main hover:underline disabled:opacity-50 tag-create-btn"
-                    >
-                      {tagCreating ? (
-                        <span className="flex items-center justify-center" style={{ width: 27, height: 27 }}><span className="loader" style={{ width: 14, height: 14, borderTopColor: "var(--accent-color)" }} /></span>
-                      ) : (
-                        <><Plus className="h-3.5 w-3.5" /> {t("createTag")}</>
-                      )}
-                    </button>
-                  )}
-                </div>
-              )}
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {tags.map(tag => (
-                    <span key={tag.id} className="flex items-center gap-1.5 bg-accent-main/10 text-accent-main text-sm font-medium px-3 py-1.5 rounded-full">
-                      <span title={`#${tag.name}`}>{formatDisplayTagLabel(tag.name)}</span>
-                      <button onClick={() => removeTag(tag.id)} className="hover:text-error transition">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-text-muted mt-1.5 text-right font-semibold mr-2">{tags.length}/{VALIDATION.postTags.max} {t("tagUnit")}</p>
-
+              <CreateTagInput
+                label={t("tagsLabel")}
+                tags={tags}
+                maxTags={VALIDATION.postTags.max}
+                tagSearch={tagSearch}
+                tagSuggestions={tagSuggestions}
+                tagHighlight={tagHighlight}
+                tagCreating={tagCreating}
+                placeholder={t("tagSearchPlaceholder")}
+                createLabel={t("createTag")}
+                postsCountLabel={t("postsCount")}
+                tagUnitLabel={t("tagUnit")}
+                autocompleteRef={tagAutocompleteRef}
+                onTagSearchChange={handleTagSearchChange}
+                onTagKeyDown={handleTagKeyDown}
+                onTagFocus={handleTagFocus}
+                onTagHighlight={setTagHighlight}
+                onAddTag={addTag}
+                onCreateTag={createAndAddTag}
+                onRemoveTag={removeTag}
+              />
             </div>
 
             {/* Visibility */}
@@ -898,50 +686,34 @@ function NoteWriteContent() {
             </div>
 
             {/* Settings */}
-            <div>
-              <div className="cursor-pointer select-none" onClick={() => setSettingsExpanded(!settingsExpanded)}>
-                <div className="flex items-center justify-between w-full text-left">
-                  <span className="block text-sm font-semibold">{t("settingsLabel")}</span>
-                  <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${settingsExpanded ? "rotate-180" : ""}`} />
-                </div>
-                {isPublished && <p className="text-xs text-text-muted mt-1.5">{t("publishedFieldLocked")}</p>}
-                <p className="text-[0.7rem] text-text-muted/60 leading-relaxed mt-1.5">{t("settingsDesc")}</p>
-              </div>
-              {settingsExpanded && <div className="space-y-1 mt-3">
-                <button
+            <CreateSettingsSection
+              label={t("settingsLabel")}
+              description={t("settingsDesc")}
+              expanded={settingsExpanded}
+              onToggle={() => setSettingsExpanded(!settingsExpanded)}
+              lockedMessage={isPublished ? t("publishedFieldLocked") : undefined}
+            >
+                <CreateSettingsToggle
+                  label={t("allowComments")}
+                  description={t("allowCommentsDesc")}
+                  checked={allowComments}
                   disabled={isPublished}
-                  onClick={() => setAllowComments(!allowComments)}
-                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("allowComments")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("allowCommentsDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${allowComments ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${allowComments ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  onToggle={() => setAllowComments(!allowComments)}
+                />
                 <div>
-                <button
+                <CreateSettingsToggle
+                  label={t("aiContent")}
+                  description={t("aiContentDesc")}
+                  checked={isAiContent}
                   disabled={isPublished}
-                  onClick={() => setIsAiContent(!isAiContent)}
-                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition text-left ${isPublished ? "opacity-60 cursor-not-allowed" : "hover:bg-bg-tertiary"}`}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{t("aiContent")}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{t("aiContentDesc")}</p>
-                  </div>
-                  <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ${isAiContent ? "bg-accent-main" : "bg-border-primary"}`}>
-                    <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white transition-transform ${isAiContent ? "left-[22px]" : "left-[3px]"}`} />
-                  </div>
-                </button>
+                  onToggle={() => setIsAiContent(!isAiContent)}
+                />
                 <p className="px-4 pt-1.5 pb-2 text-[0.7rem] text-text-muted leading-snug">
                   {t("aiContentWarning")}{" "}
                   <a href="/help/ai" target="_blank" rel="noopener noreferrer" className="text-accent-main hover:underline">{t("aiContentLearnMore")}</a>
                 </p>
                 </div>
-              </div>}
-            </div>
+            </CreateSettingsSection>
 
             <PostMetaFields
               metaTitle={metaTitle} setMetaTitle={setMetaTitle}

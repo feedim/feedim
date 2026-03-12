@@ -2,15 +2,19 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import AmbientLight from "@/components/AmbientLight";
 import { UserProvider } from "@/components/UserContext";
-import LocationPrompt from "@/components/LocationPrompt";
 import HeaderAlertBar from "@/components/HeaderAlertBar";
 import type { SidebarLabels } from "@/lib/sidebarLabels";
 import type { PublicFooterLabels } from "@/lib/footerLabels";
 import type { InitialUser } from "@/lib/userTypes";
+
+const LocationPrompt = dynamic(() => import("@/components/LocationPrompt"), {
+  ssr: false,
+});
 
 interface HeaderAlertBarLabels {
   emailNotVerified: string;
