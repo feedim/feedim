@@ -37,8 +37,8 @@ export default function ConnectedAccountsPage() {
       if (!user) return;
 
       const identities = user.identities || [];
-      const googleIdentity = identities.find(i => i.provider === "google");
-      const emailIdentity = identities.find(i => i.provider === "email");
+      const googleIdentity = identities.find((i: any) => i.provider === "google");
+      const emailIdentity = identities.find((i: any) => i.provider === "email");
 
       if (googleIdentity) {
         setConnectedGoogle(true);

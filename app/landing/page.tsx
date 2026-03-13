@@ -74,7 +74,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: any) => {
       if (cancelled) return;
       if (user) {
         router.replace("/");

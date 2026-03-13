@@ -158,7 +158,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
         .select("tag_id, tags(id, name, slug)")
         .eq("user_id", ctxUser.id)
         .limit(10)
-        .then(({ data: tagFollows }) => {
+        .then(({ data: tagFollows }: any) => {
           if (tagFollows) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const tags = tagFollows.map((tf: any) => tf.tags).filter(Boolean);

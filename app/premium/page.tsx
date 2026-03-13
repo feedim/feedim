@@ -139,10 +139,10 @@ export default function PremiumPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (session?.user) {
         setIsLoggedIn(true);
-        supabase.from("profiles").select("premium_plan").eq("user_id", session.user.id).single().then(({ data }) => {
+        supabase.from("profiles").select("premium_plan").eq("user_id", session.user.id).single().then(({ data }: any) => {
           setUserCurrentPlan(data?.premium_plan || null);
         }, () => {});
       }

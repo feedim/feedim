@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react";
 import { COUNTRIES } from "@/lib/countries";
 import { encodeId } from "@/lib/hashId";
 import { formatRelativeDate } from "@/lib/utils";
-import { parseSupportStoredMessage } from "@/lib/supportRequests";
+import { parseSupportStoredMessage } from "@/lib/supportRequests.shared";
 import LazyAvatar from "@/components/LazyAvatar";
 import { feedimAlert } from "@/components/FeedimAlert";
 

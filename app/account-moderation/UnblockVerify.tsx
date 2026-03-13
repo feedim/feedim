@@ -27,7 +27,7 @@ export default function UnblockVerify() {
   const [captchaAction, setCaptchaAction] = useState<"send" | "resend">("send");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: any) => {
       if (user?.email) setUserEmail(user.email);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

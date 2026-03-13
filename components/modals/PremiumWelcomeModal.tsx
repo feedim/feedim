@@ -66,10 +66,10 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
         supabase.from("blocks").select("blocked_id, blocker_id").or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`),
       ]);
 
-      const followingIds = (follows || []).map(f => f.following_id);
+      const followingIds = (follows || []).map((f: any) => f.following_id);
       setFollowing(new Set(followingIds));
 
-      const blockedIds = (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id);
+      const blockedIds = (blocks || []).map((b: any) => b.blocker_id === user.id ? b.blocked_id : b.blocker_id);
       const excludeIds = new Set([user.id, ...followingIds, ...blockedIds]);
 
       const { data: suggested } = await supabase
@@ -79,7 +79,7 @@ export default function PremiumWelcomeModal({ open, onClose, planName, planId, a
         .order("follower_count", { ascending: false })
         .limit(10);
 
-      setUsers((suggested || []).filter(u => !excludeIds.has(u.user_id)).slice(0, 3));
+      setUsers((suggested || []).filter((u: any) => !excludeIds.has(u.user_id)).slice(0, 3));
     } catch {
       // Silent
     }

@@ -90,7 +90,7 @@ export default function SuggestionsPage() {
       .from("follows")
       .select("following_id")
       .eq("follower_id", user.id);
-    setFollowing(new Set((follows || []).map(f => f.following_id)));
+    setFollowing(new Set((follows || []).map((f: any) => f.following_id)));
 
     await loadSuggestions();
   };

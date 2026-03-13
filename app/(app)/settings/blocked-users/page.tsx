@@ -55,14 +55,14 @@ export default function BlockedUsersPage() {
         return;
       }
 
-      const blockedIds = blocks.map(b => b.blocked_id);
+      const blockedIds = blocks.map((b: { blocked_id: string }) => b.blocked_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, username, full_name, avatar_url")
         .in("user_id", blockedIds);
 
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-      const enriched = blocks.map(b => ({ ...b, profile: profileMap.get(b.blocked_id) }));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const enriched = blocks.map((b: any) => ({ ...b, profile: profileMap.get(b.blocked_id) }));
 
       if (pageNum === 1) {
         setBlockedUsers(enriched);

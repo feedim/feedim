@@ -22,7 +22,7 @@ export default function ResetPasswordPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: any) => {
       if (!data.user) {
         router.push("/forgot-password");
         return;

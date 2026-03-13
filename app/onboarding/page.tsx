@@ -91,7 +91,7 @@ export default function OnboardingPage() {
     loadProfile();
 
     // Başka sekmede çıkış yapıldığında algıla ve login'e yönlendir
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any) => {
       if (event === "SIGNED_OUT") {
         router.replace("/login");
       }

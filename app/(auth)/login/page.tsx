@@ -127,7 +127,7 @@ function LoginPageContent() {
   }, [errorParam]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: any) => {
       if (user) { window.location.replace(nextUrl || "/"); return; }
       setAuthChecked(true);
     }).catch(() => {

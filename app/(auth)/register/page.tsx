@@ -62,7 +62,7 @@ function RegisterForm() {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: any) => {
       if (user) { window.location.href = "/"; return; }
     }).catch(() => {});
   }, [supabase]);
