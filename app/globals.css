@@ -1525,19 +1525,23 @@ img.rounded-full.object-cover {
 
 /* ── Blur-up lazy loading (lazysizes) ── */
 .blur-up {
-  filter: blur(5px);
-  transition: filter 800ms ease;
+  opacity: 0;
+  transition: opacity 250ms ease;
 }
 .blur-up.loaded {
-  filter: blur(0);
+  opacity: 1;
 }
 .lazyload,
 .lazyloading {
-  filter: blur(5px);
-  transition: filter 400ms ease;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 0;
+  transition: opacity 220ms ease;
 }
 .lazyloaded {
-  filter: blur(0);
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1;
 }
 
 /* Avatars: too small for blur — skeleton overlay handles their loading state */

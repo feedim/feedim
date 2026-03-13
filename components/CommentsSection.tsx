@@ -378,6 +378,11 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
               data-hotkey="comment-input"
               ref={commentRef}
               value={newComment}
+              onFocus={async (e) => {
+                if (ctxUser) return;
+                e.currentTarget.blur();
+                await requireAuth();
+              }}
               onChange={(e) => {
                 setNewComment(e.target.value);
                 mention.handleTextChange(e.target.value, commentRef.current);
@@ -470,7 +475,14 @@ export default function CommentsSection({ postId, commentCount: initialCount }: 
               highlightedCommentId={highlightedCommentId}
               likedComments={likedComments}
               onLike={handleLikeComment}
-              onReply={(id, name) => { setReplyTo({ id, name }); setTimeout(() => commentRef.current?.focus(), 100); }}
+              onReply={async (id, name) => {
+                if (!ctxUser) {
+                  const user = await requireAuth();
+                  if (!user) return;
+                }
+                setReplyTo({ id, name });
+                setTimeout(() => commentRef.current?.focus(), 100);
+              }}
               onFocusTargetComment={focusCommentTarget}
               getAuthorName={getAuthorName}
               renderMentionContent={(text) => renderMentionsAsHTML(text, 3, linkableMentionUsernames)}

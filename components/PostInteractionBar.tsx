@@ -419,7 +419,11 @@ export default function PostInteractionBar({
     }).finally(() => { savePending.current = false; });
   };
 
-  const openComments = () => {
+  const openComments = async () => {
+    if (!currentUser) {
+      const user = await requireAuth();
+      if (!user) return;
+    }
     preloadCommonInteractionModals();
     setCommentsMounted(true);
     setCommentsOpen(true);

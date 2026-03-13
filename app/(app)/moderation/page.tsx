@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, ShieldOff, UserPlus, UserMinus, Bug } from "lucide-react";
+import { Shield, FileText, Wallet, Check, X, Eye, RefreshCw, UserCheck, ShieldCheck, Users, Flag, AlertTriangle, EyeOff, Copyright, ShieldOff, UserPlus, UserMinus } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import AppLayout from "@/components/AppLayout";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -16,6 +16,7 @@ import LazyAvatar from "@/components/LazyAvatar";
 import { redirectToLogin } from "@/lib/loginNext";
 import { logClientError } from "@/lib/runtimeLogger";
 import PuzzleCaptcha from "@/components/PuzzleCaptcha";
+import ModerationSupportLinkCard from "@/components/support/ModerationSupportLinkCard";
 
 const COUNTRY_NAME = Object.fromEntries(
   COUNTRIES.map(c => [c.code, { tr: c.name_tr, en: c.name_en, az: c.name_az }])
@@ -32,6 +33,7 @@ function getCountryName(code: string, lang?: string): string {
 export default function AdminPage() {
   useSearchParams();
   const t = useTranslations("moderation");
+  const ts = useTranslations("support");
   const tb = useTranslations("boost");
   const locale = useLocale();
   const { user: currentUser } = useUser();
@@ -41,7 +43,8 @@ export default function AdminPage() {
   const [moderationCountry, setModerationCountry] = useState<string | null>(null);
   const [assignmentLoaded, setAssignmentLoaded] = useState(false);
   const [tab, setTab] = useState<"review" | "applications" | "payments" | "panel">("review");
-  const [subTab, setSubTab] = useState<"contents" | "comments" | "profiles" | "reports" | "ads" | "copyright_claims">("contents");
+  const [subTab, setSubTab] = useState<"contents" | "comments" | "profiles" | "reports" | "ads" | "copyright_claims" | "support">("contents");
+  const [supportSubTab, setSupportSubTab] = useState<"appeals" | "general">("appeals");
   const [appSubTab, setAppSubTab] = useState<"copyright_apps" | "monetization">("copyright_apps");
   const [paySubTab, setPaySubTab] = useState<"withdrawals" | "refunds">("withdrawals");
   const [profileSubTab, setProfileSubTab] = useState<"moderation" | "blocked" | "deleted">("moderation");
@@ -134,6 +137,10 @@ export default function AdminPage() {
   const [boostStats, setBoostStats] = useState<any>(null);
   const [refundBoosts, setRefundBoosts] = useState<any[]>([]);
   const [refundBoostsLoading, setRefundBoostsLoading] = useState(false);
+  const [supportItems, setSupportItems] = useState<any[]>([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportPage, setSupportPage] = useState(1);
+  const [supportHasMore, setSupportHasMore] = useState(false);
 
   const ensureAuthForLoadMore = useCallback(() => {
     if (currentUser) return true;
@@ -141,7 +148,7 @@ export default function AdminPage() {
     return false;
   }, [currentUser]);
 
-  const loadData = useCallback(async (currentTab: string, p = 1, currentSubTab: "contents" | "comments" | "profiles" | "reports" | "ads" | "copyright_claims" = "contents", append = false) => {
+  const loadData = useCallback(async (currentTab: string, p = 1, currentSubTab: "contents" | "comments" | "profiles" | "reports" | "ads" | "copyright_claims" | "support" = "contents", append = false) => {
     if (append) setLoadMoreLoading(true); else setLoading(true);
     try {
       let apiTab = currentTab;
@@ -173,6 +180,27 @@ export default function AdminPage() {
     } catch (err) { logClientError('[Moderation] loadData error:', err); } finally { setLoading(false); setLoadMoreLoading(false); }
   }, []);
 
+  const loadSupportRequests = useCallback(async (kind: "moderation_appeal" | "bug_report", p = 1, append = false) => {
+    if (append) setLoadMoreLoading(true); else setSupportLoading(true);
+    try {
+      const res = await fetch(`/api/admin/support-requests?status=active&kind=${kind}&page=${p}&_ts=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      const requests = data.requests || [];
+      setSupportHasMore((data.total || 0) > p * 10);
+      if (append) {
+        setSupportItems(prev => [...prev, ...requests]);
+      } else {
+        setSupportItems(requests);
+      }
+    } catch (err) {
+      logClientError("[Moderation] loadSupportRequests error:", err);
+      if (!append) setSupportItems([]);
+    } finally {
+      setSupportLoading(false);
+      setLoadMoreLoading(false);
+    }
+  }, []);
+
   // Fetch moderator assignment on mount
   useEffect(() => {
     if (isAdmin) { setAssignmentLoaded(true); return; }
@@ -199,7 +227,7 @@ export default function AdminPage() {
     if (tab === 'applications') return;
     if (tab === 'panel') return;
     if (tab === 'payments' && paySubTab !== 'withdrawals') return;
-    if (tab === 'review' && (subTab === 'reports' || subTab === 'ads' || subTab === 'copyright_claims')) return;
+    if (tab === 'review' && (subTab === 'reports' || subTab === 'ads' || subTab === 'copyright_claims' || subTab === 'support')) return;
     loadData(tab, page, subTab);
   }, [tab, page, subTab, paySubTab, loadData, assignmentLoaded]);
 
@@ -278,6 +306,13 @@ export default function AdminPage() {
       loadPanel("reports");
     }
   }, [tab, subTab, loadPanel, assignmentLoaded]);
+
+  useEffect(() => {
+    if (!assignmentLoaded) return;
+    if (tab === "review" && subTab === "support") {
+      loadSupportRequests(supportSubTab === "appeals" ? "moderation_appeal" : "bug_report", supportPage);
+    }
+  }, [tab, subTab, supportSubTab, supportPage, loadSupportRequests, assignmentLoaded]);
 
   useEffect(() => {
     if (tab !== "panel") return;
@@ -692,18 +727,6 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
-            )}
-            {isAdmin && (
-              <Link
-                href="/error_log_ff"
-                className="flex items-center gap-2.5 bg-bg-secondary rounded-[13px] p-4 hover:bg-bg-tertiary transition"
-              >
-                <Bug className="h-4 w-4 text-red-400" />
-                <div>
-                  <span className="text-sm font-medium">Error Log</span>
-                  <p className="text-xs text-text-muted mt-0.5">Kullanıcı hata loglarını görüntüle</p>
-                </div>
-              </Link>
             )}
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
               {isAdmin && (
@@ -1147,15 +1170,20 @@ export default function AdminPage() {
         ) : tab === "review" ? (
           <div className="px-4 space-y-3 py-2">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-          {(['contents','comments','profiles',...(isAdmin ? ['ads'] as const : []),'copyright_claims','reports'] as const).map(s => (
-            <button key={s} onClick={() => { setSubTab(s as typeof subTab); setPage(1); }}
+          {(['contents','comments','profiles','support',...(isAdmin ? ['ads'] as const : []),'copyright_claims','reports'] as const).map(s => (
+            <button key={s} onClick={() => {
+              setSubTab(s as typeof subTab);
+              setPage(1);
+              if (s === "support") setSupportPage(1);
+            }}
               className={`px-3 py-1.5 rounded-full text-[0.78rem] font-semibold whitespace-nowrap shrink-0 ${subTab===s?'bg-text-primary text-bg-primary':'text-text-muted hover:text-text-primary'}`}
-            >{s==='contents'?t("contents"):s==='comments'?t("comments"):s==='profiles'?t("profiles"):s==='ads'?t("ads"):s==='copyright_claims'?t("copyrightClaims"):t("reports")}</button>
+            >{s==='contents'?t("contents"):s==='comments'?t("comments"):s==='profiles'?t("profiles"):s==='support'?t("support"):s==='ads'?t("ads"):s==='copyright_claims'?t("copyrightClaims"):t("reports")}</button>
           ))}
           <button onClick={() => {
             if (subTab === 'ads') loadBoosts();
             else if (subTab === 'copyright_claims') { setCopyrightClaimsPage(1); loadCopyrightClaims(1); }
             else if (subTab === 'reports') loadPanel("reports");
+            else if (subTab === 'support') { setSupportPage(1); loadSupportRequests(supportSubTab === "appeals" ? "moderation_appeal" : "bug_report", 1); }
             else loadData('review', 1, subTab);
           }} className="ml-auto px-3 py-1.5 rounded-full text-[0.78rem] font-semibold bg-bg-secondary hover:bg-bg-tertiary shrink-0">{t("refresh")}</button>
         </div>
@@ -1486,6 +1514,66 @@ export default function AdminPage() {
                   className="px-4 py-2 rounded-[8px] text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
                 >{loadMoreLoading ? t("loading") : t("loadMore")}</button>
               </div>
+            )}
+          </div>
+            ) : subTab === 'support' ? (
+          <div className="px-4 space-y-2 py-2">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+              {(['appeals', 'general'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setSupportSubTab(s);
+                    setSupportPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[0.78rem] font-semibold whitespace-nowrap shrink-0 ${supportSubTab===s?'bg-text-primary text-bg-primary':'text-text-muted hover:text-text-primary'}`}
+                >
+                  {s === "appeals" ? t("appeals") : t("generalSupport")}
+                </button>
+              ))}
+            </div>
+            {supportLoading ? (
+              <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+            ) : supportItems.length === 0 ? (
+              <div className="py-16 text-center text-text-muted text-sm">{t("noPendingSupportRequests")}</div>
+            ) : (
+              <>
+                {supportItems.map((request: any) => (
+                  <ModerationSupportLinkCard
+                    key={request.id}
+                    request={request}
+                    locale={locale}
+                    currentModeratorId={currentUser?.id || null}
+                    labels={{
+                      appeals: t("appeals"),
+                      generalSupport: t("generalSupport"),
+                      supportRequester: t("supportRequester"),
+                      openSupportRequest: t("openSupportRequest"),
+                      takeSupportRequest: t("takeSupportRequest"),
+                      supportAssignedToYou: t("supportAssignedToYou"),
+                      supportClaimSuccess: t("supportClaimSuccess"),
+                      supportClaimError: t("supportClaimError"),
+                      supportClaimLimit: t("supportClaimLimit"),
+                    }}
+                  />
+                ))}
+                {supportHasMore && (
+                  <div className="flex justify-center py-3">
+                    <button
+                      onClick={() => {
+                        if (!ensureAuthForLoadMore()) return;
+                        const next = supportPage + 1;
+                        setSupportPage(next);
+                        loadSupportRequests(supportSubTab === "appeals" ? "moderation_appeal" : "bug_report", next, true);
+                      }}
+                      disabled={loadMoreLoading}
+                      className="px-4 py-2 rounded-[8px] text-[0.78rem] font-medium bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-60"
+                    >
+                      {loadMoreLoading ? t("loading") : t("loadMore")}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
             ) : subTab === 'reports' ? (

@@ -700,6 +700,13 @@ export default function SettingsPage() {
 
             {/* Destek & Yasal */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("supportLegal")}</h3>
+            <Link href="/settings/support" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-5 w-5 text-text-muted" />
+                <span className="text-[0.88rem] font-medium">{t("getSupport")}</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-text-muted" />
+            </Link>
             <NewTabLink href="/help" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
               <div className="flex items-center gap-3">
                 <HelpCircle className="h-5 w-5 text-text-muted" />

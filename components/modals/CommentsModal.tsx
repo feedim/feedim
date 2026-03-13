@@ -826,6 +826,11 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
               data-hotkey="comment-input"
               ref={inputRef}
               value={newComment}
+              onFocus={async (e) => {
+                if (ctxUser) return;
+                e.currentTarget.blur();
+                await requireAuth();
+              }}
               onChange={e => {
                 if (pendingGif) return;
                 handleCommentChange(e.target.value);
@@ -965,7 +970,15 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 	                        openMenuId={openMenuId}
 	                        onToggleMenu={setOpenMenuId}
 	                        onLike={handleLikeComment}
-	                        onReply={(id, name) => { if (id < 0) return; setReplyTo({ id, name }); setTimeout(() => inputRef.current?.focus(), 100); }}
+	                        onReply={async (id, name) => {
+	                          if (id < 0) return;
+	                          if (!ctxUser) {
+	                            const user = await requireAuth();
+	                            if (!user) return;
+	                          }
+	                          setReplyTo({ id, name });
+	                          setTimeout(() => inputRef.current?.focus(), 100);
+	                        }}
 	                        onFocusTargetComment={focusCommentTarget}
 	                        renderMentionContent={renderMentionContent}
 	                      />
@@ -1000,7 +1013,11 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
 	                          openMenuId={openMenuId}
 	                          onToggleMenu={setOpenMenuId}
 	                          onLike={handleLikeComment}
-	                          onReply={(_, replyUsername) => {
+	                          onReply={async (_, replyUsername) => {
+	                            if (!ctxUser) {
+	                              const user = await requireAuth();
+	                              if (!user) return;
+	                            }
 	                            setReplyTo({ id: comment.id, name: replyUsername });
 	                            setTimeout(() => inputRef.current?.focus(), 100);
 	                          }}
@@ -1097,7 +1114,14 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
                 )}
                 {currentUserId !== menuComment.author_id && (
                   <button
-                    onClick={() => { setOpenMenuId(null); setReportTarget(menuComment.id); }}
+                    onClick={async () => {
+                      if (!ctxUser) {
+                        const user = await requireAuth();
+                        if (!user) return;
+                      }
+                      setOpenMenuId(null);
+                      setReportTarget(menuComment.id);
+                    }}
                     className="flex items-center gap-3 px-2 py-3.5 text-[0.93rem] font-medium text-error hover:bg-error/10 transition w-full text-left rounded-[12px]"
                   >
                     <Flag className="h-[18px] w-[18px]" />

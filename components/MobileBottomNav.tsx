@@ -7,11 +7,114 @@ import { Home, Search, Bell, User, BookOpen, Users, Film, Clapperboard, LayoutGr
 import { useUser } from "@/components/UserContext";
 import { useNotificationCount } from "@/lib/useNotificationCount";
 import Modal from "@/components/modals/Modal";
-import { useLocale, useTranslations } from "next-intl";
 import { emitNavigationStart } from "@/lib/navigationProgress";
 import { formatCount } from "@/lib/utils";
 import LazyAvatar from "@/components/LazyAvatar";
 import { useHydrated } from "@/lib/useHydrated";
+
+type MobileNavLocale = "tr" | "en" | "az";
+
+const MOBILE_NAV_LABELS: Record<MobileNavLocale, {
+  nav: Record<string, string>;
+  common: Record<string, string>;
+  theme: Record<string, string>;
+}> = {
+  tr: {
+    nav: {
+      home: "Ana Sayfa",
+      explore: "Keşfet",
+      notifications: "Bildirimler",
+      profile: "Profil",
+      communityNotes: "Notlar",
+      moments: "Moments",
+      video: "Videolar",
+      posts: "Gönderiler",
+      bookmarks: "Kaydedilenler",
+      analytics: "Analitik",
+      balance: "Bakiye",
+      settings: "Ayarlar",
+    },
+    common: {
+      more: "Daha Fazla",
+      contentTypesSection: "İçerik",
+      quickAccessSection: "Hızlı Erişim",
+      appearanceSection: "Görünüm",
+      login: "Giriş Yap",
+    },
+    theme: {
+      system: "Sistem",
+      light: "Gündüz",
+      dark: "Gece",
+      dim: "Loş",
+    },
+  },
+  en: {
+    nav: {
+      home: "Home",
+      explore: "Explore",
+      notifications: "Notifications",
+      profile: "Profile",
+      communityNotes: "Notes",
+      moments: "Moments",
+      video: "Videos",
+      posts: "Posts",
+      bookmarks: "Bookmarks",
+      analytics: "Analytics",
+      balance: "Balance",
+      settings: "Settings",
+    },
+    common: {
+      more: "More",
+      contentTypesSection: "Content",
+      quickAccessSection: "Quick Access",
+      appearanceSection: "Appearance",
+      login: "Log In",
+    },
+    theme: {
+      system: "System",
+      light: "Light",
+      dark: "Dark",
+      dim: "Dim",
+    },
+  },
+  az: {
+    nav: {
+      home: "Ana Səhifə",
+      explore: "Kəşf et",
+      notifications: "Bildirişlər",
+      profile: "Profil",
+      communityNotes: "Qeydlər",
+      moments: "Moments",
+      video: "Videolar",
+      posts: "Paylaşımlar",
+      bookmarks: "Yadda saxlananlar",
+      analytics: "Analitika",
+      balance: "Balans",
+      settings: "Ayarlar",
+    },
+    common: {
+      more: "Daha Çox",
+      contentTypesSection: "Məzmun",
+      quickAccessSection: "Sürətli Giriş",
+      appearanceSection: "Görünüş",
+      login: "Daxil ol",
+    },
+    theme: {
+      system: "Sistem",
+      light: "İşıqlı",
+      dark: "Qaranlıq",
+      dim: "Tutqun",
+    },
+  },
+};
+
+function resolveMobileNavLocale(): MobileNavLocale {
+  if (typeof document !== "undefined") {
+    const htmlLang = document.documentElement.lang?.toLowerCase();
+    if (htmlLang === "en" || htmlLang === "az") return htmlLang;
+  }
+  return "tr";
+}
 
 export default memo(function MobileBottomNav() {
   const pathname = usePathname();
@@ -19,31 +122,33 @@ export default memo(function MobileBottomNav() {
   const { user, isLoggedIn } = useUser();
   const [moreOpen, setMoreOpen] = useState(false);
   const unreadCount = useNotificationCount(isLoggedIn, user?.id);
-  const t = useTranslations();
-  const locale = useLocale();
   const hydrated = useHydrated();
+  const locale = useMemo<MobileNavLocale>(() => (
+    hydrated ? resolveMobileNavLocale() : "tr"
+  ), [hydrated]);
+  const labels = MOBILE_NAV_LABELS[locale];
 
-  const notificationsLabel = t("nav.notifications");
+  const notificationsLabel = labels.nav.notifications;
 
   const navItems = [
-    { href: "/dashboard", icon: Home, label: t("nav.home"), active: pathname === "/dashboard" },
-    { href: "/explore", icon: Search, label: t("nav.explore"), active: pathname === "/explore" },
+    { href: "/dashboard", icon: Home, label: labels.nav.home, active: pathname === "/dashboard" },
+    { href: "/explore", icon: Search, label: labels.nav.explore, active: pathname === "/explore" },
     { href: "/notifications", icon: Bell, label: notificationsLabel, active: pathname === "/notifications" },
-    { href: "/profile", icon: User, label: t("nav.profile"), active: pathname === "/profile" },
+    { href: "/profile", icon: User, label: labels.nav.profile, active: pathname === "/profile" },
   ];
 
   const contentItems = [
-    { href: "/notes", icon: Users, label: t("nav.communityNotes") },
-    { href: "/moments", icon: Clapperboard, label: t("nav.moments") },
-    { href: "/video", icon: Film, label: t("nav.video") },
-    { href: "/posts", icon: BookOpen, label: t("nav.posts") },
+    { href: "/notes", icon: Users, label: labels.nav.communityNotes },
+    { href: "/moments", icon: Clapperboard, label: labels.nav.moments },
+    { href: "/video", icon: Film, label: labels.nav.video },
+    { href: "/posts", icon: BookOpen, label: labels.nav.posts },
   ];
 
   const quickAccessItems = [
-    { href: "/bookmarks", icon: Bookmark, label: t("nav.bookmarks") },
-    { href: "/analytics", icon: BarChart3, label: t("nav.analytics") },
-    { href: "/coins", icon: Wallet, label: t("nav.balance") },
-    { href: "/settings", icon: Settings, label: t("nav.settings") },
+    { href: "/bookmarks", icon: Bookmark, label: labels.nav.bookmarks },
+    { href: "/analytics", icon: BarChart3, label: labels.nav.analytics },
+    { href: "/coins", icon: Wallet, label: labels.nav.balance },
+    { href: "/settings", icon: Settings, label: labels.nav.settings },
   ];
 
   const publicPaths = ["/", "/explore", "/moments", "/video"];
@@ -66,12 +171,12 @@ export default memo(function MobileBottomNav() {
   };
 
   const themeLabel = theme === "system"
-    ? t("theme.system")
+    ? labels.theme.system
     : theme === "light"
-      ? t("theme.light")
+      ? labels.theme.light
       : theme === "dark"
-        ? t("theme.dark")
-        : t("theme.dim");
+        ? labels.theme.dark
+        : labels.theme.dim;
 
   const themeIcon = () => {
     if (theme === "dark") return <Moon className="h-5 w-5 shrink-0" />;
@@ -112,7 +217,7 @@ export default memo(function MobileBottomNav() {
           className={`flex items-center justify-center flex-1 h-full transition-colors ${
             moreActive ? "text-accent-main" : "text-text-primary"
           }`}
-          aria-label={t("common.more")}
+          aria-label={labels.common.more}
         >
           <LayoutGrid className="h-[26px] w-[26px]" strokeWidth={moreActive ? 2.3 : 2} aria-hidden="true" />
         </button>
@@ -148,11 +253,11 @@ export default memo(function MobileBottomNav() {
       </div>
 
       {/* More modal */}
-      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title={t("common.more")} size="sm">
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title={labels.common.more} size="sm">
         <div className="py-2 px-2 space-y-[2px]">
           <div className="px-3 pt-1 pb-1.5">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-text-muted/75">
-              {t("common.contentTypesSection")}
+              {labels.common.contentTypesSection}
             </p>
           </div>
           {contentItems.map(item => {
@@ -179,7 +284,7 @@ export default memo(function MobileBottomNav() {
               <div className="border-t border-border-primary/50 !my-1.5" />
               <div className="px-3 pt-1 pb-1.5">
                 <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-text-muted/75">
-                  {t("common.quickAccessSection")}
+                  {labels.common.quickAccessSection}
                 </p>
               </div>
               {quickAccessItems.map(item => {
@@ -206,7 +311,7 @@ export default memo(function MobileBottomNav() {
           <div className="border-t border-border-primary/50 !my-1.5" />
           <div className="px-3 pt-1 pb-1.5">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.08em] text-text-muted/75">
-              {t("common.appearanceSection")}
+              {labels.common.appearanceSection}
             </p>
           </div>
           <button
@@ -231,7 +336,7 @@ export default memo(function MobileBottomNav() {
               className="w-full flex items-center gap-3 px-3 py-3.5 rounded-[13px] transition text-left text-accent-main hover:bg-accent-main/10 font-semibold"
             >
               <LogIn className="h-5 w-5 shrink-0" />
-              <span className="text-[0.93rem]">{t("common.login")}</span>
+              <span className="text-[0.93rem]">{labels.common.login}</span>
             </Link>
           )}
         </div>

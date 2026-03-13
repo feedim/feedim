@@ -457,7 +457,7 @@ export default function SuggestionWidget() {
                     </Link>
                     <div className="min-w-0 leading-none ml-[4px]">
                       <div className="flex items-center gap-1 leading-none">
-                        <Link href={`/u/${post.author.username}`} className="text-[0.8rem] text-text-muted font-medium truncate hover:text-text-primary transition">
+                        <Link href={`/u/${post.author.username}`} className="text-[0.8rem] text-text-primary font-medium truncate hover:text-text-primary transition">
                           @{post.author.username}
                         </Link>
                         {(post.author.is_verified || post.author.role === "admin") && <VerifiedBadge size="sm" variant={getBadgeVariant(post.author.premium_plan)} role={post.author.role} />}

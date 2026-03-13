@@ -42,15 +42,14 @@ export default function PostContentClient({ html, className, featuredImage }: Po
       skeleton.className = 'animate-pulse';
       wrapperEl.insertBefore(skeleton, wrapperEl.firstChild);
 
-      // Image starts blurred
-      img.style.filter = 'blur(3px)';
-      img.style.transition = 'none';
+      // Keep reveal soft and neutral; the skeleton handles loading feedback.
+      img.style.opacity = '0';
+      img.style.transition = 'opacity 220ms ease';
 
       const reveal = () => {
         skeleton.style.opacity = '0';
         skeleton.style.pointerEvents = 'none';
-        img.style.transition = 'filter 200ms ease 80ms';
-        img.style.filter = 'blur(0px)';
+        img.style.opacity = '1';
         setTimeout(() => skeleton.remove(), 300);
       };
 

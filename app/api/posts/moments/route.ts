@@ -35,7 +35,7 @@ async function buildMomentsResponse(
       sounds!posts_sound_id_fkey(id, title, artist, audio_url, duration, status, cover_image_url, is_original)
     `)
     .in("id", pageIds)
-    .in("status", ["published", "moderation"]);
+    .eq("status", "published");
 
   if (error) {
     return safeError(error);
@@ -97,7 +97,7 @@ async function handleFollowingMoments(
           .select(candidateFields)
           .in("author_id", followedUserIds)
           .eq("content_type", "moment")
-          .in("status", ["published", "moderation"])
+          .eq("status", "published")
           .order("published_at", { ascending: false })
           .limit(120)
           .then((result) => (result.data || []).map((post: any) => ({ ...post, source: "followed" as const })))
@@ -126,7 +126,7 @@ async function handleFollowingMoments(
         .select(candidateFields)
         .in("id", tagPostIds)
         .eq("content_type", "moment")
-        .in("status", ["published", "moderation"]);
+        .eq("status", "published");
 
       tagPosts = (validPosts || []).map((post: any) => ({ ...post, source: "tag" as const }));
     }
@@ -140,7 +140,6 @@ async function handleFollowingMoments(
   const candidates = Array.from(dedupeMap.values()).filter((candidate) => {
     if (blockedIds.has(candidate.author_id)) return false;
     if (candidate.is_nsfw && candidate.author_id !== user.id && !isStaff) return false;
-    if (candidate.status === "moderation" && candidate.author_id !== user.id && !isStaff) return false;
     return candidate.content_type === "moment";
   });
 
@@ -396,7 +395,7 @@ export async function GET(req: NextRequest) {
             .select(candidateFields)
             .in("author_id", followedUserIds)
             .eq("content_type", "moment")
-            .in("status", ["published", "moderation"])
+            .eq("status", "published")
             .gte("published_at", cutoff30d)
             .order("published_at", { ascending: false })
             .limit(followedLimit)
@@ -462,7 +461,6 @@ export async function GET(req: NextRequest) {
     const candidates = Array.from(map.values()).filter(c => {
       if (blockedIds.has(c.author_id)) return false;
       if (c.is_nsfw && c.author_id !== user?.id && !isStaff) return false;
-      if (c.status === "moderation" && c.author_id !== user?.id && !isStaff) return false;
       return true;
     });
 

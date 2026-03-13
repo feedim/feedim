@@ -235,6 +235,13 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                 <h3 className="font-semibold text-xs text-text-muted uppercase tracking-wider">{t("supportLegal")}</h3>
               </div>
               <div className="">
+                <Link href="/settings/support" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
+                  <div className="flex items-center gap-3">
+                    <MessageCircle className="h-5 w-5 text-text-muted" />
+                    <span className="text-sm font-medium">{t("getSupport")}</span>
+                  </div>
+                  <ArrowLeft className="h-4 w-4 text-text-muted rotate-180" />
+                </Link>
                 <NewTabLink href="/help" onClick={onClose} className="flex items-center justify-between px-4 py-3.5 hover:bg-bg-tertiary transition-colors">
                   <div className="flex items-center gap-3">
                     <HelpCircle className="h-5 w-5 text-text-muted" />

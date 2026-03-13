@@ -8,18 +8,16 @@ import { feedimAlert } from "@/components/FeedimAlert";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordInput from "@/components/PasswordInput";
 import DigitInput from "@/components/DigitInput";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { VALIDATION } from "@/lib/constants";
 import { isSafeRedirectUrl } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import LazyAvatar from "@/components/LazyAvatar";
 import PuzzleCaptcha from "@/components/PuzzleCaptcha";
+import SavedAccountCard, { type SavedAccountCardAccount } from "@/components/SavedAccountCard";
 
-interface SavedAccount {
+interface SavedAccount extends SavedAccountCardAccount {
   email: string;
-  username: string;
-  full_name: string;
-  avatar_url: string | null;
   last_login: number;
 }
 
@@ -639,28 +637,13 @@ function LoginPageContent() {
       >
         <div className="space-y-2">
           {savedAccounts.map((account) => (
-            <div
+            <SavedAccountCard
               key={account.email}
-              onClick={() => handleSelectAccount(account)}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border-primary hover:bg-bg-tertiary transition cursor-pointer text-left group"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectAccount(account); }}
-            >
-              <LazyAvatar src={account.avatar_url} alt={account.username} sizeClass="w-10 h-10" className="shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-text-primary truncate">@{account.username}</p>
-                <p className="text-xs text-text-muted truncate">{account.full_name}</p>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => handleRemoveAccount(e, account.email)}
-                className="p-1.5 rounded-full hover:bg-bg-tertiary transition opacity-0 group-hover:opacity-100 shrink-0"
-                aria-label={t('removeAccount')}
-              >
-                <X className="w-4 h-4 text-text-muted" />
-              </button>
-            </div>
+              account={account}
+              onSelect={() => handleSelectAccount(account)}
+              onRemove={(e) => handleRemoveAccount(e, account.email)}
+              removeLabel={t('removeAccount')}
+            />
           ))}
         </div>
 

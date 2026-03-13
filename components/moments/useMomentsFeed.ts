@@ -59,7 +59,12 @@ export function useMomentsFeed({
           try {
             const response = await fetch(`/api/posts/${startSlug}`);
             const postData = await response.json();
-            if (response.ok && postData.post && postData.post.content_type === "moment") {
+            if (
+              response.ok &&
+              postData.post &&
+              postData.post.content_type === "moment" &&
+              postData.post.status === "published"
+            ) {
               const post = postData.post;
               const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
               items = [{ ...post, profiles: author }, ...items.filter((moment) => moment.id !== post.id)];

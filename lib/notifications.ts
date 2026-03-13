@@ -74,7 +74,8 @@ export async function createNotification({
   // Duplicate prevention: same actor + type + object within 24 hours
   // Skip duplicate check for account_moderation (status can change multiple times)
   const skipDupeTypes = ['account_moderation', 'copyright_similar_detected'];
-  if (!skipDupeTypes.includes(type)) {
+  const skipSupportDuplicate = type === "system" && object_type === "support_request";
+  if (!skipDupeTypes.includes(type) && !skipSupportDuplicate) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     let dupeQuery = admin
       .from("notifications")

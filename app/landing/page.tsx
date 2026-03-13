@@ -8,9 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { FeedimIcon } from "@/components/FeedimLogo";
 import PublicFooter from "@/components/PublicFooter";
 import { useTranslations } from "next-intl";
-import { X } from "lucide-react";
-import LazyAvatar from "@/components/LazyAvatar";
 import { createFooterLabels } from "@/lib/footerLabels";
+import SavedAccountCard, { type SavedAccountCardAccount } from "@/components/SavedAccountCard";
 
 function LandingGoogleButton({
   label,
@@ -36,11 +35,8 @@ function LandingGoogleButton({
   );
 }
 
-interface SavedAccount {
+interface SavedAccount extends SavedAccountCardAccount {
   email: string;
-  username: string;
-  full_name: string;
-  avatar_url: string | null;
   last_login: number;
 }
 
@@ -164,37 +160,14 @@ export default function LandingPage() {
                 </p>
                 <div className="space-y-2 mb-3">
                   {savedAccounts.map((account) => (
-                    <div
+                    <SavedAccountCard
                       key={account.email}
                       role="link"
-                      tabIndex={0}
-                      onClick={() => router.push(`/login?account=${encodeURIComponent(account.email)}`)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          router.push(`/login?account=${encodeURIComponent(account.email)}`);
-                        }
-                      }}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-[13.5px] border border-border-primary hover:bg-bg-tertiary transition cursor-pointer text-left group"
-                    >
-                      <LazyAvatar src={account.avatar_url} alt={account.username} sizeClass="w-10 h-10" className="shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-text-primary truncate">
-                          @{account.username}
-                        </p>
-                        <p className="text-xs text-text-muted truncate">
-                          {account.full_name}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => handleRemoveAccount(e, account.email)}
-                        className="p-1.5 rounded-full hover:bg-bg-tertiary transition shrink-0"
-                        aria-label={t("removeAccount")}
-                      >
-                        <X className="w-4 h-4 text-text-muted" />
-                      </button>
-                    </div>
+                      account={account}
+                      onSelect={() => router.push(`/login?account=${encodeURIComponent(account.email)}`)}
+                      onRemove={(e) => handleRemoveAccount(e, account.email)}
+                      removeLabel={t("removeAccount")}
+                    />
                   ))}
                 </div>
 

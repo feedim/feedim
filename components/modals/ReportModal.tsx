@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { feedimAlert } from "@/components/FeedimAlert";
 import PuzzleCaptcha from "@/components/PuzzleCaptcha";
 import Modal from "./Modal";
 import { useUser } from "@/components/UserContext";
+import { useAuthModal } from "@/components/AuthModal";
 
 interface ReportModalProps {
   open: boolean;
@@ -38,6 +39,7 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
   const tm = useTranslations("moderation");
   const tCopyright = useTranslations("copyright");
   const { user } = useUser();
+  const { requireAuth } = useAuthModal();
   const isAdmin = user?.role === "admin";
   void authorUserId;
   const [selectedReason, setSelectedReason] = useState("");
@@ -47,6 +49,12 @@ export default function ReportModal({ open, onClose, targetType, targetId, autho
   const [copyrightEmail, setCopyrightEmail] = useState("");
   const [copyrightOriginalUrl, setCopyrightOriginalUrl] = useState("");
   const [captchaOpen, setCaptchaOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || user) return;
+    void requireAuth();
+    onClose();
+  }, [open, user, requireAuth, onClose]);
 
   const handleSubmit = () => {
     if (!selectedReason || submitted) return;

@@ -26,6 +26,7 @@ export default function GuestJoinPrompt({
 }: GuestJoinPromptProps) {
   const hydrated = useHydrated();
   const [visible, setVisible] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const dismissKey = `${DISMISS_KEY}:${storageKey}`;
 
   useEffect(() => {
@@ -41,6 +42,26 @@ export default function GuestJoinPrompt({
     setVisible(true);
   }, [dismissKey, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated || typeof document === "undefined") return;
+
+    const syncModalState = () => {
+      setModalOpen(Boolean(document.querySelector('[data-modal="true"]')));
+    };
+
+    syncModalState();
+
+    const observer = new MutationObserver(syncModalState);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-modal"],
+    });
+
+    return () => observer.disconnect();
+  }, [hydrated]);
+
   const handleDismiss = () => {
     setVisible(false);
     try {
@@ -48,7 +69,7 @@ export default function GuestJoinPrompt({
     } catch {}
   };
 
-  if (!hydrated || !visible) return null;
+  if (!hydrated || !visible || modalOpen) return null;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[75] px-0">
@@ -70,7 +91,7 @@ export default function GuestJoinPrompt({
           </button>
 
           <div className="mx-auto max-w-[620px] px-10 text-center sm:px-0">
-            <p className="text-[18px] font-extrabold leading-[1.2] text-white sm:text-[1.12rem]">{title}</p>
+            <p className="text-[18px] font-extrabold leading-[1.2] tracking-[0.1px] text-white sm:text-[1.3rem]">{title}</p>
             <p className="mt-1.5 text-[0.8rem] font-medium leading-[1.45] text-white/88 sm:text-[0.83rem]">{body}</p>
           </div>
 

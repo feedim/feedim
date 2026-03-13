@@ -57,8 +57,6 @@ export default memo(function LazyAvatar({
         className={`w-full h-full rounded-full overflow-hidden ${loaded ? borderClass : ""}`}
         style={{
           ...(loaded ? avatarBorderStyle : undefined),
-          filter: loaded ? "blur(0px)" : "blur(3px)",
-          transition: loaded ? "filter 200ms ease 80ms" : "none",
           transform: "translateZ(0)",
         }}
       >
@@ -68,7 +66,9 @@ export default memo(function LazyAvatar({
           data-src={sanitizedSrc}
           alt={alt}
           decoding="async"
-          className="lazyload w-full h-full object-cover bg-bg-tertiary"
+          className={`lazyload w-full h-full object-cover bg-bg-tertiary transition-opacity duration-200 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
         />
       </div>
       <div

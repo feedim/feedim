@@ -384,7 +384,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
               {/* Thumbnail */}
               <div
                 ref={thumbRef}
-                className="mt-2 rounded-[12px] sm:rounded-[21px] overflow-hidden bg-bg-tertiary cursor-pointer relative z-[1]"
+                className="mt-2 rounded-[12px] sm:rounded-[21px] overflow-hidden bg-black cursor-pointer relative z-[1]"
                 onClick={() => router.push(postHref)}
               >
                 <div className={`relative w-full ${isVideo ? "min-h-[180px] sm:min-h-[160px] aspect-[3/4] sm:aspect-video" : "min-h-[120px] sm:min-h-[140px] aspect-[4/3] sm:aspect-[3/2]"}`}>
@@ -395,6 +395,8 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                       className="w-full h-full"
                       blurhash={post.blurhash}
                       borderOnLoad
+                      fit="contain"
+                      backgroundClassName="bg-black"
                     />
                   ) : (
                     <NoImage className="w-full h-full" iconSize={28} />
@@ -410,7 +412,7 @@ export default memo(function PostCard({ post, initialLiked, initialSaved, onDele
                         externalPaused={showCTA}
                         externalMuted={muted}
                         onEnded={handleVideoEnded}
-                        videoClassName="w-full h-full object-cover"
+                        videoClassName="w-full h-full object-contain bg-black"
                       />
                       {/* Unmute button — bottom left */}
                       {!showCTA && (

@@ -80,8 +80,6 @@ export default memo(function EditableAvatar({
             className={`${sizeClass} rounded-full overflow-hidden ${imgLoaded ? "border border-border-primary" : ""}`}
             style={{
               ...(imgLoaded ? avatarBorderStyle : undefined),
-              filter: noBlur ? "none" : imgLoaded ? "blur(0px)" : "blur(3px)",
-              transition: !noBlur && imgLoaded ? "filter 200ms ease 80ms" : "none",
               transform: "translateZ(0)",
             }}
           >
@@ -89,7 +87,9 @@ export default memo(function EditableAvatar({
               ref={imgRef}
               data-src={sanitizedSrc}
               alt={alt}
-              className={`lazyload w-full h-full object-cover bg-bg-tertiary ${imgClassName || ""}`}
+              className={`lazyload w-full h-full object-cover bg-bg-tertiary transition-opacity duration-200 ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              } ${imgClassName || ""}`}
             />
           </div>
           {/* Skeleton pulse — hide when noBlur */}

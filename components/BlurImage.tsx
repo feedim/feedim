@@ -12,6 +12,8 @@ interface BlurImageProps {
   height?: number;
   loading?: "lazy" | "eager";
   borderOnLoad?: boolean;
+  fit?: "cover" | "contain";
+  backgroundClassName?: string;
 }
 
 /**
@@ -29,6 +31,8 @@ export default function BlurImage({
   height = 32,
   loading = "lazy",
   borderOnLoad = true,
+  fit = "cover",
+  backgroundClassName = "",
 }: BlurImageProps) {
   const [loaded, setLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -72,17 +76,18 @@ export default function BlurImage({
   }, []);
 
   const isEager = loading === "eager";
+  const fitClassName = fit === "contain" ? "object-contain" : "object-cover";
 
   return (
     <div
-      className={`relative overflow-hidden ${className} ${borderOnLoad && loaded ? "border border-border-primary" : ""}`}
+      className={`relative overflow-hidden ${backgroundClassName} ${className} ${borderOnLoad && loaded ? "border border-border-primary" : ""}`}
       style={borderOnLoad && loaded ? { borderWidth: "0.9px" } : undefined}
     >
       {/* Blurhash canvas or skeleton placeholder */}
       {blurhash ? (
         <canvas
           ref={canvasRef}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-0" : "opacity-100"}`}
+          className={`absolute inset-0 w-full h-full ${fitClassName} transition-opacity duration-300 ${loaded ? "opacity-0" : "opacity-100"}`}
         />
       ) : (
         <div
@@ -98,7 +103,7 @@ export default function BlurImage({
           src={src}
           alt={alt}
           decoding="async"
-          className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          className={`w-full h-full ${fitClassName} transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
           loading="eager"
           onLoad={() => setLoaded(true)}
         />
@@ -109,7 +114,7 @@ export default function BlurImage({
           data-src={src}
           alt={alt}
           decoding="async"
-          className={`lazyload w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          className={`lazyload w-full h-full ${fitClassName} transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
         />
       )}
     </div>

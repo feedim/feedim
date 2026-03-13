@@ -6,6 +6,9 @@ import { getEnabledProviders } from "@/lib/adProviders";
 export default function AdsScriptLoader() {
   useEffect(() => {
     if (document.documentElement.dataset.adsEnabled !== "1") return;
+    const host = window.location.hostname;
+    const isLocalDev = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+    if (isLocalDev) return;
 
     const providers = getEnabledProviders();
 

@@ -10,7 +10,6 @@ import LazysizesInit from "@/components/LazysizesInit";
 import AdsScriptLoader from "@/components/AdsScriptLoader";
 import ProductionConsoleGuard from "@/components/ProductionConsoleGuard";
 import AnalyticsScripts from "@/components/AnalyticsScripts";
-import ErrorLogCapture from "@/components/ErrorLogCapture";
 
 export default function RootClientBootstrap() {
   const pathname = usePathname() || "/";
@@ -19,7 +18,6 @@ export default function RootClientBootstrap() {
   return (
     <>
       <ProductionConsoleGuard />
-      <ErrorLogCapture />
       <TopProgressBar />
       <ScrollToTop />
       <LazysizesInit />

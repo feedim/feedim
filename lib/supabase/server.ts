@@ -1,10 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 export async function createClient() {
   const cookieStore = await cookies()
+  const headerStore = await headers()
+  const authorization = headerStore.get('authorization')
+  const bearerToken = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null
 
-  return createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
@@ -24,4 +27,12 @@ export async function createClient() {
       },
     }
   )
+
+  // Mobile clients send Bearer token — use it directly, skip cookie auth entirely.
+  if (bearerToken) {
+    const _getUser = supabase.auth.getUser.bind(supabase.auth)
+    supabase.auth.getUser = async (jwt?: string) => _getUser(jwt || bearerToken)
+  }
+
+  return supabase
 }

@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Sparkles, Undo2, ChevronRight, Clock, CheckCircle, XCircle, Copyright, Eye, Smartphone, X, Rocket, Crown } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Award, Coins, Gift, AlertCircle, CheckCheck, Sparkles, Undo2, ChevronRight, Clock, CheckCircle, XCircle, Copyright, Eye, Smartphone, X, Rocket, Crown, CircleAlert } from "lucide-react";
 import { cn, formatCount, formatRelativeDate } from "@/lib/utils";
 import { encodeId } from "@/lib/hashId";
 import AppLayout from "@/components/AppLayout";
@@ -100,6 +100,30 @@ const iconMap: Record<string, React.ReactNode> = {
   copyright_revoked: <Copyright className="h-4 w-4 text-error" />,
 };
 
+const SYSTEM_NOTIFICATION_TYPES = [
+  "system",
+  "account_moderation",
+  "device_login",
+  "premium_expired",
+  "premium_activated",
+  "premium_cancelled",
+  "view_milestone",
+  "report_resolved",
+  "report_dismissed",
+  "copyright_application_approved",
+  "copyright_application_rejected",
+  "copyright_revoked",
+  "copyright_claim_submitted",
+  "copyright_similar_detected",
+  "copyright_verified",
+  "copyright_rejected",
+  "copyright_verification_needed",
+] as const;
+
+function isSystemNotificationType(type: string) {
+  return SYSTEM_NOTIFICATION_TYPES.includes(type as (typeof SYSTEM_NOTIFICATION_TYPES)[number]);
+}
+
 function getGroupedNotificationLink(n: GroupedNotification): string | null {
   // Boost notifications → modal (handled in component)
   if (n.type.startsWith("boost_")) return null;
@@ -114,6 +138,10 @@ function getGroupedNotificationLink(n: GroupedNotification): string | null {
   if (n.type === "follow_accepted" && n.actor?.username) return `/u/${n.actor.username}`;
   if (n.type === "account_moderation") return `/account-moderation`;
   if (n.type === "device_login") return `/security`;
+  if (n.object_type === "support_request" && n.object_id) {
+    const supportId = Number(n.object_id);
+    return Number.isFinite(supportId) ? `/support/${encodeId(supportId)}` : null;
+  }
   if (n.type === "view_milestone" && n.post_slug) return `/${n.post_slug}`;
   if (n.type === "copyright_detected" && n.object_type === "post" && n.post_slug) return `/${n.post_slug}`;
   if (n.type === "copyright_similar_detected" && n.object_type === "post" && n.post_slug) return `/${n.post_slug}`;
@@ -181,7 +209,7 @@ function getGroupedText(
 
   // Single notification
   const actorName = n.actor?.username ? `@${n.actor.username}` : "";
-  const isSystem = ["system", "account_moderation", "device_login", "premium_expired", "premium_activated", "premium_cancelled", "view_milestone", "report_resolved", "report_dismissed", "copyright_application_approved", "copyright_application_rejected", "copyright_revoked", "copyright_claim_submitted", "copyright_similar_detected", "copyright_verified", "copyright_rejected", "copyright_verification_needed"].includes(n.type);
+  const isSystem = isSystemNotificationType(n.type);
 
   // Mention: differentiate between post and comment mentions
   if (n.type === "mention") {
@@ -625,11 +653,13 @@ export default function NotificationsPage() {
 	                                </div>
 	                              ))}
 	                            </div>
-	                          ) : n.actor?.avatar_url ? (
+	                          ) : !isSystemNotificationType(n.type) && n.actor?.avatar_url ? (
 	                            <LazyAvatar src={n.actor.avatar_url} alt="" sizeClass="h-10 w-10" />
 	                          ) : (
                             <div className="h-10 w-10 rounded-full bg-bg-secondary flex items-center justify-center">
-                              {iconMap[n.type] || <Bell className="h-4 w-4 text-text-muted" />}
+                              {isSystemNotificationType(n.type)
+                                ? <CircleAlert className="h-4 w-4 text-text-muted" />
+                                : (iconMap[n.type] || <Bell className="h-4 w-4 text-text-muted" />)}
                             </div>
                           )}
                         </div>
