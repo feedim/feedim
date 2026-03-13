@@ -42,6 +42,7 @@ export default function ModerationSupportLinkCard({
     supportClaimSuccess: string;
     supportClaimError: string;
     supportClaimLimit: string;
+    supportNewMessage: string;
   };
 }) {
   const router = useRouter();
@@ -113,6 +114,11 @@ export default function ModerationSupportLinkCard({
             <p className="text-[0.82rem] font-medium text-text-primary">
               {subject}
             </p>
+            {request.pending_user_reply ? (
+              <div className="inline-flex rounded px-1.5 py-0.5 text-[0.6rem] font-bold bg-accent-main/20 text-accent-main">
+                {labels.supportNewMessage}
+              </div>
+            ) : null}
           </div>
         </div>
 

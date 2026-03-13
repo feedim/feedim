@@ -1985,6 +1985,7 @@
     "supportClaimSuccess": "Destek talebi size devredildi",
     "supportClaimError": "Destek talebi devralınamadı",
     "supportClaimLimit": "En fazla 10 aktif destek talebi devir alabilirsiniz",
+    "supportNewMessage": "1 yeni mesaj",
     "rejectSupport": "Reddet",
     "approve": "Onayla",
     "publishContent": "İçeriği Yayına Al",
@@ -3453,6 +3454,7 @@
     "errors": {
       "invalidType": "Geçersiz destek türü",
       "messageTooShort": "Mesaj en az 10 karakter olmalı",
+      "replyTooShort": "Mesaj en az 1 karakter olmalı",
       "invalidUrl": "Geçerli bir bağlantı girin",
       "decisionCodeRequired": "Karar numarası seçin",
       "invalidDecisionCode": "Bu karar numarası hesabınıza ait değil veya itiraz edilemez durumda",

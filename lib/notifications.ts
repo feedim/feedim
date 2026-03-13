@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { logServerError } from "@/lib/runtimeLogger";
+import { sendPushNotification } from "@/lib/pushSender";
 
 interface CreateNotificationParams {
   admin: SupabaseClient;
@@ -106,5 +107,9 @@ export async function createNotification({
       has_object: object_id !== undefined,
       has_payload: Boolean(content),
     });
+    return;
   }
+
+  // Send device push notification (non-blocking, only for like/comment/follow types)
+  sendPushNotification({ admin, user_id, actor_id, type, object_type, object_id, content });
 }

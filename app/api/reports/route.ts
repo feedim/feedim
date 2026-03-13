@@ -298,7 +298,8 @@ export async function POST(request: NextRequest) {
               .eq('content_type', 'post')
               .eq('content_id', Number(target_id));
             for (const rep of reps || []) {
-              await admin2.from('notifications').insert({
+              await createNotification({
+                admin: admin2,
                 user_id: rep.reporter_id,
                 actor_id: rep.reporter_id,
                 type: 'system',
@@ -354,7 +355,8 @@ export async function POST(request: NextRequest) {
               .eq('content_type', 'comment')
               .eq('content_id', Number(target_id));
             for (const rep of reps || []) {
-              await admin2.from('notifications').insert({
+              await createNotification({
+                admin: admin2,
                 user_id: rep.reporter_id,
                 actor_id: rep.reporter_id,
                 type: 'system',
@@ -396,7 +398,8 @@ export async function POST(request: NextRequest) {
               .eq('content_type', 'user')
               .eq('content_author_id', target_id);
             for (const rep of reps || []) {
-              await admin2.from('notifications').insert({
+              await createNotification({
+                admin: admin2,
                 user_id: rep.reporter_id,
                 actor_id: rep.reporter_id,
                 type: 'system',
@@ -454,7 +457,7 @@ export async function POST(request: NextRequest) {
         .eq('content_type', 'post')
         .eq('content_id', Number(target_id));
       for (const rep of (postReps || [])) {
-        await createNotification({ admin, user_id: rep.reporter_id, actor_id: 'system' as any, type: 'system', object_type: 'post', object_id: Number(target_id), content: tNotif('reportContentPriorityReview') });
+        await createNotification({ admin, user_id: rep.reporter_id, actor_id: rep.reporter_id, type: 'system', object_type: 'post', object_id: Number(target_id), content: tNotif('reportContentPriorityReview') });
       }
 
       // Background: generate AI reason and update decision + auto account moderation
@@ -497,7 +500,7 @@ export async function POST(request: NextRequest) {
         .eq('content_type', 'comment')
         .eq('content_id', Number(target_id));
       for (const rep of reps || []) {
-        await createNotification({ admin, user_id: rep.reporter_id, actor_id: 'system' as any, type: 'system', object_type: 'comment', object_id: Number(target_id), content: tNotif('reportContentPriorityReview') });
+        await createNotification({ admin, user_id: rep.reporter_id, actor_id: rep.reporter_id, type: 'system', object_type: 'comment', object_id: Number(target_id), content: tNotif('reportContentPriorityReview') });
       }
 
       // Background: AI reason
@@ -536,7 +539,7 @@ export async function POST(request: NextRequest) {
         .eq('content_type', 'user')
         .eq('content_author_id', target_id);
       for (const rep of (userReps || [])) {
-        await createNotification({ admin, user_id: rep.reporter_id, actor_id: 'system' as any, type: 'system', object_type: 'user', object_id: 0, content: tNotif('reportProfilePriorityReview') });
+        await createNotification({ admin, user_id: rep.reporter_id, actor_id: rep.reporter_id, type: 'system', object_type: 'user', object_id: 0, content: tNotif('reportProfilePriorityReview') });
       }
 
       // Background: AI reason

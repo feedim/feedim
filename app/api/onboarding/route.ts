@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
 
   const t = await getTranslations("onboarding");
+  const admin = createAdminClient();
 
   const body = await req.json();
   const { step, action, ...payload } = body;
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Complete onboarding
   if (action === "complete") {
     // Zorunlu alanların doldurulduğunu doğrula
-    const { data: prof } = await supabase
+    const { data: prof } = await admin
       .from("profiles")
       .select("birth_date, gender, country, language, onboarding_step, onboarding_completed")
       .eq("user_id", user.id)
@@ -43,7 +44,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: t("stepsNotCompleted") }, { status: 400 });
     }
 
-    const admin = createAdminClient();
     const { error: completeErr } = await admin
       .from("profiles")
       .update({ onboarding_completed: true, onboarding_step: 10 })
@@ -122,36 +122,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: t("cannotSkip") }, { status: 400 });
     }
     const nextStep = Math.min(10, step + 1);
-    const { data: profile } = await supabase
+    const { data: profile } = await admin
       .from("profiles")
       .select("onboarding_step")
       .eq("user_id", user.id)
       .single();
     const currentProgress = profile?.onboarding_step || 1;
-    // Client'ın mevcut adımdan ileri atlamamasını sağla
-    if (step > currentProgress + 1) {
-      return NextResponse.json({ error: t("cannotSkipOrder") }, { status: 400 });
-    }
     if (nextStep > currentProgress) {
-      await supabase.from("profiles").update({ onboarding_step: nextStep }).eq("user_id", user.id);
+      await admin.from("profiles").update({ onboarding_step: nextStep }).eq("user_id", user.id);
     }
     return NextResponse.json({ next: nextStep });
   }
 
-  // Step doğrulaması — VERİ KAYDINDAN ÖNCE adım sırası kontrolü
-  {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_step")
-      .eq("user_id", user.id)
-      .single();
-    const currentProgress = profile?.onboarding_step || 1;
-    if (step > currentProgress + 1) {
-      return NextResponse.json({ error: t("cannotSkipOrder") }, { status: 400 });
-    }
-  }
-
   // Save step data
+  // Not: Sıra kontrolü kaldırıldı — "complete" aksiyonu zorunlu alanları doğrular.
+  // Client-server senkronizasyon sorunlarında (ör. mobil offline geçiş) gereksiz hata veriyordu.
   const updates: Record<string, unknown> = {};
 
   switch (step) {
@@ -235,20 +220,20 @@ export async function POST(req: NextRequest) {
   }
 
   if (Object.keys(updates).length > 0) {
-    const { error } = await supabase.from("profiles").update(updates).eq("user_id", user.id);
+    const { error } = await admin.from("profiles").update(updates).eq("user_id", user.id);
     if (error) return safeError(error);
   }
 
   // Advance progression
   const nextStep = Math.min(10, step + 1);
-  const { data: progressProfile } = await supabase
+  const { data: progressProfile } = await admin
     .from("profiles")
     .select("onboarding_step")
     .eq("user_id", user.id)
     .single();
   const currentProgress = progressProfile?.onboarding_step || 1;
   if (nextStep > currentProgress) {
-    await supabase.from("profiles").update({ onboarding_step: nextStep }).eq("user_id", user.id);
+    await admin.from("profiles").update({ onboarding_step: nextStep }).eq("user_id", user.id);
   }
 
   return NextResponse.json({ next: nextStep });
@@ -270,5 +255,8 @@ export async function GET(req: NextRequest) {
   });
   const data = await res.json();
 
-  return NextResponse.json({ suggestions: data.users || [] });
+  // Filter out current user (internal fetch may fall to guest mode where self isn't excluded)
+  const suggestions = (data.users || []).filter((u: any) => u.user_id !== user.id);
+
+  return NextResponse.json({ suggestions });
 }

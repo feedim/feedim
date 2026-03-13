@@ -43,7 +43,7 @@ export async function POST(
     }
 
     // Check if already saved
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from('bookmarks')
       .select('id')
       .eq('user_id', user.id)
@@ -52,13 +52,13 @@ export async function POST(
 
     if (existing) {
       // Unsave
-      await supabase.from('bookmarks').delete().eq('id', existing.id);
+      await admin.from('bookmarks').delete().eq('id', existing.id);
       const { count } = await admin.from('bookmarks').select('id', { count: 'exact', head: true }).eq('post_id', postId);
       return NextResponse.json({ saved: false, save_count: count || 0 });
     }
 
     // Save
-    const { error } = await supabase
+    const { error } = await admin
       .from('bookmarks')
       .insert({ user_id: user.id, post_id: postId });
 

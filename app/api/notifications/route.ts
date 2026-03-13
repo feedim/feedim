@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
 
+    const admin = createAdminClient();
     const countOnly = request.nextUrl.searchParams.get("count") === "true";
 
     // Only show notifications from the last 30 days
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     if (countOnly) {
       // Check if notifications are paused
-      const { data: profile } = await supabase
+      const { data: profile } = await admin
         .from("profiles")
         .select("notifications_paused_until")
         .eq("user_id", user.id)
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
       }
 
       const tab = request.nextUrl.searchParams.get("tab");
-      let query = supabase
+      let query = admin
         .from("notifications")
         .select("id, actor_id, type")
         .eq("user_id", user.id)
@@ -82,7 +83,6 @@ export async function GET(request: NextRequest) {
         return response;
       }
 
-      const admin = createAdminClient();
       const gatedUnreadNotifs = await filterFollowerOnlyNotifications(admin, user.id, unreadNotifs);
       if (gatedUnreadNotifs.length === 0) {
         const response = NextResponse.json({ unread_count: 0 });
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Filter out blocked users
-      const { data: blocks } = await supabase
+      const { data: blocks } = await admin
         .from("blocks")
         .select("blocked_id, blocker_id")
         .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
@@ -124,13 +124,13 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Filter out notifications from blocked users
-    const { data: blocks } = await supabase
+    const { data: blocks } = await admin
       .from("blocks")
       .select("blocked_id, blocker_id")
       .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
     const blockedIds = (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id);
 
-    let query = supabase
+    let query = admin
       .from("notifications")
       .select("id, user_id, actor_id, type, object_type, object_id, content, is_read, created_at")
       .eq("user_id", user.id)
@@ -144,7 +144,6 @@ export async function GET(request: NextRequest) {
 
     let { data: notifications, error } = await query;
     if (error) return safeError(error);
-    const admin = createAdminClient();
     notifications = await filterFollowerOnlyNotifications(admin, user.id, notifications || []);
 
     // Filter out notifications from inactive actors (frozen, blocked, deleted)
@@ -179,7 +178,8 @@ export async function PUT(_req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
 
-    const { error } = await supabase
+    const admin = createAdminClient();
+    const { error } = await admin
       .from("notifications")
       .update({ is_read: true })
       .eq("user_id", user.id)
@@ -203,7 +203,8 @@ export async function DELETE(request: NextRequest) {
     const notifId = request.nextUrl.searchParams.get("id");
     if (!notifId) return NextResponse.json({ error: tErrors("idRequired") }, { status: 400 });
 
-    const { error } = await supabase
+    const admin = createAdminClient();
+    const { error } = await admin
       .from("notifications")
       .delete()
       .eq("id", notifId)

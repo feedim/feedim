@@ -64,9 +64,9 @@ export async function POST(
 
     const body = await request.json();
     const reply = sanitizeSupportMessage(body?.message || "");
-    if (reply.length < 10) {
+    if (reply.length < 1) {
       return NextResponse.json(
-        { error: supportError("errors.messageTooShort", "Mesaj en az 10 karakter olmalı") },
+        { error: supportError("errors.replyTooShort", "Mesaj en az 1 karakter olmalı") },
         { status: 400 },
       );
     }

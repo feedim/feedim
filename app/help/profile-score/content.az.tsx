@@ -116,16 +116,18 @@ export default function ContentAz() {
 
         <h2 className="text-lg font-bold text-text-primary mt-8 mb-4">Etiraz</h2>
         <p>
-          Profil xalınızın haqsız yerə aşağı olduğunu düşünürsünüzsə və ya moderasiya qərarına etiraz etmək istəyirsinizsə,{" "}
-          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Əlaqə</NewTabLink> səhifəsindən müraciət edə bilərsiniz.
-          Etirazlar moderasiya komandası tərəfindən qiymətləndirilir.
+          Profil xalınızın haqsız yerə aşağı olduğunu düşünürsünüzsə və ya moderasiya qərarına etiraz etmək istəyirsinizsə, hesabınıza daxil olduqdan sonra{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">Dəstək Tələbi Yarat</NewTabLink>{" "}
+          səhifəsini istifadə edin. Etirazlar moderasiya komandası tərəfindən yenidən qiymətləndirilir.
         </p>
 
         <p className="text-xs text-text-muted mt-8">
-            Profil xalı sistemi haqqında suallarınız üçün{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Əlaqə</NewTabLink> səhifəmizdən
-            və ya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a> ünvanından
-            bizə müraciət edə bilərsiniz.
+          Profil xalı sistemi haqqında suallarınız üçün hesabınıza daxil olduqdan sonra{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">Dəstək Tələbi Yarat</NewTabLink>{" "}
+          səhifəsini istifadə edin. Hesabınıza girişiniz yoxdursa{" "}
+          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Əlaqə</NewTabLink>{" "}
+          səhifəmizdəki e-poçt kanallarını və ya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>{" "}
+          ünvanını istifadə edin.
         </p>
       </div>
     </>

@@ -1984,6 +1984,7 @@
     "supportClaimSuccess": "Support request assigned to you",
     "supportClaimError": "Could not take over support request",
     "supportClaimLimit": "You can take over up to 10 active support requests",
+    "supportNewMessage": "1 new message",
     "rejectSupport": "Reject",
     "approve": "Approve",
     "publishContent": "Publish Content",
@@ -3450,6 +3451,7 @@
     "errors": {
       "invalidType": "Invalid support type",
       "messageTooShort": "Message must be at least 10 characters",
+      "replyTooShort": "Message must be at least 1 character",
       "invalidUrl": "Enter a valid URL",
       "decisionCodeRequired": "Select a decision number",
       "invalidDecisionCode": "This decision number does not belong to your account or cannot be appealed",

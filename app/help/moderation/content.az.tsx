@@ -95,10 +95,12 @@ export default function ContentAz() {
         </ul>
 
         <p className="text-xs text-text-muted mt-8">
-            Moderasiya sistemi haqqında suallarınız və ya etirazlarınız üçün{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Əlaqə</NewTabLink> səhifəmizdən
-            və ya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a> ünvanından
-            bizə müraciət edə bilərsiniz.
+          Moderasiya sistemi haqqında suallarınız və ya qərara etiraz etmək üçün hesabınıza daxil olduqdan sonra{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">Dəstək Tələbi Yarat</NewTabLink>{" "}
+          səhifəsini istifadə edin. Hesabınıza girişiniz yoxdursa{" "}
+          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Əlaqə</NewTabLink>{" "}
+          səhifəmizdəki e-poçt kanallarını və ya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>{" "}
+          ünvanını istifadə edin.
         </p>
       </div>
     </>

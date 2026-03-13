@@ -34,7 +34,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     }
 
     // Check if already following
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from("tag_follows")
       .select("tag_id")
       .eq("user_id", user.id)
@@ -43,7 +43,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
 
     if (existing) {
       // Unfollow
-      await supabase
+      await admin
         .from("tag_follows")
         .delete()
         .eq("user_id", user.id)
@@ -53,7 +53,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     }
 
     // Check max limit
-    const { count } = await supabase
+    const { count } = await admin
       .from("tag_follows")
       .select("tag_id", { count: "exact", head: true })
       .eq("user_id", user.id);
@@ -63,7 +63,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     }
 
     // Follow
-    const { error } = await supabase
+    const { error } = await admin
       .from("tag_follows")
       .insert({ user_id: user.id, tag_id: tagId });
 

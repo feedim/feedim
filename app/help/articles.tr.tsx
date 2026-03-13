@@ -1,3 +1,5 @@
+"use client";
+
 import NewTabLink from "@/components/NewTabLink";
 import { Heart, MessageCircle, Bell, Home, Bookmark } from "lucide-react";
 import type { HelpArticle, HelpPageLink, HelpSection } from "./articles.types";
@@ -19,6 +21,7 @@ export const sections: HelpSection[] = [
   { id: "profil", label: "Profil ve Ayarlar" },
   { id: "icerik", label: "Gönderi, Not, Video ve İçerik" },
   { id: "moderasyon", label: "Moderasyon ve İçerik Güvenliği" },
+  { id: "destek", label: "Destek Talebi Sistemi" },
   { id: "telif", label: "Telif Hakkı ve Kopya İçerik" },
   { id: "etkilesim", label: "Etkileşim ve Sosyal" },
   { id: "bildirim", label: "Bildirimler" },
@@ -35,9 +38,9 @@ export const pageLinks: HelpPageLink[] = [
   { title: "Gizlilik Politikası", href: "/help/privacy", description: "Kişisel verilerin korunması ve gizlilik" },
   { title: "KVKK", href: "/help/privacy", description: "Kişisel Verilerin Korunması Kanunu" },
   { title: "Topluluk Kuralları", href: "/help/community-guidelines", description: "İçerik standartları, davranış kuralları ve yaptırımlar" },
-  { title: "İletişim", href: "/help/contact", description: "Bize ulaşın, destek alın" },
+  { title: "İletişim", href: "/help/contact", description: "Bize ulaşın, e-posta ve destek talebi seçeneklerini görün" },
   { title: "Telif Hakkı Koruması", href: "/help/copyright", description: "Telif hakkı koruma sistemi, kopya içerik politikası ve ihlal sistemi" },
-  { title: "Moderasyon Sistemi", href: "/help/moderation", description: "İçerik moderasyonu, AI inceleme ve itiraz süreçleri" },
+  { title: "Moderasyon Sistemi", href: "/help/moderation", description: "İçerik moderasyonu, AI inceleme, itiraz ve destek talebi süreçleri" },
   { title: "Feedim AI", href: "/help/ai", description: "Yapay zeka destekli içerik moderasyonu ve öneriler" },
   { title: "İçerik Türleri", href: "/help/content-types", description: "Gönderi, video, moment ve içerik formatları" },
   { title: "Jeton Sistemi", href: "/help/coins", description: "Jeton kazanma, satın alma ve bakiye yönetimi" },
@@ -289,7 +292,7 @@ export const articles: HelpArticle[] = [
     section: "icerik",
     question: "Gönderi neden kaldırılmış olabilir?",
     searchText: "Gönderiniz topluluk kurallarına aykırı bulunmuş olabilir. Telif ihlali, spam, nefret söylemi veya şikayet sonucu kaldırılmış olabilir.",
-    answer: <>Gönderiniz topluluk kurallarına aykırı bulunduğu için kaldırılmış olabilir. Yaygın nedenler: telif hakkı ihlali, spam içerik, nefret söylemi, yanıltıcı bilgi veya diğer kullanıcılardan gelen şikayetler. Kaldırma işlemi hakkında detaylı bilgi almak veya itiraz etmek için <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> adresine yazabilirsiniz.</>,
+    answer: <>Gönderiniz topluluk kurallarına aykırı bulunduğu için kaldırılmış olabilir. Yaygın nedenler: telif hakkı ihlali, spam içerik, nefret söylemi, yanıltıcı bilgi veya diğer kullanıcılardan gelen şikayetler. Kaldırma işlemi hakkında detaylı bilgi almak veya itiraz etmek için hesabınıza giriş yaptıktan sonra <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfasını kullanabilirsiniz. Hesabınıza erişemiyorsanız <NewTabLink href="/help/contact" className={lnk}>İletişim</NewTabLink> sayfasındaki e-posta kanallarını kullanın.</>,
   },
 
   // ─── Moderasyon ve İçerik Güvenliği ────────────────────────
@@ -320,8 +323,52 @@ export const articles: HelpArticle[] = [
   {
     section: "moderasyon",
     question: "Moderasyon kararına itiraz edebilir miyim?",
-    searchText: "Moderasyon kararına itiraz etmek için help@feedim.com adresine yazabilirsiniz. İnsan moderatörler tarafından tekrar değerlendirilir.",
-    answer: <>Evet. Moderasyon kararının haksız olduğunu düşünüyorsanız <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> adresine yazarak itiraz edebilirsiniz. İtirazınız insan moderatörler tarafından tekrar değerlendirilir. Detaylar için <NewTabLink href="/help/moderation" className={lnk}>Moderasyon Sistemi</NewTabLink> sayfasını inceleyin.</>,
+    searchText: "Moderasyon kararlarına giriş yaptıktan sonra destek talebi sistemi üzerinden itiraz edebilirsiniz. Hesaba erişemiyorsanız İletişim sayfasındaki e-posta kanallarını kullanabilirsiniz.",
+    answer: <>Evet. Moderasyon kararının haksız olduğunu düşünüyorsanız hesabınıza giriş yaptıktan sonra <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfası üzerinden itiraz talebi açabilirsiniz. İtirazınız insan moderatörler tarafından yeniden değerlendirilir ve yanıt verildiğinde bildirim alırsınız. Hesabınıza erişemiyorsanız <NewTabLink href="/help/contact" className={lnk}>İletişim</NewTabLink> sayfasındaki e-posta kanallarını kullanabilirsiniz. Detaylar için <NewTabLink href="/help/moderation" className={lnk}>Moderasyon Sistemi</NewTabLink> sayfasını inceleyin.</>,
+  },
+
+  // ─── Destek Talebi Sistemi ────────────────────────────────
+  {
+    section: "destek",
+    question: "Destek talebi nasıl oluştururum?",
+    searchText: "Hesabınıza giriş yaptıktan sonra Destek Talebi Oluştur sayfasından moderasyon itirazı veya teknik destek talebi açabilirsiniz.",
+    answer: <>Hesabınıza giriş yaptıktan sonra <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfasını kullanabilirsiniz. Buradan moderasyon kararlarına itiraz edebilir veya teknik bir sorun için destek talebi oluşturabilirsiniz.</>,
+  },
+  {
+    section: "destek",
+    question: "Hangi konular için destek talebi açabilirim?",
+    searchText: "Moderasyon itirazları ve teknik sorunlar için destek talebi açılabilir. Hesap, giriş, şifre, profil, gönderi, video, etkileşim, ödeme ve bildirim sorunları destek kapsamındadır.",
+    answer: "Destek talebi sistemi moderasyon kararlarına itiraz etmek ve teknik sorunları iletmek için kullanılır. Hesap, giriş, şifre, profil, gönderi, video, moment, etkileşim, ödeme, görünürlük ve bildirim sorunları için uygun başlığı seçerek talep oluşturabilirsiniz.",
+  },
+  {
+    section: "destek",
+    question: "Moderasyon kararına nasıl itiraz ederim?",
+    searchText: "Destek Talebi Oluştur sayfasında moderasyon kararı itirazı seçilir. Yalnızca hesabınıza ait ve daha önce itiraz edilmemiş karar numaraları seçilebilir.",
+    answer: <>Destek ekranında <strong>&ldquo;Moderatör kararı itirazı&rdquo;</strong> seçeneğini seçin. Sistem yalnızca hesabınıza ait ve daha önce itiraz edilmemiş karar numaralarını gösterir. İtiraz metninizi yazıp gönderdiğinizde talebiniz insan moderatörler tarafından yeniden incelenir.</>,
+  },
+  {
+    section: "destek",
+    question: "Destek talebimin durumunu nasıl takip ederim?",
+    searchText: "Destek talepleri hesap üzerinden takip edilir. Yanıt geldiğinde bildirim gönderilir ve support detay sayfasından görüşme görülebilir.",
+    answer: <>Destek talepleriniz hesabınız üzerinden takip edilir. Yanıt verildiğinde <NewTabLink href="/notifications" className={lnk}>bildirimler</NewTabLink> bölümünde bildirim alırsınız. Ayrıca ilgili destek kaydını açarak talep detayını ve yazışma akışını görebilirsiniz.</>,
+  },
+  {
+    section: "destek",
+    question: "Destek talebime yanıt geldiğinde nasıl haberdar olurum?",
+    searchText: "Yanıt verildiğinde sistem bildirimi gelir. Bildirimden doğrudan destek kaydına gidilebilir.",
+    answer: <>Destek talebinize yanıt verildiğinde sistem bildirimi alırsınız. Bildirim içinden doğrudan ilgili destek kaydına gidebilir, yanıtı okuyabilir ve gerekiyorsa sizden istenen ek bilgiyi aynı kayıt üzerinden iletebilirsiniz.</>,
+  },
+  {
+    section: "destek",
+    question: "Aynı anda birden fazla destek talebi açabilir miyim?",
+    searchText: "İşlemde olan destek talebi varken yeni talep açılamaz. Mevcut talep sonuçlanana kadar beklenir.",
+    answer: "Hayır. İşlemde olan bir destek talebiniz varken yeni bir talep oluşturamazsınız. Mevcut talebiniz sonuçlandığında veya kapandığında yeni bir destek talebi açabilirsiniz.",
+  },
+  {
+    section: "destek",
+    question: "Hesabıma erişemiyorsam ne yapmalıyım?",
+    searchText: "Hesaba erişim yoksa destek talebi sistemi yerine İletişim sayfasındaki e-posta kanalları kullanılmalıdır.",
+    answer: <>Hesabınıza erişemiyorsanız destek talebi sistemi yerine <NewTabLink href="/help/contact" className={lnk}>İletişim</NewTabLink> sayfasındaki e-posta kanallarını kullanın. Özellikle giriş, kayıt veya hesap erişimi sorunlarında e-posta daha doğru kanaldır.</>,
   },
 
   // ─── Telif Hakkı ve Kopya İçerik ─────────────────────────
@@ -533,7 +580,7 @@ export const articles: HelpArticle[] = [
     section: "sorun",
     question: "Giriş yapamıyorum, ne yapmalıyım?",
     searchText: "E-posta ve şifrenizi kontrol edin. Şifremi Unuttum ile sıfırlayın. E-posta doğrulaması yapın. Sorun devam ederse help@feedim.com adresine yazın.",
-    answer: <>Önce e-posta adresinizi ve şifrenizi kontrol edin. Şifrenizi hatırlamıyorsanız <strong>&lsquo;Şifremi Unuttum&rsquo;</strong> ile sıfırlayın. E-posta doğrulaması yapmadıysanız spam klasörünüzü kontrol edin. Tarayıcı çerezlerini ve önbelleğini temizlemeyi deneyin. Sorun devam ederse <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> adresine yazın.</>,
+    answer: <>Önce e-posta adresinizi ve şifrenizi kontrol edin. Şifrenizi hatırlamıyorsanız <strong>&lsquo;Şifremi Unuttum&rsquo;</strong> ile sıfırlayın. E-posta doğrulaması yapmadıysanız spam klasörünüzü kontrol edin. Tarayıcı çerezlerini ve önbelleğini temizlemeyi deneyin. Sorun devam ederse <NewTabLink href="/help/contact" className={lnk}>İletişim</NewTabLink> sayfasındaki e-posta kanallarını kullanın.</>,
   },
   {
     section: "sorun",
@@ -544,14 +591,20 @@ export const articles: HelpArticle[] = [
   {
     section: "sorun",
     question: "Hesabım neden askıya alındı?",
-    searchText: "Kullanım koşulları ihlali, spam içerik, Jeton kötüye kullanımı veya taciz gibi nedenlerle hesap askıya alınabilir. İtiraz için help@feedim.com.",
-    answer: <>Kullanım koşullarının ihlali, spam içerik üretimi, Jeton sisteminin kötüye kullanımı veya diğer kullanıcılara taciz gibi nedenlerle hesaplar askıya alınabilir. Detaylı bilgi ve itiraz için <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> adresine yazabilirsiniz. <NewTabLink href="/help/terms" className={lnk}>Kullanım Koşulları</NewTabLink> sayfamızda tüm kurallar detaylı olarak açıklanmıştır.</>,
+    searchText: "Kullanım koşulları ihlali, spam içerik, Jeton kötüye kullanımı veya taciz gibi nedenlerle hesap askıya alınabilir. Giriş yapabiliyorsanız destek talebi üzerinden itiraz edebilirsiniz.",
+    answer: <>Kullanım koşullarının ihlali, spam içerik üretimi, Jeton sisteminin kötüye kullanımı veya diğer kullanıcılara taciz gibi nedenlerle hesaplar askıya alınabilir. Hesabınıza giriş yapabiliyorsanız <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfasından moderasyon itirazı açabilirsiniz. Hesabınıza erişemiyorsanız <NewTabLink href="/help/contact" className={lnk}>İletişim</NewTabLink> sayfasındaki e-posta kanallarını kullanabilirsiniz. <NewTabLink href="/help/terms" className={lnk}>Kullanım Koşulları</NewTabLink> sayfamızda tüm kurallar detaylı olarak açıklanmıştır.</>,
   },
   {
     section: "sorun",
     question: "Gönderi yüklenmiyor veya hata alıyorum",
     searchText: "İnternet bağlantınızı kontrol edin. Sayfayı yenileyin veya tarayıcı önbelleğini temizleyin. Farklı bir tarayıcı deneyin.",
-    answer: "İnternet bağlantınızı kontrol edin. Sayfayı yenileyin veya tarayıcı önbelleğini temizleyin. Farklı bir tarayıcı deneyin. Gönderi oluştururken hata alıyorsanız içerik boyutunun limitleri aşmadığından emin olun (başlık 3-200 karakter, içerik en az 50 karakter). Sorun devam ederse çıkış yapıp tekrar giriş yapmayı deneyin.",
+    answer: <>İnternet bağlantınızı kontrol edin. Sayfayı yenileyin veya tarayıcı önbelleğini temizleyin. Farklı bir tarayıcı deneyin. Gönderi oluştururken hata alıyorsanız içerik boyutunun limitleri aşmadığından emin olun (başlık 3-200 karakter, içerik en az 50 karakter). Sorun devam ederse çıkış yapıp tekrar giriş yapmayı deneyin. Hâlâ aynı problemi yaşıyorsanız hesabınıza giriş yaptıktan sonra <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfasından teknik destek talebi açabilirsiniz.</>,
+  },
+  {
+    section: "sorun",
+    question: "Destek talebi nasıl oluştururum?",
+    searchText: "Destek talebi oluşturmak için hesabınıza giriş yaptıktan sonra Destek Talebi Oluştur sayfasını kullanın. Moderasyon itirazları ve teknik sorunlar buradan takip edilir.",
+    answer: <>Hesabınıza giriş yaptıktan sonra <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfasını kullanabilirsiniz. Moderasyon kararlarına itiraz etmek veya teknik bir sorun için destek almak bu sistem üzerinden yapılır. Destek talebiniz hesabınız üzerinden takip edilir ve yanıt verildiğinde bildirim alırsınız.</>,
   },
   {
     section: "sorun",
@@ -562,7 +615,7 @@ export const articles: HelpArticle[] = [
   {
     section: "sorun",
     question: "Başka bir sorunum var, nasıl ulaşırım?",
-    searchText: "help@feedim.com veya İletişim sayfasından bize ulaşabilirsiniz. İş günlerinde 24 saat içinde yanıt veriyoruz.",
-    answer: <>Bu sayfada cevabını bulamadığınız sorularınız için <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> adresine yazabilir veya <NewTabLink href="/help/contact" className={lnk}>İletişim sayfamızı</NewTabLink> ziyaret edebilirsiniz. İş günlerinde 24 saat içinde tüm sorulara yanıt veriyoruz.</>,
+    searchText: "Giriş yaptıysanız destek talebi oluşturabilirsiniz. Hesaba erişemiyorsanız help@feedim.com veya İletişim sayfasını kullanabilirsiniz.",
+    answer: <>Bu sayfada cevabını bulamadığınız sorularınız için hesabınıza giriş yaptıktan sonra <NewTabLink href="/settings/support" className={lnk}>Destek Talebi Oluştur</NewTabLink> sayfasını kullanabilirsiniz. Hesabınıza erişemiyorsanız <NewTabLink href="/help/contact" className={lnk}>İletişim sayfamızdaki</NewTabLink> e-posta kanallarını kullanın. İş günlerinde taleplere mümkün olan en kısa sürede dönüş sağlıyoruz.</>,
   },
 ];

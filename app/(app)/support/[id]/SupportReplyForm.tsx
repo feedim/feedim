@@ -2,7 +2,6 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { feedimAlert } from "@/components/FeedimAlert";
 import LazyAvatar from "@/components/LazyAvatar";
 
 export default function SupportReplyForm({
@@ -27,6 +26,7 @@ export default function SupportReplyForm({
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const resizeTextarea = useCallback(() => {
     const textarea = inputRef.current;
@@ -48,7 +48,8 @@ export default function SupportReplyForm({
   }, [message, resizeTextarea]);
 
   const submit = async () => {
-    if (disabled || submitting || message.trim().length < 10) return;
+    if (disabled || submitting || message.trim().length < 1) return;
+    setErrorMessage("");
     setSubmitting(true);
     try {
       const res = await fetch(`/api/support-requests/${requestId}/reply`, {
@@ -58,13 +59,13 @@ export default function SupportReplyForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        feedimAlert("error", data.error || labels.tryAgainLater);
+        setErrorMessage(data.error || labels.tryAgainLater);
         return;
       }
       setMessage("");
       router.refresh();
     } catch {
-      feedimAlert("error", labels.tryAgainLater);
+      setErrorMessage(labels.tryAgainLater);
     } finally {
       setSubmitting(false);
     }
@@ -77,54 +78,64 @@ export default function SupportReplyForm({
           event.preventDefault();
           submit();
         }}
-        className="flex items-end gap-2 my-[10px] w-full"
+        className="w-full my-[10px] space-y-1.5"
       >
-        <div className="shrink-0 mb-[7px]">
-          <LazyAvatar src={avatarUrl} alt="" sizeClass="h-9 w-9" />
-        </div>
-        <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary relative">
-          <textarea
-            ref={inputRef}
-            rows={1}
-            maxLength={2000}
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            onInput={resizeTextarea}
-            placeholder={disabled ? (disabledPlaceholder || labels.replyPlaceholder) : labels.replyPlaceholder}
-            disabled={disabled}
-            className="comment-textarea flex-1 py-[13px] pl-[18px] pr-[78px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] min-h-[35px] max-h-[220px] text-text-readable placeholder:text-[0.9rem] placeholder:text-text-muted disabled:opacity-100 disabled:cursor-default"
-          />
-          {!disabled && message.length >= 100 ? (
-            <span className="absolute right-[58px] top-1.5 text-[0.65rem] text-text-muted/50 pointer-events-none select-none">
-              {message.length}/2000
-            </span>
-          ) : null}
-          <div className="flex items-center shrink-0 mb-[9px] mt-auto mr-[7px]">
-            <button
-              type="submit"
-              disabled={disabled || submitting || message.trim().length < 10}
-              className="flex items-center justify-center relative h-[35px] w-auto min-w-[53px] rounded-[2rem] bg-bg-inverse text-bg-primary disabled:opacity-50 disabled:pointer-events-none transition shrink-0"
-              aria-label={labels.replySubmit}
-            >
-              {submitting ? (
-                <span
-                  className="loader"
-                  style={{ width: 16, height: 16, borderTopColor: "var(--bg-primary)" }}
-                />
-              ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M12 6V18M12 6L7 11M12 6L17 11"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+        <div className="flex items-end gap-2 w-full">
+          <div className="shrink-0 mb-[7px]">
+            <LazyAvatar src={avatarUrl} alt="" sizeClass="h-9 w-9" />
+          </div>
+          <div className="flex flex-1 min-w-0 items-stretch rounded-[24px] bg-bg-tertiary relative">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              maxLength={2000}
+              value={message}
+              onChange={(event) => {
+                setMessage(event.target.value);
+                if (errorMessage) setErrorMessage("");
+              }}
+              onInput={resizeTextarea}
+              placeholder={disabled ? (disabledPlaceholder || labels.replyPlaceholder) : labels.replyPlaceholder}
+              disabled={disabled}
+              className="comment-textarea flex-1 py-[13px] pl-[18px] pr-[78px] bg-transparent outline-none border-none shadow-none resize-none text-[0.9rem] min-h-[35px] max-h-[220px] text-text-readable placeholder:text-[0.9rem] placeholder:text-text-muted disabled:opacity-100 disabled:cursor-default"
+            />
+            {!disabled && message.length >= 100 ? (
+              <span className="absolute right-[58px] top-1.5 text-[0.65rem] text-text-muted/50 pointer-events-none select-none">
+                {message.length}/2000
+              </span>
+            ) : null}
+            <div className="flex items-center shrink-0 mb-[9px] mt-auto mr-[7px]">
+              <button
+                type="submit"
+                disabled={disabled || submitting || message.trim().length < 1}
+                className="flex items-center justify-center relative h-[35px] w-auto min-w-[53px] rounded-[2rem] bg-bg-inverse text-bg-primary disabled:opacity-50 disabled:pointer-events-none transition shrink-0"
+                aria-label={labels.replySubmit}
+              >
+                {submitting ? (
+                  <span
+                    className="loader"
+                    style={{ width: 16, height: 16, borderTopColor: "var(--bg-primary)" }}
                   />
-                </svg>
-              )}
-            </button>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M12 6V18M12 6L7 11M12 6L17 11"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+        {errorMessage ? (
+          <div className="pl-[48px] text-[0.72rem] font-medium text-error">
+            {errorMessage}
+          </div>
+        ) : null}
       </form>
     </div>
   );

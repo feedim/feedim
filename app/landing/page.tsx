@@ -73,16 +73,6 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Quick check: if Supabase has a stored session, redirect immediately
-    const hasStoredSession =
-      typeof window !== "undefined" &&
-      Object.keys(localStorage).some(
-        (k) => k.startsWith("sb-") && k.endsWith("-auth-token")
-      );
-    if (hasStoredSession) {
-      router.replace("/");
-      return;
-    }
     let cancelled = false;
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (cancelled) return;

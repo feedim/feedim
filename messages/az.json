@@ -1984,6 +1984,7 @@
     "supportClaimSuccess": "Dəstək tələbi sizə təhkim olundu",
     "supportClaimError": "Dəstək tələbi üzərinə götürülə bilmədi",
     "supportClaimLimit": "Ən çox 10 aktiv dəstək tələbi üzərinə götürə bilərsiniz",
+    "supportNewMessage": "1 yeni mesaj",
     "rejectSupport": "Rədd et",
     "approve": "Təsdiqlə",
     "publishContent": "Məzmunu Yayınla",
@@ -3450,6 +3451,7 @@
     "errors": {
       "invalidType": "Keçərsiz dəstək növü",
       "messageTooShort": "Mesaj ən az 10 simvol olmalıdır",
+      "replyTooShort": "Mesaj ən az 1 simvol olmalıdır",
       "invalidUrl": "Keçərli bir bağlantı daxil edin",
       "decisionCodeRequired": "Qərar nömrəsi seçin",
       "invalidDecisionCode": "Bu qərar nömrəsi hesabınıza aid deyil və ya etiraz edilə bilməz",

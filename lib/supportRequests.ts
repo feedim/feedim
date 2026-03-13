@@ -325,6 +325,19 @@ export function isSupportReplyWindowExpired(input: string | null | undefined, no
   return deadline <= now;
 }
 
+export function hasPendingSupportUserReply(params: {
+  status: string | null | undefined;
+  message: string | null | undefined;
+  reviewerNote: string | null | undefined;
+}) {
+  if (params.status !== "open") return false;
+  const parsedMessage = parseSupportStoredMessage(params.message);
+  const reviewerThread = parseSupportReviewerThread(params.reviewerNote);
+  const requestedReplyCount = reviewerThread.filter((entry) => entry.mode === "await_user").length;
+  if (requestedReplyCount < 1) return false;
+  return parsedMessage.userReplies.length >= requestedReplyCount;
+}
+
 export async function finalizeExpiredSupportRequests(
   admin: ReturnType<typeof createAdminClient>,
   options?: {

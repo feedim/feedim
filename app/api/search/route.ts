@@ -163,13 +163,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const { searchParams } = new URL(req.url);
-  let q = sanitizeForFilter(searchParams.get("q")?.trim() || "");
-  const type = searchParams.get("type") || "all"; // all, users, posts, tags, sounds
-  const contentType = searchParams.get("content_type") || ""; // post, video, note, moment
+  const rawQ = searchParams.get("q")?.trim() || "";
+  const isUserIntent = rawQ.startsWith("@");
+  const isTagIntent = rawQ.startsWith("#");
+  let q = sanitizeForFilter(isUserIntent || isTagIntent ? rawQ.slice(1) : rawQ);
+  const type = searchParams.get("type") || "all";
+  const contentType = searchParams.get("content_type") || "";
 
   const supabase = await createClient();
   const admin = createAdminClient();
-  const limit = Math.min(parseInt(searchParams.get("limit") || "0") || (type === "all" ? 5 : 20), 50);
+  const limit = Math.min(parseInt(searchParams.get("limit") || "0") || (type === "all" ? 8 : 30), 50);
   const results: SearchResults = {};
 
   // Get current user for personalized scoring + blocked users
@@ -197,10 +200,6 @@ export async function GET(req: NextRequest) {
   }
 
   const viewerAffinity = await getViewerAffinity(req, admin, user?.id);
-
-  // Intent detection: @ prefix means user search
-  const isUserIntent = q.startsWith("@");
-  if (isUserIntent) q = q.slice(1);
 
   // No query — return popular/suggested results
   if (!q || q.length < 2) {
@@ -307,7 +306,7 @@ export async function GET(req: NextRequest) {
     return response;
   }
 
-  const searchType = isUserIntent ? "users" : type;
+  const searchType = isUserIntent ? "users" : isTagIntent ? "tags" : type;
 
   // Search users with scoring
   if (searchType === "all" || searchType === "users") {
@@ -370,7 +369,7 @@ export async function GET(req: NextRequest) {
       `)
       .eq("status", "published")
       .eq("is_nsfw", false)
-      .or(`title.ilike.%${q}%,excerpt.ilike.%${q}%`)
+      .or(`title.ilike.%${q}%,excerpt.ilike.%${q}%,slug.ilike.%${q}%`)
       .limit(100);
     if (contentType) {
       searchPostQuery = searchPostQuery.eq("content_type", contentType);
@@ -378,15 +377,64 @@ export async function GET(req: NextRequest) {
     if (blockedIds.size > 0) {
       searchPostQuery = searchPostQuery.not("author_id", "in", `(${[...blockedIds].join(",")})`);
     }
-    const { data: posts } = await searchPostQuery;
+    // Also search posts by matching tag names (parallel with main search)
+    const tagSearchPromise = (async (): Promise<SearchPost[]> => {
+      try {
+        const { data: matchingTags } = await admin
+          .from("tags")
+          .select("id")
+          .ilike("name", `%${q}%`)
+          .limit(10);
+        if (!matchingTags || matchingTags.length === 0) return [];
+        const { data: tpm } = await admin
+          .from("post_tags")
+          .select("post_id")
+          .in("tag_id", matchingTags.map((t: { id: number }) => t.id))
+          .limit(50);
+        if (!tpm || tpm.length === 0) return [];
+        let tagPostQuery = admin
+          .from("posts")
+          .select(`
+            id, title, slug, excerpt, featured_image, reading_time,
+            like_count, comment_count, view_count, save_count, share_count, published_at, author_id, content_type,
+            video_duration, video_thumbnail, video_url, blurhash, trending_score, quality_score, spam_score, is_nsfw,
+            profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private)
+          `)
+          .in("id", (tpm as { post_id: number }[]).map(t => t.post_id))
+          .eq("status", "published")
+          .eq("is_nsfw", false);
+        if (contentType) tagPostQuery = tagPostQuery.eq("content_type", contentType);
+        if (blockedIds.size > 0) {
+          tagPostQuery = tagPostQuery.not("author_id", "in", `(${[...blockedIds].join(",")})`);
+        }
+        const { data: tagPosts } = await tagPostQuery;
+        return (tagPosts || []) as SearchPost[];
+      } catch { return []; }
+    })();
 
-    const filteredPosts = ((posts || []) as SearchPost[])
+    const [{ data: posts }, tagMatchedPosts] = await Promise.all([searchPostQuery, tagSearchPromise]);
+
+    // Merge text-matched and tag-matched posts (deduplicate)
+    const allSearchPosts = [...((posts || []) as SearchPost[])];
+    const seenPostIds = new Set(allSearchPosts.map(p => p.id));
+    for (const tp of tagMatchedPosts) {
+      if (!seenPostIds.has(tp.id)) { allSearchPosts.push(tp); seenPostIds.add(tp.id); }
+    }
+    const tagMatchedIds = new Set(tagMatchedPosts.map(p => p.id));
+
+    const filteredPosts = allSearchPosts
       .filter((post) => !blockedIds.has(post.author_id))
       .filter((post) => {
         const status = unwrapRelation(post.profiles)?.status;
         return !status || status === "active";
       })
-      .filter((post) => !unwrapRelation(post.profiles)?.account_private);
+      .filter((post) => {
+        const author = unwrapRelation(post.profiles);
+        if (!author?.account_private) return true;
+        if (author.user_id === user?.id) return true;
+        if (author.user_id && followingIds.has(author.user_id)) return true;
+        return false;
+      });
 
     if (filteredPosts.length > 0) {
       // Cached user signals for computeFeedScore
@@ -507,6 +555,7 @@ export async function GET(req: NextRequest) {
         if (title.includes(lq)) textScore += title === lq ? 600 : title.startsWith(lq) ? 400 : 200;
         if (excerpt.includes(lq)) textScore += 100;
         if (p.featured_image) textScore += 50;
+        if (tagMatchedIds.has(p.id)) textScore += 150; // Tag name match bonus
 
         // computeFeedScore
         const profile = authorProfiles.get(p.author_id);
@@ -540,9 +589,9 @@ export async function GET(req: NextRequest) {
           matched_interest_count: pInterests.filter(iid => userInterestIds.has(iid)).length,
         };
 
-        const feedScore = computeFeedScore(candidate, ctx);
-        // Combine: text relevance (40%) + feed score (60%)
-        const combinedScore = textScore * 0.4 + feedScore * 0.6;
+        const feedScore = computeFeedScore(candidate, ctx, { disableJitter: true, disableReachGating: true });
+        // Combine: text relevance (65%) + feed score (35%) — search prioritizes text match
+        const combinedScore = textScore * 0.65 + feedScore * 0.35;
 
         return { ...p, _score: combinedScore };
       });

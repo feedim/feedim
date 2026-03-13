@@ -18,6 +18,13 @@ import { useUser } from "@/components/UserContext";
 import { readCache, withCacheScope, writeCache } from "@/lib/fetchWithCache";
 
 type BookmarkFilter = "all" | "post" | "note" | "moment" | "video";
+type BookmarkRow = { post_id: number };
+type BookmarkPost = {
+  id: number;
+  profiles?: unknown;
+  [key: string]: unknown;
+};
+type BookmarkLikeRow = { post_id: number };
 
 export default function BookmarksPage() {
   useSearchParams();
@@ -85,7 +92,7 @@ export default function BookmarksPage() {
       const nextHasMore = bookmarks.length >= FEED_PAGE_SIZE;
       setHasMore(nextHasMore);
 
-      const postIds = bookmarks.map(b => b.post_id);
+      const postIds = (bookmarks as BookmarkRow[]).map((b) => b.post_id);
       let postsQuery = supabase
         .from("posts")
         .select(`
@@ -110,9 +117,9 @@ export default function BookmarksPage() {
       ]);
 
       // Preserve bookmark order
-      const postMap = new Map((postsData || []).map(p => [p.id, p]));
-      const likedIds = new Set((likesData || []).map((like) => like.post_id));
-      const ordered = postIds.map(id => postMap.get(id)).filter(Boolean);
+      const postMap = new Map((postsData || []).map((p: BookmarkPost) => [p.id, p]));
+      const likedIds = new Set((likesData || []).map((like: BookmarkLikeRow) => like.post_id));
+      const ordered = postIds.map((id) => postMap.get(id)).filter(Boolean);
 
       // Normalize profiles
       const normalized = ordered.map((p: any) => ({

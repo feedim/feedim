@@ -14,6 +14,7 @@ import {
   appendSupportReviewerNote,
   cleanupResolvedSupportRequests,
   finalizeExpiredSupportRequests,
+  hasPendingSupportUserReply,
   parseSupportStoredMessage,
   sanitizeSupportMessage,
 } from "@/lib/supportRequests";
@@ -68,12 +69,12 @@ export async function GET(request: NextRequest) {
       .from("support_requests")
       .select(
         `
-          id, kind, status, decision_code, decision_target_type, decision_target_id, message, related_url, reviewer_note, reviewer_id, created_at, reviewed_at,
+          id, kind, status, decision_code, decision_target_type, decision_target_id, message, related_url, reviewer_note, reviewer_id, created_at, updated_at, reviewed_at,
           requester:profiles!support_requests_user_id_fkey${countryFilter ? "!inner" : ""}(user_id, username, full_name, avatar_url, language, country)
         `,
         { count: "exact" },
       )
-      .order("created_at", { ascending: true })
+      .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (status === "active") {
@@ -99,8 +100,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "server_error" }, { status: 500 });
     }
 
+    const requests = (data || []).map((item) => ({
+      ...item,
+      pending_user_reply: hasPendingSupportUserReply({
+        status: item.status,
+        message: item.message,
+        reviewerNote: item.reviewer_note,
+      }),
+    }));
+
+    requests.sort((a, b) => {
+      if (a.pending_user_reply && !b.pending_user_reply) return -1;
+      if (!a.pending_user_reply && b.pending_user_reply) return 1;
+      const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+      const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+
     return NextResponse.json({
-      requests: data || [],
+      requests,
       total: count || 0,
       page,
     });

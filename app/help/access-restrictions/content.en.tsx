@@ -89,9 +89,11 @@ export default function ContentEn() {
         </p>
 
         <p className="text-xs text-text-muted mt-8">
-            For questions about access restrictions,{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Contact</NewTabLink> us
-            or reach out at <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>.
+          For questions about access restrictions, sign in and use the{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">Create Support Request</NewTabLink>{" "}
+          page. If you cannot access your account, use the email channels on our{" "}
+          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Contact</NewTabLink>{" "}
+          page or write to <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>.
         </p>
       </div>
     </>

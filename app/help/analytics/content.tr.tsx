@@ -231,10 +231,13 @@ export default function ContentTr() {
         </div>
 
         <p className="text-xs text-text-muted mt-8">
-            Analitik paneli hakkında sorularınız için{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">İletişim</NewTabLink> sayfamızdan
-            veya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a> adresinden
-            bize ulaşabilirsiniz.
+          Analitik paneli hakkında sorularınız varsa hesabınıza giriş yaptıktan sonra{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">Destek Talebi Oluştur</NewTabLink>{" "}
+          sayfasından destek talebi oluşturabilirsiniz. Hesabınıza erişemiyorsanız{" "}
+          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">İletişim</NewTabLink>{" "}
+          sayfamızdaki e-posta kanallarını veya{" "}
+          <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>{" "}
+          adresini kullanabilirsiniz.
         </p>
       </div>
     </>

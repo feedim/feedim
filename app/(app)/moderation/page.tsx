@@ -1554,6 +1554,7 @@ export default function AdminPage() {
                       supportClaimSuccess: t("supportClaimSuccess"),
                       supportClaimError: t("supportClaimError"),
                       supportClaimLimit: t("supportClaimLimit"),
+                      supportNewMessage: t("supportNewMessage"),
                     }}
                   />
                 ))}

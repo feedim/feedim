@@ -1,3 +1,5 @@
+"use client";
+
 import NewTabLink from "@/components/NewTabLink";
 import { Heart, MessageCircle, Bell, Home, Bookmark } from "lucide-react";
 import type { HelpArticle, HelpPageLink, HelpSection } from "./articles.types";
@@ -19,6 +21,7 @@ export const sections: HelpSection[] = [
   { id: "profil", label: "Profil və Parametrlər" },
   { id: "icerik", label: "Yazı, Not, Video və Məzmun" },
   { id: "moderasyon", label: "Moderasiya və Məzmun Təhlükəsizliyi" },
+  { id: "destek", label: "Dəstək Tələbi Sistemi" },
   { id: "telif", label: "Müəllif Hüququ və Kopya Məzmun" },
   { id: "etkilesim", label: "Qarşılıqlı Əlaqə və Sosial" },
   { id: "bildirim", label: "Bildirişlər" },
@@ -35,9 +38,9 @@ export const pageLinks: HelpPageLink[] = [
   { title: "Gizlilik Siyasəti", href: "/help/privacy", description: "Şəxsi məlumatların qorunması və gizlilik" },
   { title: "Məlumatların Qorunması", href: "/help/privacy", description: "Şəxsi Məlumatların Qorunması Qanunu" },
   { title: "İcma Qaydaları", href: "/help/community-guidelines", description: "Məzmun standartları, davranış qaydaları və sanksiyalar" },
-  { title: "Əlaqə", href: "/help/contact", description: "Bizimlə əlaqə saxlayın, dəstək alın" },
+  { title: "Əlaqə", href: "/help/contact", description: "Bizimlə əlaqə saxlayın, e-poçt və dəstək tələbi seçimlərinə baxın" },
   { title: "Müəllif Hüququ Qorunması", href: "/help/copyright", description: "Müəllif hüququ qoruma sistemi, kopya məzmun siyasəti və pozuntu sistemi" },
-  { title: "Moderasiya Sistemi", href: "/help/moderation", description: "Məzmun moderasiyası, AI nəzərdən keçirmə və etiraz prosesləri" },
+  { title: "Moderasiya Sistemi", href: "/help/moderation", description: "Məzmun moderasiyası, AI nəzərdən keçirmə, etiraz və dəstək tələbi prosesləri" },
   { title: "Feedim AI", href: "/help/ai", description: "Süni intellektlə dəstəklənən məzmun moderasiyası və tövsiyələr" },
   { title: "Məzmun Növləri", href: "/help/content-types", description: "Yazı, video, moment və məzmun formatları" },
   { title: "Jeton Sistemi", href: "/help/coins", description: "Jeton qazanma, satın alma və balans idarəetməsi" },
@@ -289,7 +292,7 @@ export const articles: HelpArticle[] = [
     section: "icerik",
     question: "Yazım niyə silinmiş ola bilər?",
     searchText: "Yazınız icma qaydalarına zidd tapılmış ola bilər. Müəllif hüququ pozuntusu, spam, nifrət nitqi və ya şikayət nəticəsində silinmiş ola bilər.",
-    answer: <>Yazınız icma qaydalarına zidd tapıldığı üçün silinmiş ola bilər. Ən çox rast gəlinən səbəblər: müəllif hüququ pozuntusu, spam məzmun, nifrət nitqi, aldadıcı məlumat və ya digər istifadəçilərdən gələn şikayətlər. Silmə əməliyyatı barədə ətraflı məlumat almaq və ya etiraz etmək üçün <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> ünvanına yaza bilərsiniz.</>,
+    answer: <>Yazınız icma qaydalarına zidd tapıldığı üçün silinmiş ola bilər. Ən çox rast gəlinən səbəblər: müəllif hüququ pozuntusu, spam məzmun, nifrət nitqi, aldadıcı məlumat və ya digər istifadəçilərdən gələn şikayətlər. Ətraflı məlumat almaq və ya etiraz etmək üçün hesabınıza daxil olduqdan sonra <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsini istifadə edin. Hesabınıza girişiniz yoxdursa <NewTabLink href="/help/contact" className={lnk}>Əlaqə</NewTabLink> səhifəmizdəki e-poçt kanallarını istifadə edin.</>,
   },
 
   // ─── Moderasiya və Məzmun Təhlükəsizliyi ────────────────────
@@ -320,8 +323,52 @@ export const articles: HelpArticle[] = [
   {
     section: "moderasyon",
     question: "Moderasiya qərarına etiraz edə bilərəmmi?",
-    searchText: "Moderasiya qərarına etiraz etmək üçün help@feedim.com ünvanına yaza bilərsiniz. İnsan moderatorlar tərəfindən yenidən dəyərləndirilir.",
-    answer: <>Bəli. Moderasiya qərarının ədalətsiz olduğunu düşünürsünüzsə <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> ünvanına yazaraq etiraz edə bilərsiniz. Etirazınız insan moderatorlar tərəfindən yenidən dəyərləndirilir. Ətraflı məlumat üçün <NewTabLink href="/help/moderation" className={lnk}>Moderasiya Sistemi</NewTabLink> səhifəsinə baxın.</>,
+    searchText: "Moderasiya qərarlarına hesaba daxil olduqdan sonra dəstək tələbi sistemi ilə etiraz edə bilərsiniz. Hesaba girişiniz yoxdursa Əlaqə səhifəsindəki e-poçt kanallarını istifadə edin.",
+    answer: <>Bəli. Moderasiya qərarının ədalətsiz olduğunu düşünürsünüzsə hesabınıza daxil olduqdan sonra <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsi üzərindən etiraz aça bilərsiniz. Etirazınız insan moderatorlar tərəfindən yenidən dəyərləndirilir və cavab verildikdə bildiriş alırsınız. Hesabınıza girişiniz yoxdursa <NewTabLink href="/help/contact" className={lnk}>Əlaqə</NewTabLink> səhifəsindəki e-poçt kanallarını istifadə edin. Ətraflı məlumat üçün <NewTabLink href="/help/moderation" className={lnk}>Moderasiya Sistemi</NewTabLink> səhifəsinə baxın.</>,
+  },
+
+  // ─── Dəstək Tələbi Sistemi ────────────────────────────────
+  {
+    section: "destek",
+    question: "Dəstək tələbini necə yaradıram?",
+    searchText: "Hesaba daxil olduqdan sonra Dəstək Tələbi Yarat səhifəsindən moderasiya etirazı və ya texniki dəstək tələbi aça bilərsiniz.",
+    answer: <>Hesabınıza daxil olduqdan sonra <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsini istifadə edin. Buradan moderasiya etirazı və ya texniki dəstək tələbi yarada bilərsiniz.</>,
+  },
+  {
+    section: "destek",
+    question: "Dəstək tələbi sistemini hansı mövzular üçün istifadə edə bilərəm?",
+    searchText: "Dəstək tələbi sistemi moderasiya etirazları və texniki problemlər üçündür. Hesab, giriş, şifrə, profil, yazı, video, qarşılıqlı əlaqə, ödəniş və bildiriş problemləri daxildir.",
+    answer: "Dəstək tələbi sistemi moderasiya qərarlarına etiraz etmək və texniki problemləri bildirmək üçündür. Hesab, giriş, şifrə, profil, yazı, video, moment, qarşılıqlı əlaqə, ödəniş, görünürlük və bildiriş problemləri uyğun mövzu seçilərək göndərilə bilər.",
+  },
+  {
+    section: "destek",
+    question: "Moderasiya qərarına necə etiraz edirəm?",
+    searchText: "Dəstək Tələbi Yarat səhifəsində moderasiya qərarı etirazı seçilir. Yalnız hesabınıza aid və daha əvvəl etiraz edilməmiş qərar kodları görünür.",
+    answer: <>Dəstək səhifəsində <strong>&ldquo;Moderasiya qərarı etirazı&rdquo;</strong> seçimini edin. Sistem yalnız hesabınıza aid olan və daha əvvəl etiraz edilməmiş qərar kodlarını göstərir. Etiraz mətninizi göndərdikdən sonra tələb insan moderatorlar tərəfindən yenidən nəzərdən keçirilir.</>,
+  },
+  {
+    section: "destek",
+    question: "Dəstək tələbimin vəziyyətini necə izləyirəm?",
+    searchText: "Dəstək tələbləri hesab üzərindən izlənir. Cavab gəldikdə bildiriş göndərilir və dəstək detal səhifəsi açıla bilər.",
+    answer: <>Dəstək tələbləriniz hesabınız üzərindən izlənir. Cavab verildikdə <NewTabLink href="/notifications" className={lnk}>Bildirişlər</NewTabLink> bölməsində bildiriş alırsınız. Həmçinin əlaqəli dəstək qeydini açaraq tələb detalları və yazışma axınını görə bilərsiniz.</>,
+  },
+  {
+    section: "destek",
+    question: "Dəstək tələbim cavablandıqda necə xəbər tutacağam?",
+    searchText: "Dəstək tələbi cavablandıqda sistem bildirişi gəlir. Bildirişdən birbaşa dəstək qeydini açmaq mümkündür.",
+    answer: <>Dəstək tələbiniz cavablandıqda sistem bildirişi alırsınız. Bu bildirişdən əlaqəli dəstək qeydini birbaşa aça, cavabı oxuya və əgər sizdən əlavə məlumat istənibsə eyni qeyd üzərindən cavab verə bilərsiniz.</>,
+  },
+  {
+    section: "destek",
+    question: "Eyni anda birdən çox dəstək tələbi yarada bilərəmmi?",
+    searchText: "İşlənən bir dəstək tələbi varkən yenisi yaradıla bilməz. Cari tələb nəticələnənə qədər gözləmək lazımdır.",
+    answer: "Xeyr. İşlənməkdə olan bir dəstək tələbiniz varsa, yeni tələb yarada bilməzsiniz. Mövcud tələb həll olunduqdan və ya bağlandıqdan sonra yeni dəstək tələbi yarada bilərsiniz.",
+  },
+  {
+    section: "destek",
+    question: "Hesabıma girişim yoxdursa nə etməliyəm?",
+    searchText: "Hesaba giriş yoxdursa dəstək tələbi sistemi yerinə Əlaqə səhifəsindəki e-poçt kanalları istifadə olunmalıdır.",
+    answer: <>Hesabınıza girişiniz yoxdursa dəstək tələbi sistemi yerinə <NewTabLink href="/help/contact" className={lnk}>Əlaqə</NewTabLink> səhifəsindəki e-poçt kanallarını istifadə edin. Xüsusilə giriş, qeydiyyat və ya hesab girişi problemlərində e-poçt daha doğru kanaldır.</>,
   },
 
   // ─── Müəllif Hüququ və Kopya Məzmun ─────────────────────────
@@ -533,7 +580,7 @@ export const articles: HelpArticle[] = [
     section: "sorun",
     question: "Daxil ola bilmirəm, nə etməliyəm?",
     searchText: "E-poçt və şifrənizi yoxlayın. Şifrəmi Unutdum ilə sıfırlayın. E-poçt doğrulaması edin. Problem davam edərsə help@feedim.com ünvanına yazın.",
-    answer: <>Əvvəlcə e-poçt ünvanınızı və şifrənizi yoxlayın. Şifrənizi xatırlamırsınızsa <strong>&lsquo;Şifrəmi Unutdum&rsquo;</strong> ilə sıfırlayın. E-poçt doğrulaması etmədiyinizsə spam qovluğunuzu yoxlayın. Brauzer çərəzlərini və keşi təmizləməyi sınayın. Problem davam edərsə <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> ünvanına yazın.</>,
+    answer: <>Əvvəlcə e-poçt ünvanınızı və şifrənizi yoxlayın. Şifrənizi xatırlamırsınızsa <strong>&lsquo;Şifrəmi Unutdum&rsquo;</strong> ilə sıfırlayın. E-poçt doğrulaması etmədiyinizsə spam qovluğunuzu yoxlayın. Brauzer çərəzlərini və keşi təmizləməyi sınayın. Problem davam edərsə <NewTabLink href="/help/contact" className={lnk}>Əlaqə</NewTabLink> səhifəmizdəki e-poçt kanallarını istifadə edin.</>,
   },
   {
     section: "sorun",
@@ -544,14 +591,20 @@ export const articles: HelpArticle[] = [
   {
     section: "sorun",
     question: "Hesabım niyə dayandırıldı?",
-    searchText: "İstifadə şərtləri pozuntusu, spam məzmun, Jeton sui-istifadəsi və ya təcavüz kimi səbəblərlə hesab dayandırıla bilər. Etiraz üçün help@feedim.com.",
-    answer: <>İstifadə şərtlərinin pozulması, spam məzmun istehsalı, Jeton sisteminin sui-istifadəsi və ya digər istifadəçilərə təcavüz kimi səbəblərlə hesablar dayandırıla bilər. Ətraflı məlumat və etiraz üçün <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> ünvanına yaza bilərsiniz. <NewTabLink href="/help/terms" className={lnk}>İstifadə Şərtləri</NewTabLink> səhifəmizdə bütün qaydalar ətraflı şəkildə açıqlanmışdır.</>,
+    searchText: "İstifadə şərtləri pozuntusu, spam məzmun, Jeton sui-istifadəsi və ya təcavüz kimi səbəblərlə hesab dayandırıla bilər. Girişiniz varsa dəstək tələbi ilə etiraz edə bilərsiniz.",
+    answer: <>İstifadə şərtlərinin pozulması, spam məzmun istehsalı, Jeton sisteminin sui-istifadəsi və ya digər istifadəçilərə təcavüz kimi səbəblərlə hesablar dayandırıla bilər. Hesabınıza daxil ola bilirsinizsə <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsindən moderasiya etirazı aça bilərsiniz. Hesabınıza girişiniz yoxdursa <NewTabLink href="/help/contact" className={lnk}>Əlaqə</NewTabLink> səhifəsindəki e-poçt kanallarını istifadə edin. <NewTabLink href="/help/terms" className={lnk}>İstifadə Şərtləri</NewTabLink> səhifəmizdə bütün qaydalar ətraflı şəkildə açıqlanmışdır.</>,
   },
   {
     section: "sorun",
     question: "Yazılar yüklənmir və ya xəta alıram",
     searchText: "İnternet bağlantınızı yoxlayın. Səhifəni yeniləyin və ya brauzer keşini təmizləyin. Fərqli bir brauzer sınayın.",
-    answer: "İnternet bağlantınızı yoxlayın. Səhifəni yeniləyin və ya brauzer keşini təmizləyin. Fərqli bir brauzer sınayın. Yazı yaradarkən xəta alırsınızsa məzmun ölçüsünün limitləri aşmadığından əmin olun (başlıq 3-200 simvol, məzmun ən azı 50 simvol). Problem davam edərsə çıxış edib yenidən daxil olmağı sınayın.",
+    answer: <>İnternet bağlantınızı yoxlayın. Səhifəni yeniləyin və ya brauzer keşini təmizləyin. Fərqli bir brauzer sınayın. Yazı yaradarkən xəta alırsınızsa məzmun ölçüsünün limitləri aşmadığından əmin olun (başlıq 3-200 simvol, məzmun ən azı 50 simvol). Problem davam edərsə çıxış edib yenidən daxil olmağı sınayın. Problem yenə qalırsa hesabınıza daxil olduqdan sonra <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsindən texniki dəstək tələbi aça bilərsiniz.</>,
+  },
+  {
+    section: "sorun",
+    question: "Dəstək tələbini necə yaradıram?",
+    searchText: "Hesaba daxil olduqdan sonra Dəstək Tələbi Yarat səhifəsini istifadə edin. Moderasiya etirazları və texniki problemlər buradan izlənir.",
+    answer: <>Hesabınıza daxil olduqdan sonra <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsini istifadə edə bilərsiniz. Moderasiya qərarlarına etiraz etmək və ya texniki problem üçün dəstək almaq bu sistem üzərindən edilir. Dəstək tələbiniz hesabınız üzərindən izlənir və cavab verildikdə bildiriş alırsınız.</>,
   },
   {
     section: "sorun",
@@ -562,7 +615,7 @@ export const articles: HelpArticle[] = [
   {
     section: "sorun",
     question: "Başqa bir problemim var, necə əlaqə saxlaya bilərəm?",
-    searchText: "help@feedim.com və ya Əlaqə səhifəsindən bizə müraciət edə bilərsiniz. İş günlərində 24 saat ərzində cavab veririk.",
-    answer: <>Bu səhifədə cavabını tapa bilmədiyiniz suallarınız üçün <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> ünvanına yaza bilər və ya <NewTabLink href="/help/contact" className={lnk}>Əlaqə səhifəmizi</NewTabLink> ziyarət edə bilərsiniz. İş günlərində 24 saat ərzində bütün suallara cavab veririk.</>,
+    searchText: "Daxil olmusunuzsa dəstək tələbi yarada bilərsiniz. Hesaba girişiniz yoxdursa help@feedim.com və ya Əlaqə səhifəsini istifadə edin.",
+    answer: <>Bu səhifədə cavabını tapa bilmədiyiniz suallarınız üçün hesabınıza daxil olduqdan sonra <NewTabLink href="/settings/support" className={lnk}>Dəstək Tələbi Yarat</NewTabLink> səhifəsini istifadə edə bilərsiniz. Hesabınıza girişiniz yoxdursa <NewTabLink href="/help/contact" className={lnk}>Əlaqə</NewTabLink> səhifəmizdəki e-poçt kanallarını istifadə edin. İş günlərində mümkün olan ən qısa müddətdə cavab veririk.</>,
   },
 ];

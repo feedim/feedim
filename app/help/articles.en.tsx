@@ -1,3 +1,5 @@
+"use client";
+
 import NewTabLink from "@/components/NewTabLink";
 import { Heart, MessageCircle, Bell, Home, Bookmark } from "lucide-react";
 import type { HelpArticle, HelpPageLink, HelpSection } from "./articles.types";
@@ -19,6 +21,7 @@ export const sections: HelpSection[] = [
   { id: "profil", label: "Profile & Settings" },
   { id: "icerik", label: "Posts, Notes, Videos & Content" },
   { id: "moderasyon", label: "Moderation & Content Safety" },
+  { id: "destek", label: "Support Request System" },
   { id: "telif", label: "Copyright & Duplicate Content" },
   { id: "etkilesim", label: "Engagement & Social" },
   { id: "bildirim", label: "Notifications" },
@@ -35,9 +38,9 @@ export const pageLinks: HelpPageLink[] = [
   { title: "Privacy Policy", href: "/help/privacy", description: "Personal data protection and privacy" },
   { title: "Data Protection", href: "/help/privacy", description: "Personal Data Protection Policy" },
   { title: "Community Guidelines", href: "/help/community-guidelines", description: "Content standards, behavior rules and sanctions" },
-  { title: "Contact", href: "/help/contact", description: "Get in touch, get support" },
+  { title: "Contact", href: "/help/contact", description: "Get in touch, see email and support request options" },
   { title: "Copyright Protection", href: "/help/copyright", description: "Copyright protection system, duplicate content policy and violation system" },
-  { title: "Moderation System", href: "/help/moderation", description: "Content moderation, AI review and appeal processes" },
+  { title: "Moderation System", href: "/help/moderation", description: "Content moderation, AI review, appeals and support request flow" },
   { title: "Feedim AI", href: "/help/ai", description: "AI-powered content moderation and recommendations" },
   { title: "Content Types", href: "/help/content-types", description: "Posts, videos, moments and content formats" },
   { title: "Token System", href: "/help/coins", description: "Earning tokens, purchasing and balance management" },
@@ -289,7 +292,7 @@ export const articles: HelpArticle[] = [
     section: "icerik",
     question: "Why was my post removed?",
     searchText: "Your post may have been found to violate community guidelines. It may have been removed due to copyright infringement, spam, hate speech or reports.",
-    answer: <>Your post may have been removed because it was found to violate community guidelines. Common reasons include copyright infringement, spam content, hate speech, misleading information or reports from other users. For more details or to appeal, you can write to <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a>.</>,
+    answer: <>Your post may have been removed because it was found to violate community guidelines. Common reasons include copyright infringement, spam content, hate speech, misleading information or reports from other users. For more details or to appeal, sign in and use the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page. If you cannot access your account, use the email channels on our <NewTabLink href="/help/contact" className={lnk}>Contact</NewTabLink> page.</>,
   },
 
   // ─── Moderation & Content Safety ────────────────────────
@@ -320,8 +323,52 @@ export const articles: HelpArticle[] = [
   {
     section: "moderasyon",
     question: "Can I appeal a moderation decision?",
-    searchText: "To appeal a moderation decision, you can write to help@feedim.com. It will be re-evaluated by human moderators.",
-    answer: <>Yes. If you believe the moderation decision was unfair, you can appeal by writing to <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a>. Your appeal will be re-evaluated by human moderators. See the <NewTabLink href="/help/moderation" className={lnk}>Moderation System</NewTabLink> page for details.</>,
+    searchText: "After signing in, you can appeal moderation decisions through the support request system. If you cannot access your account, use the email channels on the Contact page.",
+    answer: <>Yes. If you believe the moderation decision was unfair, sign in to your account and submit an appeal through the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page. Your appeal will be reviewed again by human moderators and you will receive a notification when there is an update. If you cannot access your account, use the email channels on our <NewTabLink href="/help/contact" className={lnk}>Contact</NewTabLink> page. See the <NewTabLink href="/help/moderation" className={lnk}>Moderation System</NewTabLink> page for details.</>,
+  },
+
+  // ─── Support Request System ───────────────────────────────
+  {
+    section: "destek",
+    question: "How do I create a support request?",
+    searchText: "After signing in, use the Create Support Request page to open a moderation appeal or a technical support request.",
+    answer: <>After signing in to your account, use the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page. From there, you can submit a moderation appeal or open a technical support request.</>,
+  },
+  {
+    section: "destek",
+    question: "What issues can I use the support request system for?",
+    searchText: "Support requests cover moderation appeals and technical issues such as account, login, password, profile, post, video, interaction, payment and notification problems.",
+    answer: "The support request system is used for moderation appeals and technical issues. Account, login, password, profile, post, video, moment, interaction, payment, visibility and notification problems can all be submitted through the appropriate support category.",
+  },
+  {
+    section: "destek",
+    question: "How do I appeal a moderation decision?",
+    searchText: "Choose moderation appeal on the Create Support Request page. Only decision codes that belong to your account and have not been appealed before can be selected.",
+    answer: <>On the support page, choose <strong>&ldquo;Moderation decision appeal&rdquo;</strong>. The system only shows decision codes that belong to your account and have not been appealed before. Once you submit your appeal text, the request is reviewed again by human moderators.</>,
+  },
+  {
+    section: "destek",
+    question: "How do I track my support request?",
+    searchText: "Support requests are tracked through your account. When a reply is sent, you receive a notification and can open the support detail page.",
+    answer: <>Your support requests are tracked through your account. When there is a reply, you receive a notification in <NewTabLink href="/notifications" className={lnk}>Notifications</NewTabLink>. You can also open the relevant support record to view the request details and conversation flow.</>,
+  },
+  {
+    section: "destek",
+    question: "How will I know when my support request is answered?",
+    searchText: "A system notification is sent when a support request is answered. You can open the relevant support record directly from the notification.",
+    answer: <>When your support request is answered, you receive a system notification. From that notification, you can open the related support record directly, read the reply and, if asked, send the requested additional information from the same record.</>,
+  },
+  {
+    section: "destek",
+    question: "Can I create multiple support requests at the same time?",
+    searchText: "You cannot create a new support request while another one is still being processed. You need to wait until it is finalized.",
+    answer: "No. If you already have a support request that is still being processed, you cannot create a new one. Once the current request is resolved or closed, you can submit another support request.",
+  },
+  {
+    section: "destek",
+    question: "What should I do if I can't access my account?",
+    searchText: "If you cannot access your account, use the email channels on the Contact page instead of the support request system.",
+    answer: <>If you cannot access your account, use the email channels on our <NewTabLink href="/help/contact" className={lnk}>Contact</NewTabLink> page instead of the support request system. Email is the right channel especially for sign-in, sign-up or account access issues.</>,
   },
 
   // ─── Copyright & Duplicate Content ─────────────────────────
@@ -533,7 +580,7 @@ export const articles: HelpArticle[] = [
     section: "sorun",
     question: "I can't sign in, what should I do?",
     searchText: "Check your email and password. Reset with Forgot Password. Verify your email. If the issue persists, write to help@feedim.com.",
-    answer: <>First, check your email address and password. If you don&apos;t remember your password, reset it with <strong>&lsquo;Forgot Password&rsquo;</strong>. If you haven&apos;t verified your email, check your spam folder. Try clearing your browser cookies and cache. If the issue persists, write to <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a>.</>,
+    answer: <>First, check your email address and password. If you don&apos;t remember your password, reset it with <strong>&lsquo;Forgot Password&rsquo;</strong>. If you haven&apos;t verified your email, check your spam folder. Try clearing your browser cookies and cache. If the issue persists and you still cannot sign in, use the email channels on our <NewTabLink href="/help/contact" className={lnk}>Contact</NewTabLink> page.</>,
   },
   {
     section: "sorun",
@@ -544,14 +591,20 @@ export const articles: HelpArticle[] = [
   {
     section: "sorun",
     question: "Why was my account suspended?",
-    searchText: "Accounts may be suspended for violating terms of service, spam content, Token abuse or harassment. Appeal at help@feedim.com.",
-    answer: <>Accounts may be suspended for violations of the terms of service, producing spam content, abusing the Token system or harassing other users. For more details and to appeal, you can write to <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a>. All rules are explained in detail on our <NewTabLink href="/help/terms" className={lnk}>Terms of Service</NewTabLink> page.</>,
+    searchText: "Accounts may be suspended for violating terms of service, spam content, Token abuse or harassment. If you can sign in, appeal through support requests.",
+    answer: <>Accounts may be suspended for violations of the terms of service, producing spam content, abusing the Token system or harassing other users. If you can still sign in, you can submit a moderation appeal from the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page. If you cannot access your account, use the email channels on our <NewTabLink href="/help/contact" className={lnk}>Contact</NewTabLink> page. All rules are explained in detail on our <NewTabLink href="/help/terms" className={lnk}>Terms of Service</NewTabLink> page.</>,
   },
   {
     section: "sorun",
     question: "Posts aren't loading or I'm getting an error",
     searchText: "Check your internet connection. Refresh the page or clear browser cache. Try a different browser.",
-    answer: "Check your internet connection. Refresh the page or clear your browser cache. Try a different browser. If you&apos;re getting errors while creating a post, make sure the content size doesn&apos;t exceed limits (title 3-200 characters, content at least 50 characters). If the issue persists, try signing out and back in.",
+    answer: <>Check your internet connection. Refresh the page or clear your browser cache. Try a different browser. If you&apos;re getting errors while creating a post, make sure the content size doesn&apos;t exceed limits (title 3-200 characters, content at least 50 characters). If the issue persists, try signing out and back in. If the problem continues, sign in and open a technical request from the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page.</>,
+  },
+  {
+    section: "sorun",
+    question: "How do I create a support request?",
+    searchText: "After signing in, use the Create Support Request page for moderation appeals and technical issues. Requests are tracked on your account and answered with notifications.",
+    answer: <>After signing in to your account, you can use the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page. This system is used for moderation appeals and technical issues. Your request is tracked through your account and you receive a notification when it is answered.</>,
   },
   {
     section: "sorun",
@@ -562,7 +615,7 @@ export const articles: HelpArticle[] = [
   {
     section: "sorun",
     question: "I have another issue, how can I reach you?",
-    searchText: "help@feedim.com or contact us via the Contact page. We respond within 24 hours on business days.",
-    answer: <>For questions you can&apos;t find answers to on this page, you can write to <a href="mailto:help@feedim.com" className={lnk}>help@feedim.com</a> or visit our <NewTabLink href="/help/contact" className={lnk}>Contact page</NewTabLink>. We respond to all inquiries within 24 hours on business days.</>,
+    searchText: "If you are signed in, create a support request. If you cannot access your account, use help@feedim.com or the Contact page.",
+    answer: <>For questions you can&apos;t find answers to on this page, sign in and use the <NewTabLink href="/settings/support" className={lnk}>Create Support Request</NewTabLink> page. If you cannot access your account, use the email channels on our <NewTabLink href="/help/contact" className={lnk}>Contact</NewTabLink> page. We try to respond as quickly as possible on business days.</>,
   },
 ];

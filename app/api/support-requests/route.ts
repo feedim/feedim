@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
     const [{ data, error }, availableDecisionList, requestedDecision] = await Promise.all([
       admin
         .from("support_requests")
-        .select("id, kind, status, decision_code, decision_target_type, decision_target_id, message, related_url, reviewer_note, created_at, reviewed_at, updated_at")
+        .select("id, kind, status, decision_code, decision_target_type, decision_target_id, message, related_url, reviewer_id, reviewer_note, created_at, reviewed_at, updated_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50),
@@ -198,8 +198,26 @@ export async function GET(request: NextRequest) {
         ? resolveOwnedModerationDecision(admin, user.id, requestedDecisionCode)
         : Promise.resolve(null),
     ]);
-    const requests = error ? [] : (data || []);
-    const activeRequest = requests.find((item) => item.status === "open" || item.status === "in_review") || null;
+    const rawRequests = error ? [] : (data || []);
+
+    // Enrich reviewer avatar
+    const reviewerIds = [...new Set(rawRequests.filter((r: any) => r.reviewer_id).map((r: any) => r.reviewer_id))];
+    let reviewerAvatarMap = new Map<string, string>();
+    if (reviewerIds.length > 0) {
+      const { data: reviewerProfiles } = await admin
+        .from("profiles")
+        .select("user_id, avatar_url")
+        .in("user_id", reviewerIds);
+      for (const rp of (reviewerProfiles || [])) {
+        if (rp.avatar_url) reviewerAvatarMap.set(rp.user_id, rp.avatar_url);
+      }
+    }
+    const requests = rawRequests.map((r: any) => ({
+      ...r,
+      reviewer_avatar_url: r.reviewer_id ? (reviewerAvatarMap.get(r.reviewer_id) || null) : null,
+    }));
+
+    const activeRequest = requests.find((item: any) => item.status === "open" || item.status === "in_review") || null;
 
     const availableDecisions = [...availableDecisionList];
     if (

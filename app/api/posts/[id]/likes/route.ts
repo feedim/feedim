@@ -21,8 +21,9 @@ export async function GET(
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const admin = createAdminClient();
 
-    const { data: likes, error } = await supabase
+    const { data: likes, error } = await admin
       .from('likes')
       .select('user_id')
       .eq('post_id', postId)
@@ -36,7 +37,7 @@ export async function GET(
       return NextResponse.json({ users: [], hasMore: false });
     }
 
-    const { data: profiles } = await supabase
+    const { data: profiles } = await admin
       .from('profiles')
       .select('user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role')
       .in('user_id', userIds)
@@ -45,7 +46,6 @@ export async function GET(
     // Get blocked user IDs
     let blockedIdSet = new Set<string>();
     if (user) {
-      const admin = createAdminClient();
       const { data: blocks } = await admin
         .from('blocks')
         .select('blocked_id, blocker_id')
@@ -58,7 +58,7 @@ export async function GET(
     // Check which users the current user follows
     let followingSet = new Set<string>();
     if (user) {
-      const { data: follows } = await supabase
+      const { data: follows } = await admin
         .from('follows')
         .select('following_id')
         .eq('follower_id', user.id)

@@ -517,8 +517,22 @@ export default function OnboardingPage() {
           {step === 10 && <StepWelcome profile={profile} avatarPreview={avatarPreview} />}
         </div>
 
+        {/* Skip */}
+        {canSkip && (
+          <div className="mt-[15px]">
+            <button
+              onClick={skipStep}
+              disabled={!!processing}
+              className="t-btn cancel relative w-full min-h-[38px]"
+              aria-label={tCommon("skip")}
+            >
+              {processing === "skip" ? <Spinner size={16} /> : tCommon("skip")}
+            </button>
+          </div>
+        )}
+
         {/* Navigation */}
-        <div className="flex items-center gap-[10px] mt-[15px]">
+        <div className="flex items-center gap-[10px] mt-[11px]">
           {step > 1 && (
             <button onClick={handlePrev} disabled={!!processing} className="t-btn cancel flex-1 relative" aria-label={tCommon("back")}>
               {processing === "prev" ? <Spinner size={18} /> : tCommon("back")}
@@ -533,20 +547,6 @@ export default function OnboardingPage() {
             {processing === "next" ? <Spinner size={18} /> : step === 10 ? tCommon("finish") : tCommon("next")}
           </button>
         </div>
-
-        {/* Skip */}
-        {canSkip && (
-          <div className="mt-[11px]">
-            <button
-              onClick={skipStep}
-              disabled={!!processing}
-              className="t-btn cancel relative w-full min-h-[38px]"
-              aria-label={tCommon("skip")}
-            >
-              {processing === "skip" ? <Spinner size={16} /> : tCommon("skip")}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Hidden file input — kept in parent like EditProfileModal */}
@@ -874,7 +874,7 @@ function StepSuggestions({ suggestions, followedIds, pendingFollowIds, onToggle,
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-0.5">
                     <span className="text-sm font-semibold truncate">@{user.username}</span>
-                    {user.is_verified && <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} role={user.role} />}
+                    {(user.is_verified || user.role === "admin") && <VerifiedBadge variant={getBadgeVariant(user.premium_plan)} role={user.role} />}
                   </div>
                   {user.bio && <p className="block max-w-[165px] overflow-hidden text-ellipsis whitespace-nowrap text-xs text-text-muted sm:max-w-[195px]">{user.bio}</p>}
                 </div>

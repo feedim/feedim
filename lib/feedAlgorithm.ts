@@ -100,6 +100,7 @@ const TARGET_DISTRIBUTION: Record<string, number> = {
 export function computeFeedScore(
   candidate: FeedCandidate,
   ctx: FeedContext,
+  options?: { disableJitter?: boolean; disableReachGating?: boolean },
 ): number {
   let score = 0;
 
@@ -170,39 +171,43 @@ export function computeFeedScore(
   score *= typeMultiplier;
 
   // 10. Jitter for varied ordering (high jitter ensures diverse feeds)
-  score += Math.random() * 120;
+  if (!options?.disableJitter) {
+    score += Math.random() * 120;
+  }
 
   // 11. Gradual reach — new discovery posts start at 20% visibility,
   //     escalate based on engagement rate and time (Instagram-like seed audience)
-  const isDiscoveryPost = !ctx.followedUserIds.has(authorId);
-  if (isDiscoveryPost && hoursAgo < 6) {
-    let reachProb = 0.20;
+  if (!options?.disableReachGating) {
+    const isDiscoveryPost = !ctx.followedUserIds.has(authorId);
+    if (isDiscoveryPost && hoursAgo < 6) {
+      let reachProb = 0.20;
 
-    // Trusted authors bypass partially
-    if (candidate.author_is_verified) reachProb = Math.max(reachProb, 0.50);
-    else if ((candidate.author_profile_score || 0) >= 70) reachProb = Math.max(reachProb, 0.40);
+      // Trusted authors bypass partially
+      if (candidate.author_is_verified) reachProb = Math.max(reachProb, 0.50);
+      else if ((candidate.author_profile_score || 0) >= 70) reachProb = Math.max(reachProb, 0.40);
 
-    // Engagement-based escalation
-    const totalEng = (candidate.like_count || 0) +
-      (candidate.comment_count || 0) * 2 +
-      (candidate.save_count || 0) * 2 +
-      (candidate.share_count || 0) * 2;
-    const views = Math.max(1, candidate.view_count || 1);
-    const engRate = totalEng / views;
+      // Engagement-based escalation
+      const totalEng = (candidate.like_count || 0) +
+        (candidate.comment_count || 0) * 2 +
+        (candidate.save_count || 0) * 2 +
+        (candidate.share_count || 0) * 2;
+      const views = Math.max(1, candidate.view_count || 1);
+      const engRate = totalEng / views;
 
-    if (engRate > 0.05) reachProb = Math.max(reachProb, 0.50);
-    if (engRate > 0.10) reachProb = Math.max(reachProb, 0.80);
-    if (totalEng >= 20) reachProb = 1.0;
+      if (engRate > 0.05) reachProb = Math.max(reachProb, 0.50);
+      if (engRate > 0.10) reachProb = Math.max(reachProb, 0.80);
+      if (totalEng >= 20) reachProb = 1.0;
 
-    // Time-based escalation
-    if (hoursAgo >= 3) reachProb = Math.max(reachProb, 0.60);
+      // Time-based escalation
+      if (hoursAgo >= 3) reachProb = Math.max(reachProb, 0.60);
 
-    // Trending content bypasses reach gate
-    if ((candidate.trending_score || 0) > 50) reachProb = 1.0;
+      // Trending content bypasses reach gate
+      if ((candidate.trending_score || 0) > 50) reachProb = 1.0;
 
-    // Random roll — failed = effectively hidden (95% score penalty)
-    if (Math.random() > reachProb) {
-      score *= 0.05;
+      // Random roll — failed = effectively hidden (95% score penalty)
+      if (Math.random() > reachProb) {
+        score *= 0.05;
+      }
     }
   }
 

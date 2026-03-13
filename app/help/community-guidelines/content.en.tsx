@@ -122,9 +122,11 @@ export default function CommunityGuidelinesContentEn() {
         </p>
 
         <p className="text-xs text-text-muted mt-8">
-            For questions about community guidelines, you can reach us from our{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Contact</NewTabLink> page
-            or at <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>.
+          For questions about community guidelines, sign in and use the{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">Create Support Request</NewTabLink>{" "}
+          page. If you cannot access your account, use the email channels on our{" "}
+          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Contact</NewTabLink>{" "}
+          page or write to <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a>.
         </p>
       </div>
     </>

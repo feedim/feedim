@@ -25,10 +25,17 @@ export async function createClient() {
           }
         },
       },
+      // Mobile clients send Bearer token — set it as global Authorization
+      // so PostgREST requests use the user's JWT for RLS (auth.uid()).
+      ...(bearerToken && {
+        global: {
+          headers: { Authorization: `Bearer ${bearerToken}` },
+        },
+      }),
     }
   )
 
-  // Mobile clients send Bearer token — use it directly, skip cookie auth entirely.
+  // Mobile clients: also patch getUser to verify the bearer token directly.
   if (bearerToken) {
     const _getUser = supabase.auth.getUser.bind(supabase.auth)
     supabase.auth.getUser = async (jwt?: string) => _getUser(jwt || bearerToken)

@@ -74,7 +74,6 @@
   --info-color: #4285f4;
   --accent-color: rgba(255, 62, 0, 1);
   --verified-max-color: #f5c542;
-  --verified-max-color: lab(82 19.71 110.35 / 0.93);
 
   color-scheme: light;
 }

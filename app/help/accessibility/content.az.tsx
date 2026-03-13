@@ -109,10 +109,15 @@ export default function ContentAz() {
         </p>
 
         <p className="text-xs text-text-muted mt-8">
-            Əlçatanlıq haqqında suallarınız və təklifləriniz üçün{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">Əlaqə</NewTabLink> səhifəmizdən
-            və ya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a> ünvanından
-            bizə müraciət edə bilərsiniz.
+          Əlçatanlıq haqqında suallarınız və ya təklifləriniz üçün hesabınıza daxil olduqdan sonra{" "}
+          <NewTabLink href="/settings/support" className="text-accent-main hover:opacity-80 font-semibold">
+            Dəstək Tələbi Yarat
+          </NewTabLink>{" "}
+          səhifəsini istifadə edin. Hesabınıza girişiniz yoxdursa{" "}
+          <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">
+            Əlaqə
+          </NewTabLink>{" "}
+          səhifəmizdəki e-poçt kanallarını istifadə edin.
         </p>
       </div>
     </>
