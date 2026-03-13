@@ -66,7 +66,6 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
   const [isPrivate, setIsPrivate] = useState(false);
   const [usernameLockedUntil, setUsernameLockedUntil] = useState<string | null>(null);
   const [links, setLinks] = useState<ProfileLink[]>([]);
-  const [linksModified, setLinksModified] = useState(false);
   const [linksModalOpen, setLinksModalOpen] = useState(false);
   const [proModalOpen, setProModalOpen] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -150,7 +149,6 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
         // Load links
         const profileLinks: ProfileLink[] = Array.isArray(p.links) ? p.links : [];
         setLinks(profileLinks);
-        setLinksModified(false);
 
         // Check username change cooldown (7 days)
         if (p.username_changed_at) {
@@ -271,7 +269,8 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name, surname, username, bio,
-            ...(linksModified ? { links: cleanLinks, website: cleanLinks[0]?.url || "" } : {}),
+            links: cleanLinks,
+            website: cleanLinks[0]?.url || "",
             birth_date: birthDate || null,
             gender: gender || null,
             phone_number: phone || null,
@@ -564,7 +563,6 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
       links={links}
       onSave={(saved) => {
         setLinks(saved);
-        setLinksModified(true);
         onLinksChange?.(saved);
       }}
       premiumPlan={premiumPlan}
