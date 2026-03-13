@@ -67,6 +67,8 @@ export async function PUT(req: NextRequest) {
     if (!Array.isArray(updates.links)) {
       return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
     }
+    // Filter out empty links
+    updates.links = updates.links.filter((l: any) => l.url && typeof l.url === "string" && l.url.trim());
     // Premium check: only max/business can have >1 link
     if (updates.links.length > 1) {
       if (!canUseMultipleLinks(plan)) {
@@ -82,7 +84,7 @@ export async function PUT(req: NextRequest) {
       }
       // URL must start with http:// or https://
       if (!/^https?:\/\//i.test(link.url.trim())) {
-        return NextResponse.json({ error: tErrors("invalidLinks") }, { status: 400 });
+        return NextResponse.json({ error: tErrors("linkUrlInvalid") }, { status: 400 });
       }
       // Title is required and must be 5-30 characters
       if (!link.title || typeof link.title !== "string" || link.title.trim().length < 5 || link.title.length > 30) {

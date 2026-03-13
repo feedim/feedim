@@ -146,13 +146,9 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
         setContactPhone(p.contact_phone || "");
         setIsPrivate(p.account_private || false);
 
-        // Load links — migrate old website if links is empty
+        // Load links
         const profileLinks: ProfileLink[] = Array.isArray(p.links) ? p.links : [];
-        if (profileLinks.length === 0 && p.website) {
-          setLinks([{ title: "", url: p.website }]);
-        } else {
-          setLinks(profileLinks);
-        }
+        setLinks(profileLinks);
 
         // Check username change cooldown (7 days)
         if (p.username_changed_at) {
@@ -266,14 +262,15 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
         }
       }
 
+      const cleanLinks = links.filter(l => l.url.trim());
       const [res] = await Promise.all([
         fetch("/api/profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name, surname, username, bio,
-            links,
-            website: links[0]?.url || "",
+            links: cleanLinks,
+            website: cleanLinks[0]?.url || "",
             birth_date: birthDate || null,
             gender: gender || null,
             phone_number: phone || null,
