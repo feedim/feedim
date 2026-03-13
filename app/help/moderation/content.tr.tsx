@@ -45,7 +45,7 @@ export default function ContentTr() {
         </p>
         <ul className="list-disc pl-5 space-y-2">
           <li>Moderasyon kararı bildiriminizde karar numaranızı bulabilirsiniz</li>
-          <li>İtirazınızı karar numarası ile birlikte iletişim sayfasından veya içerik moderasyon sayfasından iletebilirsiniz</li>
+          <li>İtirazınızı karar numarası ile birlikte hesabınız varsa Destek Talebi Oluştur sayfasından, yoksa <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">İletişim</NewTabLink> sayfasındaki e-posta kanallarından iletebilirsiniz.</li>
           <li>İtirazlar genellikle 24-48 saat içinde sonuçlanır</li>
           <li>Her karar için yalnızca bir itiraz hakkınız bulunur</li>
         </ul>
@@ -95,10 +95,7 @@ export default function ContentTr() {
         </ul>
 
         <p className="text-xs text-text-muted mt-8">
-            Moderasyon sistemi hakkında sorularınız veya itirazlarınız için{" "}
-            <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">İletişim</NewTabLink> sayfamızdan
-            veya <a href="mailto:help@feedim.com" className="text-accent-main hover:opacity-80 font-semibold">help@feedim.com</a> adresinden
-            bize ulaşabilirsiniz.
+          Moderasyon sistemi hakkında sorularınız veya karar numarası bazlı itirazlarınız için hesabınıza giriş yaptıktan sonra Destek Talebi Oluştur sayfasından destek talebi oluşturabilirsiniz. Hesabınıza erişemiyorsanız <NewTabLink href="/help/contact" className="text-accent-main hover:opacity-80 font-semibold">İletişim</NewTabLink> sayfamızdaki e-posta kanalları bu konuda yardımcı olacaktır.
         </p>
       </div>
     </>
