@@ -206,7 +206,6 @@ export default function SupportPageClient({
         feedimAlert("error", data.error || labels.tryAgainLater);
         return;
       }
-      feedimAlert("success", labels.submitted);
       setActiveRequest(data.request ? {
         id: data.request.id,
         status: data.request.status || "open",
@@ -302,7 +301,7 @@ export default function SupportPageClient({
               )}
 
               {availableDecisions.length === 0 ? (
-                <div className="rounded-[12px] bg-bg-tertiary px-3 py-3 text-[0.78rem] text-text-muted">
+                <div className="rounded-[12px] bg-bg-tertiary px-3 py-3 text-[0.78rem] font-medium text-text-muted">
                   {labels.noAppealableDecisions}
                 </div>
               ) : filteredDecisions.length > 0 ? (
@@ -318,7 +317,7 @@ export default function SupportPageClient({
                   ))}
                 </select>
               ) : needsDecisionSearch ? (
-                <div className="rounded-[12px] bg-bg-tertiary px-3 py-3 text-[0.78rem] text-text-muted">
+                <div className="rounded-[12px] bg-bg-tertiary px-3 py-3 text-[0.78rem] font-medium text-text-muted">
                   {normalizeDecisionDigits(decisionQuery).length < 3 ? labels.appealSearchHint : labels.noMatchingDecision}
                 </div>
               ) : null}

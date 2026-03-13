@@ -12,6 +12,7 @@ import {
   getModeratorCountryFilter,
 } from "@/lib/moderationAdmin";
 import {
+  buildSupportNotificationContent,
   cleanupResolvedSupportRequests,
   finalizeExpiredSupportRequests,
   isSupportReplyWindowExpired,
@@ -71,7 +72,11 @@ export default async function ModerationSupportDetailPage({
   }
 
   await finalizeExpiredSupportRequests(admin, {
-    notificationContent: ts("notificationFinalized"),
+    notificationContentBuilder: (supportRequestId) => buildSupportNotificationContent(
+      ts,
+      "notificationFinalized",
+      supportRequestId,
+    ),
   });
   await cleanupResolvedSupportRequests(admin, { olderThanDays: 14 });
 

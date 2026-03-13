@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { encodeId } from "@/lib/hashId";
 import { createNotification } from "@/lib/notifications";
 
 export type SupportRequestKind = "moderation_appeal" | "bug_report" | "other";
@@ -329,6 +330,7 @@ export async function finalizeExpiredSupportRequests(
   options?: {
     userId?: string;
     notificationContent?: string;
+    notificationContentBuilder?: (requestId: number) => string;
   },
 ) {
   let query = admin
@@ -368,7 +370,11 @@ export async function finalizeExpiredSupportRequests(
     if (error) continue;
     finalizedIds.push(Number(item.id));
 
-    if (options?.notificationContent) {
+    const notificationContent = options?.notificationContentBuilder
+      ? options.notificationContentBuilder(Number(item.id))
+      : options?.notificationContent;
+
+    if (notificationContent) {
       await createNotification({
         admin,
         user_id: item.user_id,
@@ -376,12 +382,42 @@ export async function finalizeExpiredSupportRequests(
         type: "system",
         object_type: "support_request",
         object_id: Number(item.id),
-        content: options.notificationContent,
+        content: notificationContent,
       });
     }
   }
 
   return finalizedIds;
+}
+
+function resolveSupportNotificationTemplate(
+  translate: (key: string) => string,
+  key: string,
+  fallback: string,
+) {
+  try {
+    const value = translate(key);
+    return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function buildSupportNotificationContent(
+  translate: (key: string) => string,
+  key: string,
+  requestId: number,
+  values?: Record<string, string | null | undefined>,
+) {
+  const reference = `#${encodeId(requestId)}`;
+  const template = resolveSupportNotificationTemplate(translate, key, "{reference}");
+
+  return Object.entries({
+    reference,
+    ...values,
+  }).reduce((output, [placeholder, value]) => {
+    return output.replaceAll(`{${placeholder}}`, String(value ?? ""));
+  }, template);
 }
 
 export async function cleanupResolvedSupportRequests(

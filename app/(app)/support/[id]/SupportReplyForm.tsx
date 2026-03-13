@@ -61,7 +61,6 @@ export default function SupportReplyForm({
         feedimAlert("error", data.error || labels.tryAgainLater);
         return;
       }
-      feedimAlert("success", labels.replySubmit);
       setMessage("");
       router.refresh();
     } catch {

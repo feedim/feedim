@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  buildSupportNotificationContent,
   cleanupResolvedSupportRequests,
   encodeSupportUserReply,
   finalizeExpiredSupportRequests,
@@ -53,7 +54,11 @@ export async function POST(
     const admin = createAdminClient();
     await finalizeExpiredSupportRequests(admin, {
       userId: user.id,
-      notificationContent: supportError("notificationFinalized", "Destek talebiniz sonuçlandırıldı"),
+      notificationContentBuilder: (supportRequestId) => buildSupportNotificationContent(
+        tSupport,
+        "notificationFinalized",
+        supportRequestId,
+      ),
     });
     await cleanupResolvedSupportRequests(admin, { userId: user.id, olderThanDays: 14 });
 

@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decodeId } from "@/lib/hashId";
 import {
+  buildSupportNotificationContent,
   cleanupResolvedSupportRequests,
   finalizeExpiredSupportRequests,
   isSupportReplyWindowExpired,
@@ -65,10 +66,10 @@ export default async function SupportDetailPage({
   const admin = createAdminClient();
   await finalizeExpiredSupportRequests(admin, {
     userId: user.id,
-    notificationContent: getNestedString(
-      support,
+    notificationContentBuilder: (supportRequestId) => buildSupportNotificationContent(
+      (key) => getNestedString(support, key, "Destek talebiniz sonuçlandırıldı"),
       "notificationFinalized",
-      "Destek talebiniz sonuçlandırıldı",
+      supportRequestId,
     ),
   });
   await cleanupResolvedSupportRequests(admin, { userId: user.id, olderThanDays: 14 });
@@ -116,12 +117,12 @@ export default async function SupportDetailPage({
   const replyNotice = getNestedString(
     support,
     "replyAwaitingUser",
-    "Help Center sizden ek bilgi bekliyor. 48 saat içinde yanıt verebilirsiniz.",
+    "Yardım Merkezi sizden ek bilgi bekliyor. 48 saat içinde yanıt verebilirsiniz.",
   );
   const replySent = getNestedString(
     support,
     "replySent",
-    "Yanıtınız iletildi. Help Center incelemeyi sürdürüyor.",
+    "Yanıtınız iletildi. Yardım Merkezi incelemeyi sürdürüyor.",
   );
   const awaitingSupportReply = getNestedString(
     support,
@@ -149,7 +150,7 @@ export default async function SupportDetailPage({
   const awaitingSupportPlaceholder = getNestedString(
     support,
     "awaitingSupportReplyShort",
-    "Help Center yanıtı bekleniyor.",
+    "Yardım Merkezi yanıtı bekleniyor.",
   );
   const replyExpiredPlaceholder = getNestedString(
     support,
@@ -185,7 +186,7 @@ export default async function SupportDetailPage({
             </div>
           )}
         </div>
-        <div className="min-w-0 flex-1 rounded-[20px] rounded-tr-[3px] rounded-bl-[3px] bg-bg-secondary px-[18px] py-3.5 sm:px-5 sm:py-4 space-y-2.5">
+        <div className="min-w-0 flex-1 rounded-[22px] rounded-tr-[3px] rounded-bl-[3px] bg-bg-secondary px-[20px] py-3.5 sm:px-5 sm:py-4 space-y-2.5">
           <div className="flex items-center justify-between gap-3">
             <div className="text-[0.72rem] font-semibold uppercase tracking-[0.02em] text-text-muted">
               {responseTitle}
@@ -218,7 +219,7 @@ export default async function SupportDetailPage({
                   sizeClass="h-9 w-9 sm:h-10 sm:w-10"
                 />
               </div>
-              <div className="order-1 min-w-0 flex-1 rounded-[20px] rounded-tl-[3px] rounded-br-[3px] bg-bg-secondary px-[18px] py-3.5 sm:px-5 sm:py-4 space-y-3">
+              <div className="order-1 min-w-0 flex-1 rounded-[22px] rounded-tl-[3px] rounded-br-[3px] bg-bg-secondary px-[20px] py-3.5 sm:px-5 sm:py-4 space-y-3">
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="min-w-0 text-[0.82rem] font-semibold text-text-primary">
                     {userProfile?.username ? `@${userProfile.username}` : (kindLabels[request.kind as keyof typeof kindLabels] || kindLabels.other)}
@@ -283,7 +284,7 @@ export default async function SupportDetailPage({
                           sizeClass="h-9 w-9 sm:h-10 sm:w-10"
                         />
                       </div>
-                      <div className="order-1 min-w-0 flex-1 rounded-[20px] rounded-tl-[3px] rounded-br-[3px] bg-bg-secondary px-[18px] py-3.5 sm:px-5 sm:py-4 space-y-2.5">
+                      <div className="order-1 min-w-0 flex-1 rounded-[22px] rounded-tl-[3px] rounded-br-[3px] bg-bg-secondary px-[20px] py-3.5 sm:px-5 sm:py-4 space-y-2.5">
                         <div className="flex items-center justify-between gap-3 min-w-0">
                           <div className="text-[0.72rem] font-semibold uppercase tracking-[0.02em] text-text-muted">
                             {userReplyTitle}
@@ -309,14 +310,14 @@ export default async function SupportDetailPage({
               return nodes;
             })
           ) : !parsedMessage.userReplies.length ? (
-                <div className="rounded-[12px] bg-bg-tertiary px-3 py-2.5 text-[0.78rem] font-medium leading-[1.55] text-text-muted">
+                <div className="rounded-[10px] bg-bg-tertiary px-3 py-2.5 text-[0.78rem] font-semibold leading-[1.55] text-text-muted">
                   {waitingResponse}
                 </div>
               ) : null}
 
           <div className="space-y-3">
             {canReplyNow ? (
-              <div className="rounded-[12px] bg-bg-tertiary px-3 py-2.5 text-[0.78rem] font-medium leading-[1.55] text-text-muted">
+              <div className="rounded-[10px] bg-bg-tertiary px-3 py-2.5 text-[0.78rem] font-semibold leading-[1.55] text-text-muted">
                 {replyNotice}
               </div>
             ) : null}

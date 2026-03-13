@@ -70,7 +70,6 @@ export default function ModerationSupportActionPanel({
         feedimAlert("error", data.error || labels.tryAgainLater);
         return;
       }
-      feedimAlert("success", action === "await_user" ? labels.awaitUserSuccess : labels.resolveSuccess);
       router.refresh();
     } catch {
       feedimAlert("error", labels.tryAgainLater);

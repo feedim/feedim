@@ -15,7 +15,7 @@ interface PresetLink {
 
 const SITE_URL = "https://www.feedim.com";
 
-function pickLanguage(language?: string | null): SupportedLanguage {
+export function pickSupportPresetLanguage(language?: string | null): SupportedLanguage {
   if (language === "en" || language === "az") return language;
   return "tr";
 }
@@ -39,6 +39,21 @@ function closing(language: SupportedLanguage) {
   return "Sorun devam ederse yeni bir destek talebi açabilirsin.";
 }
 
+function signatureLines(language: SupportedLanguage) {
+  if (language === "en") return ["Best regards🤗,", "Feedim Help Center"];
+  if (language === "az") return ["Sevgilərlə🤗,", "Feedim Yardım Mərkəzi"];
+  return ["Sevgilerle🤗,", "Feedim Yardım Merkezi"];
+}
+
+export function appendSupportSignature(message: string, language?: string | null) {
+  const normalized = message.trim();
+  if (!normalized) return normalized;
+  if (/Feedim (Help Center|Yardım Merkezi|Yardım Mərkəzi)/i.test(normalized)) {
+    return normalized;
+  }
+  return `${normalized}\n\n${signatureLines(pickSupportPresetLanguage(language)).join("\n")}`;
+}
+
 function absolute(href: string) {
   return `${SITE_URL}${href}`;
 }
@@ -54,7 +69,7 @@ function buildBody(
     sections.push("", linksHeading(language), ...links.map((link) => `- ${link.label}: ${link.href}`));
   }
   sections.push("", closing(language));
-  return sections.join("\n");
+  return appendSupportSignature(sections.join("\n"), language);
 }
 
 function build(
@@ -439,7 +454,7 @@ export function getSupportReplyPresets(
     topicId?: SupportBugTopicId | null;
   },
 ): SupportReplyPreset[] {
-  const language = pickLanguage(params.language);
+  const language = pickSupportPresetLanguage(params.language);
 
   if (kind === "moderation_appeal") {
     return appealPresets(language, params.username);

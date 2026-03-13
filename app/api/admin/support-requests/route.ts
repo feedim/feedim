@@ -8,7 +8,9 @@ import {
   getModeratorAccess,
   getModeratorCountryFilter,
 } from "@/lib/moderationAdmin";
+import { appendSupportSignature } from "@/lib/supportReplyPresets";
 import {
+  buildSupportNotificationContent,
   appendSupportReviewerNote,
   cleanupResolvedSupportRequests,
   finalizeExpiredSupportRequests,
@@ -30,7 +32,10 @@ function safeSupportMessage(
 }
 
 export async function GET(request: NextRequest) {
-  const tErrors = await getTranslations("apiErrors");
+  const [tErrors, tSupport] = await Promise.all([
+    getTranslations("apiErrors"),
+    getTranslations("support"),
+  ]);
 
   try {
     const supabase = await createClient();
@@ -39,10 +44,10 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient();
     await finalizeExpiredSupportRequests(admin, {
-      notificationContent: safeSupportMessage(
-        await getTranslations("support"),
+      notificationContentBuilder: (requestId) => buildSupportNotificationContent(
+        tSupport,
         "notificationFinalized",
-        "Destek talebiniz sonuçlandırıldı",
+        requestId,
       ),
     });
     await cleanupResolvedSupportRequests(admin, { olderThanDays: 14 });
@@ -215,17 +220,20 @@ export async function POST(request: NextRequest) {
     }
 
     await finalizeExpiredSupportRequests(admin, {
-      notificationContent: safeSupportMessage(
+      notificationContentBuilder: (requestId) => buildSupportNotificationContent(
         tSupport,
         "notificationFinalized",
-        "Destek talebiniz sonuçlandırıldı",
+        requestId,
       ),
     });
     await cleanupResolvedSupportRequests(admin, { olderThanDays: 14 });
 
     const { data: existingRequest } = await admin
       .from("support_requests")
-      .select("id, user_id, status, message, reviewer_id, reviewer_note")
+      .select(`
+        id, user_id, status, message, reviewer_id, reviewer_note,
+        requester:profiles!support_requests_user_id_fkey(username, language)
+      `)
       .eq("id", requestId)
       .maybeSingle();
 
@@ -266,6 +274,10 @@ export async function POST(request: NextRequest) {
     }
 
     const parsedSupportMessage = parseSupportStoredMessage(existingRequest.message);
+    const requester = Array.isArray(existingRequest.requester)
+      ? existingRequest.requester[0]
+      : existingRequest.requester;
+    const reviewerMessage = appendSupportSignature(reviewerNote, requester?.language);
     const payload: Record<string, string | null> = {
       status: nextStatus,
       reviewer_id: user.id,
@@ -277,14 +289,14 @@ export async function POST(request: NextRequest) {
       payload.reviewer_note = appendSupportReviewerNote(existingRequest.reviewer_note, {
         mode: "await_user",
         deadlineAt,
-        message: reviewerNote,
+        message: reviewerMessage,
         createdAt: new Date().toISOString(),
       });
       payload.reviewed_at = new Date().toISOString();
     } else {
       payload.reviewer_note = appendSupportReviewerNote(existingRequest.reviewer_note, {
         mode: "final",
-        message: reviewerNote,
+        message: reviewerMessage,
         createdAt: new Date().toISOString(),
       });
       payload.reviewed_at = new Date().toISOString();
@@ -312,16 +324,11 @@ export async function POST(request: NextRequest) {
         type: "system",
         object_type: "support_request",
         object_id: requestId,
-        content: notificationContent,
+        content: buildSupportNotificationContent(tSupport, "notificationAwaitingReply", requestId),
       });
     }
 
     if (nextStatus === "resolved") {
-      const notificationContent = safeSupportMessage(
-        tSupport,
-        parsedSupportMessage.userReply ? "notificationAnswered" : "notificationResolved",
-        "Destek talebiniz yanıtlandı",
-      );
       await createNotification({
         admin,
         user_id: existingRequest.user_id,
@@ -329,7 +336,11 @@ export async function POST(request: NextRequest) {
         type: "system",
         object_type: "support_request",
         object_id: requestId,
-        content: notificationContent,
+        content: buildSupportNotificationContent(
+          tSupport,
+          parsedSupportMessage.userReply ? "notificationAnswered" : "notificationResolved",
+          requestId,
+        ),
       });
     }
 

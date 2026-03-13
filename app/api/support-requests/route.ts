@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
 import { verifyPuzzleToken } from "@/lib/puzzleCaptcha";
 import {
+  buildSupportNotificationContent,
   cleanupResolvedSupportRequests,
   encodeSupportStoredMessage,
   finalizeExpiredSupportRequests,
@@ -55,22 +56,14 @@ function parseSupportRequestId(input: unknown) {
 
 function buildSupportCreatedNotification(
   translate: (key: string) => string,
-  kind: SupportRequestKind,
-  topicLabel?: string | null,
+  requestId: number,
+  _kind: SupportRequestKind,
+  _topicLabel?: string | null,
 ) {
-  try {
-    if (kind === "bug_report" && topicLabel?.trim()) {
-      const template = translate("notificationCreatedWithTopic");
-      if (typeof template === "string" && template.includes("{topic}")) {
-        return template.replace("{topic}", topicLabel.trim());
-      }
-    }
-  } catch {}
-
-  return safeSupportMessage(
+  return buildSupportNotificationContent(
     translate,
     "notificationCreated",
-    "Destek talebiniz oluşturuldu",
+    requestId,
   );
 }
 
@@ -184,10 +177,10 @@ export async function GET(request: NextRequest) {
     const admin = createAdminClient();
     await finalizeExpiredSupportRequests(admin, {
       userId: user.id,
-      notificationContent: safeSupportMessage(
+      notificationContentBuilder: (requestId) => buildSupportNotificationContent(
         tSupport,
         "notificationFinalized",
-        "Destek talebiniz sonuçlandırıldı",
+        requestId,
       ),
     });
     await cleanupResolvedSupportRequests(admin, { userId: user.id, olderThanDays: 14 });
@@ -300,10 +293,10 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     await finalizeExpiredSupportRequests(admin, {
       userId: user.id,
-      notificationContent: safeSupportMessage(
+      notificationContentBuilder: (requestId) => buildSupportNotificationContent(
         tSupport,
         "notificationFinalized",
-        "Destek talebiniz sonuçlandırıldı",
+        requestId,
       ),
     });
     await cleanupResolvedSupportRequests(admin, { userId: user.id, olderThanDays: 14 });
@@ -389,7 +382,7 @@ export async function POST(request: NextRequest) {
           type: "system",
           object_type: "support_request",
           object_id: supportRequestId,
-          content: buildSupportCreatedNotification(tSupport, kind, topicLabel),
+          content: buildSupportCreatedNotification(tSupport, supportRequestId, kind, topicLabel),
         });
       } catch (notificationError) {
         console.error("support_requests_created_notification_failed", notificationError);
