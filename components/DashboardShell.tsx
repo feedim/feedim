@@ -8,6 +8,9 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import AmbientLight from "@/components/AmbientLight";
 import { UserProvider } from "@/components/UserContext";
 import HeaderAlertBar from "@/components/HeaderAlertBar";
+import { feedimAlert } from "@/components/FeedimAlert";
+import { setDeviceLoginHandler } from "@/lib/useNotificationCount";
+import { useTranslations } from "next-intl";
 import type { SidebarLabels } from "@/lib/sidebarLabels";
 import type { PublicFooterLabels } from "@/lib/footerLabels";
 import type { InitialUser } from "@/lib/userTypes";
@@ -50,8 +53,21 @@ export default function DashboardShell({
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
   const pathname = usePathname();
   void pathname;
+  const tNotif = useTranslations("notifications");
 
   const setNav = useCallback((visible: boolean) => setMobileNavVisible(visible), []);
+
+  // Real-time device login alert — show feedimAlert when a new device logs in
+  useEffect(() => {
+    if (!initialUser) return;
+    setDeviceLoginHandler((content: string) => {
+      const msg = content
+        ? `${tNotif("deviceLogin")}: ${content}`
+        : tNotif("deviceLogin");
+      feedimAlert("warning", msg);
+    });
+    return () => setDeviceLoginHandler(null);
+  }, [initialUser, tNotif]);
 
   // Cross-tab auth sync + periodic account status check + global 403 interceptor
   useEffect(() => {

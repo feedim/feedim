@@ -19,6 +19,13 @@ let _connectTimer: ReturnType<typeof setTimeout> | null = null;
 let _currentUserId: string | null = null;
 const _listeners = new Set<(count: number) => void>();
 
+// Device login alert callback — called when a device_login notification arrives via Realtime
+let _onDeviceLogin: ((content: string) => void) | null = null;
+
+export function setDeviceLoginHandler(handler: ((content: string) => void) | null) {
+  _onDeviceLogin = handler;
+}
+
 function getNotificationCountUrl(userId?: string | null) {
   return withCacheScope("/api/notifications?count=true", `notif-badge:${userId || "guest"}`);
 }
@@ -62,7 +69,12 @@ function connect(userId: string) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        () => debouncedFetch()
+        (payload: any) => {
+          debouncedFetch();
+          if (payload.new?.type === "device_login" && _onDeviceLogin) {
+            _onDeviceLogin(payload.new.content || "");
+          }
+        }
       )
       .on(
         "postgres_changes",
