@@ -69,6 +69,25 @@ export default function DashboardShell({
     return () => setDeviceLoginHandler(null);
   }, [initialUser, tNotif]);
 
+  // Session registration — ensures session is recorded with correct device hash
+  // Handles OAuth logins where callback may not have the hash yet
+  useEffect(() => {
+    if (!initialUser) return;
+    const key = "fdm-session-registered";
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    (async () => {
+      try {
+        const { getDeviceHash } = await import("@/lib/deviceHash");
+        await fetch("/api/account/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device_hash: getDeviceHash(), user_agent: navigator.userAgent }),
+        });
+      } catch {}
+    })();
+  }, [initialUser]);
+
   // Cross-tab auth sync + periodic account status check + global 403 interceptor
   useEffect(() => {
     // 1. BroadcastChannel — listen for auth events from other tabs

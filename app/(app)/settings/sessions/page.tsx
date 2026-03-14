@@ -104,7 +104,11 @@ export default function SessionsPage() {
       if (currentDeviceHash) params.set("current_device", currentDeviceHash);
       const res = await fetch(`/api/account/sessions?${params}`, { method: "DELETE" });
       if (res.ok) {
-        setSessions(prev => prev.filter(s => s.device_hash === currentDeviceHash));
+        // Keep only the current device session
+        setSessions(prev => {
+          const current = prev.find(s => s.device_hash === currentDeviceHash);
+          return current ? [current] : prev.slice(0, 1);
+        });
         feedimAlert("success", t("allSessionsEnded"));
       } else {
         feedimAlert("error", t("genericError"));
@@ -116,6 +120,13 @@ export default function SessionsPage() {
 
   const parseUserAgent = (ua: string | null) => {
     if (!ua) return { device: t("unknownDevice"), browser: "", os: "", isMobile: false };
+    // Detect Feedim mobile app
+    if (/FeedimApp/i.test(ua)) {
+      let os = "";
+      if (/iOS/i.test(ua)) os = "iOS";
+      else if (/Android/i.test(ua)) os = "Android";
+      return { device: "Feedim App", browser: "Feedim App", os, isMobile: true };
+    }
     const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
     let browser = t("browserLabel");
     if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
@@ -131,16 +142,15 @@ export default function SessionsPage() {
     return { device: isMobile ? t("mobile") : t("desktop"), browser, os, isMobile };
   };
 
-  const activeSessions = sessions.filter(s => s.is_active);
-  const thisDevice = activeSessions.find(s => s.device_hash === currentDeviceHash);
-  const otherDevices = activeSessions.filter(s => s.device_hash !== currentDeviceHash);
+  const thisDevice = sessions.find(s => s.device_hash === currentDeviceHash);
+  const otherDevices = sessions.filter(s => s.device_hash !== currentDeviceHash);
 
   return (
     <AppLayout headerTitle={t("activeSessionsTitle")} hideRightSidebar>
       <div className="py-2">
         {loading ? (
           <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
-        ) : activeSessions.length === 0 ? (
+        ) : sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <Smartphone className="h-10 w-10 text-text-muted/40 mb-3" />
             <p className="text-sm text-text-muted">{t("noActiveSessions")}</p>

@@ -218,20 +218,17 @@ export async function GET(request: NextRequest) {
   const normalResponse = new NextResponse(
     `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
       <script>
-        // Record session
+        // Record session — use existing v2 hash if available, otherwise skip (DashboardShell handles it)
         (function() {
           try {
-            var raw = [navigator.userAgent, screen.width+"x"+screen.height, navigator.language, Intl.DateTimeFormat().resolvedOptions().timeZone].join("|");
-            var h = 0;
-            for (var i = 0; i < raw.length; i++) { h = ((h << 5) - h) + raw.charCodeAt(i); h |= 0; }
-            var dh = Math.abs(h).toString(36);
-            if (!localStorage.getItem("fdm_device_hash")) localStorage.setItem("fdm_device_hash", dh);
-            else dh = localStorage.getItem("fdm_device_hash");
-            fetch("/api/account/sessions", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ device_hash: dh, user_agent: navigator.userAgent })
-            }).catch(function(){});
+            var dh = localStorage.getItem("fdm_device_hash_v2");
+            if (dh) {
+              fetch("/api/account/sessions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ device_hash: dh, user_agent: navigator.userAgent })
+              }).catch(function(){});
+            }
           } catch(e) {}
         })();
 

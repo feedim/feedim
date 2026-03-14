@@ -47,6 +47,7 @@ export async function GET() {
       .from("sessions")
       .select("id, device_hash, ip_address, user_agent, is_active, is_trusted, created_at, last_active_at")
       .eq("user_id", user.id)
+      .eq("is_active", true)
       .order("last_active_at", { ascending: false })
       .limit(20);
 
