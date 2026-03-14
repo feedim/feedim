@@ -8,6 +8,7 @@ const expo = new Expo();
 const PUSH_ENABLED_TYPES = new Set([
   "like", "comment", "reply", "comment_like",
   "follow", "follow_request", "follow_accepted", "mention",
+  "device_login",
 ]);
 
 // Per-user push cooldown: max 1 push per type per 2 minutes
@@ -147,6 +148,11 @@ export async function sendPushNotification({
 }
 
 function buildPushBody(type: string, actorName: string, content?: string): string | null {
+  // Device login — show device info, not actor name
+  if (type === "device_login") {
+    return content ? `New login: ${content}` : "New login detected";
+  }
+
   if (content) return `${actorName} ${content}`.trim();
 
   switch (type) {

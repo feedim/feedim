@@ -10,6 +10,13 @@ async function parseUA(ua: string | null): Promise<string> {
     const tErrors = await getTranslations("apiErrors");
     return tErrors("unknownDevice");
   }
+  // Detect Feedim mobile app
+  if (/FeedimApp/i.test(ua)) {
+    let os = "";
+    if (/iOS/i.test(ua)) os = "iOS";
+    else if (/Android/i.test(ua)) os = "Android";
+    return os ? `Feedim App, ${os}` : "Feedim App";
+  }
   const tErrors = await getTranslations("apiErrors");
   let browser = tErrors("browser");
   let os = "";
