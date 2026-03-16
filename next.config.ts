@@ -52,6 +52,8 @@ const nextConfig: NextConfig = {
       { source: '/post/:slug', destination: '/:slug', permanent: true },
       // Moments detail → feed view (moments are designed for scroll experience)
       { source: '/moments/:slug', destination: '/moments?s=:slug', permanent: false },
+      // Tag shortcut → explore tag
+      { source: '/tag/:slug', destination: '/explore/tag/:slug', permanent: true },
     ];
   },
   // Security headers to protect against common web vulnerabilities
