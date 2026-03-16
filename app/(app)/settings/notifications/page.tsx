@@ -121,13 +121,17 @@ export default function NotificationSettingsPage() {
     <AppLayout headerTitle={t("notificationSettings")} hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+          <div className="px-4">
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+          </div>
         ) : (
           <>
             {/* Pause toggle */}
             <div className="flex items-center justify-between px-4 py-3.5">
               <div>
-                <span className="text-sm font-medium">{t("pauseNotifications24h")}</span>
+                <span className="text-sm font-semibold">{t("pauseNotifications24h")}</span>
                 <p className="text-xs text-text-muted mt-0.5">
                   {notifPaused && pausedUntil
                     ? t("pausedUntilTime", { time: new Date(pausedUntil).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) })
@@ -147,7 +151,7 @@ export default function NotificationSettingsPage() {
             {/* Notification type toggles */}
             {notifTypes.map(({ type, labelKey }) => (
               <div key={type} className="flex items-center justify-between px-4 py-3.5">
-                <span className="text-sm">{t(labelKey)}</span>
+                <span className="text-sm font-medium">{t(labelKey)}</span>
                 <button
                   onClick={() => toggleNotifType(type)}
                   className={`relative rounded-full transition-colors duration-200 shrink-0 ${notifSettings[type] !== false ? "bg-accent-main" : "bg-bg-tertiary"}`}

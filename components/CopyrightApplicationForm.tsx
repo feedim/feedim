@@ -92,7 +92,7 @@ export default function CopyrightApplicationForm({ onSubmit }: CopyrightApplicat
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-xs text-text-muted mb-1 block">{t("companyNameLabel")}</label>
+        <label className="text-xs text-text-muted font-medium mb-1 block">{t("companyNameLabel")}</label>
         <input
           value={companyName}
           onChange={e => setCompanyName(e.target.value)}
@@ -102,7 +102,7 @@ export default function CopyrightApplicationForm({ onSubmit }: CopyrightApplicat
         />
       </div>
       <div>
-        <label className="text-xs text-text-muted mb-1 block">{t("contactEmailLabel")}</label>
+        <label className="text-xs text-text-muted font-medium mb-1 block">{t("contactEmailLabel")}</label>
         <input
           type="email"
           value={contactEmail}
@@ -113,11 +113,11 @@ export default function CopyrightApplicationForm({ onSubmit }: CopyrightApplicat
         />
       </div>
       <div>
-        <label className="text-xs text-text-muted mb-1 block">{t("phoneLabel")}</label>
+        <label className="text-xs text-text-muted font-medium mb-1 block">{t("phoneLabel")}</label>
         <PhoneInput value={contactPhone} onChange={setContactPhone} />
       </div>
       <div>
-        <label className="text-xs text-text-muted mb-1 block">{t("websiteLabel")}</label>
+        <label className="text-xs text-text-muted font-medium mb-1 block">{t("websiteLabel")}</label>
         <input
           value={companyWebsite}
           onChange={e => setCompanyWebsite(e.target.value)}
@@ -127,7 +127,7 @@ export default function CopyrightApplicationForm({ onSubmit }: CopyrightApplicat
         />
       </div>
       <div>
-        <label className="text-xs text-text-muted mb-1 block">{t("descriptionLabel")}</label>
+        <label className="text-xs text-text-muted font-medium mb-1 block">{t("descriptionLabel")}</label>
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
@@ -138,9 +138,9 @@ export default function CopyrightApplicationForm({ onSubmit }: CopyrightApplicat
         />
       </div>
       <div>
-        <label className="text-xs text-text-muted mb-1 block">{t("proofLinksLabel")}</label>
+        <label className="text-xs text-text-muted font-medium mb-1 block">{t("proofLinksLabel")}</label>
         {proofUrls.map((url, i) => (
-          <div key={i} className="flex gap-2 mb-2">
+          <div key={i} className="flex gap-2 mb-1">
             <input
               value={url}
               onChange={e => updateProofUrl(i, e.target.value)}

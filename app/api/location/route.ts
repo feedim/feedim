@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
   let city: string | null = null;
   let region: string | null = null;
   let countryCode: string | null = null;
+  let district: string | null = null;
+  let postcode: string | null = null;
   let lat: number | null = null;
   let lng: number | null = null;
 
@@ -32,7 +34,9 @@ export async function POST(req: NextRequest) {
         const geo = await geoRes.json();
         const addr = geo.address || {};
         city = addr.city || addr.town || addr.village || null;
+        district = addr.county || addr.district || addr.suburb || null;
         region = addr.state || null;
+        postcode = addr.postcode || null;
         countryCode = addr.country_code ? addr.country_code.toUpperCase() : null;
       }
     } catch {}
@@ -88,7 +92,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (existing) {
-    return NextResponse.json({ location: { city, region, country_code: countryCode }, skipped: true });
+    return NextResponse.json({ location: { city, district, region, postcode, country_code: countryCode }, skipped: true });
   }
 
   // Insert new location
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest) {
     return safeError(error);
   }
 
-  return NextResponse.json({ location: { city, region, country_code: countryCode } });
+  return NextResponse.json({ location: { city, district, region, postcode, country_code: countryCode } });
 }
 
 export async function GET() {
@@ -119,7 +123,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("user_locations")
-    .select("city, region, country_code, created_at")
+    .select("city, region, country_code, latitude, longitude, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)

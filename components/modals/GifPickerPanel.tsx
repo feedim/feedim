@@ -53,8 +53,8 @@ function GifThumb({ gif, onSelect }: { gif: GiphyGif; onSelect: () => void }) {
       onClick={onSelect}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
-      className="mb-2 w-full rounded-xl overflow-hidden hover:opacity-90 active:scale-[0.97] transition break-inside-avoid block"
-      style={{ aspectRatio: `${w}/${h}` }}
+      className="mb-2 w-full rounded-xl overflow-hidden hover:opacity-90 active:scale-[0.97] transition break-inside-avoid block border border-border-primary"
+      style={{ aspectRatio: `${w}/${h}`, borderWidth: "0.9px" }}
     >
       {visible && (
         <img

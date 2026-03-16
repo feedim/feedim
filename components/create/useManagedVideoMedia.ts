@@ -50,8 +50,11 @@ interface UseManagedVideoMediaArgs<TValidation extends ValidationResultBase> {
   setFrameHashes: (hashes: { frameIndex: number; hash: string }[]) => void;
   setAudioHashes: (hashes: { chunkIndex: number; hash: string }[]) => void;
   setNsfwFrameUrls: (urls: string[]) => void;
+  setVideoFeedimId?: (id: string) => void;
   progressMap?: (fraction: number) => number;
   initProgress?: number;
+  /** Pass "video" or "moment" to enable server-side H.264/AAC optimization */
+  optimizeContentType?: "video" | "moment";
 }
 
 export default function useManagedVideoMedia<TValidation extends ValidationResultBase>({
@@ -82,8 +85,10 @@ export default function useManagedVideoMedia<TValidation extends ValidationResul
   setFrameHashes,
   setAudioHashes,
   setNsfwFrameUrls,
+  setVideoFeedimId,
   progressMap,
   initProgress,
+  optimizeContentType,
 }: UseManagedVideoMediaArgs<TValidation>) {
   const uploadAbortRef = useRef<AbortController | null>(null);
 
@@ -97,8 +102,10 @@ export default function useManagedVideoMedia<TValidation extends ValidationResul
         setUploadProgress,
         initProgress,
         mapProgress: progressMap,
-        onSuccess: (publicUrl) => {
+        optimizeContentType,
+        onSuccess: (publicUrl, feedimId) => {
           setVideoUrl(publicUrl);
+          if (feedimId) setVideoFeedimId?.(feedimId);
         },
         onError: (error) => {
           reportError(error.message || uploadErrorFallback);
@@ -110,6 +117,7 @@ export default function useManagedVideoMedia<TValidation extends ValidationResul
     },
     [
       initProgress,
+      optimizeContentType,
       progressMap,
       reportError,
       setUploadProgress,

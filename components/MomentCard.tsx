@@ -407,7 +407,7 @@ export default memo(function MomentCard({ moment, isActive = false, loadVideo = 
             href={`/u/${author?.username}`}
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 text-white text-[0.65rem] font-semibold border border-white/20 bg-transparent hover:bg-white/10 transition"
-            style={{ borderRadius: 6, padding: "1px 8px", textShadow: OVERLAY_TEXT_SHADOW }}
+            style={{ borderRadius: 6, padding: 0, textShadow: OVERLAY_TEXT_SHADOW }}
           >
             {tc("viewProfile")}
           </Link>

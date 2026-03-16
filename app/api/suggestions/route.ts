@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
         };
       }),
 
-      cached(`user:${user.id}:follows`, 30, async () => {
+      cached(`user:${user.id}:follows`, 120, async () => {
         const { data: follows } = await admin
           .from("follows")
           .select("following_id")
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
         return (follows || []).map(f => f.following_id);
       }),
 
-      cached(`user:${user.id}:blocks`, 30, async () => {
+      cached(`user:${user.id}:blocks`, 120, async () => {
         const { data: blocks } = await admin
           .from("blocks")
           .select("blocked_id, blocker_id")

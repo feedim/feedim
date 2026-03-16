@@ -14,10 +14,11 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [initialUser, tAuth, tCommon, sidebarLabels, footerLabels] = await Promise.all([
+  const [initialUser, tAuth, tCommon, tNotif, sidebarLabels, footerLabels] = await Promise.all([
     getInitialUserForShell(),
     getTranslations("auth"),
     getTranslations("common"),
+    getTranslations("notifications"),
     getSidebarLabels(),
     getPublicFooterLabels(),
   ]);
@@ -32,6 +33,7 @@ export default async function DashboardLayout({
       }}
       sidebarLabels={sidebarLabels}
       footerLabels={footerLabels}
+      deviceLoginLabel={tNotif("deviceLogin")}
     >
       {children}
     </DashboardShell>

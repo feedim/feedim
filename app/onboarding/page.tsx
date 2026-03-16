@@ -641,13 +641,14 @@ function StepProfilePhoto({ avatarPreview, onAvatarClick, loading, uploading }: 
   uploading: boolean;
 }) {
   const t = useTranslations("onboarding");
+  const tProfile = useTranslations("profile");
   return (
     <div>
       <div className="mb-5">
         <h2 className="text-xl font-bold mb-2">{t("addPhoto")}</h2>
         <p className="text-sm text-text-muted">{t("addPhotoDesc")}</p>
       </div>
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center">
         <EditableAvatar
           src={avatarPreview}
           alt=""
@@ -657,6 +658,14 @@ function StepProfilePhoto({ avatarPreview, onAvatarClick, loading, uploading }: 
           noBlur
           onClick={onAvatarClick}
         />
+        <button
+          type="button"
+          onClick={onAvatarClick}
+          disabled={uploading || loading}
+          className="mt-3 mb-[5px] text-sm font-medium text-accent-main hover:text-accent-main/80 transition disabled:opacity-50"
+        >
+          {tProfile("changeAvatar")}
+        </button>
       </div>
     </div>
   );
@@ -847,7 +856,7 @@ function StepSuggestions({ suggestions, followedIds, pendingFollowIds, onToggle,
         <p className="text-sm text-text-muted">{t("findPeopleDesc")}</p>
       </div>
       {!loaded ? (
-        <div className="space-y-2 min-h-[200px]">
+        <div className="min-h-[200px]">
           {[1,2,3,4,5].map(i => (
             <div key={i} className="flex items-center gap-3 py-2.5 px-1">
               <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 animate-pulse" />
@@ -864,7 +873,7 @@ function StepSuggestions({ suggestions, followedIds, pendingFollowIds, onToggle,
           <p className="text-sm text-text-muted">{t("noSuggestions")}</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div>
           {suggestions.map((user) => {
             const isFollowed = followedIds.has(user.user_id);
             const isPending = pendingFollowIds.has(user.user_id);

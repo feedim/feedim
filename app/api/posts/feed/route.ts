@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
         const { data: profile } = await admin.from('profiles').select('role').eq('user_id', user.id).single();
         return profile?.role || 'user';
       }),
-      cached(`user:${user.id}:blocks`, 30, async () => {
+      cached(`user:${user.id}:blocks`, 120, async () => {
         const { data: blocks } = await admin
           .from('blocks')
           .select('blocked_id, blocker_id')
@@ -224,14 +224,14 @@ export async function GET(request: NextRequest) {
           (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
         );
       }),
-      cached(`user:${user.id}:follows`, 30, async () => {
+      cached(`user:${user.id}:follows`, 120, async () => {
         const { data: followedUsers } = await admin
           .from('follows')
           .select('following_id')
           .eq('follower_id', user.id);
         return (followedUsers || []).map(f => f.following_id);
       }),
-      cached(`user:${user.id}:tag-follows`, 30, async () => {
+      cached(`user:${user.id}:tag-follows`, 120, async () => {
         const { data: followedTags } = await admin
           .from('tag_follows')
           .select('tag_id')
@@ -556,6 +556,23 @@ export async function GET(request: NextRequest) {
     let orderedPosts = orderRowsById(pageIds, (fullPosts || []) as FeedPostRow[]);
     orderedPosts = filterVisiblePosts(orderedPosts, user.id, followedUserIdSet);
 
+    // Fallback: filterVisiblePosts sonrası boşsa, trending published postları getir
+    if (orderedPosts.length === 0 && page === 1) {
+      const { data: fallbackPosts } = await admin
+        .from('posts')
+        .select(`
+          id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, share_count, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash, visibility, is_nsfw, moderation_category,
+          profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private),
+          post_tags(tag_id, tags(id, name, slug))
+        `)
+        .eq('status', 'published')
+        .eq('is_nsfw', false)
+        .neq('content_type', 'moment')
+        .order('trending_score', { ascending: false })
+        .limit(FEED_PAGE_SIZE);
+      orderedPosts = filterVisiblePosts((fallbackPosts || []) as FeedPostRow[], user.id, followedUserIdSet);
+    }
+
     // ─── Boost injection ────────────────────────────────────────
     let usedBoostIds: number[] = [];
     if (source4.length > 0) {
@@ -712,7 +729,25 @@ async function handleGuestFeed(
   for (const p of [...countryPosts, ...globalPosts]) {
     if (!map.has(p.id)) map.set(p.id, p as FeedCandidate);
   }
-  const candidates = Array.from(map.values());
+  let candidates = Array.from(map.values());
+
+  // 30 gün yetmedi → all-time trending fallback
+  if (candidates.length === 0) {
+    let q = admin
+      .from('posts')
+      .select(candidateFields)
+      .eq('status', 'published')
+      .eq('is_nsfw', false)
+      .order('trending_score', { ascending: false })
+      .limit(60);
+    if (contentTypeFilter) {
+      q = q.eq('content_type', contentTypeFilter);
+    } else {
+      q = q.neq('content_type', 'moment');
+    }
+    const { data: allTimePosts } = await q;
+    candidates = withSource((allTimePosts || []) as FeedCandidate[], 'discovery');
+  }
 
   if (candidates.length === 0) {
     return NextResponse.json({ posts: [], page, hasMore: false });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ImageViewer from "@/components/ImageViewer";
 
 interface NoteFeaturedImageProps {
@@ -10,19 +10,14 @@ interface NoteFeaturedImageProps {
 
 export default function NoteFeaturedImage({ src, alt }: NoteFeaturedImageProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   const images = useMemo(() => [{ src, alt, caption: "" }], [src, alt]);
-
-  useEffect(() => {
-    setLoaded(false);
-  }, [src]);
 
   return (
     <>
       <div
-        className={`mt-[10px] w-full cursor-zoom-in rounded-[20px] overflow-hidden ${loaded ? "border border-border-primary" : ""}`}
-        style={loaded ? { borderWidth: "0.9px" } : undefined}
+        className="mt-[10px] w-full cursor-zoom-in rounded-[20px] overflow-hidden border border-border-primary"
+        style={{ borderWidth: "0.9px" }}
       >
         <img
           src={src}
@@ -30,7 +25,6 @@ export default function NoteFeaturedImage({ src, alt }: NoteFeaturedImageProps) 
           className="block h-auto max-h-[640px] w-full"
           loading="lazy"
           decoding="async"
-          onLoad={() => setLoaded(true)}
           onClick={() => setViewerOpen(true)}
         />
       </div>

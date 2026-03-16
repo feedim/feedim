@@ -285,44 +285,48 @@ export default function TagPage() {
   };
 
   const loadMore = async () => {
+    if (loadingMore) return;
     const user = await requireAuth();
     if (!user) return;
     setLoadingMore(true);
-    const nextPage = tabPage[activeTab] + 1;
+    try {
+      const nextPage = tabPage[activeTab] + 1;
 
-    const dedup = (prev: TagPost[], newPosts: TagPost[]) => {
-      const existingIds = new Set(prev.map(p => p.id));
-      return [...prev, ...newPosts.filter(p => !existingIds.has(p.id))];
-    };
+      const dedup = (prev: TagPost[], newPosts: TagPost[]) => {
+        const existingIds = new Set(prev.map(p => p.id));
+        return [...prev, ...newPosts.filter(p => !existingIds.has(p.id))];
+      };
 
-    if (activeTab === "for-you") {
-      const result = await loadTagPosts(nextPage, "trending");
-      setForYouPosts(prev => dedup(prev, result.posts));
-      setTabHasMore(prev => ({ ...prev, "for-you": result.hasMore }));
-    } else if (activeTab === "latest") {
-      const result = await loadTagPosts(nextPage, "latest");
-      setLatestPosts(prev => dedup(prev, result.posts));
-      setTabHasMore(prev => ({ ...prev, latest: result.hasMore }));
-    } else if (activeTab === "posts") {
-      const result = await loadTagPosts(nextPage, "trending", "post");
-      setPostTypePosts(prev => dedup(prev, result.posts));
-      setTabHasMore(prev => ({ ...prev, posts: result.hasMore }));
-    } else if (activeTab === "moments") {
-      const result = await loadTagPosts(nextPage, "trending", "moment");
-      setMoments(prev => dedup(prev, result.posts));
-      setTabHasMore(prev => ({ ...prev, moments: result.hasMore }));
-    } else if (activeTab === "video") {
-      const result = await loadTagPosts(nextPage, "trending", "video");
-      setVideos(prev => dedup(prev, result.posts));
-      setTabHasMore(prev => ({ ...prev, video: result.hasMore }));
-    } else if (activeTab === "notes") {
-      const result = await loadTagPosts(nextPage, "trending", "note");
-      setNotes(prev => dedup(prev, result.posts));
-      setTabHasMore(prev => ({ ...prev, notes: result.hasMore }));
+      if (activeTab === "for-you") {
+        const result = await loadTagPosts(nextPage, "trending");
+        setForYouPosts(prev => dedup(prev, result.posts));
+        setTabHasMore(prev => ({ ...prev, "for-you": result.hasMore }));
+      } else if (activeTab === "latest") {
+        const result = await loadTagPosts(nextPage, "latest");
+        setLatestPosts(prev => dedup(prev, result.posts));
+        setTabHasMore(prev => ({ ...prev, latest: result.hasMore }));
+      } else if (activeTab === "posts") {
+        const result = await loadTagPosts(nextPage, "trending", "post");
+        setPostTypePosts(prev => dedup(prev, result.posts));
+        setTabHasMore(prev => ({ ...prev, posts: result.hasMore }));
+      } else if (activeTab === "moments") {
+        const result = await loadTagPosts(nextPage, "trending", "moment");
+        setMoments(prev => dedup(prev, result.posts));
+        setTabHasMore(prev => ({ ...prev, moments: result.hasMore }));
+      } else if (activeTab === "video") {
+        const result = await loadTagPosts(nextPage, "trending", "video");
+        setVideos(prev => dedup(prev, result.posts));
+        setTabHasMore(prev => ({ ...prev, video: result.hasMore }));
+      } else if (activeTab === "notes") {
+        const result = await loadTagPosts(nextPage, "trending", "note");
+        setNotes(prev => dedup(prev, result.posts));
+        setTabHasMore(prev => ({ ...prev, notes: result.hasMore }));
+      }
+
+      setTabPage(prev => ({ ...prev, [activeTab]: nextPage }));
+    } finally {
+      setLoadingMore(false);
     }
-
-    setTabPage(prev => ({ ...prev, [activeTab]: nextPage }));
-    setLoadingMore(false);
   };
 
   const doTagFollow = async () => {

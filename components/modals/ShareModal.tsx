@@ -186,7 +186,7 @@ export default function ShareModal({ open, onClose, url, title, postId, isVideo,
               {copied ? <Check className="h-4 w-4 text-accent-main" /> : <LinkIcon className="h-4 w-4 text-text-muted" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[0.82rem] font-medium text-text-primary">
+              <p className="text-[0.82rem] font-semibold text-text-primary">
                 {copied ? t("copied") : t("copyLink")}
               </p>
               <p className="text-[0.72rem] text-text-muted truncate">{fullUrl}</p>

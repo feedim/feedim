@@ -79,15 +79,13 @@ export async function POST(request: NextRequest) {
     if (!isMoment && status !== 'draft' && (!title || typeof title !== 'string' || title.trim().length === 0)) {
       return NextResponse.json({ error: tErrors('titleRequired') }, { status: 400 });
     }
-    const trimmedTitle = (title || '').trim();
+    // Strip HTML/code from title instead of rejecting
+    const trimmedTitle = (title || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
     if (status !== 'draft' && !isNote && !isMoment && trimmedTitle.length < VALIDATION.postTitle.min) {
       return NextResponse.json({ error: tErrors('titleMinLength', { min: VALIDATION.postTitle.min }) }, { status: 400 });
     }
     if (trimmedTitle.length > VALIDATION.postTitle.max) {
       return NextResponse.json({ error: tErrors('titleMaxLength', { max: VALIDATION.postTitle.max }) }, { status: 400 });
-    }
-    if (/<[^>]+>/.test(trimmedTitle)) {
-      return NextResponse.json({ error: tErrors('titleNoHtml') }, { status: 400 });
     }
     if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedTitle)) {
       return NextResponse.json({ error: tErrors('titleNoUrl') }, { status: 400 });

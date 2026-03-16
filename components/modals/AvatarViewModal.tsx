@@ -93,14 +93,16 @@ export default function AvatarViewModal({ open, onClose, avatarUrl, name, isOwn,
               src={avatarUrl}
               alt={name}
               onLoad={() => setImageLoaded(true)}
-              className={`w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full object-cover border border-white/10 ${
+              className={`w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full object-cover border border-border-primary ${
                 imageLoaded ? "block" : "hidden"
               }`}
+              style={{ borderWidth: "0.9px" }}
             />
           </>
         ) : (
           <img
-            className="default-avatar-auto bg-bg-tertiary w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full object-cover border border-white/10"
+            className="default-avatar-auto bg-bg-tertiary w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full object-cover border border-border-primary"
+            style={{ borderWidth: "0.9px" }}
             alt={name}
           />
         )}

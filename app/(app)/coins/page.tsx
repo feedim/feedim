@@ -54,7 +54,8 @@ export default function CoinsPage() {
 
   return (
     <AppLayout headerTitle={t("balance")} hideRightSidebar>
-      <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
+      <div className="pb-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
+        <p className="text-xs text-text-muted">{t("coinsPageDesc")}</p>
         {loading ? (
           <>
             <div className="h-[120px] rounded-2xl bg-bg-secondary animate-pulse" />
@@ -68,13 +69,13 @@ export default function CoinsPage() {
           <>
             {/* Bakiye Kartı */}
             <div className="bg-bg-secondary rounded-2xl p-5 text-center">
-              <p className="text-sm text-text-muted mb-2">{t("currentBalance")}</p>
+              <p className="text-[0.95rem] text-text-muted mb-2 font-semibold">{t("currentBalance")}</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-8 w-8 text-accent-main" />
                 <span className="text-4xl font-bold text-accent-main">{balance.toLocaleString(locale)}</span>
               </div>
-              <p className="text-sm text-text-muted">
-                ≈ {netTry.toFixed(2)} TL <span className="text-xs">(net)</span>
+              <p className="text-xs text-text-muted">
+                ≈ {netTry.toFixed(2)} TL <span className="text-[0.7rem]">(net)</span>
               </p>
             </div>
 
@@ -98,7 +99,7 @@ export default function CoinsPage() {
 
             {/* Son İşlemler */}
             <div className="bg-bg-secondary rounded-2xl px-[22px] py-[29px]">
-              <h3 className="text-sm font-semibold mb-4">{t("recentTransactions")}</h3>
+              <h3 className="text-[0.91rem] font-semibold mb-4">{t("recentTransactions")}</h3>
               {transactions.length > 0 ? (
                 <div className="space-y-3">
                   {transactions.map((txn) => (
@@ -106,7 +107,7 @@ export default function CoinsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-sm text-text-muted py-6">{t("noTransactions")}</p>
+                <p className="text-center text-xs text-text-muted py-6">{t("noTransactions")}</p>
               )}
             </div>
             {transactions.length > 0 && (

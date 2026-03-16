@@ -293,7 +293,7 @@ export default function VideoPlayerClient({
   const countdownMax = 10;
 
   return (
-    <div className="relative sm:rounded-lg">
+    <div className="relative sm:rounded-lg overflow-hidden">
       <div className={postRollActive ? "pointer-events-none" : ""}>
         <VideoPlayer ref={videoRef} src={src} hlsUrl={hlsUrl} poster={poster} onEnded={handleEnded} autoStart={autoStart} hasNext={!!nextVideoUrl} onNext={nextVideoUrl ? () => { emitNavigationStart(); router.push(nextVideoUrl); } : undefined} autoplayNext={autoplay} onToggleAutoplay={toggleAutoplay} />
       </div>
@@ -327,7 +327,7 @@ export default function VideoPlayerClient({
 
       {/* End screen — autoplay ON with countdown (compact & responsive) */}
       {ended && countdown !== null && countdown > 0 && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-20 overflow-hidden pb-2 sm:rounded-lg">
+        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-20 overflow-hidden pb-2">
           <div className="text-center w-full max-w-[220px] px-3">
             {/* Countdown circle */}
             <div className="relative w-12 h-12 mx-auto mb-2">
@@ -373,7 +373,7 @@ export default function VideoPlayerClient({
 
       {/* End screen — autoplay OFF or no next video */}
       {ended && countdown === null && (
-        <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-20 px-4 pb-2 sm:rounded-lg">
+        <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-20 px-4 pb-2">
           {/* Replay button */}
           <button
             onClick={replay}

@@ -358,18 +358,18 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
             {/* Name fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-text-muted mb-1">{t("firstName")}</label>
+                <label className="block text-xs text-text-muted font-semibold mb-1">{t("firstName")}</label>
                 <input type="text" value={name} onChange={e => setName(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} className="input-modern w-full" placeholder={t("firstName")} />
               </div>
               <div>
-                <label className="block text-xs text-text-muted mb-1">{t("lastName")}</label>
+                <label className="block text-xs text-text-muted font-semibold mb-1">{t("lastName")}</label>
                 <input type="text" value={surname} onChange={e => setSurname(filterNameInput(e.target.value))} maxLength={VALIDATION.name.max} className="input-modern w-full" placeholder={t("lastName")} />
               </div>
             </div>
 
             {/* Username */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">{t("usernameLabel")}</label>
+              <label className="block text-xs text-text-muted font-semibold mb-1">{t("usernameLabel")}</label>
               <div className="relative">
                 <input
                   type="text"
@@ -403,7 +403,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
 
             {/* Bio */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">{t("bio")}</label>
+              <label className="block text-xs text-text-muted font-semibold mb-1">{t("bio")}</label>
               <textarea
                 value={bio}
                 onChange={e => setBio(e.target.value)}
@@ -417,7 +417,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
 
             {/* Links */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">{t("linksLabel")}</label>
+              <label className="block text-xs text-text-muted font-semibold mb-1">{t("linksLabel")}</label>
               <button
                 type="button"
                 onClick={() => {
@@ -426,7 +426,7 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                 }}
                 className="w-full h-[50px] flex items-center justify-between px-[18px] rounded-[14px] border-[1.5px] border-border-primary hover:border-text-muted transition text-[0.93rem]"
               >
-                <span className="flex items-center gap-2 text-text-secondary">
+                <span className="flex items-center gap-2 text-text-secondary font-medium">
                   <LinkIcon className="h-4 w-4" />
                   {links.filter(l => l.url.trim()).length > 0
                     ? t("linksCount", { count: links.filter(l => l.url.trim()).length })
@@ -439,13 +439,13 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
 
             {/* Birth date */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">{t("birthDate")}</label>
+              <label className="block text-xs text-text-muted font-semibold mb-1">{t("birthDate")}</label>
               <BirthDateSelect value={birthDate} onChange={setBirthDate} />
             </div>
 
             {/* Gender */}
             <div>
-              <label className="block text-xs text-text-muted mb-1">{t("genderLabel")}</label>
+              <label className="block text-xs text-text-muted font-semibold mb-1">{t("genderLabel")}</label>
               <select value={gender} onChange={e => setGender(e.target.value)} className="select-modern w-full">
                 <option value="">{t("genderNone")}</option>
                 <option value="male">{t("genderMale")}</option>
@@ -463,12 +463,12 @@ export default function EditProfileModal({ open, onClose, onSave, onReopen, onLi
                   </h4>
                   {professionalCategory && (
                     <div>
-                      <label className="block text-xs text-text-muted mb-1">{t("category")}</label>
+                      <label className="block text-xs text-text-muted font-semibold mb-1">{t("category")}</label>
                       <button
                         onClick={() => setProModalOpen(true)}
                         className="w-full text-left text-sm text-text-secondary h-[50px] px-[18px] bg-transparent rounded-[14px] border-[1.5px] border-[var(--border-primary)] hover:border-[var(--text-muted)] transition flex items-center justify-between"
                       >
-                        <span>{tProf(getCategoryLabelKey(accountType, professionalCategory))}</span>
+                        <span className="font-medium">{tProf(getCategoryLabelKey(accountType, professionalCategory))}</span>
                         <ChevronRight className="h-3.5 w-3.5 text-text-muted shrink-0" />
                       </button>
                     </div>

@@ -28,7 +28,8 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
   return (
     <Link
       href={href}
-      className="relative block aspect-[9/16] bg-black overflow-hidden group"
+      className="relative block aspect-[9/16] bg-black overflow-hidden group border border-border-primary"
+      style={{ borderWidth: "0.9px" }}
     >
       {thumb ? (
         <BlurImage src={thumb} alt={moment.title || ""} className="w-full h-full" />
@@ -42,7 +43,7 @@ export default memo(function MomentGridCard({ moment }: MomentGridCardProps) {
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
 
       {/* Bottom left — badge + view count */}
-      <div className="absolute bottom-1.5 left-1.5 flex flex-col items-start gap-[4px]">
+      <div className="absolute bottom-1.5 left-2 flex flex-col items-start gap-[4px]">
         {/* NSFW under review badge */}
         {moment.is_nsfw && (
           <div className="inline-flex items-center gap-0.5 px-1 py-[1px] rounded-full text-[0.5rem] font-semibold bg-[var(--accent-color)]/20 text-[var(--accent-color)] mb-[3px]">

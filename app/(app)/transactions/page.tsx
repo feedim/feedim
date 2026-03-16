@@ -138,7 +138,7 @@ export default function TransactionsPage() {
         ) : transactions.length === 0 ? (
           <div className="text-center py-16">
             <h2 className="text-lg font-bold mb-2">{t("emptyTitle")}</h2>
-            <p className="text-sm text-text-muted mb-5">{t("emptyDescription")}</p>
+            <p className="text-xs text-text-muted mb-5">{t("emptyDescription")}</p>
             <Link href="/coins" className="t-btn accept inline-block">
               {t("buyCoinsButton")}
             </Link>

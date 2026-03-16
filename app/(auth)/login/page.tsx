@@ -283,6 +283,7 @@ function LoginPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ device_hash: getDeviceHash(), user_agent: navigator.userAgent }),
         });
+        sessionStorage.setItem("fdm-session-registered", "1");
       } catch {}
 
       try {
@@ -476,6 +477,7 @@ function LoginPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ device_hash: getDeviceHash(), user_agent: navigator.userAgent }),
         });
+        sessionStorage.setItem("fdm-session-registered", "1");
       } catch {}
 
       if (!selectedAccount) {
@@ -601,7 +603,7 @@ function LoginPageContent() {
               type="button"
               onClick={handleMfaResend}
               disabled={mfaHasResent || mfaCooldown > 0}
-              className="text-sm font-semibold text-text-muted hover:text-text-primary transition hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-sm font-semibold text-text-muted hover:text-text-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {mfaCooldown > 0 ? t("resendCountdown", { seconds: mfaCooldown }) : t("mfaResend")}
             </button>
@@ -721,12 +723,12 @@ function LoginPageContent() {
           <button
             type="button"
             onClick={handleBackToList}
-            className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition hover:underline font-medium"
+            className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
             {t('differentAccountShort')}
           </button>
-          <Link href="/forgot-password" className="text-sm text-text-muted hover:text-text-primary transition hover:underline font-semibold">
+          <Link href="/forgot-password" className="text-sm text-text-muted hover:text-text-primary transition font-semibold">
             {t('forgotPassword')}
           </Link>
         </div>
@@ -769,7 +771,7 @@ function LoginPageContent() {
             />
             <span className="text-sm text-text-muted">{t('rememberMe')}</span>
           </label>
-          <Link href="/forgot-password" className="text-sm text-text-muted hover:text-text-primary transition hover:underline font-semibold">
+          <Link href="/forgot-password" className="text-sm text-text-muted hover:text-text-primary transition font-semibold">
             {t('forgotPassword')}
           </Link>
         </div>

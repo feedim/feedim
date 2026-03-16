@@ -61,7 +61,10 @@ export default function MomentsCarousel({
       const data = await res.json() as { moments?: MomentItem[] };
       setMoments((data.moments || []).slice(0, maxItems));
     } catch {
-      // Silent
+      // Hata olunca mevcut moments'ı koru
+      if (moments.length === 0 && seededMoments.length > 0) {
+        setMoments(seededMoments);
+      }
     } finally {
       setLoaded(true);
     }
@@ -202,10 +205,10 @@ export default function MomentsCarousel({
                 key={m.id}
                 href={`/moments?s=${m.slug}`}
                 className={cn(
-                  "relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-bg-tertiary",
+                  "relative flex flex-col shrink-0 w-[130px] h-[230px] rounded-[14px] overflow-hidden bg-bg-tertiary border border-border-primary",
                   index === 0 && "ml-[10px]"
                 )}
-                style={{ scrollSnapAlign: "start" }}
+                style={{ scrollSnapAlign: "start", borderWidth: "0.9px" }}
               >
                 {/* Thumbnail only (no autoplay for performance) */}
                 {thumb ? (

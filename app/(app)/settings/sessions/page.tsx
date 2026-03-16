@@ -149,7 +149,11 @@ export default function SessionsPage() {
     <AppLayout headerTitle={t("activeSessionsTitle")} hideRightSidebar>
       <div className="py-2">
         {loading ? (
-          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+          <div className="px-4">
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+          </div>
         ) : sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <Smartphone className="h-10 w-10 text-text-muted/40 mb-3" />

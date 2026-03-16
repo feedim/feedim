@@ -10,7 +10,6 @@ import { UserProvider } from "@/components/UserContext";
 import HeaderAlertBar from "@/components/HeaderAlertBar";
 import { feedimAlert } from "@/components/FeedimAlert";
 import { setDeviceLoginHandler } from "@/lib/useNotificationCount";
-import { useTranslations } from "next-intl";
 import type { SidebarLabels } from "@/lib/sidebarLabels";
 import type { PublicFooterLabels } from "@/lib/footerLabels";
 import type { InitialUser } from "@/lib/userTypes";
@@ -42,18 +41,19 @@ export default function DashboardShell({
   headerAlertLabels,
   sidebarLabels,
   footerLabels,
+  deviceLoginLabel,
   children,
 }: {
   initialUser: InitialUser | null;
   headerAlertLabels: HeaderAlertBarLabels;
   sidebarLabels: SidebarLabels;
   footerLabels: PublicFooterLabels;
+  deviceLoginLabel: string;
   children: React.ReactNode;
 }) {
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
   const pathname = usePathname();
   void pathname;
-  const tNotif = useTranslations("notifications");
 
   const setNav = useCallback((visible: boolean) => setMobileNavVisible(visible), []);
 
@@ -62,12 +62,12 @@ export default function DashboardShell({
     if (!initialUser) return;
     setDeviceLoginHandler((content: string) => {
       const msg = content
-        ? `${tNotif("deviceLogin")}: ${content}`
-        : tNotif("deviceLogin");
+        ? `${deviceLoginLabel}: ${content}`
+        : deviceLoginLabel;
       feedimAlert("warning", msg);
     });
     return () => setDeviceLoginHandler(null);
-  }, [initialUser, tNotif]);
+  }, [initialUser, deviceLoginLabel]);
 
   // Session registration — ensures session is recorded with correct device hash
   // Handles OAuth logins where callback may not have the hash yet

@@ -45,7 +45,7 @@ export default function AuthLayout({ title, subtitle, children, showRulesModal }
     <div className="min-h-screen px-4 py-12 relative">
       <button
         onClick={handleBack}
-        className="absolute top-6 left-4 flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors hover:underline"
+        className="absolute top-6 left-4 flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
         aria-label={navigated ? t("goBack") : tNav("home")}
       >
         <ArrowLeft className="h-5 w-5" />

@@ -43,7 +43,7 @@ export default async function PublicHeader({ variant = "back", backLabel }: Publ
 
   return (
     <header>
-      <nav className="container mx-auto px-3 py-6 flex items-center justify-between select-none">
+      <nav className="container mx-auto px-3 sm:px-8 py-6 flex items-center justify-between select-none">
         <Link href="/" aria-label={`Feedim ${t("nav.home")}`} className="flex items-center gap-2">
           <FeedimIcon className="h-14 w-14" />
           <span className="w-px h-7 bg-border-primary" />

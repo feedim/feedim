@@ -125,8 +125,8 @@ export default function VideoEditorPreview({
 
   return (
     <div
-      className={`relative rounded-xl overflow-hidden bg-black cursor-pointer mx-auto ${className || ""}`}
-      style={{ aspectRatio, maxWidth }}
+      className={`relative rounded-xl overflow-hidden bg-black cursor-pointer mx-auto border border-border-primary ${className || ""}`}
+      style={{ aspectRatio, maxWidth, borderWidth: "0.9px" }}
       onClick={handleTap}
     >
       {src && (
@@ -140,7 +140,7 @@ export default function VideoEditorPreview({
           preloadHint="metadata"
           externalMuted={effectiveMuted}
           externalPaused={uploading || paused}
-          videoClassName="absolute inset-0 w-full h-full object-cover"
+          videoClassName="absolute inset-0 w-full h-full object-contain"
         />
       )}
 

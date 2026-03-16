@@ -1358,7 +1358,7 @@ export default function AdminPage() {
                 <div className="py-16 text-center text-text-muted text-sm">
                   {profileSubTab === 'moderation' ? t("noAccountsUnderReview") : profileSubTab === 'blocked' ? t("noBlockedAccounts") : t("noDeletedAccounts")}
                 </div>
-              ) : filtered.map((u: any, idx: number) => {
+              ) : (<>{filtered.map((u: any, idx: number) => {
               const isBlocked = u.status === 'blocked';
               const isDeleted = u.status === 'deleted';
               const remainingDays = isDeleted && u.updated_at ? Math.max(0, 14 - Math.floor((Date.now() - new Date(u.updated_at).getTime()) / (1000 * 60 * 60 * 24))) : 0;
@@ -1499,7 +1499,7 @@ export default function AdminPage() {
                 )}
               </div>
               );
-            });
+            })}</>);
             })()}
             {hasMore && (
               <div className="flex justify-center py-3">

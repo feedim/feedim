@@ -21,9 +21,10 @@ export default memo(function LazyAvatar({
   const sanitizedSrc = sanitizeAvatarUrl(src);
   const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
   const avatarBorderStyle = /\bborder\b/.test(borderClass) ? { borderWidth: "0.9px" } : undefined;
 
-  useEffect(() => { setLoaded(false); }, [sanitizedSrc]);
+  useEffect(() => { setLoaded(false); setErrored(false); }, [sanitizedSrc]);
 
   useLayoutEffect(() => {
     const img = imgRef.current;
@@ -40,7 +41,7 @@ export default memo(function LazyAvatar({
     return () => img.removeEventListener("lazyloaded", markLoaded);
   }, [markLoaded]);
 
-  if (!sanitizedSrc) {
+  if (!sanitizedSrc || errored) {
     return (
       <img
         className={`default-avatar-auto bg-bg-tertiary ${sizeClass} rounded-full object-cover ${borderClass} ${className}`}
@@ -54,9 +55,9 @@ export default memo(function LazyAvatar({
   return (
     <div className={`relative ${sizeClass} ${className}`}>
       <div
-        className={`w-full h-full rounded-full overflow-hidden ${loaded ? borderClass : ""}`}
+        className={`w-full h-full rounded-full overflow-hidden ${borderClass}`}
         style={{
-          ...(loaded ? avatarBorderStyle : undefined),
+          ...avatarBorderStyle,
           transform: "translateZ(0)",
         }}
       >
@@ -66,16 +67,17 @@ export default memo(function LazyAvatar({
           data-src={sanitizedSrc}
           alt={alt}
           decoding="async"
+          onError={() => setErrored(true)}
           className={`lazyload w-full h-full object-cover bg-bg-tertiary transition-opacity duration-200 ${
             loaded ? "opacity-100" : "opacity-0"
           }`}
         />
       </div>
       <div
-        className={`absolute inset-0 rounded-full bg-bg-tertiary ${loaded ? borderClass : ""} ${
+        className={`absolute inset-0 rounded-full bg-bg-tertiary ${borderClass} ${
           loaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
         }`}
-        style={{ ...(loaded ? avatarBorderStyle : undefined), transition: "opacity 250ms ease" }}
+        style={{ ...avatarBorderStyle, transition: "opacity 250ms ease" }}
       />
     </div>
   );

@@ -24,6 +24,10 @@ export default function ImageViewer({ images, initialIndex, open, onClose }: Ima
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const isZoomed = scale > 1.05;
 
+  // Swipe drag offset (visual feedback during drag)
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const swipeLocked = useRef(false); // true = horizontal swipe committed
+
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -171,8 +175,30 @@ export default function ImageViewer({ images, initialIndex, open, onClose }: Ima
       const dy = t.clientY - panStart.current.y;
       setTranslate({ x: panStart.current.tx + dx, y: panStart.current.ty + dy });
       isDragging.current = true;
+      return;
     }
-  }, [isZoomed]);
+    // Swipe drag (not zoomed)
+    if (e.touches.length === 1 && touchStart.current && !isZoomed && images.length > 1) {
+      const t = e.touches[0];
+      const dx = t.clientX - touchStart.current.x;
+      const dy = t.clientY - touchStart.current.y;
+      // Lock direction after 8px movement
+      if (!swipeLocked.current && Math.abs(dx) > 8) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          swipeLocked.current = true;
+        } else {
+          touchStart.current = null; // vertical scroll, bail out
+          return;
+        }
+      }
+      if (swipeLocked.current) {
+        e.preventDefault();
+        // Resistance at edges
+        const atEdge = (dx > 0 && currentIndex === 0) || (dx < 0 && currentIndex === images.length - 1);
+        setSwipeOffset(atEdge ? dx * 0.25 : dx);
+      }
+    }
+  }, [isZoomed, images.length, currentIndex]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     // Pinch end
@@ -191,17 +217,19 @@ export default function ImageViewer({ images, initialIndex, open, onClose }: Ima
     if (touchStart.current && !isZoomed && e.changedTouches.length > 0) {
       const t = e.changedTouches[0];
       const dx = t.clientX - touchStart.current.x;
-      const dy = t.clientY - touchStart.current.y;
       const dt = Date.now() - touchStart.current.time;
       const velocity = Math.abs(dx) / dt;
+      const threshold = 50;
 
-      if (Math.abs(dx) > 60 && velocity > 0.08 && Math.abs(dy) < Math.abs(dx)) {
-        if (dx > 0) goPrev();
-        else goNext();
+      if (swipeLocked.current && (Math.abs(dx) > threshold || velocity > 0.3)) {
+        if (dx > 0 && currentIndex > 0) goPrev();
+        else if (dx < 0 && currentIndex < images.length - 1) goNext();
       }
       touchStart.current = null;
+      swipeLocked.current = false;
+      setSwipeOffset(0);
     }
-  }, [scale, isZoomed, goPrev, goNext, resetZoom]);
+  }, [scale, isZoomed, goPrev, goNext, resetZoom, currentIndex, images.length]);
 
   // Mouse drag for pan (desktop)
   const mouseDown = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
@@ -268,7 +296,8 @@ export default function ImageViewer({ images, initialIndex, open, onClose }: Ima
           alt={currentImg.alt || ""}
           className="imgsp-image"
           style={{
-            transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
+            transform: `translateX(${swipeOffset}px) scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
+            transition: swipeOffset === 0 ? "transform 0.25s ease-out" : "none",
           }}
           draggable={false}
         />

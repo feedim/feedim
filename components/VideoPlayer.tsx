@@ -902,7 +902,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           onDragStart={(e) => e.preventDefault()}
         />
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60 sm:rounded-lg">
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60">
             <div className="text-center">
               <svg className="h-8 w-8 mx-auto mb-2 text-white/50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
               <p className="text-white/60 text-xs">{t("couldNotLoad")}</p>
@@ -926,7 +926,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
     <div ref={wrapperRef} className="relative overflow-visible">
       <div
         ref={containerRef}
-        className={`relative overflow-visible select-none group/vp sm:rounded-lg z-10 ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-screen !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
+        className={`relative overflow-hidden select-none group/vp sm:rounded-lg z-10 ${fakeFullscreen ? "!fixed !inset-0 !w-screen !h-screen !z-[99999] !rounded-none !overflow-hidden bg-black" : ""}`}
         style={!fakeFullscreen ? cinemaStyle : { paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)", paddingLeft: "env(safe-area-inset-left, 0px)", paddingRight: "env(safe-area-inset-right, 0px)" }}
         tabIndex={0}
         onMouseMove={disabled || pipActive ? undefined : handleMouseMove}
@@ -948,7 +948,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
           suppressHydrationWarning
           controlsList="nodownload noremoteplayback"
           draggable={false}
-          className={`w-full pointer-events-none select-none overflow-hidden ${fakeFullscreen ? "!rounded-none" : "sm:rounded-lg"} ${cinemaMode || fakeFullscreen ? "h-full object-contain" : "aspect-video"}`}
+          className={`w-full pointer-events-none select-none overflow-hidden ${fakeFullscreen ? "!rounded-none" : ""} ${cinemaMode || fakeFullscreen ? "h-full object-contain" : "aspect-video"}`}
           style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
@@ -956,7 +956,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
         {/* PiP active overlay — hides browser's "Playing in Picture-in-Picture" text */}
         {pipActive && (
-          <div className="absolute inset-0 bg-black flex items-center justify-center z-[5] sm:rounded-lg">
+          <div className="absolute inset-0 bg-black flex items-center justify-center z-[5]">
             <button onClick={togglePiP} className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
               <svg className="h-5 w-5" fill="none" stroke="white" strokeWidth={1.8} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="7" y="7" width="10" height="10" rx="1.5" />
@@ -976,7 +976,7 @@ const VideoPlayerInner = forwardRef<HTMLVideoElement, VideoPlayerProps>(function
 
         {/* Error */}
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm sm:rounded-lg">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="text-center">
               <svg className="h-10 w-10 text-white/40 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
               <p className="text-white/60 text-sm">{t("couldNotPlay")}</p>

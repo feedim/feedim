@@ -60,7 +60,10 @@ export default function CopyrightSettingsPage() {
     <AppLayout headerTitle={t("copyrightTitle")} hideRightSidebar>
       <div className="px-4 py-4">
         {loading ? (
-          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+          <div>
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+          </div>
         ) : copyrightEligible ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-accent-main font-bold">
@@ -88,13 +91,13 @@ export default function CopyrightSettingsPage() {
         ) : (
           <div className="space-y-4">
             <div className="bg-bg-secondary rounded-[15px] p-4 space-y-3">
-              <p className="text-sm text-text-primary">
+              <p className="text-sm text-text-primary font-semibold">
                 {t("copyrightAutoExplanation")}
               </p>
-              <p className="text-xs text-text-muted">
+              <p className="text-[0.8rem] text-text-muted">
                 {t("copyrightConditionsIntro")}
               </p>
-              <ul className="space-y-1.5 text-xs text-text-muted">
+              <ul className="space-y-1.5 text-[0.8rem] text-text-muted font-medium">
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>{t("copyrightCond1")}</li>
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>{t("copyrightCond2")}</li>
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>{t("copyrightCond3")}</li>
@@ -102,7 +105,7 @@ export default function CopyrightSettingsPage() {
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>{t("copyrightCond5")}</li>
                 <li className="flex items-start gap-2"><span className="text-accent-main mt-0.5">&#8226;</span>{t("copyrightCond6")}</li>
               </ul>
-              <p className="text-xs text-text-muted">
+              <p className="text-[0.8rem] text-text-muted">
                 {t("copyrightConditionsFooter")}
               </p>
             </div>

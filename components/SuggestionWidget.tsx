@@ -472,7 +472,7 @@ export default function SuggestionWidget() {
                       <p className="text-[0.85rem] font-semibold leading-snug line-clamp-2">
                         {post.title}
                       </p>
-                      <div className="flex items-center gap-3 mt-1.5 text-[0.72rem] text-text-muted">
+                      <div className="flex items-center gap-3 mt-0.5 text-[0.72rem] text-text-muted">
                         <span className="flex items-center gap-0.5">
                           {formatCount(post.view_count || 0)} {t("views")}
                         </span>

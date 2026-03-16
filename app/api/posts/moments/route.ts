@@ -274,7 +274,7 @@ export async function GET(req: NextRequest) {
 
     // Cached user data (parallel)
     const [blockedIds, followedUserIds, followedTagIds, likedAuthorIds, viewerAffinity, likedTagIds, trendingTagIds, userInterestIds] = await Promise.all([
-      user ? cached(`user:${user.id}:blocks`, 30, async () => {
+      user ? cached(`user:${user.id}:blocks`, 120, async () => {
         const { data: blocks } = await admin
           .from("blocks")
           .select("blocked_id, blocker_id")
@@ -282,7 +282,7 @@ export async function GET(req: NextRequest) {
         return new Set((blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id));
       }) : Promise.resolve(new Set<string>()),
 
-      user ? cached(`user:${user.id}:follows`, 30, async () => {
+      user ? cached(`user:${user.id}:follows`, 120, async () => {
         const { data: follows } = await admin
           .from("follows")
           .select("following_id")
@@ -290,7 +290,7 @@ export async function GET(req: NextRequest) {
         return (follows || []).map(f => f.following_id);
       }) : Promise.resolve([] as string[]),
 
-      user ? cached(`user:${user.id}:tag-follows`, 30, async () => {
+      user ? cached(`user:${user.id}:tag-follows`, 120, async () => {
         const { data: followedTags } = await admin
           .from("tag_follows")
           .select("tag_id")

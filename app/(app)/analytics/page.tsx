@@ -180,13 +180,18 @@ export default function AnalyticsPage() {
 
   if (!authorized) return (
     <AppLayout headerTitle={t("title")} hideRightSidebar>
-      <div className="px-4 py-20 text-center">
-        <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto mb-4">
-          <Lock className="h-7 w-7 text-accent-main" />
+      <div className="px-4 pb-4 space-y-5">
+        <p className="text-xs text-text-muted">{t("analyticsPageDesc")}</p>
+        <div className="bg-bg-secondary rounded-2xl px-4 pt-6 pb-4 text-center space-y-4">
+          <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
+            <Lock className="h-7 w-7 text-accent-main" />
+          </div>
+          <h3 className="text-lg font-bold mb-[-4px]">{t("premiumRequired")}</h3>
+          <p className="text-xs text-text-muted leading-relaxed mt-3">{t("premiumRequiredDesc")}</p>
+          <div className="space-y-2 pt-2">
+            <Link href="/settings/premium" className="block w-full t-btn accept">{t("goPremium")}</Link>
+          </div>
         </div>
-        <h2 className="text-lg font-bold mb-2">{t("premiumRequired")}</h2>
-        <p className="text-sm text-text-muted mb-6 leading-relaxed">{t("premiumRequiredDesc")}</p>
-        <Link href="/settings/premium" className="t-btn accept inline-flex">{t("goPremium")}</Link>
       </div>
     </AppLayout>
   );
@@ -198,6 +203,7 @@ export default function AnalyticsPage() {
   return (
     <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="pb-10">
+        <p className="text-xs text-text-muted px-4 pt-1 pb-2">{t("analyticsPageDesc")}</p>
         {/* Period tabs */}
         <div className="flex items-center gap-1 px-4 py-3 z-10">
           {(["7d", "30d", "90d"] as const).map(p => (

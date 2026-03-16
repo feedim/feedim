@@ -792,7 +792,8 @@ export default function CommentsModal({ open, onClose, postId, commentCount: ini
               src={pendingGif.preview}
               alt="GIF"
               decoding="async"
-              className="h-[60px] w-[60px] rounded-md overflow-hidden object-cover"
+              className="h-[60px] w-[60px] rounded-md overflow-hidden object-cover border border-border-primary"
+              style={{ borderWidth: "0.9px" }}
             />
             <button
               type="button"

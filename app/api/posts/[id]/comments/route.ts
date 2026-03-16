@@ -926,27 +926,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Create mention notifications (only for followers/following)
+    // Create mention notifications (only for followers/following) — batched
     const mentionMatches = trimmedContent.match(/@([A-Za-z0-9._-]+)/g);
     if (mentionMatches) {
-      const mentionedUsernames = [...new Set(mentionMatches.map((m: string) => m.slice(1).toLowerCase()))];
-      for (const mentionedUsername of mentionedUsernames.slice(0, 3)) {
-        const { data: mentionedUser } = await admin
+      const mentionedUsernames = [...new Set(mentionMatches.map((m: string) => m.slice(1).toLowerCase()))].slice(0, 3);
+      if (mentionedUsernames.length > 0) {
+        // Batch: fetch all mentioned profiles at once
+        const { data: mentionedProfiles } = await admin
           .from('profiles')
-          .select('user_id')
-          .eq('username', mentionedUsername)
-          .single();
-        if (mentionedUser && mentionedUser.user_id !== user.id) {
-          // Verify follow relationship (either direction)
-          const { count } = await admin
+          .select('user_id, username')
+          .in('username', mentionedUsernames);
+        const validMentions = (mentionedProfiles || []).filter(p => p.user_id !== user.id);
+        if (validMentions.length > 0) {
+          // Batch: check follow relationships for all mentioned users at once
+          const mentionedIds = validMentions.map(p => p.user_id);
+          const followOrConditions = mentionedIds.map(uid =>
+            `and(follower_id.eq.${user.id},following_id.eq.${uid}),and(follower_id.eq.${uid},following_id.eq.${user.id})`
+          ).join(',');
+          const { data: followRows } = await admin
             .from('follows')
-            .select('id', { count: 'exact', head: true })
-            .or(
-              `and(follower_id.eq.${user.id},following_id.eq.${mentionedUser.user_id}),and(follower_id.eq.${mentionedUser.user_id},following_id.eq.${user.id})`
-            );
-          if (count && count > 0) {
-            await createNotification({ admin, user_id: mentionedUser.user_id, actor_id: user.id, type: 'mention', object_type: 'comment', object_id: comment.id, content: trimmedContent.slice(0, 80) });
+            .select('follower_id, following_id')
+            .or(followOrConditions);
+          const connectedIds = new Set<string>();
+          for (const f of followRows || []) {
+            if (f.follower_id === user.id) connectedIds.add(f.following_id);
+            else connectedIds.add(f.follower_id);
           }
+          // Send notifications only to connected mentioned users
+          await Promise.all(
+            validMentions
+              .filter(p => connectedIds.has(p.user_id))
+              .map(p => createNotification({ admin, user_id: p.user_id, actor_id: user.id, type: 'mention', object_type: 'comment', object_id: comment.id, content: trimmedContent.slice(0, 80) }))
+          );
         }
       }
     }

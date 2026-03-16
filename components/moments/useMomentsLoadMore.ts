@@ -63,17 +63,20 @@ export function useMomentsLoadMore({
       }
 
       setLoadingMore(true);
-      const data = await loadMoments(moments.map((moment) => moment.id), feedMode);
-      if (cancelled) return;
+      try {
+        const data = await loadMoments(moments.map((moment) => moment.id), feedMode);
+        if (cancelled) return;
 
-      const newMoments = interactionHelpersRef.current.applyStoredInteractions(data.moments as Moment[]);
-      setMoments((prev) => {
-        const existingIds = new Set(prev.map((moment) => moment.id));
-        return [...prev, ...newMoments.filter((moment) => !existingIds.has(moment.id))];
-      });
-      setHasMore(data.hasMore);
-      setLoadingMore(false);
-      interactionHelpersRef.current.hydrateInteractions(newMoments);
+        const newMoments = interactionHelpersRef.current.applyStoredInteractions(data.moments as Moment[]);
+        setMoments((prev) => {
+          const existingIds = new Set(prev.map((moment) => moment.id));
+          return [...prev, ...newMoments.filter((moment) => !existingIds.has(moment.id))];
+        });
+        setHasMore(data.hasMore);
+        interactionHelpersRef.current.hydrateInteractions(newMoments);
+      } finally {
+        setLoadingMore(false);
+      }
     };
 
     void run();

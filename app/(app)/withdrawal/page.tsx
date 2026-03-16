@@ -183,7 +183,8 @@ export default function WithdrawalPage() {
 
   return (
     <AppLayout headerTitle={t("title")} hideRightSidebar>
-      <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
+      <div className="pb-4 px-3 sm:px-4 max-w-xl mx-auto space-y-5">
+        <p className="text-xs text-text-muted">{t("pageDesc")}</p>
         {loading ? (
           <>
             <div className="h-[120px] rounded-2xl bg-bg-secondary animate-pulse" />
@@ -193,19 +194,19 @@ export default function WithdrawalPage() {
           <>
             {/* Mevcut Bakiye */}
             <div className="bg-bg-secondary rounded-2xl p-5 text-center">
-              <p className="text-sm text-text-muted mb-2">{t("currentBalance")}</p>
+              <p className="text-[0.95rem] text-text-muted mb-2 font-semibold">{t("currentBalance")}</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-7 w-7 text-accent-main" />
                 <span className="text-3xl font-bold text-accent-main">{balance.toLocaleString(locale)}</span>
               </div>
-              <p className="text-sm text-text-muted">
-                ≈ {(balance * COIN_TO_TRY_RATE * (1 - COIN_COMMISSION_RATE)).toFixed(2)} TL <span className="text-xs">(net)</span>
+              <p className="text-xs text-text-muted">
+                ≈ {(balance * COIN_TO_TRY_RATE * (1 - COIN_COMMISSION_RATE)).toFixed(2)} TL <span className="text-[0.7rem]">(net)</span>
               </p>
             </div>
 
             {/* 0. Monetization / Professional / Private Gate */}
             {!isMonetizationEnabled || !isProfessionalAccount || isPrivateAccount ? (
-              <div className="px-4 py-6 text-center space-y-4">
+              <div className="bg-bg-secondary rounded-2xl px-4 pt-6 pb-4 text-center space-y-4">
                 <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
                   <Lock className="h-7 w-7 text-accent-main" />
                 </div>
@@ -216,7 +217,7 @@ export default function WithdrawalPage() {
                       ? t("privateAccountWarning")
                       : t("monetizationRequired")}
                 </h3>
-                <p className="text-sm text-text-muted leading-relaxed">
+                <p className="text-xs text-text-muted leading-relaxed mt-3">
                   {!isProfessionalAccount
                     ? t("professionalRequiredDesc")
                     : isPrivateAccount

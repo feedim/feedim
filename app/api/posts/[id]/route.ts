@@ -55,12 +55,18 @@ export async function GET(
         .maybeSingle(),
     ]);
 
-    // Check if viewer is staff (admin/moderator)
+    // Check if viewer is staff (admin/moderator) — parallel with related content below
     let isStaff = false;
+    let staffCheckPromise: Promise<void> | null = null;
     if (user) {
-      const { data: viewerP } = await adminClient.from('profiles').select('role').eq('user_id', user.id).single();
-      isStaff = viewerP?.role === 'admin' || viewerP?.role === 'moderator';
+      staffCheckPromise = adminClient.from('profiles').select('role').eq('user_id', user.id).single()
+        .then(({ data: viewerP }) => {
+          isStaff = viewerP?.role === 'admin' || viewerP?.role === 'moderator';
+        });
     }
+
+    // Wait for staff check before access control
+    if (staffCheckPromise) await staffCheckPromise;
 
     // Draft / removed / moderation check: only author or staff can see
     if (post.status !== 'published') {
@@ -168,15 +174,13 @@ export async function PUT(
     if (sound_id !== undefined) updates.sound_id = sound_id || null;
 
     if (title !== undefined) {
-      const trimmedTitle = (typeof title === 'string' ? title : '').trim();
+      // Strip HTML/code from title instead of rejecting
+      const trimmedTitle = (typeof title === 'string' ? title : '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
       if (!isMoment && trimmedTitle.length < VALIDATION.postTitle.min) {
         return NextResponse.json({ error: tErrors("titleMinLength", { min: VALIDATION.postTitle.min }) }, { status: 400 });
       }
       if (trimmedTitle.length > VALIDATION.postTitle.max) {
         return NextResponse.json({ error: tErrors("titleMaxLength", { max: VALIDATION.postTitle.max }) }, { status: 400 });
-      }
-      if (/<[^>]+>/.test(trimmedTitle)) {
-        return NextResponse.json({ error: tErrors("titleNoHtml") }, { status: 400 });
       }
       if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedTitle)) {
         return NextResponse.json({ error: tErrors("titleNoUrl") }, { status: 400 });
@@ -490,9 +494,8 @@ export async function PUT(
       }
     }
 
-    // Background AI moderation + copyright check — admin immune
-    const { data: updaterProfile } = await supabase.from('profiles').select('role').eq('user_id', user.id).single();
-    const isAdmin = updaterProfile?.role === 'admin';
+    // Background AI moderation + copyright check — admin immune (reuse early role check)
+    const isAdmin = isAdminEarly;
 
     // Check if post was previously approved by a moderator — skip re-flagging
     let isApprovedByModerator = false;

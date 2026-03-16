@@ -167,12 +167,16 @@ function getGroupedNotificationLink(n: GroupedNotification): string | null {
   if (n.type === "mention" && n.object_type === "comment" && n.post_slug && n.object_id) {
     return `/${n.post_slug}?comment=${encodeId(n.object_id)}`;
   }
-  if ((n.type === "like" || n.type === "comment" || n.type === "reply" || n.type === "mention" || n.type === "first_post" || n.type === "comeback_post" || n.type === "milestone" || n.type === "view_milestone") && n.post_slug) {
+  if ((n.type === "like" || n.type === "comment" || n.type === "reply" || n.type === "mention" || n.type === "first_post" || n.type === "comeback_post" || n.type === "milestone" || n.type === "view_milestone" || n.type === "comment_like" || n.type === "coin_earned" || n.type === "gift_received") && n.post_slug) {
     return `/${n.post_slug}`;
   }
   if (n.object_type === "comment" && n.comment_post_slug && n.object_id) {
     return `/${n.comment_post_slug}?comment=${encodeId(n.object_id)}`;
   }
+  // Fallback: if there's a post_slug, always link to it
+  if (n.post_slug) return `/${n.post_slug}`;
+  // Fallback: actor profile
+  if (n.actor?.username) return `/u/${n.actor.username}`;
   return null;
 }
 

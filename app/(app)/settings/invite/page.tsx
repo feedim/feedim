@@ -49,7 +49,7 @@ export default function InvitePage() {
 
   return (
     <AppLayout headerTitle={t("pageTitle")} hideRightSidebar>
-      <div className="py-6 px-4 space-y-6">
+      <div className="py-4 px-4 space-y-4">
         {/* URL */}
         {username && (
           <button
@@ -63,8 +63,8 @@ export default function InvitePage() {
               }
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[0.84rem] font-medium">{copied ? t("copied") : t("copyLink")}</p>
-              <p className="text-[0.72rem] text-text-muted truncate">{profileUrl}</p>
+              <p className="text-[0.87rem] font-medium">{copied ? t("copied") : t("copyLink")}</p>
+              <p className="text-[0.75rem] text-text-muted truncate">{profileUrl}</p>
             </div>
           </button>
         )}

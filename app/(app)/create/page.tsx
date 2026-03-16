@@ -89,7 +89,6 @@ function WritePageContent() {
   // Step 2
   const [featuredImage, setFeaturedImage] = useState("");
   const [featuredImagePreview, setFeaturedImagePreview] = useState("");
-  const [featuredImageLoaded, setFeaturedImageLoaded] = useState(false);
   const [coverDragging, setCoverDragging] = useState(false);
   const [visibility, setVisibility] = useState("public");
   const [allowComments, setAllowComments] = useState(true);
@@ -102,10 +101,6 @@ function WritePageContent() {
     const wordCount = content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
     if (wordCount < 50 && copyrightProtected) setCopyrightProtected(false);
   }, [content, copyrightProtected]);
-
-  useEffect(() => {
-    setFeaturedImageLoaded(false);
-  }, [featuredImagePreview, featuredImage]);
 
   // SEO meta
   const [metaTitle, setMetaTitle] = useState("");
@@ -701,14 +696,13 @@ function WritePageContent() {
                 {(featuredImagePreview || featuredImage) ? (
                   <div>
                     <div
-                      className={`relative flex min-h-[220px] items-center justify-center rounded-xl overflow-hidden ${featuredImageLoaded ? "border border-border-primary" : ""}`}
-                      style={featuredImageLoaded ? { borderWidth: "0.9px" } : undefined}
+                      className="relative flex min-h-[220px] items-center justify-center rounded-xl overflow-hidden border border-border-primary"
+                      style={{ borderWidth: "0.9px" }}
                     >
                       <img
                         src={featuredImagePreview || featuredImage}
                         alt={t("coverImage")}
                         className="block h-auto max-h-[520px] w-auto max-w-full object-contain"
-                        onLoad={() => setFeaturedImageLoaded(true)}
                       />
                       {imageUploading && (
                         <div className="absolute inset-0 bg-bg-secondary/80 animate-pulse" />
@@ -720,8 +714,7 @@ function WritePageContent() {
                           setImageUploading(false);
                           setFeaturedImage("");
                           setFeaturedImagePreview("");
-                          setFeaturedImageLoaded(false);
-                        }}
+                        }
                         className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
                       >
                         <X className="h-4 w-4" />

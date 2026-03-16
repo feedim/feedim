@@ -280,11 +280,12 @@ export default function ThumbnailPickerModal({
         {/* Preview area */}
         <div className="flex items-center justify-center">
           <div
-            className="relative overflow-hidden rounded-xl bg-black"
+            className="relative overflow-hidden rounded-xl bg-black border border-border-primary"
             style={{
               aspectRatio: aspectRatio === "16:9" ? "16/9" : "9/16",
               maxWidth: aspectRatio === "16:9" ? "100%" : "180px",
               width: "100%",
+              borderWidth: "0.9px",
             }}
           >
             {framePreview ? (

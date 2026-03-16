@@ -92,6 +92,7 @@ export default function SupportPageClient({
   const [activeRequest, setActiveRequest] = useState<{ id: number | string; status: string; created_at?: string | null } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [captchaOpen, setCaptchaOpen] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const isAppeal = type === "moderation_appeal";
   const isBugReport = type === "bug_report";
@@ -172,6 +173,8 @@ export default function SupportPageClient({
       setActiveRequest(data.activeRequest || null);
     } catch {
       feedimAlert("error", labels.tryAgainLater);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -244,13 +247,19 @@ export default function SupportPageClient({
   return (
     <AppLayout headerTitle={labels.title} hideRightSidebar>
       <div className="px-4 py-3 space-y-5">
-        {!activeRequest ? (
+        {initialLoading ? (
+          <div>
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse mt-3" />
+          </div>
+        ) : !activeRequest ? (
           <div className="space-y-1">
             <p className="text-[0.82rem] leading-[1.5] text-text-muted">{labels.description}</p>
           </div>
         ) : null}
 
-        {activeRequest ? (
+        {!initialLoading && activeRequest ? (
           <div className="space-y-3">
             <div className="text-[0.82rem] font-medium leading-[1.5] text-text-primary">
               {labels.activeRequestNotice}
@@ -263,7 +272,7 @@ export default function SupportPageClient({
           </div>
         ) : null}
 
-        {!activeRequest ? (
+        {!initialLoading && !activeRequest ? (
           <div className="space-y-1.5">
             <select
               value={type}
@@ -279,7 +288,7 @@ export default function SupportPageClient({
           </div>
         ) : null}
 
-        {!activeRequest ? (
+        {!initialLoading && !activeRequest ? (
         <div className="rounded-[18px] bg-bg-secondary p-4 space-y-4">
           {isAppeal && (
             <div className="space-y-1.5">

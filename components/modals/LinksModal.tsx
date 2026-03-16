@@ -183,11 +183,11 @@ export default function LinksModal({ open, onClose, onBack, links, onSave, premi
             {t("addLink")}
           </button>
         ) : !canMultiLink && slots.length >= MAX_LINKS_FREE ? (
-          <div className="px-4 py-5 text-center space-y-3">
+          <div className="bg-bg-secondary rounded-2xl px-4 py-5 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
               <Lock className="h-6 w-6 text-accent-main" />
             </div>
-            <p className="text-sm text-text-muted leading-relaxed">{t("linksRequirePremium")}</p>
+            <p className="text-xs text-text-muted leading-relaxed">{t("linksRequirePremium")}</p>
             <button
               type="button"
               onClick={() => { router.push("/settings/premium"); }}
@@ -198,7 +198,7 @@ export default function LinksModal({ open, onClose, onBack, links, onSave, premi
           </div>
         ) : null}
 
-        <p className="text-[0.7rem] text-text-muted text-center">
+        <p className="text-[0.7rem] text-text-muted font-medium text-center">
           {t("linksLimit", { max: maxLinks })}
         </p>
       </div>

@@ -184,7 +184,7 @@ export default function PremiumPage() {
           </Link>
           <button
             onClick={() => smartBack(router, "/")}
-            className="flex items-center gap-2 text-text-muted hover:text-text-primary transition hover:underline"
+            className="flex items-center gap-2 text-text-muted hover:text-text-primary transition"
           >
             <ArrowLeft className="h-5 w-5" />
             <span>{t("back")}</span>

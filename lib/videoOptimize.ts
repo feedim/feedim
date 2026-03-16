@@ -68,6 +68,70 @@ async function isFragmentedMp4(file: File): Promise<boolean> {
 }
 
 /**
+ * Remux a video file to MP4 container using ffmpeg.wasm.
+ * Uses -c copy (no re-encode) — fast, just changes container format.
+ */
+async function remuxWithFfmpeg(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<File> {
+  const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+  const { toBlobURL, fetchFile } = await import("@ffmpeg/util");
+
+  const ffmpeg = new FFmpeg();
+
+  ffmpeg.on("progress", ({ progress }) => {
+    onProgress?.(10 + Math.round(progress * 80));
+  });
+
+  onProgress?.(8);
+
+  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+  });
+
+  onProgress?.(10);
+
+  const inputExt = file.name.split(".").pop()?.toLowerCase() || "mov";
+  const inputName = `input.${inputExt}`;
+  const outputName = "output.mp4";
+  await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+  onProgress?.(15);
+
+  await ffmpeg.exec([
+    "-i", inputName,
+    "-c", "copy",
+    "-movflags", "+faststart",
+    "-f", "mp4",
+    outputName,
+  ]);
+
+  onProgress?.(92);
+
+  const data = await ffmpeg.readFile(outputName);
+  await ffmpeg.deleteFile(inputName).catch(() => {});
+  await ffmpeg.deleteFile(outputName).catch(() => {});
+  ffmpeg.terminate();
+
+  onProgress?.(95);
+
+  if (typeof data === "string") return file;
+
+  const outputFileName = file.name.replace(/\.[^.]+$/, ".mp4");
+  const optimized = new File([data.buffer as ArrayBuffer], outputFileName, {
+    type: "video/mp4",
+  });
+
+  if (optimized.size < file.size * 0.1) return file;
+
+  onProgress?.(100);
+  return optimized;
+}
+
+/**
  * Optimize a video file for instant web playback.
  *
  * - Fragmented MP4 → defragment with ffmpeg.wasm (copy codec, no re-encode)
@@ -82,10 +146,18 @@ export async function optimizeVideo(
   onProgress?: (pct: number) => void
 ): Promise<File> {
   try {
-    // Only process MP4/M4V files. MOV is left untouched because some mobile
-    // recordings decode/upload more reliably when we avoid client-side remuxing.
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (!["mp4", "m4v"].includes(ext || "")) return file;
+    const isMov = ext === "mov";
+    const isMp4 = ["mp4", "m4v"].includes(ext || "");
+
+    // Skip non-video files (webm, avi, etc. are handled server-side)
+    if (!isMp4 && !isMov) return file;
+
+    // MOV → remux to MP4 container via ffmpeg.wasm (copy codec, no re-encode)
+    if (isMov) {
+      onProgress?.(5);
+      return await remuxWithFfmpeg(file, onProgress);
+    }
 
     const fragmented = await isFragmentedMp4(file);
 

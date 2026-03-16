@@ -90,11 +90,15 @@ export default function VideoPage() {
   }, [feedMode, loadVideos]);
 
   const loadMore = async () => {
+    if (loadingMore) return;
     const user = await requireAuth();
     if (!user) return;
     setLoadingMore(true);
-    await loadVideos(page + 1, feedMode);
-    setLoadingMore(false);
+    try {
+      await loadVideos(page + 1, feedMode);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const handleFeedModeChange = (nextValue: string) => {

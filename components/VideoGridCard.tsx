@@ -48,7 +48,7 @@ export default function VideoGridCard({ video }: { video: VideoGridItem }) {
   return (
     <div className="group">
       <Link href={videoUrl} className="block">
-        <div className="relative aspect-video min-h-[120px] rounded-xl overflow-hidden bg-bg-tertiary mb-3">
+        <div className="relative aspect-video min-h-[120px] rounded-xl overflow-hidden bg-bg-tertiary mb-3 border border-border-primary" style={{ borderWidth: "0.9px" }}>
           {(video.video_thumbnail || video.featured_image) ? (
             <BlurImage
               src={(video.video_thumbnail || video.featured_image)!}

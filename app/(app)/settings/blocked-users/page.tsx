@@ -105,6 +105,7 @@ export default function BlockedUsersPage() {
   return (
     <AppLayout headerTitle={t("blockedUsersTitle")} hideRightSidebar>
       <div className="py-2">
+        <p className="text-xs text-text-muted mb-3 px-4">{t("blockedUsersPageDesc")}</p>
         {loading ? (
           <div className="space-y-0 px-4">
             {[1, 2, 3, 4, 5].map(i => (

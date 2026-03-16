@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ device_hash: dh, user_agent: navigator.userAgent })
-              }).catch(function(){});
+              }).then(function(){ try { sessionStorage.setItem("fdm-session-registered","1"); } catch(e){} }).catch(function(){});
             }
           } catch(e) {}
         })();

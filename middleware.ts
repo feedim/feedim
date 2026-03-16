@@ -58,7 +58,7 @@ const PUBLIC_LOCALE_PATHS = ['/help', '/landing', '/u/', '/embed/', '/leaving']
 const KNOWN_APP_PREFIXES = [
   '/api', '/explore', '/moments', '/video', '/note', '/notes', '/posts',
   '/notifications', '/bookmarks', '/analytics', '/coins', '/settings',
-  '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment',
+  '/profile', '/security', '/sounds', '/moderation', '/app-payment',
   '/subscription-payment', '/transactions', '/withdrawal', '/suggestions',
   '/create', '/login', '/register', '/onboarding', '/account-moderation',
   '/premium', '/payment', '/auth', '/help', '/landing', '/u', '/embed', '/leaving',
@@ -177,7 +177,7 @@ async function handleAccountChecks(
 ): Promise<{ response: NextResponse; earlyReturn?: NextResponse }> {
   const isAuthPage = pathname === '/login' || pathname === '/register'
   const isOnboarding = pathname === '/onboarding'
-  const isAdminPath = pathname.startsWith('/moderation') || pathname.startsWith('/admin')
+  const isAdminPath = pathname.startsWith('/moderation')
 
   const statusCookie = request.cookies.get('fdm-status')?.value
   const onboardingCookie = request.cookies.get('fdm-onboarding')?.value
@@ -253,9 +253,10 @@ async function handleAccountChecks(
 
   // --- Status enforcement ---
   if (needStatus && status === 'active') {
-    // Cache active status for 1 minute to skip DB on subsequent requests
+    // Cache active status for 5 minutes to skip DB on subsequent requests
+    // (status changes for active users are rare; non-active cached for 10s below)
     response.cookies.set('fdm-status', 'active', {
-      maxAge: 60, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
+      maxAge: 300, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
     })
   }
 
@@ -264,7 +265,7 @@ async function handleAccountChecks(
       maxAge: 10, httpOnly: true, secure: true, sameSite: 'lax', path: '/',
     })
 
-    if (pathname.startsWith('/api/') && !pathname.startsWith('/api/account/')) {
+    if (pathname.startsWith('/api/') && !pathname.startsWith('/api/account/') && !pathname.startsWith('/api/captcha/') && !pathname.startsWith('/api/auth/')) {
       return {
         response,
         earlyReturn: NextResponse.json(
@@ -344,7 +345,7 @@ function handleRouteProtection(
 ): NextResponse {
   const publicAppPaths = ['/explore', '/moments', '/video', '/note', '/notes', '/posts', '/sounds', '/dashboard']
   const isPublicApp = publicAppPaths.includes(pathname) || pathname.startsWith('/explore/') || pathname.startsWith('/video/') || pathname.startsWith('/note/') || pathname.startsWith('/moments/') || pathname.startsWith('/dashboard/')
-  const appPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/admin', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create', '/dashboard', '/report']
+  const appPaths = ['/', '/explore', '/moments', '/video', '/note', '/notes', '/posts', '/notifications', '/bookmarks', '/analytics', '/coins', '/settings', '/profile', '/security', '/sounds', '/moderation', '/app-payment', '/subscription-payment', '/transactions', '/withdrawal', '/suggestions', '/create', '/dashboard', '/report']
   const isAppPath = appPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isProtected = isAppPath && !isPublicApp
   const isAuthPage = pathname === '/login' || pathname === '/register'
@@ -492,7 +493,7 @@ export const config = {
     '/security',
     '/sounds/:path*',
     '/moderation',
-    '/admin/:path*',
+
     '/app-payment',
     '/subscription-payment',
     '/transactions',

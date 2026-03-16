@@ -72,17 +72,22 @@ export default function AccountHealthPage() {
 
   return (
     <AppLayout headerTitle={t("healthTitle")} hideRightSidebar>
-      <div className="px-4 py-4 space-y-5">
+      <div className="px-4 pb-4 space-y-5">
+        <p className="text-xs text-text-muted">{t("healthPageDesc")}</p>
         {loading ? (
-          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+          <div className="space-y-4">
+            <div className="h-[180px] rounded-[15px] bg-bg-secondary animate-pulse" />
+            <div className="h-[220px] rounded-[15px] bg-bg-secondary animate-pulse" />
+            <div className="h-[90px] rounded-[15px] bg-bg-secondary animate-pulse" />
+          </div>
         ) : (
           <>
             {/* Trust Score */}
             <div className="bg-bg-secondary rounded-[15px] p-5">
               <div className="flex flex-col items-center text-center space-y-2">
                 <span className="text-5xl font-bold text-text-primary">%{trustScore}</span>
-                <p className="text-sm font-medium text-text-primary">{t("healthTrustScore")}</p>
-                <p className="text-[0.72rem] text-text-muted">
+                <p className="text-[0.95rem] font-semibold text-text-primary !mb-0">{t("healthTrustScore")}</p>
+                <p className="text-[0.72rem] text-text-muted !mt-0 !mb-0">
                   {trustScore >= 70
                     ? t("healthScoreHealthy")
                     : trustScore >= 40
@@ -106,7 +111,7 @@ export default function AccountHealthPage() {
             {/* Strike Rights */}
             <div className="bg-bg-secondary rounded-[15px] p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-text-primary">{t("healthStrikeRights")}</p>
+                <p className="text-[0.91rem] font-semibold text-text-primary">{t("healthStrikeRights")}</p>
                 {totalStrikes > 0 && (
                   <span className="text-xs text-error font-medium">{t("healthTotalStrikes", { count: totalStrikes })}</span>
                 )}
@@ -115,7 +120,7 @@ export default function AccountHealthPage() {
               {categories.map((item) => (
                 <div key={item.labelKey} className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-text-primary">{t(item.labelKey)}</p>
+                    <p className="text-[0.8rem] font-semibold text-text-primary">{t(item.labelKey)}</p>
                     <span className={`text-xs ${item.count > 0 ? "text-error font-medium" : "text-text-muted"}`}>{item.count}/{item.max}</span>
                   </div>
                   <div className="flex gap-1">
@@ -143,13 +148,13 @@ export default function AccountHealthPage() {
 
             {/* Links */}
             <div className="space-y-2">
-              <NewTabLink href="/help/moderation" className="block text-xs text-accent-main hover:underline">
+              <NewTabLink href="/help/moderation" className="block text-xs font-medium text-accent-main hover:underline">
                 {t("healthCopyrightLink")} &rarr;
               </NewTabLink>
-              <NewTabLink href="/help/community-guidelines" className="block text-xs text-accent-main hover:underline">
+              <NewTabLink href="/help/community-guidelines" className="block text-xs font-medium text-accent-main hover:underline">
                 {t("healthGuidelinesLink")} &rarr;
               </NewTabLink>
-              <NewTabLink href="/help/contact" className="block text-xs text-accent-main hover:underline">
+              <NewTabLink href="/help/contact" className="block text-xs font-medium text-accent-main hover:underline">
                 {t("healthSupportLink")} &rarr;
               </NewTabLink>
             </div>

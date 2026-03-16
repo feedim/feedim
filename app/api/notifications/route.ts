@@ -49,6 +49,14 @@ export async function GET(request: NextRequest) {
     // Only show notifications from the last 30 days
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Fetch blocks once — used by both countOnly and list paths
+    const { data: blocks } = await admin
+      .from("blocks")
+      .select("blocked_id, blocker_id")
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+    const blockedIdsList = (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id);
+    const blockedIdsSet = new Set(blockedIdsList);
+
     if (countOnly) {
       // Check if notifications are paused
       const { data: profile } = await admin
@@ -103,15 +111,8 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Filter out blocked users
-      const { data: blocks } = await admin
-        .from("blocks")
-        .select("blocked_id, blocker_id")
-        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-      const blockedIds = new Set((blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id));
-
       const count = gatedUnreadNotifs.filter(n =>
-        !n.actor_id || (!inactiveActors.has(n.actor_id) && !blockedIds.has(n.actor_id))
+        !n.actor_id || (!inactiveActors.has(n.actor_id) && !blockedIdsSet.has(n.actor_id))
       ).length;
 
       const response = NextResponse.json({ unread_count: count });
@@ -123,13 +124,6 @@ export async function GET(request: NextRequest) {
     const limit = 20;
     const offset = (page - 1) * limit;
 
-    // Filter out notifications from blocked users
-    const { data: blocks } = await admin
-      .from("blocks")
-      .select("blocked_id, blocker_id")
-      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-    const blockedIds = (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id);
-
     let query = admin
       .from("notifications")
       .select("id, user_id, actor_id, type, object_type, object_id, content, is_read, created_at")
@@ -138,7 +132,7 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit);
 
-    for (const bid of blockedIds) {
+    for (const bid of blockedIdsList) {
       query = query.neq("actor_id", bid);
     }
 

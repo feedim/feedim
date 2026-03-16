@@ -84,7 +84,7 @@ export default function PaymentFailedPage() {
             {t("goHome")}
           </Link>
 
-          <NewTabLink href="/help" className="block text-text-muted hover:text-text-primary transition hover:underline text-sm">
+          <NewTabLink href="/help" className="block text-text-muted hover:text-text-primary transition text-sm">
             {t("helpCenter")}
           </NewTabLink>
         </div>

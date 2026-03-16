@@ -36,9 +36,10 @@ export default memo(function EditableAvatar({
   const sanitizedSrc = sanitizeAvatarUrl(src);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgErrored, setImgErrored] = useState(false);
   const avatarBorderStyle = { borderWidth: "0.9px" } as const;
 
-  useEffect(() => { setImgLoaded(false); }, [sanitizedSrc]);
+  useEffect(() => { setImgLoaded(false); setImgErrored(false); }, [sanitizedSrc]);
 
   // Before paint — if cached, skip skeleton entirely
   useLayoutEffect(() => {
@@ -61,8 +62,8 @@ export default memo(function EditableAvatar({
 
   useEffect(() => {
     const img = imgRef.current;
-    if (!img || !onError) return;
-    const handler = () => onError();
+    if (!img) return;
+    const handler = () => { setImgErrored(true); onError?.(); };
     img.addEventListener("error", handler);
     return () => img.removeEventListener("error", handler);
   }, [onError]);
@@ -73,13 +74,13 @@ export default memo(function EditableAvatar({
       className={`relative block group ${editable ? "cursor-pointer" : ""} ${className || ""}`}
       aria-label={t("viewAvatar")}
     >
-      {sanitizedSrc ? (
+      {sanitizedSrc && !imgErrored ? (
         <>
           {/* Image wrapper — skip blur when noBlur (upload areas show dark overlay instead) */}
           <div
-            className={`${sizeClass} rounded-full overflow-hidden ${imgLoaded ? "border border-border-primary" : ""}`}
+            className={`${sizeClass} rounded-full overflow-hidden border border-border-primary`}
             style={{
-              ...(imgLoaded ? avatarBorderStyle : undefined),
+              ...avatarBorderStyle,
               transform: "translateZ(0)",
             }}
           >
@@ -95,10 +96,10 @@ export default memo(function EditableAvatar({
           {/* Skeleton pulse — hide when noBlur */}
           {!noBlur && (
             <div
-              className={`absolute inset-0 rounded-full bg-bg-tertiary ${imgLoaded ? "border border-border-primary" : ""} ${
+              className={`absolute inset-0 rounded-full bg-bg-tertiary border border-border-primary ${
                 imgLoaded ? "opacity-0 pointer-events-none" : "opacity-100 animate-pulse"
               }`}
-              style={{ ...(imgLoaded ? avatarBorderStyle : undefined), transition: "opacity 250ms ease" }}
+              style={{ ...avatarBorderStyle, transition: "opacity 250ms ease" }}
             />
           )}
         </>

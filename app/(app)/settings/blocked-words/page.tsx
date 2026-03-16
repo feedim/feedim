@@ -95,12 +95,14 @@ export default function BlockedWordsPage() {
   return (
     <AppLayout headerTitle={t("blockedWords")} hideRightSidebar>
       <div className="py-2 px-4">
-        <p className="text-sm text-text-muted mb-4">
+        <p className="text-xs text-text-muted mb-4">
           {t("blockedWordsPageDesc")}
         </p>
 
         {loading ? (
-          <div className="flex justify-center py-8"><span className="loader" style={{ width: 22, height: 22 }} /></div>
+          <div>
+            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
+          </div>
         ) : (
           <>
             {/* Add word input */}

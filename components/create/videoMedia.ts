@@ -95,10 +95,14 @@ interface RunManagedVideoUploadOptions {
   messages: VideoUploadMessages;
   setUploading: (uploading: boolean) => void;
   setUploadProgress: (progress: number) => void;
-  onSuccess: (publicUrl: string) => void;
+  onSuccess: (publicUrl: string, feedimFileId?: string) => void;
   onError: (error: Error) => void;
   mapProgress?: (fraction: number) => number;
   initProgress?: number;
+  /** Pass "video" or "moment" to enable server-side H.264/AAC optimization after upload */
+  optimizeContentType?: "video" | "moment";
+  /** Called when server-side optimization starts */
+  onOptimizeStart?: () => void;
 }
 
 export async function uploadFrameSampleImages(blobs: Blob[]): Promise<string[]> {
@@ -126,7 +130,7 @@ export async function uploadVideoWithPresign({
   messages,
   onInitComplete,
   onUploadProgress,
-}: UploadVideoWithPresignOptions): Promise<string> {
+}: UploadVideoWithPresignOptions): Promise<{ publicUrl: string; feedimFileId: string }> {
   const initRes = await fetch("/api/upload/video", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -143,7 +147,7 @@ export async function uploadVideoWithPresign({
     throw new Error(initData.error || messages.uploadInitFailed);
   }
 
-  const { uploadUrl, publicUrl } = initData;
+  const { uploadUrl, publicUrl, feedimFileId } = initData;
   onInitComplete?.();
 
   await new Promise<void>((resolve, reject) => {
@@ -172,7 +176,7 @@ export async function uploadVideoWithPresign({
     xhr.send(file);
   });
 
-  return publicUrl;
+  return { publicUrl, feedimFileId };
 }
 
 export async function prepareThumbnailDataUrl(
@@ -355,6 +359,8 @@ export async function runManagedVideoUpload({
   onError,
   mapProgress,
   initProgress,
+  optimizeContentType,
+  onOptimizeStart,
 }: RunManagedVideoUploadOptions) {
   const abort = new AbortController();
   uploadAbortRef.current = abort;
@@ -366,7 +372,10 @@ export async function runManagedVideoUpload({
       setUploadProgress(initProgress);
     }
 
-    const publicUrl = await uploadVideoWithPresign({
+    // Upload maps to 0-80% when optimize is enabled, 0-100% otherwise
+    const hasOptimize = !!optimizeContentType;
+
+    const { publicUrl, feedimFileId } = await uploadVideoWithPresign({
       file,
       signal: abort.signal,
       messages,
@@ -377,11 +386,39 @@ export async function runManagedVideoUpload({
             }
           : undefined,
       onUploadProgress: (fraction) => {
-        setUploadProgress(mapProgress ? mapProgress(fraction) : Math.round(fraction * 100));
+        if (hasOptimize) {
+          // Upload phase: 0-80%
+          setUploadProgress(mapProgress ? mapProgress(fraction * 0.8) : Math.round(fraction * 80));
+        } else {
+          setUploadProgress(mapProgress ? mapProgress(fraction) : Math.round(fraction * 100));
+        }
       },
     });
 
-    onSuccess(publicUrl);
+    // Server-side H.264/AAC optimization
+    let finalUrl = publicUrl;
+    if (hasOptimize) {
+      try {
+        onOptimizeStart?.();
+        setUploadProgress(82);
+        const res = await fetch("/api/upload/video/optimize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoUrl: publicUrl, contentType: optimizeContentType }),
+          signal: abort.signal,
+        });
+        setUploadProgress(95);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.optimizedUrl) finalUrl = data.optimizedUrl;
+        }
+        // If optimize fails, use original URL (already uploaded)
+      } catch {
+        // Optimization failed — proceed with original upload
+      }
+    }
+
+    onSuccess(finalUrl, feedimFileId);
     setUploadProgress(100);
   } catch (err) {
     if ((err as Error).name === "AbortError") return;

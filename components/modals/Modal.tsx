@@ -480,7 +480,7 @@ export default function Modal({
   // Sheet layout classes based on animation type
   const sheetLayoutClasses = resolvedType === 2
     ? `relative h-full ${sizeClasses[size]} bg-bg-secondary rounded-l-[20px] overflow-hidden flex flex-col will-change-transform transform-gpu`
-    : `relative w-full ${sizeClasses[size]} bg-bg-secondary ${centerOnMobile ? "!rounded-[20px] max-h-[90dvh]" : "rounded-t-[20px] max-h-[90dvh]"} ${centerOnDesktop ? "sm:!rounded-[20px] sm:!max-h-[85dvh]" : "sm:max-h-[95dvh]"} ${fullHeight ? "min-h-[90dvh] sm:min-h-[95dvh]" : ""} overflow-hidden flex flex-col will-change-transform transform-gpu`;
+    : `relative w-full ${sizeClasses[size]} bg-bg-secondary ${centerOnMobile ? "!rounded-[20px] max-h-[90dvh]" : "rounded-t-[20px] max-h-[90dvh]"} ${centerOnDesktop ? "sm:!rounded-[20px] sm:!max-h-[85dvh]" : "sm:max-h-[95dvh]"} ${fullHeight ? "min-h-[90dvh] sm:min-h-0 sm:!max-h-[600px]" : ""} overflow-hidden flex flex-col will-change-transform transform-gpu`;
 
   const containerAlignClasses = resolvedType === 2
     ? `fixed inset-0 ${zIndex} flex items-stretch justify-end`

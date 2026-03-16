@@ -103,6 +103,7 @@ function MomentWriteContent() {
   // Video
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoFeedimId, setVideoFeedimId] = useState("");
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -411,7 +412,9 @@ function MomentWriteContent() {
     setFrameHashes,
     setAudioHashes,
     setNsfwFrameUrls,
+    setVideoFeedimId,
     progressMap: (fraction) => Math.round(fraction * 95),
+    optimizeContentType: "moment",
   });
 
   const savePost = async (status: "draft" | "published") => {
@@ -454,6 +457,7 @@ function MomentWriteContent() {
           featured_image: thumbUrl || null,
           video_url: videoUrl || null,
           video_duration: videoDuration || null,
+          video_feedim_id: videoFeedimId || null,
           video_thumbnail: thumbUrl || null,
           blurhash: thumbBlurhash,
           allow_comments: allowComments,
@@ -728,8 +732,8 @@ function MomentWriteContent() {
             <div className="flex flex-col items-center">
               {thumbnail ? (
                 <div className="flex flex-col items-center">
-                  <div className="relative rounded-xl overflow-hidden max-w-[160px]">
-                    <img src={thumbnail} alt={t("thumbnail")} className="w-full aspect-[9/16] object-contain bg-bg-tertiary" />
+                  <div className="relative rounded-xl overflow-hidden max-w-[160px] border border-border-primary" style={{ borderWidth: "0.9px" }}>
+                    <img src={thumbnail} alt={t("thumbnail")} className="w-full aspect-[9/16] object-cover bg-bg-tertiary" />
                     <button onClick={() => setThumbnail("")} className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition" aria-label={t("thumbnailRemove")}>
                       <X className="h-4 w-4" />
                     </button>

@@ -78,7 +78,8 @@ export default function CoinsBuyPage() {
 
   return (
     <AppLayout headerTitle={t("buyTokens")} hideRightSidebar>
-      <div className="py-4 px-3 sm:px-4 max-w-xl mx-auto">
+      <div className="pb-4 px-3 sm:px-4 max-w-xl mx-auto">
+        <p className="text-xs text-text-muted mb-4">{t("buyPageDesc")}</p>
         {loading ? (
           <div className="space-y-5">
             <div className="h-[120px] rounded-2xl bg-bg-secondary animate-pulse" />
@@ -88,13 +89,13 @@ export default function CoinsBuyPage() {
           <div className="space-y-5">
             {/* Mevcut Bakiye */}
             <div className="bg-bg-secondary rounded-2xl p-5 text-center">
-              <p className="text-sm text-text-muted mb-2">{t("currentBalance")}</p>
+              <p className="text-[0.95rem] text-text-muted mb-2 font-semibold">{t("currentBalance")}</p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Coins className="h-7 w-7 text-accent-main" />
                 <span className="text-3xl font-bold text-accent-main">{balance.toLocaleString(locale)}</span>
               </div>
-              <p className="text-sm text-text-muted">
-                ≈ {(balance * COIN_TO_TRY_RATE * (1 - COIN_COMMISSION_RATE)).toFixed(2)} TL <span className="text-xs">(net)</span>
+              <p className="text-xs text-text-muted">
+                ≈ {(balance * COIN_TO_TRY_RATE * (1 - COIN_COMMISSION_RATE)).toFixed(2)} TL <span className="text-[0.7rem]">(net)</span>
               </p>
             </div>
 
@@ -112,7 +113,7 @@ export default function CoinsBuyPage() {
                   className="w-full pl-10 pr-4 py-3.5 border border-border-primary rounded-[13px] text-lg font-bold focus:outline-none focus:border-accent-main transition"
                 />
               </div>
-              <p className="text-xs text-text-muted mt-2">
+              <p className="text-[0.7rem] text-text-muted mt-2">
                 {t("minAmount", { min: COIN_MIN_PURCHASE.toLocaleString(locale) })} — {t("maxAmount", { max: COIN_MAX_PURCHASE.toLocaleString(locale) })}
               </p>
             </div>
@@ -151,7 +152,7 @@ export default function CoinsBuyPage() {
             </button>
 
             {/* Komisyon Bilgisi */}
-            <p className="text-xs text-text-muted text-center">
+            <p className="text-[0.7rem] text-text-muted text-center">
               {t("commissionInfo", { rate: COIN_COMMISSION_RATE * 100 })}
             </p>
           </div>

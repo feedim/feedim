@@ -98,7 +98,7 @@ export default function VideoSidebar({ videos, title, compact }: VideoSidebarPro
             className="flex gap-2.5 group rounded-lg hover:bg-bg-secondary p-1.5 -mx-1.5 transition"
           >
             {/* Thumbnail */}
-            <div className={`relative rounded-md overflow-hidden bg-bg-tertiary shrink-0 ${compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]"}`}>
+            <div className={`relative rounded-md overflow-hidden bg-bg-tertiary shrink-0 border border-border-primary ${compact ? "w-[120px] h-[68px]" : "w-[140px] h-[79px]"}`} style={{ borderWidth: "0.9px" }}>
               {(video.video_thumbnail || video.featured_image) ? (
                 <BlurImage
                   src={(video.video_thumbnail || video.featured_image)!}

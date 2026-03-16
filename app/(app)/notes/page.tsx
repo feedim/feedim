@@ -144,11 +144,15 @@ export default function CommunityNotesPage() {
   }, [posts, isLoggedIn]);
 
   const loadMore = async () => {
+    if (loadingMore) return;
     const user = await requireAuth();
     if (!user) return;
     setLoadingMore(true);
-    await loadNotes(page + 1, feedMode);
-    setLoadingMore(false);
+    try {
+      await loadNotes(page + 1, feedMode);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const handleFeedModeChange = (nextValue: string) => {

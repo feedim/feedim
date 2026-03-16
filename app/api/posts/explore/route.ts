@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     let followedIdSet = new Set<string>();
     if (user) {
       [blockedIds, followedIdSet] = await Promise.all([
-        cached(`user:${user.id}:blocks`, 30, async () => {
+        cached(`user:${user.id}:blocks`, 120, async () => {
           const { data: blocks } = await admin
             .from('blocks')
             .select('blocked_id, blocker_id')
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
             (blocks || []).map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id)
           );
         }),
-        cached(`user:${user.id}:follows`, 30, async () => {
+        cached(`user:${user.id}:follows`, 120, async () => {
           const { data: followedUsers } = await admin
             .from('follows')
             .select('following_id')
@@ -155,13 +155,37 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter out posts from inactive or private authors (own posts + followed always visible)
-    const activePosts = (posts || []).filter((p: any) => {
+    let activePosts = (posts || []).filter((p: any) => {
       const author = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
       if (!author) return false;
       if (author.status && author.status !== 'active') return false;
       if (author.account_private && author.user_id !== user?.id && !followedIdSet.has(author.user_id)) return false;
       return true;
     });
+
+    // Fallback: if page 1 is empty and no tag filter, retry including followed users' posts
+    if (activePosts.length === 0 && page === 1 && !tagSlug) {
+      const { data: fallbackPosts } = await admin
+        .from('posts')
+        .select(`
+          id, title, slug, excerpt, featured_image, reading_time, like_count, comment_count, view_count, save_count, share_count, trending_score, published_at, content_type, video_duration, video_thumbnail, video_url, blurhash, visibility, is_nsfw,
+          profiles!posts_author_id_fkey(user_id, name, surname, full_name, username, avatar_url, is_verified, premium_plan, role, status, account_private),
+          post_tags(tag_id, tags(id, name, slug))
+        `)
+        .eq('status', 'published')
+        .eq('is_nsfw', false)
+        .neq('content_type', 'moment')
+        .order('trending_score', { ascending: false })
+        .limit(FEED_PAGE_SIZE);
+
+      activePosts = (fallbackPosts || []).filter((p: any) => {
+        const author = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+        if (!author) return false;
+        if (author.status && author.status !== 'active') return false;
+        return true;
+      });
+    }
+
     const hasMore = activePosts.length > FEED_PAGE_SIZE;
     let pagePosts = activePosts.slice(0, FEED_PAGE_SIZE);
 

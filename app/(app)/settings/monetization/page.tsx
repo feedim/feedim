@@ -123,9 +123,7 @@ export default function MonetizationSettingsPage() {
     <AppLayout headerTitle={t("title")} hideRightSidebar>
       <div className="px-4 py-4">
         {loading ? (
-          <div className="space-y-4">
-            <div className="h-[9px] w-32 bg-bg-secondary rounded-[5px] animate-pulse" />
-            <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
+          <div>
             <div className="h-[62px] rounded-[13px] bg-bg-secondary animate-pulse" />
           </div>
         ) : monetizationEnabled ? (

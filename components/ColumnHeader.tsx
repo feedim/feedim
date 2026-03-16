@@ -83,7 +83,7 @@ export default memo(function ColumnHeader({ rightAction, onBack, customTitle, sc
         ) : (
           <div className="flex items-center gap-2.5">
             <BackButton onClick={handleBack} className="i-btn !w-8 !h-8 text-text-primary" />
-            <span className={`text-[1.1rem] font-bold ${!pageTitle ? "hidden" : ""}`}>{pageTitle || ""}</span>
+            <span className={`text-[1.2rem] font-bold ${!pageTitle ? "hidden" : ""}`}>{pageTitle || ""}</span>
           </div>
         )}
 

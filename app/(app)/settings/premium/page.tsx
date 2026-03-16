@@ -323,7 +323,7 @@ export default function PremiumSettingsPage() {
               <div className="flex justify-center mb-4">
                 <VerifiedBadge size="lg" className="!h-[36px] !w-[36px] !min-w-[36px]" />
               </div>
-              <h2 className="text-[1.2rem] font-bold mb-2">{t("noSubscription")}</h2>
+              <h2 className="text-[1.3rem] font-bold mb-2">{t("noSubscription")}</h2>
             </div>
 
             <div className="space-y-3 mb-8">
@@ -337,7 +337,7 @@ export default function PremiumSettingsPage() {
               ].map((text, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <Check className="h-4 w-4 text-accent-main shrink-0" strokeWidth={2.5} />
-                  <span className="text-sm text-text-muted">{text}</span>
+                  <span className="text-sm text-text-muted font-medium">{text}</span>
                 </div>
               ))}
             </div>
@@ -349,7 +349,7 @@ export default function PremiumSettingsPage() {
               {t("viewPremiumPlans")}
             </Link>
 
-            <p className="text-[0.8rem] text-text-muted leading-relaxed text-center mt-4 max-w-xs mx-auto">
+            <p className="text-[0.72rem] text-text-muted leading-relaxed text-center mt-4 max-w-xs mx-auto">
               {t("premiumCta")}
             </p>
           </div>

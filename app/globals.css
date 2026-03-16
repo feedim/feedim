@@ -1676,6 +1676,13 @@ html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-
   --bg-elevated: var(--bg-solid-elevated);
 }
 
+/* Ambient light: public pages (no glow canvas) → restore solid backgrounds */
+html[data-ambient-light] .public-page {
+  --bg-secondary: var(--bg-solid-secondary);
+  --bg-tertiary: var(--bg-solid-tertiary);
+  --bg-elevated: var(--bg-solid-elevated);
+}
+
 /* Ambient light: frosted glass overlays (e.g. İstatistikler card) */
 html[data-ambient-light] .bg-bg-blur-overlay {
   backdrop-filter: blur(24px) saturate(1.2);
@@ -1696,21 +1703,25 @@ html[data-ambient-light] .cancel {
   -webkit-backdrop-filter: blur(12px) saturate(1.2);
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .t-btn.cancel {
-  background-color: var(--bg-solid-elevated) !important;
+  background-color: var(--bg-secondary) !important;
   opacity: 1;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .t-btn.cancel:hover,
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .t-btn.cancel:active {
-  background-color: var(--bg-solid-elevated) !important;
+  background-color: var(--bg-secondary) !important;
 }
-html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel {
-  background-color: var(--bg-solid-elevated) !important;
+/* bg-secondary arka planlı alanların içindeki cancel → beyaz (alert, modal vb.) */
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel,
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-bg-secondary .t-btn.cancel {
+  background-color: var(--bg-primary) !important;
 }
 html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel:hover,
-html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel:active {
-  background-color: var(--bg-solid-elevated) !important;
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) [data-modal="true"] .t-btn.cancel:active,
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-bg-secondary .t-btn.cancel:hover,
+html[data-ambient-light]:not([data-theme="dark"]):not([data-theme="dim"]) .bg-bg-secondary .t-btn.cancel:active {
+  background-color: var(--bg-primary) !important;
 }
 /* Full-screen loaders: always opaque regardless of ambient light */
 .bg-solid-primary {

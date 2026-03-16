@@ -12,28 +12,33 @@ const NOTIFICATION_SETTING_TYPES = [
 
 // GET — fetch notification settings
 export async function GET() {
-  const tErrors = await getTranslations("apiErrors");
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
+  try {
+    const tErrors = await getTranslations("apiErrors");
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: tErrors("unauthorized") }, { status: 401 });
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("notification_settings, notifications_paused_until")
-    .eq("user_id", user.id)
-    .single();
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("notification_settings, notifications_paused_until")
+      .eq("user_id", user.id)
+      .single();
 
-  if (error) return safeError(error);
+    if (error) return safeError(error);
 
-  // Default: all enabled
-  const defaults: Record<string, boolean> = {};
-  for (const t of NOTIFICATION_SETTING_TYPES) defaults[t] = true;
+    // Default: all enabled
+    const defaults: Record<string, boolean> = {};
+    for (const t of NOTIFICATION_SETTING_TYPES) defaults[t] = true;
 
-  const settings = profile?.notification_settings || defaults;
-  const pausedUntil = profile?.notifications_paused_until || null;
-  const isPaused = pausedUntil ? new Date(pausedUntil) > new Date() : false;
+    const settings = profile?.notification_settings || defaults;
+    const pausedUntil = profile?.notifications_paused_until || null;
+    const isPaused = pausedUntil ? new Date(pausedUntil) > new Date() : false;
 
-  return NextResponse.json({ settings, pausedUntil, isPaused });
+    return NextResponse.json({ settings, pausedUntil, isPaused });
+  } catch (err) {
+    console.error("[notifications/settings GET]", err);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
 }
 
 // PUT — update notification settings

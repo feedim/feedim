@@ -270,12 +270,8 @@ function MomentsContent() {
   }
 
   if (moments.length === 0) {
-    return (
-      <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-transparent text-text-primary md:relative md:inset-auto md:z-auto md:h-screen" style={viewportHeightStyle}>
-        <p className="text-lg font-semibold mb-2">{t("noMoments")}</p>
-        <p className="text-sm text-text-muted">{t("createFirst")}</p>
-      </div>
-    );
+    router.replace("/profile");
+    return null;
   }
 
   return (

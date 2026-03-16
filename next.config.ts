@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-XSS-Protection', value: '0' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()' },
     ];
 
     return [
@@ -72,7 +72,7 @@ const nextConfig: NextConfig = {
         headers: [
           ...commonSecurityHeaders,
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://adservice.google.com https://www.google-analytics.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; media-src 'self' https://cdn.feedim.com https://imgspcdn.feedim.com https://*.r2.cloudflarestorage.com blob:; connect-src 'self' data: blob: https://*.supabase.co https://cdn.feedim.com https://imgspcdn.feedim.com https://*.r2.cloudflarestorage.com https://api.giphy.com https://unpkg.com https://www.google-analytics.com https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagmanager.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google wss://*.supabase.co; font-src 'self' https://fonts.gstatic.com; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://adservice.google.com https://www.google-analytics.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; media-src 'self' https://cdn.feedim.com https://imgspcdn.feedim.com https://*.r2.cloudflarestorage.com blob:; connect-src 'self' data: blob: https://*.supabase.co https://cdn.feedim.com https://imgspcdn.feedim.com https://*.r2.cloudflarestorage.com https://api.giphy.com https://unpkg.com https://www.google-analytics.com https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagmanager.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://csi.gstatic.com wss://*.supabase.co; font-src 'self' https://fonts.gstatic.com; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://www.openstreetmap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" },
         ]
       },
       // /embed/* — allow framing from anywhere (no X-Frame-Options, permissive CSP)

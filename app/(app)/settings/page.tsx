@@ -10,7 +10,7 @@ import {
   Shield, HelpCircle, FileText, MessageCircle, ScrollText,
   ChevronRight, Check, Lock, Briefcase, Ban, Bell,
   Smartphone, Link2, EyeOff, MapPin, Coins,
-  Sun, Moon, CloudMoon, Monitor, Sparkles, Keyboard, Globe
+  Sun, Moon, CloudMoon, Monitor, Sparkles, Keyboard, Globe, Mail, HeartPulse
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { feedimAlert } from "@/components/FeedimAlert";
@@ -19,6 +19,7 @@ import LazyAvatar from "@/components/LazyAvatar";
 import ShareIcon from "@/components/ShareIcon";
 import ProfessionalAccountModal from "@/components/modals/ProfessionalAccountModal";
 import DarkModeModal from "@/components/modals/DarkModeModal";
+import LocationModal from "@/components/modals/LocationModal";
 import { isProfessional, getCategoryLabelKey } from "@/lib/professional";
 import VerifiedBadge, { getBadgeVariant } from "@/components/VerifiedBadge";
 import { fetchWithCache, withCacheScope } from "@/lib/fetchWithCache";
@@ -89,7 +90,8 @@ export default function SettingsPage() {
   const [currentTheme, setCurrentTheme] = useState("system");
   const [ambientLight, setAmbientLight] = useState("on");
   const [locationText, setLocationText] = useState<string | null>(null);
-  const [locationUpdating, setLocationUpdating] = useState(false);
+  const [locationData, setLocationData] = useState<{ label: string; lat: number; lng: number } | null>(null);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -143,8 +145,13 @@ export default function SettingsPage() {
           .then(r => { if (!r.ok) return null; return r.json(); })
           .then(d => {
             if (cancelled || !d?.location) return;
-            const parts = [d.location.city, d.location.region, d.location.country_code].filter(Boolean);
+            const loc = d.location;
+            const parts = [loc.city, loc.region, loc.country_code].filter(Boolean);
             if (parts.length > 0) setLocationText(parts.join(", "));
+            if (loc.latitude && loc.longitude && loc.latitude !== 0) {
+              const detailParts = [loc.city, loc.region, loc.country_code].filter(Boolean);
+              setLocationData({ label: detailParts.join(", "), lat: loc.latitude, lng: loc.longitude });
+            }
           })
           .catch(() => {});
 
@@ -174,36 +181,8 @@ export default function SettingsPage() {
     };
   }, [router]);
 
-  const updateLocation = async () => {
-    if (!navigator.geolocation) {
-      feedimAlert("error", t("locationNotSupported"));
-      return;
-    }
-    setLocationUpdating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const res = await fetch("/api/location", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-          });
-          const data = await res.json();
-          if (data.location) {
-            const parts = [data.location.city, data.location.region, data.location.country_code].filter(Boolean);
-            if (parts.length > 0) setLocationText(parts.join(", "));
-            feedimAlert("success", t("locationUpdated"));
-          }
-        } catch {} finally {
-          setLocationUpdating(false);
-        }
-      },
-      () => {
-        feedimAlert("error", t("locationPermissionDenied"));
-        setLocationUpdating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+  const handleLocationUpdated = (text: string) => {
+    if (text) setLocationText(text);
   };
 
   const handlePrivacyToggle = async () => {
@@ -341,10 +320,10 @@ export default function SettingsPage() {
 
             {/* Coin Balance */}
             <Link href="/coins" className="mx-4 mt-3 mb-1 flex items-center justify-between px-4 py-3.5 rounded-[13px] bg-bg-secondary hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Wallet className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("balance")}</span>
+                  <span className="text-[0.91rem] font-medium">{t("balance")}</span>
                   <p className="text-[0.78rem] text-text-muted">{profile?.coin_balance?.toLocaleString(locale) || 0} {t("tokens")}</p>
                 </div>
               </div>
@@ -358,7 +337,7 @@ export default function SettingsPage() {
                   <VerifiedBadge size="lg" variant={getBadgeVariant(profile.premium_plan)} role={profile?.role ?? undefined} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.88rem] font-semibold">Feedim {(profile.premium_plan || "").charAt(0).toUpperCase() + (profile.premium_plan || "").slice(1)}</p>
-                    <p className="text-[0.78rem] text-text-muted mt-0.5">{t("premiumActive")}</p>
+                    <p className="text-[0.78rem] text-text-muted">{t("premiumActive")}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
                 </Link>
@@ -367,7 +346,7 @@ export default function SettingsPage() {
                   <VerifiedBadge size="lg" className="opacity-50" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.88rem] font-semibold">{t("upgradeToPremium")}</p>
-                    <p className="text-[0.78rem] text-text-muted mt-0.5">{t("premiumDesc")}</p>
+                    <p className="text-[0.78rem] text-text-muted">{t("premiumDesc")}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
                 </Link>
@@ -377,46 +356,46 @@ export default function SettingsPage() {
             {/* Hesap */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("account")}</h3>
             <Link href="/profile" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <User className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("profile")}</span>
+                <span className="text-[0.91rem] font-medium">{t("profile")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             {(profile?.role === "admin" || profile?.role === "moderator") && (
               <Link href="/moderation" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3.5">
                   <Shield className="h-5 w-5 text-text-muted" />
-                  <span className="text-[0.88rem] font-medium">{t("moderation")}</span>
+                  <span className="text-[0.91rem] font-medium">{t("moderation")}</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-text-muted" />
               </Link>
             )}
             <Link href="/transactions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Clock className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("transactionHistory")}</span>
+                <span className="text-[0.91rem] font-medium">{t("transactionHistory")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <Link href="/bookmarks" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Bookmark className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("bookmarks")}</span>
+                <span className="text-[0.91rem] font-medium">{t("bookmarks")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <Link href="/withdrawal" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Wallet className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("withdrawal")}</span>
+                <span className="text-[0.91rem] font-medium">{t("withdrawal")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <Link href="/settings/invite" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <ShareIcon className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("inviteFriends")}</span>
+                <span className="text-[0.91rem] font-medium">{t("inviteFriends")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
@@ -427,22 +406,22 @@ export default function SettingsPage() {
               onClick={() => setDarkModeOpen(true)}
               className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 {currentTheme === "dark" ? <Moon className="h-5 w-5 text-text-muted" /> : currentTheme === "dim" ? <CloudMoon className="h-5 w-5 text-text-muted" /> : currentTheme === "light" ? <Sun className="h-5 w-5 text-text-muted" /> : <Monitor className="h-5 w-5 text-text-muted" />}
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("theme")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">{tTheme(currentTheme === "light" ? "light" : currentTheme === "dark" ? "dark" : currentTheme === "dim" ? "dim" : "system")}</p>
+                  <span className="text-[0.91rem] font-medium">{t("theme")}</span>
+                  <p className="text-[0.78rem] text-text-muted">{tTheme(currentTheme === "light" ? "light" : currentTheme === "dark" ? "dark" : currentTheme === "dim" ? "dim" : "system")}</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </button>
 
             <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Sparkles className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("ambientLight")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">{t("ambientLightDesc")}</p>
+                  <span className="text-[0.91rem] font-medium">{t("ambientLight")}</span>
+                  <p className="text-[0.78rem] text-text-muted">{t("ambientLightDesc")}</p>
                 </div>
               </div>
               <button
@@ -460,9 +439,9 @@ export default function SettingsPage() {
 
             {/* Language selector */}
             <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Globe className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("language")}</span>
+                <span className="text-[0.91rem] font-medium">{t("language")}</span>
               </div>
               <select
                 value={locale}
@@ -478,11 +457,11 @@ export default function SettingsPage() {
             {/* Gizlilik */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("privacy")}</h3>
             <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Lock className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("privateAccount")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">{t("privateAccountDesc")}</p>
+                  <span className="text-[0.91rem] font-medium">{t("privateAccount")}</span>
+                  <p className="text-[0.78rem] text-text-muted">{t("privateAccountDesc")}</p>
                 </div>
               </div>
               <button
@@ -493,18 +472,18 @@ export default function SettingsPage() {
               </button>
             </div>
             <Link href="/settings/blocked-users" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Ban className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("blockedUsers")}</span>
+                <span className="text-[0.91rem] font-medium">{t("blockedUsers")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <Link href="/settings/blocked-words" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <EyeOff className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("blockedWords")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">{t("blockedWordsDesc")}</p>
+                  <span className="text-[0.91rem] font-medium">{t("blockedWords")}</span>
+                  <p className="text-[0.78rem] text-text-muted">{t("blockedWordsDesc")}</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
@@ -513,9 +492,9 @@ export default function SettingsPage() {
             {/* Bildirimler */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("notifications")}</h3>
             <Link href="/settings/notifications" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Bell className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("notificationSettings")}</span>
+                <span className="text-[0.91rem] font-medium">{t("notificationSettings")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
@@ -528,12 +507,12 @@ export default function SettingsPage() {
                   onClick={() => setProModalOpen(true)}
                   className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3.5">
                     <Briefcase className="h-5 w-5 text-accent-main" />
                     <div>
-                      <span className="text-[0.88rem] font-medium">{accountType === "creator" ? t("creator") : t("business")}</span>
+                      <span className="text-[0.91rem] font-medium">{accountType === "creator" ? t("creator") : t("business")}</span>
                       {professionalCategory && (
-                        <p className="text-[0.78rem] text-text-muted mt-0.5">{tProf(getCategoryLabelKey(accountType, professionalCategory))}</p>
+                        <p className="text-[0.78rem] text-text-muted">{tProf(getCategoryLabelKey(accountType, professionalCategory))}</p>
                       )}
                     </div>
                   </div>
@@ -543,9 +522,9 @@ export default function SettingsPage() {
                   onClick={() => handleSwitchToPersonal()}
                   className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3.5">
                     <User className="h-5 w-5 text-text-muted" />
-                    <span className="text-[0.88rem] font-medium text-text-muted">{t("switchToPersonal")}</span>
+                    <span className="text-[0.91rem] font-medium text-text-muted">{t("switchToPersonal")}</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-text-muted" />
                 </button>
@@ -555,11 +534,11 @@ export default function SettingsPage() {
                 onClick={() => setProModalOpen(true)}
                 className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3.5">
                   <Briefcase className="h-5 w-5 text-text-muted" />
                   <div>
-                    <span className="text-[0.88rem] font-medium">{t("switchToPro")}</span>
-                    <p className="text-[0.78rem] text-text-muted mt-0.5">{t("proDesc")}</p>
+                    <span className="text-[0.91rem] font-medium">{t("switchToPro")}</span>
+                    <p className="text-[0.78rem] text-text-muted">{t("proDesc")}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-text-muted" />
@@ -569,11 +548,11 @@ export default function SettingsPage() {
             {/* Hesap Sağlığı */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("accountHealth")}</h3>
             <Link href="/settings/health" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-text-muted" />
+              <div className="flex items-center gap-3.5">
+                <HeartPulse className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("accountHealth")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">{t("accountHealthDesc")}</p>
+                  <span className="text-[0.91rem] font-medium">{t("accountHealth")}</span>
+                  <p className="text-[0.78rem] text-text-muted">{t("accountHealthDesc")}</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
@@ -582,11 +561,11 @@ export default function SettingsPage() {
             {/* Telif Hakkı Koruması */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("copyrightProtection")}</h3>
             <Link href="/settings/copyright" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Shield className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("copyrightProtection")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">
+                  <span className="text-[0.91rem] font-medium">{t("copyrightProtection")}</span>
+                  <p className="text-[0.78rem] text-text-muted">
                     {copyrightEligible
                       ? (copyrightEligibleSince ? `${new Date(copyrightEligibleSince).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })}` : "")
                       : copyrightApplicationStatus === "pending"
@@ -605,11 +584,11 @@ export default function SettingsPage() {
             {/* Para Kazanma */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("monetization")}</h3>
             <Link href="/settings/monetization" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Coins className="h-5 w-5 text-text-muted" />
                 <div>
-                  <span className="text-[0.88rem] font-medium">{t("monetization")}</span>
-                  <p className="text-[0.78rem] text-text-muted mt-0.5">
+                  <span className="text-[0.91rem] font-medium">{t("monetization")}</span>
+                  <p className="text-[0.78rem] text-text-muted">
                     {monetizationEnabled
                       ? ""
                       : monetizationStatus === "pending"
@@ -628,10 +607,11 @@ export default function SettingsPage() {
             {/* Güvenlik */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("security")}</h3>
             <Link href="/security" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3.5">
+                  <Mail className="h-5 w-5 text-text-muted" />
                   <div>
-                    <span className="text-[0.88rem] font-medium">{t("email")}</span>
-                    <p className="text-[0.78rem] text-text-muted mt-0.5">{user?.email}</p>
+                    <span className="text-[0.91rem] font-medium">{t("email")}</span>
+                    <p className="text-[0.78rem] text-text-muted">{user?.email}</p>
                   </div>
                 </div>
               {emailVerified ? (
@@ -641,23 +621,23 @@ export default function SettingsPage() {
               )}
             </Link>
             <Link href="/security" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Shield className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("securitySettings")}</span>
+                <span className="text-[0.91rem] font-medium">{t("securitySettings")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <Link href="/settings/connected" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Link2 className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("connectedAccounts")}</span>
+                <span className="text-[0.91rem] font-medium">{t("connectedAccounts")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <Link href="/settings/sessions" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Smartphone className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("activeSessions")}</span>
+                <span className="text-[0.91rem] font-medium">{t("activeSessions")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
@@ -665,25 +645,24 @@ export default function SettingsPage() {
             {/* Bilgiler */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("information")}</h3>
             <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Calendar className="h-5 w-5 text-text-muted" />
                 <span className="text-sm text-text-muted">{t("joinDate")}</span>
               </div>
-              <span className="text-[0.78rem]">{user?.created_at ? new Date(user.created_at).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" }) : "-"}</span>
+              <span className="text-[0.78rem] font-semibold">{user?.created_at ? new Date(user.created_at).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" }) : "-"}</span>
             </div>
             <div className="flex items-center justify-between px-4 py-3.5 rounded-[13px]">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <MapPin className="h-5 w-5 text-text-muted" />
                 <span className="text-sm text-text-muted">{t("location")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[0.78rem]">{locationText || t("locationUnknown")}</span>
+                <span className="text-[0.78rem] font-semibold">{locationText || t("locationUnknown")}</span>
                 <button
-                  onClick={updateLocation}
-                  disabled={locationUpdating}
-                  className="text-[0.7rem] font-medium text-accent-main hover:opacity-80 transition disabled:opacity-50"
+                  onClick={() => setLocationModalOpen(true)}
+                  className="text-[0.78rem] font-semibold text-accent-main hover:opacity-80 transition"
                 >
-                  {locationUpdating ? <span className="loader" style={{ width: 12, height: 12 }} /> : t("changeLocation")}
+                  {t("changeLocation")}
                 </button>
               </div>
             </div>
@@ -691,9 +670,9 @@ export default function SettingsPage() {
               onClick={() => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("fdm-open-hotkeys")); }}
               className="flex items-center justify-between w-full px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors text-left"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <Keyboard className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("keyboardShortcuts")}</span>
+                <span className="text-[0.91rem] font-medium">{t("keyboardShortcuts")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </button>
@@ -701,37 +680,37 @@ export default function SettingsPage() {
             {/* Destek & Yasal */}
             <h3 className="px-4 pt-6 pb-1 text-[0.7rem] font-semibold text-text-muted uppercase tracking-wider">{t("supportLegal")}</h3>
             <Link href="/settings/support" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <MessageCircle className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("getSupport")}</span>
+                <span className="text-[0.91rem] font-medium">{t("getSupport")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </Link>
             <NewTabLink href="/help" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <HelpCircle className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("helpCenter")}</span>
+                <span className="text-[0.91rem] font-medium">{t("helpCenter")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </NewTabLink>
             <NewTabLink href="/contact" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <MessageCircle className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("contactUs")}</span>
+                <span className="text-[0.91rem] font-medium">{t("contactUs")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </NewTabLink>
             <NewTabLink href="/terms" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <FileText className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("termsOfService")}</span>
+                <span className="text-[0.91rem] font-medium">{t("termsOfService")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </NewTabLink>
             <NewTabLink href="/privacy" className="flex items-center justify-between px-4 py-3.5 rounded-[13px] hover:bg-bg-tertiary transition-colors">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 <ScrollText className="h-5 w-5 text-text-muted" />
-                <span className="text-[0.88rem] font-medium">{t("privacyPolicy")}</span>
+                <span className="text-[0.91rem] font-medium">{t("privacyPolicy")}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-text-muted" />
             </NewTabLink>
@@ -760,6 +739,8 @@ export default function SettingsPage() {
       </div>
 
       <DarkModeModal open={darkModeOpen} onClose={() => { setDarkModeOpen(false); setCurrentTheme(localStorage.getItem("fdm-theme") || "dark"); }} />
+
+      <LocationModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} onLocationUpdated={handleLocationUpdated} currentLocation={locationData} />
 
       <ProfessionalAccountModal
         open={proModalOpen}

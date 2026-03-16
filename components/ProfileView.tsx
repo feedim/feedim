@@ -539,7 +539,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
           </div>
           {!isAnyBlocked && isProfessional(profile.account_type || undefined) && profile.professional_category && (
             <div className="flex items-center gap-1.5 flex-wrap mt-0.5 mb-0.5">
-              <span className="inline-flex items-center gap-1 text-[0.7rem] font-medium text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-text-muted bg-bg-secondary px-2 py-0.5 rounded-full">
                 <Briefcase className="h-3 w-3" />
                 {tProf(getCategoryLabelKey(profile.account_type || "business", profile.professional_category))}
               </span>
@@ -591,7 +591,7 @@ export default function ProfileView({ profile: initialProfile }: { profile: Prof
                 );
               })()}
               {profile.created_at && (
-                <span className="flex items-center gap-1 text-[0.78rem] text-text-muted">
+                <span className="flex items-center gap-1 text-[0.78rem] text-text-muted font-medium">
                   <Calendar className="h-3 w-3" /> {t("joinedAt", { date: new Date(profile.created_at).toLocaleDateString(locale, { month: "long", year: "numeric" }) })}
                 </span>
               )}

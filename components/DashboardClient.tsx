@@ -243,7 +243,13 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
       const data = await fetchWithCache(endpoint, { ttlSeconds: 30, forceRefresh: pageNum > 1 }) as any;
       applyFeedPayload(data, pageNum);
     } catch {
-      // Silent
+      // Hata olunca mevcut postları koru — sadece boşsa ve ilk sayfa ise tekrar dene
+      if (pageNum === 1 && posts.length === 0) {
+        try {
+          const data = await fetchWithCache(endpoint, { ttlSeconds: 30, forceRefresh: true }) as any;
+          applyFeedPayload(data, pageNum);
+        } catch { /* gerçekten boşsa loading skeleton kalır */ }
+      }
     } finally {
       setLoading(false);
     }
@@ -261,9 +267,7 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
       applyFeedPayload(cached, 1);
       setLoading(false);
     } else {
-      setPosts([]);
-      setHasMore(false);
-      setLoading(true);
+      setLoading(true);   // Skeleton göster, eski postları KALDIRMA
     }
     loadFeed(tab, 1);
   }, [applyFeedPayload, getFeedEndpoint, loadFeed]);
@@ -273,9 +277,13 @@ export default function DashboardClient({ initialMoments }: DashboardClientProps
       redirectToLogin("/");
       return;
     }
+    if (loadingMore) return;
     setLoadingMore(true);
-    await loadFeed(activeTab, page + 1);
-    setLoadingMore(false);
+    try {
+      await loadFeed(activeTab, page + 1);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   return (

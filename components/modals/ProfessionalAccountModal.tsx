@@ -169,8 +169,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
         return (
           <div className="px-4 py-6 space-y-4">
             <div className="mb-2">
-              <h3 className="text-lg font-bold">{t("accountType")}</h3>
-              <p className="text-sm text-text-muted mt-1">{t("accountTypeDesc")}</p>
+              <p className="text-sm text-text-muted">{t("accountTypeDesc")}</p>
             </div>
             <button
               onClick={() => { setAccountType("creator"); setCategory(""); goToStep(2, "creator"); }}
@@ -184,11 +183,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                 <p className="font-semibold">{t("creatorLabel")}</p>
                 <p className="text-xs text-text-muted mt-0.5">{t("creatorDesc")}</p>
               </div>
-              {stepping === "creator" ? (
-                <span className="loader shrink-0" style={{ width: 16, height: 16 }} />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
-              )}
+              <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
             </button>
             <button
               onClick={() => {
@@ -210,9 +205,7 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
                   {canUseBusiness ? t("businessDesc") : t("businessOnlyDesc")}
                 </p>
               </div>
-              {stepping === "business" ? (
-                <span className="loader shrink-0" style={{ width: 16, height: 16 }} />
-              ) : canUseBusiness ? (
+              {canUseBusiness ? (
                 <ChevronRight className="h-5 w-5 text-text-muted shrink-0" />
               ) : (
                 <Lock className="h-4 w-4 text-text-muted shrink-0" />
@@ -318,7 +311,10 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
 
   // Calculate progress (don't show progress on step 0 and step 4)
   const showProgress = step >= 1 && step <= 3;
-  const progressPercent = step > 0 ? (step / totalSteps) * 100 : 0;
+  const stepLabels = accountType === "creator"
+    ? [1, 2] // type → category
+    : [1, 2, 3]; // type → category → contact
+  const currentStepIndex = stepLabels.indexOf(step);
 
   return (
     <Modal
@@ -337,13 +333,19 @@ export default function ProfessionalAccountModal({ open, onClose, onComplete, is
       }
     >
       {showProgress && (
-        <div className="px-4 pt-2">
-          <div className="w-full h-1 bg-bg-tertiary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent-main rounded-full transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+        <div className="flex items-center justify-center gap-0 px-4 pt-3">
+          {stepLabels.map((s, i) => (
+            <div key={s} className="flex items-center">
+              <div className={`w-[22px] h-[22px] rounded-full flex items-center justify-center text-[0.65rem] font-bold transition-colors ${
+                step > s ? "bg-accent-main text-white" : step === s ? "bg-accent-main text-white" : "bg-bg-tertiary text-text-muted"
+              }`}>
+                {step > s ? <Check className="h-3 w-3" /> : i + 1}
+              </div>
+              {i < stepLabels.length - 1 && (
+                <div className={`w-10 h-[2px] transition-colors ${step > s ? "bg-accent-main" : "bg-bg-tertiary"}`} />
+              )}
+            </div>
+          ))}
         </div>
       )}
       {renderStep()}

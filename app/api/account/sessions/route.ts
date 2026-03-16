@@ -70,23 +70,33 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Check if session with same device_hash exists
+    // Check if session with same device_hash exists (use limit(1) to handle pre-existing duplicates)
     if (device_hash) {
-      const { data: existing } = await admin
+      const { data: existingRows } = await admin
         .from("sessions")
         .select("id")
         .eq("user_id", user.id)
         .eq("device_hash", device_hash)
         .eq("is_active", true)
-        .single();
+        .order("last_active_at", { ascending: false })
+        .limit(5);
 
-      if (existing) {
-        // Update last_active_at
+      if (existingRows && existingRows.length > 0) {
+        const keepId = existingRows[0].id;
+        // Update the newest one
         await admin
           .from("sessions")
           .update({ last_active_at: new Date().toISOString(), ip_address: ip })
-          .eq("id", existing.id);
-        return NextResponse.json({ session_id: existing.id });
+          .eq("id", keepId);
+        // Deactivate older duplicates if any
+        if (existingRows.length > 1) {
+          const dupeIds = existingRows.slice(1).map(r => r.id);
+          await admin
+            .from("sessions")
+            .update({ is_active: false, ended_at: new Date().toISOString() })
+            .in("id", dupeIds);
+        }
+        return NextResponse.json({ session_id: keepId });
       }
     }
 

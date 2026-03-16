@@ -197,7 +197,7 @@ export default function DeleteAccountPage() {
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder="DELETE"
-              className="input-modern w-full"
+              className="input-modern w-full font-bold placeholder:font-bold"
             />
           </div>
         </div>

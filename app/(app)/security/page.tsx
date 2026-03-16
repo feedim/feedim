@@ -313,7 +313,14 @@ export default function SecurityPage() {
       if (error) throw error;
       feedimAlert("success", t("emailUpdateLinkSent"));
       setEditEmail(false); setNewEmail("");
-    } catch { feedimAlert("error", t("emailUpdateFailed")); } finally { setUpdatingEmail(false); }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+        feedimAlert("error", t("emailAlreadyInUse"));
+      } else {
+        feedimAlert("error", t("emailUpdateFailed"));
+      }
+    } finally { setUpdatingEmail(false); }
   };
 
   const handleSendEmailCode = () => {
@@ -357,7 +364,7 @@ export default function SecurityPage() {
           <>
             {/* Email Verification */}
             <section>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-1">
                 <h2 className="font-semibold text-[0.95rem]">{t("emailVerification")}</h2>
               </div>
               <p className="text-xs text-text-muted mb-3">
@@ -387,7 +394,7 @@ export default function SecurityPage() {
                       {t("verify")}
                     </button>
                   )}
-                  <button onClick={() => { setEditEmail(!editEmail); if (!editEmail) { setVerifyingEmail(false); setEmailCode(""); } }} className="text-xs text-text-muted hover:text-text-primary font-semibold transition">
+                  <button onClick={() => { setEditEmail(!editEmail); if (!editEmail) { setVerifyingEmail(false); setEmailCode(""); } }} className="text-[0.78rem] text-text-muted hover:text-text-primary font-semibold transition">
                     {t("change")}
                   </button>
                 </div>
@@ -430,10 +437,11 @@ export default function SecurityPage() {
 
             {/* Change Password */}
             <section>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-1">
                 <Lock className="h-4.5 w-4.5 text-accent-main" />
                 <h2 className="font-semibold text-[0.95rem]">{t("changePassword")}</h2>
               </div>
+              <p className="text-xs text-text-muted mb-3">{t("changePasswordDesc")}</p>
 
               {!showChangePassword ? (
                 <button onClick={() => setShowChangePassword(true)} className="t-btn cancel w-full py-3 flex items-center justify-center gap-2 text-sm">
@@ -495,7 +503,7 @@ export default function SecurityPage() {
                   <div className="w-14 h-14 rounded-full bg-accent-main/10 flex items-center justify-center mx-auto">
                     <Lock className="h-7 w-7 text-accent-main" />
                   </div>
-                  <p className="text-sm font-semibold">{t("mfaRequiresPremium")}</p>
+                  <p className="text-[0.88rem] font-semibold mb-0.5">{t("mfaRequiresPremium")}</p>
                   <p className="text-xs text-text-muted">{t("mfaPremiumDesc")}</p>
                   <Link
                     href="/premium"

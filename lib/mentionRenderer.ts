@@ -1,5 +1,10 @@
 const MENTION_REGEX = /@([A-Za-z0-9._-]+)/g;
 
+/** Strip HTML tags from plain text (for titles, descriptions, etc.) */
+function stripTags(text: string): string {
+  return text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
+
 function escapeHTML(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -20,7 +25,7 @@ export function renderMentionsAsHTML(
   max = 3,
   allowedUsernames?: Iterable<string>,
 ): string {
-  const escaped = escapeHTML(text);
+  const escaped = escapeHTML(stripTags(text));
   const seen = new Set<string>();
   const allowed = allowedUsernames ? new Set(Array.from(allowedUsernames, (value) => value.toLowerCase())) : null;
 
