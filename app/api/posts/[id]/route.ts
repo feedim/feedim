@@ -57,7 +57,7 @@ export async function GET(
 
     // Check if viewer is staff (admin/moderator) — parallel with related content below
     let isStaff = false;
-    let staffCheckPromise: Promise<void> | null = null;
+    let staffCheckPromise: PromiseLike<void> | null = null;
     if (user) {
       staffCheckPromise = adminClient.from('profiles').select('role').eq('user_id', user.id).single()
         .then(({ data: viewerP }) => {
