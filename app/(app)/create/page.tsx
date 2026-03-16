@@ -714,7 +714,7 @@ function WritePageContent() {
                           setImageUploading(false);
                           setFeaturedImage("");
                           setFeaturedImagePreview("");
-                        }
+                        }}
                         className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
                       >
                         <X className="h-4 w-4" />
